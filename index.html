@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WhaleWatch">
+<title>WhaleWatch v3 — WebSocket Live</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#020408;--surface:#080e16;--card:#0b1420;--border:#0d2035;
+  --blue:#00d4ff;--green:#00ff88;--red:#ff3355;--amber:#ffaa00;
+  --text:#c8dff0;--dim:#4a6a8a;
+  --btc:#f7931a;--eth:#627eea;--sol:#9945ff;--link:#2775ca;
+  --mono:'Share Tech Mono',monospace;
+  --display:'Orbitron',sans-serif;
+  --body:'Rajdhani',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,212,255,.025)1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.025)1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;
+  background:radial-gradient(ellipse at 70% 20%,rgba(0,212,255,.04)0%,transparent 50%),radial-gradient(ellipse at 20% 80%,rgba(0,255,136,.03)0%,transparent 40%);
+  pointer-events:none;z-index:0;animation:aura 8s ease-in-out infinite alternate}
+@keyframes aura{from{opacity:.5}to{opacity:1}}
+#app{position:relative;z-index:1}
+.scan{position:fixed;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--blue),transparent);opacity:.2;z-index:50;pointer-events:none;animation:scan 10s linear infinite}
+@keyframes scan{from{top:-1px}to{top:100vh}}
+
+header{padding:13px 18px;border-bottom:1px solid var(--border);background:rgba(8,14,22,.97);backdrop-filter:blur(20px);position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--blue),var(--green));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;animation:ipulse 3s ease-in-out infinite}
+@keyframes ipulse{0%,100%{box-shadow:0 0 18px rgba(0,212,255,.4)}50%{box-shadow:0 0 32px rgba(0,212,255,.7)}}
+.logo-text{font-family:var(--display);font-size:14px;font-weight:900;letter-spacing:2px;background:linear-gradient(90deg,var(--blue),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:3px;display:block}
+.hdr-r{display:flex;align-items:center;gap:8px}
+.ws-pill{display:flex;align-items:center;gap:5px;border-radius:20px;padding:4px 10px;font-family:var(--mono);font-size:9px;letter-spacing:1px;border:1px solid;transition:all .3s}
+.ws-pill.connecting{background:rgba(255,170,0,.1);border-color:rgba(255,170,0,.3);color:var(--amber)}
+.ws-pill.live{background:rgba(0,255,136,.1);border-color:rgba(0,255,136,.3);color:var(--green)}
+.ws-pill.error{background:rgba(255,51,85,.1);border-color:rgba(255,51,85,.3);color:var(--red)}
+.ws-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 1.5s ease-in-out infinite}
+.ws-pill.live .ws-dot{box-shadow:0 0 8px var(--green)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+.tabs{display:flex;padding:10px 18px 0;gap:4px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:7px 13px;border-radius:6px 6px 0 0;border:none;background:transparent;color:var(--dim);cursor:pointer;text-transform:uppercase;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.tab.on{color:var(--blue);border-bottom-color:var(--blue);background:rgba(0,212,255,.05)}
+
+main{padding:14px 18px 100px}
+.sec-lbl{font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;margin-bottom:10px;margin-top:18px;display:flex;align-items:center;gap:8px}
+.sec-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.help-box{background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.2);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.help-title{font-family:var(--display);font-size:11px;font-weight:700;color:var(--blue);letter-spacing:1px;margin-bottom:10px}
+.help-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
+.help-num{width:22px;height:22px;border-radius:50%;background:rgba(0,212,255,.15);border:1px solid rgba(0,212,255,.3);color:var(--blue);font-family:var(--mono);font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.help-txt{font-size:13px;color:var(--dim);line-height:1.5;flex:1}
+.help-txt strong{color:var(--text)}
+.help-btn{background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.3);color:var(--blue);font-family:var(--mono);font-size:10px;border-radius:7px;padding:8px 14px;cursor:pointer;letter-spacing:1px;margin-top:4px}
+
+.ticker-wrap{overflow:hidden;background:rgba(0,212,255,.03);border:1px solid var(--border);border-radius:8px;padding:7px 0;margin-bottom:14px}
+.ticker-inner{display:flex;white-space:nowrap;animation:ticker 18s linear infinite}
+.ticker-inner:hover{animation-play-state:paused}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tick-item{display:inline-flex;align-items:center;gap:6px;padding:0 18px;font-family:var(--mono);font-size:10px;border-right:1px solid var(--border)}
+.tick-sym{color:var(--dim)}.tick-price{color:var(--text)}
+.tick-up{color:var(--green)}.tick-dn{color:var(--red)}
+
+.price-strip{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+.pc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 13px;position:relative;overflow:hidden}
+.pc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.pc.btc::before{background:var(--btc);box-shadow:0 0 8px var(--btc)}
+.pc.eth::before{background:var(--eth);box-shadow:0 0 8px var(--eth)}
+.pc.sol::before{background:var(--sol);box-shadow:0 0 8px var(--sol)}
+.pc.link::before{background:var(--link);box-shadow:0 0 8px var(--link)}
+.pc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.pc-sym{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:1px}
+.pc.btc .pc-sym{color:var(--btc)}.pc.eth .pc-sym{color:var(--eth)}.pc.sol .pc-sym{color:var(--sol)}.pc.link .pc-sym{color:var(--link)}
+.pc-chg{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:4px}
+.pc-chg.up{background:rgba(0,255,136,.1);color:var(--green)}.pc-chg.dn{background:rgba(255,51,85,.1);color:var(--red)}
+.pc-price{font-family:var(--mono);font-size:20px;color:var(--text);margin-bottom:4px;transition:color .2s}
+.pc-price.flash{color:var(--blue);text-shadow:0 0 10px rgba(0,212,255,.5)}
+.pc-hl{font-family:var(--mono);font-size:9px}
+.pc-hl .h{color:var(--green)}.pc-hl .l{color:var(--red)}
+
+.stat-row{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:12px}
+.s-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 14px}
+.s-lbl{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
+.s-val{font-family:var(--display);font-size:16px;font-weight:700;color:var(--blue)}
+.s-sub{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:3px}
+
+.whale-card{background:var(--card);border:1px solid var(--border);border-radius:13px;margin-bottom:10px;overflow:hidden;animation:si .4s ease both}
+@keyframes si{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.wh-hdr{display:flex;align-items:center;gap:11px;padding:13px 15px 11px}
+.wh-av{width:38px;height:38px;border-radius:50%;position:relative;flex-shrink:0}
+.wh-av::after{content:'';position:absolute;inset:-2px;border-radius:50%;background:conic-gradient(var(--blue),var(--green),var(--btc),var(--blue));z-index:0;animation:spin 4s linear infinite;opacity:.5}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wh-av-in{position:absolute;inset:2px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:16px;z-index:1}
+.wh-info{flex:1;min-width:0}
+.wh-name{font-family:var(--mono);font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wh-addr{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px}
+.wh-rank{font-family:var(--display);font-size:9px;font-weight:700;padding:3px 7px;border-radius:4px;background:rgba(0,212,255,.1);color:var(--blue);border:1px solid rgba(0,212,255,.2);white-space:nowrap}
+.h-grid{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border)}
+.h-item{padding:9px 10px;border-right:1px solid var(--border)}
+.h-item:last-child{border-right:none}
+.h-coin{font-family:var(--mono);font-size:8px;letter-spacing:1px;margin-bottom:3px}
+.h-amt{font-family:var(--mono);font-size:11px;color:var(--text);line-height:1}
+.h-usd{font-family:var(--body);font-size:9px;color:var(--dim);margin-top:2px}
+.wh-total{display:flex;align-items:center;justify-content:space-between;padding:9px 15px;border-top:1px solid var(--border);background:rgba(0,212,255,.02)}
+.t-lbl{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:2px}
+.t-val{font-family:var(--display);font-size:13px;font-weight:700;background:linear-gradient(90deg,var(--blue),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.t-chg{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px}
+.t-chg.up{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.2)}
+.t-chg.dn{background:rgba(255,51,85,.1);color:var(--red);border:1px solid rgba(255,51,85,.2)}
+
+.alert-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:9px;display:flex;gap:11px;align-items:flex-start;animation:si .4s ease both}
+.alert-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.alert-icon.buy{background:rgba(0,255,136,.1)}.alert-icon.sell{background:rgba(255,51,85,.1)}.alert-icon.move{background:rgba(255,170,0,.1)}
+.a-body{flex:1;min-width:0}
+.a-title{font-family:var(--mono);font-size:11px;color:var(--text);margin-bottom:2px}
+.a-desc{font-family:var(--body);font-size:12px;color:var(--dim);line-height:1.4}
+.a-amt{font-family:var(--mono);font-size:12px;font-weight:600;margin-top:3px}
+.a-amt.buy{color:var(--green)}.a-amt.sell{color:var(--red)}.a-amt.move{color:var(--amber)}
+.a-meta{display:flex;gap:7px;align-items:center;margin-top:3px;flex-wrap:wrap}
+.coin-tag{font-family:var(--mono);font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:1px}
+.new-tag{background:rgba(255,170,0,.15);color:var(--amber);border:1px solid rgba(255,170,0,.3)}
+.a-time{font-family:var(--mono);font-size:9px;color:var(--dim)}
+
+.api-banner{background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.25);border-radius:12px;padding:13px 15px;margin-bottom:14px}
+.api-banner-t{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:2px;margin-bottom:7px}
+.api-banner p{font-family:var(--body);font-size:12px;color:var(--dim);margin-bottom:9px;line-height:1.5}
+.api-banner a{color:var(--blue);text-decoration:none}
+.api-row{display:flex;gap:7px}
+.api-in{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--blue);font-family:var(--mono);font-size:10px;outline:none}
+.api-in:focus{border-color:var(--blue)}.api-in::placeholder{color:var(--dim)}
+.api-save{background:rgba(0,212,255,.15);border:1px solid rgba(0,212,255,.35);color:var(--blue);font-family:var(--mono);font-size:10px;border-radius:7px;padding:8px 12px;cursor:pointer;white-space:nowrap;letter-spacing:1px}
+
+.setting{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.s-name{font-family:var(--body);font-size:14px;font-weight:600;color:var(--text)}
+.s-desc{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px}
+.toggle{width:44px;height:24px;border-radius:12px;background:var(--border);position:relative;cursor:pointer;transition:all .3s;border:none;-webkit-appearance:none;appearance:none;flex-shrink:0}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--dim);transition:all .3s}
+.toggle.on{background:rgba(0,255,136,.28);border:1px solid rgba(0,255,136,.5)}
+.toggle.on::after{left:21px;background:var(--green);box-shadow:0 0 8px var(--green)}
+
+.bnav{position:fixed;bottom:0;left:0;right:0;background:rgba(8,14,22,.98);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding:7px 0 max(7px,env(safe-area-inset-bottom));z-index:100}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0;cursor:pointer;border:none;background:none;position:relative}
+.nb-ico{font-size:21px;line-height:1;transition:transform .2s}
+.nb-lbl{font-family:var(--mono);font-size:8px;letter-spacing:1px;color:var(--dim);text-transform:uppercase}
+.nb.on .nb-lbl{color:var(--blue)}.nb.on .nb-ico{transform:scale(1.15)}
+.nb-badge{position:absolute;top:1px;right:11px;background:var(--red);color:#fff;font-size:7px;font-family:var(--mono);width:13px;height:13px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 6px var(--red)}
+
+.page{display:none;animation:pi .22s ease}.page.on{display:block}
+@keyframes pi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.empty{text-align:center;padding:32px 16px;font-family:var(--mono);font-size:11px;color:var(--dim)}
+.empty-ico{font-size:34px;opacity:.3;margin-bottom:10px}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="scan"></div>
+<div id="app">
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🐋</div>
+    <div>
+      <div class="logo-text">WHALEWATCH</div>
+      <span class="logo-sub">WebSocket · Real-Time</span>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <div class="ws-pill connecting" id="wsPill"><div class="ws-dot"></div><span id="wsLbl">ŁĄCZENIE...</span></div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab on" onclick="goTab('prices',this)">KURSY</button>
+  <button class="tab" onclick="goTab('whales',this)">WIELORYBY</button>
+  <button class="tab" onclick="goTab('alerts',this)">ALERTY</button>
+  <button class="tab" onclick="goTab('settings',this)">USTAWIENIA</button>
+</div>
+
+<main>
+
+<div id="page-prices" class="page on">
+
+  <div id="helpBox" class="help-box" style="display:none">
+    <div class="help-title">🔌 PROBLEM Z POŁĄCZENIEM — CO ZROBIĆ?</div>
+    <div class="help-step"><div class="help-num">1</div><div class="help-txt"><strong>Otwórz w Safari (iPhone)</strong> — przeciągnij plik .html do Safari lub użyj "Otwórz w Safari" z Pliki.</div></div>
+    <div class="help-step"><div class="help-num">2</div><div class="help-txt"><strong>Sprawdź WiFi/dane</strong> — WebSocket wymaga aktywnego internetu. Spróbuj wyłączyć i włączyć WiFi.</div></div>
+    <div class="help-step"><div class="help-num">3</div><div class="help-txt"><strong>Wyłącz VPN</strong> — VPN często blokuje połączenia WebSocket do giełd krypto.</div></div>
+    <div class="help-step"><div class="help-num">4</div><div class="help-txt"><strong>Zainstaluj jako PWA</strong> — Udostępnij → "Dodaj do ekranu głównego" → działa jak natywna aplikacja.</div></div>
+    <button class="help-btn" onclick="reconnect()">↻ SPRÓBUJ PONOWNIE</button>
+  </div>
+
+  <div class="ticker-wrap" id="tickerWrap" style="display:none">
+    <div class="ticker-inner" id="tickerInner"></div>
+  </div>
+
+  <div class="sec-lbl">KURSY NA ŻYWO · BINANCE WEBSOCKET</div>
+  <div class="price-strip">
+    <div class="pc btc"><div class="pc-top"><div class="pc-sym">BTC</div><div class="pc-chg" id="c-BTC">—</div></div><div class="pc-price" id="p-BTC">—</div><div class="pc-hl" id="hl-BTC">—</div></div>
+    <div class="pc eth"><div class="pc-top"><div class="pc-sym">ETH</div><div class="pc-chg" id="c-ETH">—</div></div><div class="pc-price" id="p-ETH">—</div><div class="pc-hl" id="hl-ETH">—</div></div>
+    <div class="pc sol"><div class="pc-top"><div class="pc-sym">SOL</div><div class="pc-chg" id="c-SOL">—</div></div><div class="pc-price" id="p-SOL">—</div><div class="pc-hl" id="hl-SOL">—</div></div>
+    <div class="pc link"><div class="pc-top"><div class="pc-sym">LINK</div><div class="pc-chg" id="c-LINK">—</div></div><div class="pc-price" id="p-LINK">—</div><div class="pc-hl" id="hl-LINK">—</div></div>
+  </div>
+
+  <div class="stat-row">
+    <div class="s-box"><div class="s-lbl">Aktualizacje</div><div class="s-val" id="ticks">0</div><div class="s-sub">WebSocket ticki</div></div>
+    <div class="s-box"><div class="s-lbl">Najwyższy wzrost 24h</div><div class="s-val" id="topG">—</div><div class="s-sub" id="topGsub">—</div></div>
+  </div>
+
+  <div class="sec-lbl">WOLUMEN I ZASIĘG 24H</div>
+  <div id="volDetails"></div>
+</div>
+
+<div id="page-whales" class="page">
+  <div class="sec-lbl">TOP PORTFELE WIELORYBÓW</div>
+  <div id="whaleList"></div>
+</div>
+
+<div id="page-alerts" class="page">
+  <div id="waBanner" class="api-banner">
+    <div class="api-banner-t">🔑 WHALE ALERT API KEY</div>
+    <p>Prawdziwe transakcje wielorybów wymagają darmowego klucza z <a href="https://whale-alert.io" target="_blank">whale-alert.io</a>.</p>
+    <div class="api-row">
+      <input class="api-in" id="waIn" type="text" placeholder="Wklej klucz API...">
+      <button class="api-save" onclick="saveKey()">ZAPISZ</button>
+    </div>
+  </div>
+  <div class="stat-row">
+    <div class="s-box"><div class="s-lbl">Alerty dziś</div><div class="s-val" id="aCnt" style="color:var(--amber)">—</div><div class="s-sub">Whale Alert</div></div>
+    <div class="s-box"><div class="s-lbl">Największy ruch</div><div class="s-val" id="aBig">—</div><div class="s-sub" id="aBigSub">—</div></div>
+  </div>
+  <div class="sec-lbl">OSTATNIE TRANSAKCJE</div>
+  <div id="alertList"><div class="empty"><div class="empty-ico">🔑</div>Dodaj klucz Whale Alert</div></div>
+</div>
+
+<div id="page-settings" class="page">
+  <div class="sec-lbl">WHALE ALERT API</div>
+  <div class="setting" style="flex-direction:column;align-items:stretch;gap:9px">
+    <div class="s-name">Whale Alert API Key</div>
+    <div class="api-row">
+      <input class="api-in" id="waIn2" type="text" placeholder="Twój klucz...">
+      <button class="api-save" onclick="saveKey2()">ZAPISZ</button>
+    </div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--dim)">Darmowy klucz → <a href="https://whale-alert.io" style="color:var(--blue)">whale-alert.io</a></div>
+  </div>
+  <div class="sec-lbl">WEBSOCKET</div>
+  <div class="setting">
+    <div><div class="s-name">Status połączenia</div><div class="s-desc" id="wsDetail">Sprawdzanie...</div></div>
+    <button onclick="reconnect()" style="background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.3);color:var(--blue);font-family:var(--mono);font-size:9px;border-radius:7px;padding:6px 10px;cursor:pointer;letter-spacing:1px">↻</button>
+  </div>
+  <div class="setting">
+    <div><div class="s-name">Auto-reconnect</div><div class="s-desc">Automatyczne wznowienie</div></div>
+    <button class="toggle on" id="togAR" onclick="this.classList.toggle('on')"></button>
+  </div>
+</div>
+
+</main>
+
+<nav class="bnav">
+  <button class="nb on" onclick="goNav('prices',this)"><span class="nb-ico">📊</span><span class="nb-lbl">Kursy</span></button>
+  <button class="nb" onclick="goNav('whales',this)"><span class="nb-ico">🐳</span><span class="nb-lbl">Wieloryby</span></button>
+  <button class="nb" onclick="goNav('alerts',this)"><span class="nb-ico">🔔</span><span class="nb-lbl">Alerty</span><span class="nb-badge" id="badge" style="display:none">0</span></button>
+  <button class="nb" onclick="goNav('settings',this)"><span class="nb-ico">⚙️</span><span class="nb-lbl">Ustawienia</span></button>
+</nav>
+
+</div>
+<script>
+const COINS=['BTC','ETH','SOL','LINK'];
+const COLORS={BTC:'var(--btc)',ETH:'var(--eth)',SOL:'var(--sol)',LINK:'var(--link)'};
+const WS_URL='wss://stream.binance.com:9443/stream?streams=btcusdt@ticker/ethusdt@ticker/solusdt@ticker/linkusdt@ticker';
+const SYM={'BTCUSDT':'BTC','ETHUSDT':'ETH','SOLUSDT':'SOL','LINKUSDT':'LINK'};
+
+let ws=null, prices={BTC:null,ETH:null,SOL:null,LINK:null};
+let waKey=localStorage.getItem('waKey')||'';
+let ticks=0, newAlerts=0, reconnTimer=null;
+
+const WHALES=[
+  {name:'Satoshi Vault #1',addr:'1A1zP1...eP5Gv8',rank:'#1',e:'🐋',h:{BTC:94230,ETH:0,SOL:0,LINK:0},d:+2.1},
+  {name:'MicroStrategy Cold',addr:'3MbYQ8...kLm9Xz',rank:'#2',e:'🏦',h:{BTC:26000,ETH:12400,SOL:0,LINK:0},d:+1.4},
+  {name:'Ethereum Foundation',addr:'0xde0B6...66B505',rank:'#3',e:'💎',h:{BTC:0,ETH:350000,SOL:0,LINK:48000},d:-0.9},
+  {name:'Jump Trading',addr:'9WzDXwBb...ZpH9',rank:'#4',e:'🚀',h:{BTC:4200,ETH:28000,SOL:1200000,LINK:320000},d:+4.2},
+  {name:'Alameda Remnant',addr:'5FHwkrdxx...A7Vp',rank:'#5',e:'👻',h:{BTC:1800,ETH:45000,SOL:890000,LINK:150000},d:-1.7},
+];
+
+function connect(){
+  setPill('connecting','ŁĄCZENIE...');
+  document.getElementById('helpBox').style.display='none';
+  try{ ws=new WebSocket(WS_URL); }catch(e){ fail(); return; }
+  ws.onopen=()=>{ setPill('live','LIVE'); document.getElementById('wsDetail').textContent='Połączony · Binance WS'; clearTimeout(reconnTimer); };
+  ws.onmessage=(e)=>{
+    try{
+      const d=JSON.parse(e.data).data;
+      if(!d||!d.s)return;
+      const sym=SYM[d.s]; if(!sym)return;
+      const price=parseFloat(d.c),change=parseFloat(d.P),high=parseFloat(d.h),low=parseFloat(d.l),vol=parseFloat(d.q);
+      prices[sym]={price,change,high,low,vol};
+      updateCard(sym,price,change,high,low);
+      ticks++; document.getElementById('ticks').textContent=ticks.toLocaleString();
+      updateSummary(); updateWhales(); updateTicker(); updateVol();
+    }catch(err){}
+  };
+  ws.onerror=()=>fail();
+  ws.onclose=(e)=>{
+    setPill('error','ROZŁĄCZONO');
+    document.getElementById('wsDetail').textContent='Rozłączono (kod '+e.code+')';
+    if(document.getElementById('togAR').classList.contains('on'))
+      reconnTimer=setTimeout(connect,4000);
+    else document.getElementById('helpBox').style.display='block';
+  };
+}
+function fail(){ setPill('error','BŁĄD'); document.getElementById('helpBox').style.display='block'; document.getElementById('wsDetail').textContent='Błąd WebSocket'; }
+function reconnect(){ clearTimeout(reconnTimer); try{ws&&ws.close();}catch(e){} setTimeout(connect,300); }
+function setPill(t,l){ document.getElementById('wsPill').className='ws-pill '+t; document.getElementById('wsLbl').textContent=l; }
+
+function updateCard(sym,price,change,high,low){
+  const pEl=document.getElementById('p-'+sym);
+  const cEl=document.getElementById('c-'+sym);
+  const hEl=document.getElementById('hl-'+sym);
+  if(!pEl)return;
+  const up=change>=0;
+  pEl.textContent=fmtPrice(price);
+  pEl.classList.add('flash'); setTimeout(()=>pEl.classList.remove('flash'),500);
+  cEl.textContent=(up?'+':'')+change.toFixed(2)+'%';
+  cEl.className='pc-chg '+(up?'up':'dn');
+  hEl.innerHTML=`<span class="h">H:$${fmtN(high)}</span> &nbsp; <span class="l">L:$${fmtN(low)}</span>`;
+}
+
+function updateSummary(){
+  const e=Object.entries(prices).filter(([,d])=>d);
+  if(!e.length)return;
+  const sorted=e.sort(([,a],[,b])=>b.change-a.change);
+  const[sym,d]=sorted[0];const up=d.change>=0;
+  document.getElementById('topG').textContent=sym+' '+(up?'+':'')+d.change.toFixed(2)+'%';
+  document.getElementById('topG').style.color=up?'var(--green)':'var(--red)';
+  document.getElementById('topGsub').textContent='$'+fmtN(d.price);
+}
+
+function updateWhales(){
+  document.getElementById('whaleList').innerHTML=WHALES.map((w,i)=>{
+    const total=COINS.reduce((s,c)=>s+(prices[c]?w.h[c]*prices[c].price:0),0);
+    const up=w.d>=0;
+    return `<div class="whale-card" style="animation-delay:${i*.06}s">
+      <div class="wh-hdr">
+        <div class="wh-av"><div class="wh-av-in">${w.e}</div></div>
+        <div class="wh-info"><div class="wh-name">${w.name}</div><div class="wh-addr">${w.addr}</div></div>
+        <div class="wh-rank">${w.rank}</div>
+      </div>
+      <div class="h-grid">${COINS.map(c=>`
+        <div class="h-item">
+          <div class="h-coin" style="color:${COLORS[c]}">${c}</div>
+          <div class="h-amt">${fmtCoin(w.h[c])}</div>
+          <div class="h-usd">${w.h[c]>0&&prices[c]?fmtUSD(w.h[c]*prices[c].price):'—'}</div>
+        </div>`).join('')}</div>
+      <div class="wh-total">
+        <span class="t-lbl">ŁĄCZNIE</span>
+        <span class="t-val">${total>0?fmtUSD(total):'Łączenie...'}</span>
+        <span class="t-chg ${up?'up':'dn'}">${up?'+':''}${w.d}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateTicker(){
+  const items=Object.entries(prices).filter(([,d])=>d).map(([s,d])=>{
+    const up=d.change>=0;
+    return `<span class="tick-item"><span class="tick-sym">${s}</span><span class="tick-price">$${fmtN(d.price)}</span><span class="${up?'tick-up':'tick-dn'}">${up?'+':''}${d.change.toFixed(2)}%</span></span>`;
+  }).join('');
+  if(items){ document.getElementById('tickerWrap').style.display='block'; document.getElementById('tickerInner').innerHTML=items+items; }
+}
+
+function updateVol(){
+  const c=document.getElementById('volDetails');
+  const e=Object.entries(prices).filter(([,d])=>d);
+  if(!e.length)return;
+  c.innerHTML=e.map(([sym,d])=>{
+    const up=d.change>=0,col=COLORS[sym];
+    const bar=Math.min(Math.abs(d.change)*5,100);
+    return `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${col};border-radius:12px;padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:7px">
+        <div style="font-family:var(--display);font-size:11px;font-weight:700;color:${col}">${sym}/USDT</div>
+        <div style="font-family:var(--mono);font-size:11px;color:${up?'var(--green)':'var(--red)'}">${up?'+':''}${d.change.toFixed(2)}%</div>
+      </div>
+      <div style="background:var(--border);border-radius:3px;height:3px;margin-bottom:8px">
+        <div style="width:${bar}%;height:3px;border-radius:3px;background:${up?'var(--green)':'var(--red)'};transition:width .5s"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div><div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:2px">24H HIGH</div><div style="font-family:var(--mono);font-size:11px;color:var(--green)">$${fmtN(d.high)}</div></div>
+        <div><div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:2px">24H LOW</div><div style="font-family:var(--mono);font-size:11px;color:var(--red)">$${fmtN(d.low)}</div></div>
+        <div><div style="font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:2px">VOL 24H</div><div style="font-family:var(--mono);font-size:11px;color:var(--text)">${fmtUSD(d.vol)}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function fetchAlerts(){
+  if(!waKey)return;
+  try{
+    const since=Math.floor(Date.now()/1000)-3600;
+    const r=await fetch(`https://api.whale-alert.io/v1/transactions?api_key=${waKey}&min_value=500000&start=${since}&limit=20`);
+    const data=await r.json();
+    if(data.result==='error')throw new Error(data.message);
+    const txs=data.transactions||[];
+    renderAlerts(txs);
+    document.getElementById('aCnt').textContent=txs.length;
+    if(txs.length){const b=txs.reduce((a,x)=>a.amount_usd>x.amount_usd?a:x);document.getElementById('aBig').textContent=fmtUSD(b.amount_usd);document.getElementById('aBigSub').textContent=(b.symbol||'').toUpperCase();}
+    newAlerts=txs.filter(t=>Date.now()/1000-t.timestamp<600).length;updateBadge();
+  }catch(e){document.getElementById('alertList').innerHTML=`<div class="empty"><div class="empty-ico">⚠️</div>${e.message||'Błąd API'}</div>`;}
+}
+
+function renderAlerts(txs){
+  if(!txs.length){document.getElementById('alertList').innerHTML='<div class="empty"><div class="empty-ico">🔍</div>Brak transakcji w ostatniej godzinie</div>';return;}
+  const now=Date.now()/1000;
+  const ic={transfer:'🔄',buy:'📈',sell:'📉'};
+  document.getElementById('alertList').innerHTML=txs.map((tx,i)=>{
+    const sym=(tx.symbol||'').toUpperCase();
+    const from=tx.from?.owner||tx.from?.owner_type||'Unknown';
+    const to=tx.to?.owner||tx.to?.owner_type||'Unknown';
+    const type=tx.from?.owner_type==='exchange'?'buy':tx.to?.owner_type==='exchange'?'sell':'transfer';
+    const age=timeAgo(now-tx.timestamp);const isNew=now-tx.timestamp<600;
+    const col=COLORS[sym]||'var(--blue)';
+    return `<div class="alert-item" style="animation-delay:${i*.04}s${isNew?';border-color:rgba(255,170,0,.35)':''}">
+      <div class="alert-icon ${type}">${ic[type]||'🔄'}</div>
+      <div class="a-body">
+        <div class="a-title">${from} → ${to}</div>
+        <div class="a-desc">${fmtCoin(tx.amount)} ${sym} · ${tx.blockchain||'blockchain'}</div>
+        <div class="a-amt ${type}">${fmtUSD(tx.amount_usd)}</div>
+        <div class="a-meta"><span class="coin-tag" style="background:${col}18;color:${col};border:1px solid ${col}35">${sym}</span><span class="a-time">${age}</span>${isNew?'<span class="coin-tag new-tag">NOWY</span>':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function saveKey(){const v=document.getElementById('waIn').value.trim();if(!v)return;waKey=v;localStorage.setItem('waKey',v);document.getElementById('waBanner').style.display='none';document.getElementById('waIn2').value=v;fetchAlerts();toast('✅ Klucz zapisany!');}
+function saveKey2(){const v=document.getElementById('waIn2').value.trim();if(!v)return;waKey=v;localStorage.setItem('waKey',v);document.getElementById('waBanner').style.display='none';fetchAlerts();toast('✅ Klucz zapisany!');}
+function updateBadge(){const el=document.getElementById('badge');if(newAlerts>0){el.style.display='flex';el.textContent=newAlerts>9?'9+':newAlerts;}else el.style.display='none';}
+function toast(msg){const el=document.createElement('div');el.style.cssText='position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.35);color:var(--green);font-family:var(--mono);font-size:11px;padding:7px 16px;border-radius:18px;z-index:999;white-space:nowrap';el.textContent=msg;document.body.appendChild(el);setTimeout(()=>el.remove(),2500);}
+
+function goTab(n,el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById('page-'+n).classList.add('on');if(n==='alerts'){newAlerts=0;updateBadge();}}
+function goNav(n,el){document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));el.classList.add('on');const pg=['prices','whales','alerts','settings'];document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',pg[i]===n));document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.getElementById('page-'+n).classList.add('on');if(n==='alerts'){newAlerts=0;updateBadge();}}
+
+function fmtPrice(n){if(!n)return'—';if(n>=1000)return'$'+n.toLocaleString('en',{maximumFractionDigits:0});if(n>=1)return'$'+n.toFixed(2);return'$'+n.toFixed(4);}
+function fmtN(n){if(!n)return'—';if(n>=10000)return n.toLocaleString('en',{maximumFractionDigits:0});return n.toLocaleString('en',{maximumFractionDigits:2});}
+function fmtUSD(n){if(!n||isNaN(n))return'—';if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(0)+'K';return'$'+n.toFixed(0);}
+function fmtCoin(n){if(!n||n===0)return'—';if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toLocaleString('en',{maximumFractionDigits:2});}
+function timeAgo(s){if(s<60)return Math.round(s)+'s temu';if(s<3600)return Math.round(s/60)+'min temu';return Math.round(s/3600)+'godz temu';}
+
+if(waKey){document.getElementById('waBanner').style.display='none';document.getElementById('waIn2').value=waKey;fetchAlerts();setInterval(fetchAlerts,60000);}
+updateWhales();
+connect();
+</script>
+</body>
+</html>
