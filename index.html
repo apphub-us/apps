@@ -313,6 +313,76 @@ main{padding:14px 18px 100px}
     <canvas id="cvHalving" style="width:100%;display:block"></canvas>
   </div>
 
+
+  <!-- ATH DRAWDOWN CHART -->
+  <div class="chart-box" style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div class="chart-title">ATH DRAWDOWN · BITCOIN</div>
+      <div class="chart-updated" id="upd-ath">—</div>
+    </div>
+
+    <!-- ATH Key Stats -->
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
+      <div style="background:rgba(255,51,85,.08);border:1px solid rgba(255,51,85,.25);border-radius:10px;padding:10px 12px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">ALL TIME HIGH</div>
+        <div style="font-family:var(--display);font-size:16px;font-weight:700;color:var(--red)">$109,114</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px">20 Styczeń 2025</div>
+      </div>
+      <div style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:10px;padding:10px 12px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">DNI OD ATH</div>
+        <div style="font-family:var(--display);font-size:16px;font-weight:700;color:var(--blue)" id="athDays">—</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px" id="athDaysLabel">Obliczanie...</div>
+      </div>
+      <div style="background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.2);border-radius:10px;padding:10px 12px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">SPADEK OD ATH</div>
+        <div style="font-family:var(--display);font-size:16px;font-weight:700" id="athDropPct">—</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px" id="athDropUsd">Pobieranie ceny...</div>
+      </div>
+      <div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:10px;padding:10px 12px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">SYGNAŁ ATH</div>
+        <div style="font-family:var(--display);font-size:16px;font-weight:700" id="athSignal">—</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px">&gt;50% spadek + &gt;365 dni</div>
+      </div>
+    </div>
+
+    <!-- Two conditions checklist -->
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
+      <div id="condDropBox" style="border-radius:9px;padding:9px 12px;border:1px solid;transition:all .5s">
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;margin-bottom:3px">WARUNEK 1</div>
+        <div style="font-family:var(--body);font-size:13px;font-weight:600">Spadek &gt; 50%</div>
+        <div id="condDropStatus" style="font-family:var(--mono);font-size:10px;margin-top:3px">—</div>
+      </div>
+      <div id="condTimeBox" style="border-radius:9px;padding:9px 12px;border:1px solid;transition:all .5s">
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;margin-bottom:3px">WARUNEK 2</div>
+        <div style="font-family:var(--body);font-size:13px;font-weight:600">Czas &gt; 365 dni</div>
+        <div id="condTimeStatus" style="font-family:var(--mono);font-size:10px;margin-top:3px">—</div>
+      </div>
+    </div>
+
+    <!-- Drawdown bar -->
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-bottom:5px">
+        <span>ATH $109,114</span>
+        <span id="athCurrentPrice">Aktualna cena...</span>
+      </div>
+      <div style="background:var(--border);border-radius:6px;height:18px;position:relative;overflow:hidden">
+        <div id="athDropBar" style="height:100%;border-radius:6px;transition:width 1s ease;background:var(--red);width:0%"></div>
+        <div id="athDropBarLabel" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10px;color:white;font-weight:700">—</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:4px">
+        <span style="color:var(--green)">0% (ATH)</span>
+        <span>25%</span>
+        <span style="color:var(--amber)">50%</span>
+        <span>75%</span>
+        <span style="color:var(--red)">100%</span>
+      </div>
+    </div>
+
+    <!-- Historical context -->
+    <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:2px;margin-bottom:8px;text-transform:uppercase">Historyczne obsunięcia od ATH</div>
+    <canvas id="cvATH" style="width:100%;display:block"></canvas>
+  </div>
+
   <!-- Info box expanded -->
   <div style="margin-bottom:12px">
     <div style="font-family:var(--mono);font-size:10px;color:var(--blue);letter-spacing:3px;margin-bottom:12px;display:flex;align-items:center;gap:8px">O WSKAŹNIKACH <span style="flex:1;height:1px;background:var(--border);display:inline-block"></span></div>
@@ -1176,6 +1246,236 @@ function fmtPrice(n){ if(!n)return'—'; if(n>=1000)return'$'+Math.round(n).toLo
 function fmtN(n){ if(!n)return'—'; if(n>=10000)return n.toLocaleString('en',{maximumFractionDigits:0}); return n.toLocaleString('en',{maximumFractionDigits:2}); }
 function fmtUSD(n){ if(!n||isNaN(n))return'—'; if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T'; if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B'; if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M'; if(n>=1e3)return'$'+(n/1e3).toFixed(0)+'K'; return'$'+n.toFixed(0); }
 function fmtCoin(n){ if(!n||n===0)return'—'; if(n>=1e6)return(n/1e6).toFixed(2)+'M'; if(n>=1e3)return(n/1e3).toFixed(1)+'K'; return n.toLocaleString('en',{maximumFractionDigits:2}); }
+
+
+// ── ATH DRAWDOWN ─────────────────────────────────────────────
+var BTC_ATH_PRICE = 109114;
+var BTC_ATH_DATE  = new Date('2025-01-20').getTime();
+
+function calcATHStats(currentPrice) {
+  var now = Date.now();
+  var daysFromATH = Math.floor((now - BTC_ATH_DATE) / 86400000);
+  var dropPct = ((BTC_ATH_PRICE - currentPrice) / BTC_ATH_PRICE * 100);
+  // BOTH conditions must be met: >50% drop AND >365 days from ATH
+  var condDrop = dropPct >= 50;
+  var condTime = daysFromATH >= 365;
+  var isBuySignal = condDrop && condTime;
+  var isPartial = condDrop || condTime; // one of two
+  var dropColor = isBuySignal ? 'var(--green)' : isPartial ? 'var(--amber)' : 'var(--red)';
+  var barColor = isBuySignal ? 'var(--green)' : condDrop ? 'var(--amber)' : 'var(--red)';
+  var dropUsd = BTC_ATH_PRICE - currentPrice;
+
+  // Days label
+  var daysEl = document.getElementById('athDays');
+  var daysLblEl = document.getElementById('athDaysLabel');
+  if (daysEl) { daysEl.textContent = daysFromATH + 'd'; }
+  if (daysLblEl) {
+    var months = Math.floor(daysFromATH / 30);
+    daysLblEl.textContent = months + ' miesięcy temu · ' + new Date(BTC_ATH_DATE).toLocaleDateString('pl-PL');
+  }
+
+  // Drop stats
+  var dropPctEl = document.getElementById('athDropPct');
+  var dropUsdEl = document.getElementById('athDropUsd');
+  if (dropPctEl) { dropPctEl.textContent = '-' + dropPct.toFixed(1) + '%'; dropPctEl.style.color = dropColor; }
+  if (dropUsdEl) { dropUsdEl.textContent = '-$' + Math.round(dropUsd).toLocaleString('en'); }
+
+  // Signal — both conditions required
+  var sigEl = document.getElementById('athSignal');
+  if (sigEl) {
+    if (isBuySignal) {
+      sigEl.textContent = 'SILNY KUP ✓';
+      sigEl.style.color = 'var(--green)';
+    } else if (condDrop && !condTime) {
+      sigEl.textContent = 'CZEKAJ (czas)';
+      sigEl.style.color = 'var(--amber)';
+    } else if (!condDrop && condTime) {
+      sigEl.textContent = 'CZEKAJ (cena)';
+      sigEl.style.color = 'var(--amber)';
+    } else {
+      sigEl.textContent = 'BRAK';
+      sigEl.style.color = 'var(--red)';
+    }
+  }
+
+  // Checklist boxes
+  var condDropBox = document.getElementById('condDropBox');
+  var condTimeBox = document.getElementById('condTimeBox');
+  var condDropStatus = document.getElementById('condDropStatus');
+  var condTimeStatus = document.getElementById('condTimeStatus');
+
+  if (condDropBox) {
+    condDropBox.style.background = condDrop ? 'rgba(0,255,136,.08)' : 'rgba(255,51,85,.06)';
+    condDropBox.style.borderColor = condDrop ? 'rgba(0,255,136,.35)' : 'rgba(255,51,85,.3)';
+    condDropStatus.textContent = condDrop ? '✓ ' + dropPct.toFixed(1) + '% — SPEŁNIONY' : '✗ ' + dropPct.toFixed(1) + '% — BRAKUJE ' + (50 - dropPct).toFixed(1) + '%';
+    condDropStatus.style.color = condDrop ? 'var(--green)' : 'var(--red)';
+  }
+  if (condTimeBox) {
+    condTimeBox.style.background = condTime ? 'rgba(0,255,136,.08)' : 'rgba(255,51,85,.06)';
+    condTimeBox.style.borderColor = condTime ? 'rgba(0,255,136,.35)' : 'rgba(255,51,85,.3)';
+    condTimeStatus.textContent = condTime ? '✓ ' + daysFromATH + 'd — SPEŁNIONY' : '✗ ' + daysFromATH + 'd — BRAKUJE ' + (365 - daysFromATH) + 'd';
+    condTimeStatus.style.color = condTime ? 'var(--green)' : 'var(--red)';
+  }
+
+  // Bar
+  var barEl = document.getElementById('athDropBar');
+  var barLblEl = document.getElementById('athDropBarLabel');
+  if (barEl) { barEl.style.width = Math.min(dropPct, 100) + '%'; barEl.style.background = barColor; }
+  if (barLblEl) { barLblEl.textContent = '-' + dropPct.toFixed(1) + '%'; }
+
+  // Current price
+  var curEl = document.getElementById('athCurrentPrice');
+  if (curEl) { curEl.textContent = 'Aktualnie $' + Math.round(currentPrice).toLocaleString('en'); curEl.style.color = dropColor; }
+
+  // Update timestamp
+  var updEl = document.getElementById('upd-ath');
+  if (updEl) { updEl.textContent = new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}); }
+
+  // Register signal
+  setChip ? setChip('ath', '-'+dropPct.toFixed(1)+'% · '+daysFromATH+'d', isBuySignal ? 'KUP' : isPartial ? 'TRZYMAJ' : 'SPRZEDAJ', dropColor) : null;
+
+  drawATHChart(currentPrice, daysFromATH, dropPct);
+}
+
+function drawATHChart(currentPrice, daysFromATH, dropPct) {
+  var canvas = document.getElementById('cvATH');
+  if (!canvas) return;
+  var dpr = window.devicePixelRatio || 1;
+  var W = canvas.parentElement.clientWidth - 28;
+  var H = 180;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  var ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
+
+  var pad = {top:14, right:14, bottom:32, left:10};
+  var cW = W - pad.left - pad.right;
+  var cH = H - pad.top - pad.bottom;
+
+  // Historical BTC drawdowns from ATH (days after ATH, max drawdown %)
+  // 2021 cycle: ATH Nov 2021, bottom Nov 2022 (~365d, -77%)
+  // 2017 cycle: ATH Dec 2017, bottom Dec 2018 (~365d, -84%)
+  // 2019 cycle: ATH Jun 2019, bottom Dec 2019 (~180d, -54%)
+  var TOTAL_DAYS = 500;
+
+  // Simulated historical drawdown curves
+  var hist2017 = [];
+  var hist2021 = [];
+  var curr = [];
+
+  for (var d = 0; d <= TOTAL_DAYS; d++) {
+    // 2017 cycle: peaked at ~day 0, bottomed ~84% down at day 365
+    var t17 = d / 365;
+    var dd17 = Math.min(84, d < 365 ? 84 * Math.pow(Math.sin(t17 * Math.PI/2), 0.7) : 84 - (d-365)/4);
+    hist2017.push(Math.max(0, dd17));
+
+    // 2021 cycle: peaked at day 0, bottomed ~77% at day 375
+    var t21 = d / 375;
+    var dd21 = Math.min(77, d < 375 ? 77 * Math.pow(Math.sin(t21 * Math.PI/2), 0.6) : 77 - (d-375)/5);
+    hist2021.push(Math.max(0, dd21));
+
+    // Current cycle (only up to today)
+    if (d <= daysFromATH) {
+      // Approximate current drawdown path
+      var ratio = d / daysFromATH;
+      curr.push(dropPct * Math.pow(Math.sin(ratio * Math.PI/2), 0.5));
+    }
+  }
+
+  var toX = function(d) { return pad.left + (d/TOTAL_DAYS)*cW; };
+  var toY = function(v) { return pad.top + (v/100)*cH; }; // 0% top, 100% bottom
+
+  // Zone backgrounds
+  ctx.fillStyle = 'rgba(0,255,136,0.08)';
+  ctx.fillRect(pad.left, toY(50), cW, cH - toY(50) + pad.top);
+  ctx.fillStyle = 'rgba(255,170,0,0.06)';
+  ctx.fillRect(pad.left, toY(30), cW, toY(50) - toY(30));
+  ctx.fillStyle = 'rgba(255,51,85,0.06)';
+  ctx.fillRect(pad.left, pad.top, cW, toY(30) - pad.top);
+
+  // Grid lines
+  [0, 30, 50, 77, 84].forEach(function(v) {
+    ctx.beginPath();
+    ctx.strokeStyle = v===50?'rgba(0,255,136,.4)':v===30?'rgba(255,170,0,.3)':'rgba(255,255,255,.07)';
+    ctx.lineWidth = v===50?1.5:1; ctx.setLineDash(v===50?[5,3]:[3,5]);
+    ctx.moveTo(pad.left, toY(v)); ctx.lineTo(pad.left+cW, toY(v)); ctx.stroke();
+    ctx.setLineDash([]);
+    var lbls = {0:'0%',30:'-30%',50:'-50%',77:'-77%',84:'-84%'};
+    ctx.fillStyle = v===50?'var(--green)':v===30?'var(--amber)':'#4a6a8a';
+    ctx.font = '9px Share Tech Mono,monospace'; ctx.textAlign = 'left';
+    ctx.fillText(lbls[v], pad.left+2, toY(v)-3);
+  });
+
+  // X axis labels (days)
+  [0,90,180,270,365,450].forEach(function(d) {
+    if (d > TOTAL_DAYS) return;
+    ctx.fillStyle = '#4a6a8a'; ctx.font = '8px Share Tech Mono,monospace'; ctx.textAlign = 'center';
+    ctx.fillText(d+'d', toX(d), H-4);
+    ctx.beginPath(); ctx.strokeStyle = 'rgba(13,32,53,.8)'; ctx.lineWidth=1; ctx.setLineDash([2,4]);
+    ctx.moveTo(toX(d), pad.top); ctx.lineTo(toX(d), pad.top+cH); ctx.stroke(); ctx.setLineDash([]);
+  });
+
+  // 2017 cycle line
+  ctx.beginPath(); ctx.strokeStyle = 'rgba(255,170,0,0.45)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+  hist2017.forEach(function(v,i){ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // 2021 cycle line
+  ctx.beginPath(); ctx.strokeStyle = 'rgba(153,69,255,0.45)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+  hist2021.forEach(function(v,i){ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // Current cycle line (solid, bright)
+  var currColor = dropPct >= 50 ? '#00ff88' : dropPct >= 30 ? '#ffaa00' : '#00d4ff';
+  ctx.beginPath(); ctx.strokeStyle = currColor; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+  curr.forEach(function(v,i){ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
+  ctx.stroke();
+
+  // Current position dot
+  if (curr.length > 0) {
+    var lastX = toX(curr.length-1);
+    var lastY = toY(curr[curr.length-1]);
+    ctx.beginPath(); ctx.arc(lastX, lastY, 5, 0, Math.PI*2);
+    ctx.fillStyle = currColor; ctx.fill();
+    ctx.strokeStyle = '#020408'; ctx.lineWidth = 2; ctx.stroke();
+
+    // Label next to dot
+    ctx.fillStyle = currColor;
+    ctx.font = 'bold 10px Share Tech Mono,monospace';
+    ctx.textAlign = lastX > W*0.7 ? 'right' : 'left';
+    ctx.fillText('TERAZ', lastX + (lastX > W*0.7 ? -8 : 8), lastY - 8);
+    ctx.fillText('-'+dropPct.toFixed(1)+'%', lastX + (lastX > W*0.7 ? -8 : 8), lastY + 12);
+  }
+
+  // Legend
+  ctx.font = '9px Share Tech Mono,monospace'; ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(255,170,0,0.7)'; ctx.fillRect(W-110, 4, 24, 2);
+  ctx.fillStyle = '#4a6a8a'; ctx.fillText('2017', W-82, 8);
+  ctx.fillStyle = 'rgba(153,69,255,0.7)'; ctx.fillRect(W-110, 14, 24, 2);
+  ctx.fillText('2021', W-82, 18);
+  ctx.fillStyle = '#00d4ff'; ctx.fillRect(W-110, 24, 24, 2);
+  ctx.fillText('2025', W-82, 28);
+
+  // Buy zone label
+  ctx.fillStyle = 'rgba(0,255,136,0.5)';
+  ctx.font = '9px Share Tech Mono,monospace'; ctx.textAlign = 'center';
+  ctx.fillText('STREFA KUPNA', pad.left + cW*0.75, toY(65));
+}
+
+// Call calcATHStats whenever prices load
+var _origAfterFetch = afterFetch;
+afterFetch = function(src) {
+  _origAfterFetch(src);
+  var btcPrice = prices['BTC'] && prices['BTC'].price;
+  if (btcPrice) calcATHStats(btcPrice);
+};
+
+// Also call when chart tab opens
+var _origLoadChart = loadChartData;
+loadChartData = function() {
+  _origLoadChart();
+  var btcPrice = prices['BTC'] && prices['BTC'].price;
+  if (btcPrice) calcATHStats(btcPrice);
+};
 
 // ── START ─────────────────────────────────────────────────────
 if(waKey){ document.getElementById('waBanner').style.display='none'; document.getElementById('waIn2').value=waKey; }
