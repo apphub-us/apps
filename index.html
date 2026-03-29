@@ -245,7 +245,7 @@ main{padding:14px 18px 100px}
     <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:3px;margin-bottom:10px">SYGNAŁY ZAKUPU</div>
     <div style="font-family:var(--display);font-size:42px;font-weight:900;line-height:1;margin-bottom:6px" id="signalScore">—/4</div>
     <div style="font-family:var(--mono);font-size:12px;letter-spacing:1px;margin-bottom:14px" id="signalLabel">Ładowanie...</div>
-    <!-- 4 signal chips -->
+    <!-- 7 signal chips -->
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
       <div id="chip-mvrv" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;transition:all .4s">
         <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">MVRV Z-SCORE</div>
@@ -267,6 +267,43 @@ main{padding:14px 18px 100px}
         <div id="chip-halving-val" style="font-family:var(--mono);font-size:13px;color:var(--dim)">—</div>
         <div id="chip-halving-sig" style="font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)">—</div>
       </div>
+      <div id="chip-rsi" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;transition:all .4s">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">RSI (14d)</div>
+        <div id="chip-rsi-val" style="font-family:var(--mono);font-size:13px;color:var(--dim)">—</div>
+        <div id="chip-rsi-sig" style="font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)">—</div>
+      </div>
+      <div id="chip-vdd" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;transition:all .4s">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">VDD MULTIPLE</div>
+        <div id="chip-vdd-val" style="font-family:var(--mono);font-size:13px;color:var(--dim)">—</div>
+        <div id="chip-vdd-sig" style="font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)">—</div>
+      </div>
+      <div id="chip-lth" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;transition:all .4s;grid-column:span 2">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">LTH REALIZED PRICE</div>
+            <div id="chip-lth-val" style="font-family:var(--mono);font-size:13px;color:var(--dim)">—</div>
+          </div>
+          <div id="chip-lth-sig" style="font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;color:var(--dim)">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px">
+    <div class="s-box">
+      <div class="s-lbl">RSI 14d</div>
+      <div class="s-val" id="rsiVal">—</div>
+      <div class="s-sub" id="rsiStatus">Ładowanie...</div>
+    </div>
+    <div class="s-box">
+      <div class="s-lbl">VDD Multiple</div>
+      <div class="s-val" id="vddVal">—</div>
+      <div class="s-sub" id="vddStatus">Ładowanie...</div>
+    </div>
+    <div class="s-box">
+      <div class="s-lbl">LTH Price</div>
+      <div class="s-val" id="lthVal" style="font-size:13px">—</div>
+      <div class="s-sub" id="lthStatus">Ładowanie...</div>
     </div>
   </div>
 
@@ -330,6 +367,52 @@ main{padding:14px 18px 100px}
     </div>
   </div>
 
+
+
+  <!-- RSI CHART -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:2px">RSI 14 DNI · BTC</div>
+      <div id="rsiUpdated" style="font-family:var(--mono);font-size:9px;color:var(--dim)">—</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--red)"><div style="width:8px;height:8px;border-radius:1px;background:rgba(255,51,85,.3)"></div>WYKUPIENIE &gt;70</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--amber)"><div style="width:8px;height:8px;border-radius:1px;background:rgba(255,170,0,.25)"></div>NEUTRAL 30–70</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--green)"><div style="width:8px;height:8px;border-radius:1px;background:rgba(0,255,136,.2)"></div>WYPRZEDANIE &lt;30</div>
+    </div>
+    <canvas id="rsiChart" style="width:100%;display:block"></canvas>
+    <div id="rsiLoader" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(11,20,32,.85);border-radius:12px;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:1px">POBIERANIE...</div>
+  </div>
+
+  <!-- VDD CHART -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:2px">VDD MULTIPLE · BTC</div>
+      <div id="vddUpdated" style="font-family:var(--mono);font-size:9px;color:var(--dim)">—</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--red)"><div style="width:8px;height:8px;border-radius:1px;background:rgba(255,51,85,.3)"></div>SZCZYT &gt;1.5</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--amber)"><div style="width:8px;height:8px;border-radius:1px;background:rgba(255,170,0,.25)"></div>NEUTRAL 0.5–1.5</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--green)"><div style="width:8px;height:8px;border-radius:1px;background:rgba(0,255,136,.2)"></div>AKUMULACJA &lt;0.5</div>
+    </div>
+    <canvas id="vddChart" style="width:100%;display:block"></canvas>
+    <div id="vddLoader" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(11,20,32,.85);border-radius:12px;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:1px">POBIERANIE...</div>
+  </div>
+
+  <!-- LTH REALIZED PRICE CHART -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:2px">LTH REALIZED PRICE · BTC</div>
+      <div id="lthUpdated" style="font-family:var(--mono);font-size:9px;color:var(--dim)">—</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--blue)"><div style="width:8px;height:8px;border-radius:2px;background:rgba(0,212,255,.3);border-radius:50%"></div>CENA BTC</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--amber)"><div style="width:16px;height:2px;background:var(--amber)"></div>LTH REALIZED PRICE</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--green)">CENA &gt; LTH = BYKI RZĄDZĄ</div>
+    </div>
+    <canvas id="lthChart" style="width:100%;display:block"></canvas>
+    <div id="lthLoader" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(11,20,32,.85);border-radius:12px;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:1px">POBIERANIE...</div>
+  </div>
 
   <!-- HALVING CYCLE CHART -->
   <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
@@ -661,6 +744,342 @@ schedule();
 
 
 
+
+// ── RSI ───────────────────────────────────────────────────────
+async function fetchRSI() {
+  try {
+    const res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=100');
+    const data = await res.json();
+    if (!data.Data || !data.Data.Data) throw new Error('no data');
+    const closes = data.Data.Data.map(d => d.close).filter(p => p > 0);
+
+    // Calculate RSI-14
+    const period = 14;
+    const rsiData = [];
+    for (let i = period; i < closes.length; i++) {
+      let gains = 0, losses = 0;
+      for (let j = i - period + 1; j <= i; j++) {
+        const diff = closes[j] - closes[j-1];
+        if (diff > 0) gains += diff; else losses -= diff;
+      }
+      const avgGain = gains / period;
+      const avgLoss = losses / period;
+      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+      rsiData.push(parseFloat((100 - 100 / (1 + rs)).toFixed(1)));
+    }
+
+    const labels = data.Data.Data.slice(period).map(d => {
+      const dt = new Date(d.time * 1000);
+      return (dt.getMonth()+1) + '/' + String(dt.getFullYear()).slice(2);
+    });
+
+    const current = rsiData[rsiData.length - 1];
+    let sig, color;
+    if (current > 70) { sig = 'SPRZEDAJ'; color = 'var(--red)'; }
+    else if (current < 30) { sig = 'KUP'; color = 'var(--green)'; }
+    else { sig = 'TRZYMAJ'; color = 'var(--amber)'; }
+
+    document.getElementById('rsiVal').textContent = current.toFixed(1);
+    document.getElementById('rsiVal').style.color = color;
+    document.getElementById('rsiStatus').textContent = sig === 'KUP' ? 'Wyprzedanie' : sig === 'SPRZEDAJ' ? 'Wykupienie' : 'Neutralny';
+    document.getElementById('rsiUpdated').textContent = new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+
+    // Update chip
+    setChip('rsi', current.toFixed(1), sig, color);
+    updateSignalPanel();
+    drawRSIChart(labels, rsiData);
+    document.getElementById('rsiLoader').style.display = 'none';
+
+  } catch(e) {
+    document.getElementById('rsiLoader').innerHTML = '<span style="color:var(--red)">BŁĄD</span>';
+    document.getElementById('rsiVal').textContent = '—';
+  }
+}
+
+function drawRSIChart(labels, data) {
+  const canvas = document.getElementById('rsiChart');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 28;
+  const H = 160;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  const pad = {top:8, right:10, bottom:26, left:32};
+  const cW = W - pad.left - pad.right, cH = H - pad.top - pad.bottom;
+  const toX = i => pad.left + (i / (data.length-1)) * cW;
+  const toY = v => pad.top + cH - ((v - 0) / 100) * cH;
+
+  // Zone backgrounds
+  ctx.fillStyle = 'rgba(255,51,85,0.12)';
+  ctx.fillRect(pad.left, pad.top, cW, toY(70) - pad.top);
+  ctx.fillStyle = 'rgba(0,255,136,0.1)';
+  ctx.fillRect(pad.left, toY(30), cW, pad.top + cH - toY(30));
+
+  // Grid lines
+  [30, 50, 70].forEach(v => {
+    ctx.beginPath(); ctx.strokeStyle = v===50?'rgba(13,32,53,1)':'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1; ctx.setLineDash(v===50?[]:[ 3,4]);
+    ctx.moveTo(pad.left, toY(v)); ctx.lineTo(pad.left+cW, toY(v)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = v===70?'#ff3355':v===30?'#00ff88':'#4a6a8a';
+    ctx.font = '9px Share Tech Mono,monospace'; ctx.textAlign = 'right';
+    ctx.fillText(v, pad.left-4, toY(v)+3);
+  });
+
+  // X labels
+  const step = Math.floor(data.length/5);
+  ctx.fillStyle = '#4a6a8a'; ctx.font = '8px Share Tech Mono,monospace'; ctx.textAlign = 'center';
+  for (let i=0; i<data.length; i+=step) ctx.fillText(labels[i], toX(i), H-4);
+
+  // Fill
+  const grad = ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
+  grad.addColorStop(0,'rgba(255,170,0,0.3)'); grad.addColorStop(1,'rgba(255,170,0,0)');
+  ctx.beginPath();
+  ctx.moveTo(toX(0), toY(data[0]));
+  data.forEach((v,i) => ctx.lineTo(toX(i), toY(v)));
+  ctx.lineTo(toX(data.length-1), toY(50));
+  ctx.lineTo(toX(0), toY(50));
+  ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+
+  // Line
+  ctx.beginPath(); ctx.strokeStyle = '#ffaa00'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+  data.forEach((v,i) => i===0 ? ctx.moveTo(toX(i),toY(v)) : ctx.lineTo(toX(i),toY(v)));
+  ctx.stroke();
+
+  // Dot
+  const lx = toX(data.length-1), ly = toY(data[data.length-1]);
+  ctx.beginPath(); ctx.arc(lx,ly,4,0,Math.PI*2);
+  ctx.fillStyle='#ffaa00'; ctx.fill();
+  ctx.strokeStyle='#020408'; ctx.lineWidth=2; ctx.stroke();
+}
+
+// ── VDD MULTIPLE ──────────────────────────────────────────────
+async function fetchVDD() {
+  try {
+    // VDD = (coin_days_destroyed * price) / 365d_avg(coin_days_destroyed * price)
+    // Approximation: use volume*price momentum as proxy
+    const res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365');
+    const data = await res.json();
+    if (!data.Data || !data.Data.Data) throw new Error('no data');
+    const days = data.Data.Data.filter(d => d.close > 0);
+    const vals = days.map(d => d.volumeto); // USD volume as proxy for coin days
+
+    // VDD = current / 365d_avg
+    const vddData = vals.map((v, i) => {
+      const window = vals.slice(Math.max(0, i-364), i+1);
+      const avg = window.reduce((a,b) => a+b, 0) / window.length;
+      return avg > 0 ? parseFloat((v / avg).toFixed(3)) : 1;
+    });
+
+    const labels = days.map(d => {
+      const dt = new Date(d.time*1000);
+      return (dt.getMonth()+1)+'/'+String(dt.getFullYear()).slice(2);
+    });
+
+    const current = vddData[vddData.length-1];
+    let sig, color;
+    if (current > 1.5) { sig = 'SPRZEDAJ'; color = 'var(--red)'; }
+    else if (current < 0.5) { sig = 'KUP'; color = 'var(--green)'; }
+    else { sig = 'TRZYMAJ'; color = 'var(--amber)'; }
+
+    document.getElementById('vddVal').textContent = current.toFixed(2) + 'x';
+    document.getElementById('vddVal').style.color = color;
+    document.getElementById('vddStatus').textContent = sig === 'KUP' ? 'Akumulacja' : sig === 'SPRZEDAJ' ? 'Dystrybucja' : 'Neutralny';
+    document.getElementById('vddUpdated').textContent = new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+
+    setChip('vdd', current.toFixed(2)+'x', sig, color);
+    updateSignalPanel();
+    drawVDDChart(labels, vddData);
+    document.getElementById('vddLoader').style.display = 'none';
+
+  } catch(e) {
+    document.getElementById('vddLoader').innerHTML = '<span style="color:var(--red)">BŁĄD</span>';
+    document.getElementById('vddVal').textContent = '—';
+  }
+}
+
+function drawVDDChart(labels, data) {
+  const canvas = document.getElementById('vddChart');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 28;
+  const H = 160;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  const pad = {top:8, right:10, bottom:26, left:36};
+  const cW = W-pad.left-pad.right, cH = H-pad.top-pad.bottom;
+  const maxV = Math.max(...data, 2), minV = 0;
+  const toX = i => pad.left + (i/(data.length-1))*cW;
+  const toY = v => pad.top + cH - ((v-minV)/(maxV-minV))*cH;
+
+  // Zones
+  ctx.fillStyle = 'rgba(255,51,85,0.12)';
+  ctx.fillRect(pad.left, pad.top, cW, toY(1.5)-pad.top);
+  ctx.fillStyle = 'rgba(0,255,136,0.1)';
+  ctx.fillRect(pad.left, toY(0.5), cW, pad.top+cH-toY(0.5));
+
+  // Lines
+  [0.5, 1, 1.5].forEach(v => {
+    if (v > maxV) return;
+    ctx.beginPath(); ctx.strokeStyle = v===1?'rgba(255,255,255,0.15)':'rgba(255,255,255,0.1)';
+    ctx.lineWidth=1; ctx.setLineDash([3,4]);
+    ctx.moveTo(pad.left,toY(v)); ctx.lineTo(pad.left+cW,toY(v)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = v>=1.5?'#ff3355':v<=0.5?'#00ff88':'#4a6a8a';
+    ctx.font='9px Share Tech Mono,monospace'; ctx.textAlign='right';
+    ctx.fillText(v+'x', pad.left-4, toY(v)+3);
+  });
+
+  const step = Math.floor(data.length/5);
+  ctx.fillStyle='#4a6a8a'; ctx.font='8px Share Tech Mono,monospace'; ctx.textAlign='center';
+  for (let i=0; i<data.length; i+=step) ctx.fillText(labels[i], toX(i), H-4);
+
+  // Bar chart style
+  const bw = Math.max(1, cW/data.length - 1);
+  data.forEach((v, i) => {
+    const x = toX(i) - bw/2;
+    const y = toY(v);
+    const barH = toY(1) - y;
+    ctx.fillStyle = v > 1.5 ? 'rgba(255,51,85,0.7)' : v < 0.5 ? 'rgba(0,255,136,0.6)' : 'rgba(0,212,255,0.5)';
+    if (barH > 0) ctx.fillRect(x, y, bw, barH);
+    else ctx.fillRect(x, toY(1), bw, -barH);
+  });
+
+  document.getElementById('vddUpdated').textContent = new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ── LTH REALIZED PRICE ────────────────────────────────────────
+async function fetchLTH() {
+  try {
+    const res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365');
+    const data = await res.json();
+    if (!data.Data || !data.Data.Data) throw new Error('no data');
+    const days = data.Data.Data.filter(d => d.close > 0);
+    const prices = days.map(d => d.close);
+
+    // LTH Realized Price approximation:
+    // Long-term holders = coins unmoved for >155 days
+    // Proxy: 200-day weighted moving average (older coins weighted more)
+    const lthData = prices.map((price, i) => {
+      const window = prices.slice(Math.max(0, i-199), i+1);
+      // Weight: older = higher weight (simulates realized price of old coins)
+      let weightedSum = 0, totalWeight = 0;
+      window.forEach((p, wi) => {
+        const weight = wi + 1; // older coins get lower weight in window
+        weightedSum += p * weight;
+        totalWeight += weight;
+      });
+      return Math.round(weightedSum / totalWeight);
+    });
+
+    const labels = days.map(d => {
+      const dt = new Date(d.time*1000);
+      return (dt.getMonth()+1)+'/'+String(dt.getFullYear()).slice(2);
+    });
+
+    const currentPrice = prices[prices.length-1];
+    const currentLTH = lthData[lthData.length-1];
+    const ratio = currentPrice / currentLTH;
+
+    let sig, color, status;
+    if (ratio < 1) { sig = 'KUP'; color = 'var(--green)'; status = 'Poniżej LTH — KAPITULACJA'; }
+    else if (ratio < 1.5) { sig = 'KUP'; color = 'var(--green)'; status = 'Lekko powyżej LTH'; }
+    else if (ratio < 3) { sig = 'TRZYMAJ'; color = 'var(--amber)'; status = ratio.toFixed(1)+'x powyżej LTH'; }
+    else { sig = 'SPRZEDAJ'; color = 'var(--red)'; status = ratio.toFixed(1)+'x — przegrzanie'; }
+
+    const lthFormatted = currentLTH >= 1000 ? '$' + Math.round(currentLTH/1000) + 'K' : '$' + currentLTH;
+    document.getElementById('lthVal').textContent = lthFormatted;
+    document.getElementById('lthVal').style.color = color;
+    document.getElementById('lthStatus').textContent = status;
+    document.getElementById('lthUpdated').textContent = new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+
+    setChip('lth', lthFormatted + ' · ' + ratio.toFixed(1)+'x', sig, color);
+    updateSignalPanel();
+    drawLTHChart(labels, prices, lthData);
+    document.getElementById('lthLoader').style.display = 'none';
+
+  } catch(e) {
+    document.getElementById('lthLoader').innerHTML = '<span style="color:var(--red)">BŁĄD</span>';
+    document.getElementById('lthVal').textContent = '—';
+  }
+}
+
+function drawLTHChart(labels, prices, lthData) {
+  const canvas = document.getElementById('lthChart');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 28;
+  const H = 180;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  const pad = {top:8, right:10, bottom:26, left:44};
+  const cW = W-pad.left-pad.right, cH = H-pad.top-pad.bottom;
+  const allVals = [...prices, ...lthData];
+  const minV = Math.min(...allVals) * 0.9;
+  const maxV = Math.max(...allVals) * 1.05;
+  const toX = i => pad.left + (i/(prices.length-1))*cW;
+  const toY = v => pad.top + cH - ((v-minV)/(maxV-minV))*cH;
+
+  // Grid
+  const gridVals = [minV, (minV+maxV)/2, maxV];
+  gridVals.forEach(v => {
+    ctx.beginPath(); ctx.strokeStyle='rgba(13,32,53,0.9)'; ctx.lineWidth=1; ctx.setLineDash([3,4]);
+    ctx.moveTo(pad.left,toY(v)); ctx.lineTo(pad.left+cW,toY(v)); ctx.stroke(); ctx.setLineDash([]);
+    const label = v >= 1000 ? '$'+Math.round(v/1000)+'K' : '$'+Math.round(v);
+    ctx.fillStyle='#4a6a8a'; ctx.font='8px Share Tech Mono,monospace'; ctx.textAlign='right';
+    ctx.fillText(label, pad.left-4, toY(v)+3);
+  });
+
+  const step = Math.floor(prices.length/5);
+  ctx.fillStyle='#4a6a8a'; ctx.font='8px Share Tech Mono,monospace'; ctx.textAlign='center';
+  for (let i=0; i<labels.length; i+=step) ctx.fillText(labels[i], toX(i), H-4);
+
+  // Fill between price and LTH
+  ctx.beginPath();
+  prices.forEach((v,i) => i===0 ? ctx.moveTo(toX(i),toY(v)) : ctx.lineTo(toX(i),toY(v)));
+  for (let i=lthData.length-1; i>=0; i--) ctx.lineTo(toX(i), toY(lthData[i]));
+  ctx.closePath();
+  const fillGrad = ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
+  fillGrad.addColorStop(0,'rgba(0,255,136,0.2)'); fillGrad.addColorStop(1,'rgba(0,255,136,0.03)');
+  ctx.fillStyle = fillGrad; ctx.fill();
+
+  // LTH line (amber dashed)
+  ctx.beginPath(); ctx.strokeStyle='#ffaa00'; ctx.lineWidth=2; ctx.setLineDash([6,3]);
+  lthData.forEach((v,i) => i===0 ? ctx.moveTo(toX(i),toY(v)) : ctx.lineTo(toX(i),toY(v)));
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // Price line (blue)
+  ctx.beginPath(); ctx.strokeStyle='#00d4ff'; ctx.lineWidth=2; ctx.lineJoin='round';
+  prices.forEach((v,i) => i===0 ? ctx.moveTo(toX(i),toY(v)) : ctx.lineTo(toX(i),toY(v)));
+  ctx.stroke();
+
+  // Dots
+  [[prices, '#00d4ff'], [lthData, '#ffaa00']].forEach(([arr, col]) => {
+    const lx = toX(arr.length-1), ly = toY(arr[arr.length-1]);
+    ctx.beginPath(); ctx.arc(lx,ly,4,0,Math.PI*2);
+    ctx.fillStyle=col; ctx.fill(); ctx.strokeStyle='#020408'; ctx.lineWidth=2; ctx.stroke();
+  });
+}
+
+// ── HELPER: set chip ─────────────────────────────────────────
+function setChip(id, val, sig, color) {
+  const chip = document.getElementById('chip-'+id);
+  const valEl = document.getElementById('chip-'+id+'-val');
+  const sigEl = document.getElementById('chip-'+id+'-sig');
+  if (!chip || !valEl || !sigEl) return;
+  const bg = sig==='KUP'?'rgba(0,255,136,.08)':sig==='SPRZEDAJ'?'rgba(255,51,85,.08)':'rgba(255,170,0,.06)';
+  const border = sig==='KUP'?'rgba(0,255,136,.3)':sig==='SPRZEDAJ'?'rgba(255,51,85,.3)':'rgba(255,170,0,.25)';
+  chip.style.background = bg;
+  chip.style.borderColor = border;
+  valEl.textContent = val;
+  valEl.style.color = color;
+  sigEl.textContent = sig;
+  sigEl.style.color = color;
+}
+
 // ── HALVING CYCLE INDICATOR ───────────────────────────────────
 function calcHalvingCycle() {
   // BTC Halving dates (Unix ms)
@@ -794,7 +1213,13 @@ function updateSignalPanel() {
 
   // ── Score ──
   const halvingInfo2 = calcHalvingCycle();
-  const sigs = [mvrvSig, nuplSig, fgSig, halvingInfo2.signal];
+  const rsiRaw2 = parseFloat(document.getElementById('rsiVal').textContent);
+  const rsiSig2 = isNaN(rsiRaw2) ? null : rsiRaw2 > 70 ? 'SPRZEDAJ' : rsiRaw2 < 30 ? 'KUP' : 'TRZYMAJ';
+  const vddRaw2 = parseFloat(document.getElementById('vddVal').textContent);
+  const vddSig2 = isNaN(vddRaw2) ? null : vddRaw2 > 1.5 ? 'SPRZEDAJ' : vddRaw2 < 0.5 ? 'KUP' : 'TRZYMAJ';
+  const lthSig2 = document.getElementById('chip-lth-sig') ? document.getElementById('chip-lth-sig').textContent : null;
+  const allSigs = [mvrvSig, nuplSig, fgSig, halvingInfo2.signal, rsiSig2, vddSig2, lthSig2].filter(Boolean);
+  const sigs = allSigs;
   const buyCount = sigs.filter(s => s === 'KUP').length;
   const sellCount = sigs.filter(s => s === 'SPRZEDAJ').length;
 
@@ -802,7 +1227,7 @@ function updateSignalPanel() {
   const labelEl = document.getElementById('signalLabel');
   const panel   = document.getElementById('signalPanel');
 
-  scoreEl.textContent = buyCount + '/4';
+  scoreEl.textContent = buyCount + '/' + sigs.length;
 
   let panelColor, panelBg, panelBorder, labelText;
   if (buyCount === 4) {
@@ -840,6 +1265,9 @@ async function fetchChartData() {
   fetchFearGreed();
   fetchMVRV();
   fetchNUPL();
+  fetchRSI();
+  fetchVDD();
+  fetchLTH();
 }
 
 async function fetchFearGreed() {
