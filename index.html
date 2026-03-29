@@ -86,10 +86,10 @@ main{padding:14px 18px 100px}
 .chip-val{font-family:var(--mono);font-size:13px;color:var(--dim)}
 .chip-sig{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)}
 .chart-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;position:relative}
-.chart-title{font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:2px;margin-bottom:6px}
-.chart-updated{font-family:var(--mono);font-size:9px;color:var(--dim)}
+.chart-title{font-family:var(--mono);font-size:13px;color:var(--dim);letter-spacing:2px;margin-bottom:6px}
+.chart-updated{font-family:var(--mono);font-size:11px;color:var(--dim)}
 .chart-legend{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
-.chart-legend-item{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px}
+.chart-legend-item{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:12px}
 .chart-legend-dot{width:8px;height:8px;border-radius:1px}
 .chart-loader{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(11,20,32,.85);border-radius:12px;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:1px}
 .fg-bar-wrap{position:relative;height:12px;background:linear-gradient(90deg,var(--red),var(--amber),var(--green));border-radius:6px;margin-bottom:8px}
@@ -313,17 +313,143 @@ main{padding:14px 18px 100px}
     <canvas id="cvHalving" style="width:100%;display:block"></canvas>
   </div>
 
-  <!-- Info box -->
-  <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:13px 15px;margin-bottom:12px">
-    <div style="font-family:var(--mono);font-size:9px;color:var(--blue);letter-spacing:2px;margin-bottom:7px">O WSKAŹNIKACH</div>
-    <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.6">
-      <b style="color:var(--text)">MVRV</b> — czy BTC jest przewartościowany. &gt;7 szczyt, &lt;0 dno.<br>
-      <b style="color:var(--text)">NUPL</b> — suma niezrealizowanych zysk/strat. &gt;0.75 sprzedaj, &lt;0 kup.<br>
-      <b style="color:var(--text)">RSI</b> — momentum ceny. &gt;70 wykupienie, &lt;30 wyprzedanie.<br>
-      <b style="color:var(--text)">VDD</b> — aktywność starych coinów. Wysoki = wieloryby sprzedają.<br>
-      <b style="color:var(--text)">LTH Price</b> — cena długoterminowych hodlerów. Poniżej = dno.<br>
-      <b style="color:var(--text)">Halving Cycle</b> — pozycja w 4-letnim cyklu BTC.
+  <!-- Info box expanded -->
+  <div style="margin-bottom:12px">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--blue);letter-spacing:3px;margin-bottom:12px;display:flex;align-items:center;gap:8px">O WSKAŹNIKACH <span style="flex:1;height:1px;background:var(--border);display:inline-block"></span></div>
+
+    <!-- MVRV -->
+    <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:15px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--blue)">MVRV Z-Score</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Market Value to Realized Value</span>
+      </div>
+      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
+        Porównuje aktualną <b>wartość rynkową</b> BTC do <b>wartości zrealizowanej</b> (ceny po której każdy coin ostatnio zmienił właściciela). Z-Score normalizuje wynik do odchylenia standardowego.
+      </div>
+      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
+        Compares market cap to realized cap — the price at which every BTC last moved. Z-Score normalizes by standard deviation to identify extremes.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;7 = SZCZYT / SELL</div>
+        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">0–7 = NEUTRAL / HOLD</div>
+        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;0 = DNO / BUY</div>
+      </div>
     </div>
+
+    <!-- NUPL -->
+    <div style="background:rgba(255,170,0,.04);border:1px solid rgba(255,170,0,.15);border-radius:12px;padding:15px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--amber)">NUPL</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Net Unrealized Profit / Loss</span>
+      </div>
+      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
+        Mierzy <b>łączny niezrealizowany zysk lub stratę</b> wszystkich posiadaczy BTC jako procent kapitalizacji rynkowej. Gdy wszyscy są głęboko na plusie — rynek jest przegrzany. Gdy wszyscy są na stracie — to historyczne dna.
+      </div>
+      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
+        Measures total unrealized profit/loss of all BTC holders as a ratio of market cap. High values indicate euphoria; negative values signal capitulation and historically mark cycle bottoms.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;0.75 = EUFORIA / SELL</div>
+        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">0.25–0.75 = NADZIEJA / HOLD</div>
+        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;0 = KAPITULACJA / BUY</div>
+      </div>
+    </div>
+
+    <!-- RSI -->
+    <div style="background:rgba(255,170,0,.04);border:1px solid rgba(255,170,0,.15);border-radius:12px;padding:15px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--amber)">RSI</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Relative Strength Index</span>
+      </div>
+      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
+        Klasyczny wskaźnik analizy technicznej mierzący <b>prędkość i siłę ruchów cenowych</b> w skali 0–100. Obliczany jako stosunek średnich wzrostów do spadków w ostatnich 14 dniach. Jeden z najstarszych i najpopularniejszych wskaźników na rynkach finansowych.
+      </div>
+      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
+        Classic technical indicator measuring speed and magnitude of price changes on a 0–100 scale. Calculated as the ratio of average gains to average losses over 14 periods. Widely used across all financial markets.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;70 = WYKUPIENIE / SELL</div>
+        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">30–70 = NEUTRALNY / HOLD</div>
+        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;30 = WYPRZEDANIE / BUY</div>
+      </div>
+    </div>
+
+    <!-- VDD -->
+    <div style="background:rgba(153,69,255,.04);border:1px solid rgba(153,69,255,.2);border-radius:12px;padding:15px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:#9945ff">VDD Multiple</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Value Days Destroyed Multiple</span>
+      </div>
+      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
+        Mierzy <b>aktywność starych coinów</b> — ile "dni coinowych" zostało zniszczonych (coin przesunięty = dni nieaktywności × ilość BTC). Wysoki VDD oznacza że długoterminowi hodlerzy i wieloryby zaczynają <b>sprzedawać</b>. Historycznie spiki VDD pokrywają się ze szczytami rynku.
+      </div>
+      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
+        Tracks how many "coin days" are destroyed when old coins move. A coin day = 1 BTC held for 1 day. High VDD means long-term holders are distributing. Historically, VDD spikes align with market tops.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;1.5x = DYSTRYBUCJA / SELL</div>
+        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">0.5–1.5x = NEUTRAL / HOLD</div>
+        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;0.5x = AKUMULACJA / BUY</div>
+      </div>
+    </div>
+
+    <!-- LTH -->
+    <div style="background:rgba(0,255,136,.03);border:1px solid rgba(0,255,136,.15);border-radius:12px;padding:15px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--green)">LTH Realized Price</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Long Term Holder Realized Price</span>
+      </div>
+      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
+        Średnia cena nabycia BTC przez <b>długoterminowych hodlerów</b> (osoby trzymające BTC ponad 155 dni). Gdy aktualna cena BTC spada <b>poniżej</b> tej linii — LTH są na stracie i rynek historycznie osiąga dno. To jedna z najsilniejszych stref wsparcia w całym cyklu.
+      </div>
+      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
+        The average acquisition price of BTC for long-term holders (coins held 155+ days). When spot price falls below this level, LTHs are in loss — historically marking cycle bottoms. Acts as the strongest support level of the entire cycle.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;3x LTH = PRZEGRZANIE / SELL</div>
+        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">1.5–3x LTH = NEUTRAL / HOLD</div>
+        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;1.5x LTH = OKAZJA / BUY</div>
+      </div>
+    </div>
+
+    <!-- HALVING -->
+    <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:15px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--blue)">Halving Cycle</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Bitcoin 4-Year Halving Cycle</span>
+      </div>
+      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
+        Co 210 000 bloków (~4 lata) nagroda górników za wydobycie bloku jest <b>zmniejszana o połowę</b> (halving). Podaż nowych BTC spada, co historycznie wywołuje wzrost ceny. Każdy cykl ma podobny schemat: akumulacja → wczesny byk → szczyt → niedźwiedź. Ostatni halving: <b>20 kwietnia 2024</b>.
+      </div>
+      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
+        Every 210,000 blocks (~4 years), Bitcoin's block reward is cut in half — reducing new supply. This has historically triggered bull markets. Each cycle follows a similar pattern: accumulation → early bull → peak → bear market. Last halving: April 20, 2024.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">0–400d = AKUMULACJA + WCZESNY BYK / BUY</div>
+        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">400–600d = ŚRODEK BYKA / HOLD</div>
+        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">600–900d = SZCZYT / SELL</div>
+      </div>
+    </div>
+
+    <!-- Fear & Greed -->
+    <div style="background:rgba(255,170,0,.04);border:1px solid rgba(255,170,0,.15);border-radius:12px;padding:15px 16px">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--amber)">Fear &amp; Greed Index</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Crypto Fear &amp; Greed Index</span>
+      </div>
+      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
+        Kompozytowy wskaźnik mierzący <b>emocje rynku</b> w skali 0–100. Łączy: wolumen, zmienność, dominację BTC, media społecznościowe i trendy wyszukiwania. Słynna zasada Warrena Buffetta: <b>"bój się gdy inni są chciwi, bądź chciwy gdy inni się boją"</b>.
+      </div>
+      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
+        Composite sentiment indicator (0–100) combining volatility, volume, social media, BTC dominance and search trends. Reflects Warren Buffett's principle: "Be fearful when others are greedy, and greedy when others are fearful."
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;75 = SKRAJNA CHCIWOŚĆ / SELL</div>
+        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">30–75 = NEUTRAL / HOLD</div>
+        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;30 = SKRAJNY STRACH / BUY</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
