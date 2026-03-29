@@ -234,9 +234,9 @@ main{padding:14px 18px 100px}
       <div class="s-sub" id="fgStatus">Ładowanie...</div>
     </div>
     <div class="s-box">
-      <div class="s-lbl">Faza cyklu</div>
-      <div class="s-val" id="cyclePhase" style="font-size:13px">—</div>
-      <div class="s-sub" id="cycleDesc">na podstawie MVRV+NUPL</div>
+      <div class="s-lbl">Halving Cycle</div>
+      <div class="s-val" id="halvingDays" style="font-size:16px">—</div>
+      <div class="s-sub" id="halvingDesc">dni od halvingu</div>
     </div>
   </div>
 
@@ -262,10 +262,10 @@ main{padding:14px 18px 100px}
         <div id="chip-fg-val" style="font-family:var(--mono);font-size:13px;color:var(--dim)">—</div>
         <div id="chip-fg-sig" style="font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)">—</div>
       </div>
-      <div id="chip-cycle" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;transition:all .4s">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">FAZA CYKLU</div>
-        <div id="chip-cycle-val" style="font-family:var(--mono);font-size:13px;color:var(--dim)">—</div>
-        <div id="chip-cycle-sig" style="font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)">—</div>
+      <div id="chip-halving" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;transition:all .4s">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">HALVING CYCLE</div>
+        <div id="chip-halving-val" style="font-family:var(--mono);font-size:13px;color:var(--dim)">—</div>
+        <div id="chip-halving-sig" style="font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)">—</div>
       </div>
     </div>
   </div>
@@ -342,6 +342,9 @@ main{padding:14px 18px 100px}
       <strong style="color:var(--text)">NUPL</strong> = suma niezrealizowanych zysków/strat wszystkich posiadaczy BTC.
       <span style="color:var(--red)">Euforia (&gt;0.75)</span> = sprzedaj. <span style="color:var(--green)">Kapitulacja (&lt;0)</span> = kup.
       Aktualnie: <span id="nuplZone" style="color:var(--amber)">neutralna</span>.
+    </div>
+    <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.6;margin-top:6px">
+      <strong style="color:var(--text)">Halving Cycle</strong> — BTC historycznie tworzy szczyty 12–18 miesięcy po halvingu, a dna 24–36 miesięcy po. Ostatni halving: 20 kwiecień 2024.
     </div>
   </div>
 </div>
@@ -639,6 +642,66 @@ if(waKey)fetchAlerts();
 schedule();
 
 
+
+// ── HALVING CYCLE INDICATOR ───────────────────────────────────
+function calcHalvingCycle() {
+  // BTC Halving dates (Unix ms)
+  const halvings = [
+    new Date('2012-11-28').getTime(),
+    new Date('2016-07-09').getTime(),
+    new Date('2020-05-11').getTime(),
+    new Date('2024-04-20').getTime(), // Last halving
+  ];
+  const nextHalving = new Date('2028-03-01').getTime(); // approx next
+
+  const now = Date.now();
+  const lastHalving = halvings[halvings.length - 1];
+  const daysFromHalving = Math.floor((now - lastHalving) / (1000 * 60 * 60 * 24));
+  const totalCycleDays = Math.floor((nextHalving - lastHalving) / (1000 * 60 * 60 * 24));
+  const pct = Math.min(100, Math.round((daysFromHalving / totalCycleDays) * 100));
+
+  // Historical pattern (avg across cycles):
+  // 0-6 months (0-180d): Accumulation — KUP
+  // 6-18 months (180-540d): Bull run early — KUP/TRZYMAJ
+  // 18-30 months (540-900d): Bull run peak → SPRZEDAJ
+  // 30-48 months (900-1460d): Bear market → KUP stopniowo
+  let signal, phase, label;
+
+  if (daysFromHalving < 180) {
+    signal = 'KUP'; phase = 'Akumulacja';
+  } else if (daysFromHalving < 400) {
+    signal = 'KUP'; phase = 'Wczesny byk';
+  } else if (daysFromHalving < 600) {
+    signal = 'TRZYMAJ'; phase = 'Środek byka';
+  } else if (daysFromHalving < 800) {
+    signal = 'SPRZEDAJ'; phase = 'Późny byk';
+  } else if (daysFromHalving < 1000) {
+    signal = 'SPRZEDAJ'; phase = 'Szczyt / Dystr.';
+  } else {
+    signal = 'KUP'; phase = 'Niedźwiedź';
+  }
+
+  label = daysFromHalving + 'd';
+
+  // Update stat card
+  const halvEl = document.getElementById('halvingDays');
+  const halvDesc = document.getElementById('halvingDesc');
+  if (halvEl) {
+    halvEl.textContent = daysFromHalving + 'd';
+    halvEl.style.color = signal === 'KUP' ? 'var(--green)' : signal === 'SPRZEDAJ' ? 'var(--red)' : 'var(--amber)';
+  }
+  if (halvDesc) {
+    halvDesc.textContent = phase + ' · ' + pct + '% cyklu';
+  }
+
+  return { signal, phase, label, daysFromHalving, pct };
+}
+
+// Call halving calc on chart load (doesn't need API)
+function initHalvingCard() {
+  calcHalvingCycle();
+}
+
 // ── SIGNAL PANEL ─────────────────────────────────────────────
 function updateSignalPanel() {
   const mvrvRaw = parseFloat(document.getElementById('mvrvVal').textContent);
@@ -681,7 +744,20 @@ function updateSignalPanel() {
     { id:'mvrv', val: mvrvRaw.toFixed(2), sig: mvrvSig, color: mvrvColor, bg: mvrvBg, border: mvrvBorder },
     { id:'nupl',  val: nuplRaw.toFixed(3), sig: nuplSig,  color: nuplColor, bg: nuplBg,  border: nuplBorder },
     { id:'fg',    val: fgRaw,              sig: fgSig,    color: fgColor,   bg: fgBg,    border: fgBorder },
-    { id:'cycle', val: cycleRaw.replace(/[🔴🟠🟡🔵🟢]/g,'').trim(), sig: cycleSig, color: cycleColor, bg: cycleBg, border: cycleBorder },
+
+
+  // Halving cycle signal
+  const halvingInfo = calcHalvingCycle();
+  const halvingSig = halvingInfo.signal;
+  const halvingColor = halvingSig === 'KUP' ? 'var(--green)' : halvingSig === 'SPRZEDAJ' ? 'var(--red)' : 'var(--amber)';
+  const halvingBg    = halvingSig === 'KUP' ? 'rgba(0,255,136,.08)' : halvingSig === 'SPRZEDAJ' ? 'rgba(255,51,85,.08)' : 'rgba(255,170,0,.06)';
+  const halvingBorder= halvingSig === 'KUP' ? 'rgba(0,255,136,.3)' : halvingSig === 'SPRZEDAJ' ? 'rgba(255,51,85,.3)' : 'rgba(255,170,0,.25)';
+
+  const chips = [
+    { id:'mvrv',    val: mvrvRaw.toFixed(2),  sig: mvrvSig,   color: mvrvColor,   bg: mvrvBg,    border: mvrvBorder },
+    { id:'nupl',    val: nuplRaw.toFixed(3),  sig: nuplSig,   color: nuplColor,   bg: nuplBg,    border: nuplBorder },
+    { id:'fg',      val: fgRaw,               sig: fgSig,     color: fgColor,     bg: fgBg,      border: fgBorder },
+    { id:'halving', val: halvingInfo.label,   sig: halvingSig,color: halvingColor, bg: halvingBg, border: halvingBorder },
   ];
 
   chips.forEach(c => {
@@ -698,7 +774,8 @@ function updateSignalPanel() {
   });
 
   // ── Score ──
-  const sigs = [mvrvSig, nuplSig, fgSig, cycleSig];
+  const halvingInfo2 = calcHalvingCycle();
+  const sigs = [mvrvSig, nuplSig, fgSig, halvingInfo2.signal];
   const buyCount = sigs.filter(s => s === 'KUP').length;
   const sellCount = sigs.filter(s => s === 'SPRZEDAJ').length;
 
@@ -859,7 +936,6 @@ async function fetchNUPL() {
     document.getElementById('nuplUpdated').textContent = new Date().toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit'});
 
     // Update cycle phase card
-    updateCyclePhase();
     updateSignalPanel();
     drawNUPLChart(labels, nuplData);
     document.getElementById('nuplLoader').style.display = 'none';
@@ -871,7 +947,7 @@ async function fetchNUPL() {
   }
 }
 
-function updateCyclePhase() {
+function _oldUpdateCyclePhase_unused() {
   const mvrvRaw = document.getElementById('mvrvVal').textContent;
   const nuplRaw = document.getElementById('nuplVal').textContent;
   const mvrv = parseFloat(mvrvRaw);
@@ -1096,12 +1172,12 @@ function drawMVRVChart(labels, data) {
 const _origGoTab = goTab;
 goTab = function(n, el) {
   _origGoTab(n, el);
-  if (n === 'chart') fetchChartData();
+  if (n === 'chart') { fetchChartData(); initHalvingCard(); }
 };
 const _origGoNav = goNav;
 goNav = function(n, el) {
   _origGoNav(n, el);
-  if (n === 'chart') fetchChartData();
+  if (n === 'chart') { fetchChartData(); initHalvingCard(); }
 };
 
 </script>
