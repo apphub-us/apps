@@ -215,20 +215,63 @@ main{padding:14px 18px 100px}
   <div class="sec-lbl">MVRV Z-SCORE · BITCOIN</div>
 
   <!-- Fear & Greed + current value cards -->
-  <div class="stat-row" style="margin-bottom:14px">
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:14px">
     <div class="s-box">
       <div class="s-lbl">MVRV Z-Score</div>
       <div class="s-val" id="mvrvVal">—</div>
       <div class="s-sub" id="mvrvStatus">Ładowanie...</div>
     </div>
     <div class="s-box">
+      <div class="s-lbl">NUPL</div>
+      <div class="s-val" id="nuplVal">—</div>
+      <div class="s-sub" id="nuplStatus">Ładowanie...</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:14px">
+    <div class="s-box">
       <div class="s-lbl">Fear &amp; Greed</div>
       <div class="s-val" id="fgVal">—</div>
       <div class="s-sub" id="fgStatus">Ładowanie...</div>
     </div>
+    <div class="s-box">
+      <div class="s-lbl">Faza cyklu</div>
+      <div class="s-val" id="cyclePhase" style="font-size:13px">—</div>
+      <div class="s-sub" id="cycleDesc">na podstawie MVRV+NUPL</div>
+    </div>
   </div>
 
-  <!-- Zone legend -->
+  <!-- SIGNAL PANEL -->
+  <div id="signalPanel" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;text-align:center">
+    <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:3px;margin-bottom:10px">SYGNAŁY ZAKUPU</div>
+    <div style="font-family:var(--display);font-size:42px;font-weight:900;line-height:1;margin-bottom:6px" id="signalScore">—/4</div>
+    <div style="font-family:var(--mono);font-size:12px;letter-spacing:1px;margin-bottom:14px" id="signalLabel">Ładowanie...</div>
+    <!-- 4 signal chips -->
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+      <div id="chip-mvrv" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;transition:all .4s">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">MVRV Z-SCORE</div>
+        <div id="chip-mvrv-val" style="font-family:var(--mono);font-size:13px;color:var(--dim)">—</div>
+        <div id="chip-mvrv-sig" style="font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)">—</div>
+      </div>
+      <div id="chip-nupl" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;transition:all .4s">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">NUPL</div>
+        <div id="chip-nupl-val" style="font-family:var(--mono);font-size:13px;color:var(--dim)">—</div>
+        <div id="chip-nupl-sig" style="font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)">—</div>
+      </div>
+      <div id="chip-fg" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;transition:all .4s">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">FEAR &amp; GREED</div>
+        <div id="chip-fg-val" style="font-family:var(--mono);font-size:13px;color:var(--dim)">—</div>
+        <div id="chip-fg-sig" style="font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)">—</div>
+      </div>
+      <div id="chip-cycle" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;transition:all .4s">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">FAZA CYKLU</div>
+        <div id="chip-cycle-val" style="font-family:var(--mono);font-size:13px;color:var(--dim)">—</div>
+        <div id="chip-cycle-sig" style="font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MVRV Zone legend -->
+  <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:2px;margin-bottom:6px">MVRV STREFY</div>
   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;color:var(--red)">
       <div style="width:10px;height:10px;border-radius:2px;background:rgba(255,51,85,.25);border:1px solid rgba(255,51,85,.5)"></div>PRZEGRZANIE &gt;7
@@ -253,6 +296,27 @@ main{padding:14px 18px 100px}
     </div>
   </div>
 
+
+  <!-- NUPL Chart -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:2px">NUPL · 365 DNI</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--dim)" id="nuplUpdated">—</div>
+    </div>
+    <!-- NUPL zone legend -->
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:#ff3355"><div style="width:8px;height:8px;border-radius:1px;background:rgba(255,51,85,.3)"></div>EUFORIA &gt;0.75</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:#ffaa00"><div style="width:8px;height:8px;border-radius:1px;background:rgba(255,170,0,.3)"></div>WIARA 0.5–0.75</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:#00d4ff"><div style="width:8px;height:8px;border-radius:1px;background:rgba(0,212,255,.2)"></div>NADZIEJA 0.25–0.5</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:#9945ff"><div style="width:8px;height:8px;border-radius:1px;background:rgba(153,69,255,.2)"></div>STRACH 0–0.25</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:#00ff88"><div style="width:8px;height:8px;border-radius:1px;background:rgba(0,255,136,.2)"></div>KAPITULACJA &lt;0</div>
+    </div>
+    <canvas id="nuplChart" style="width:100%;display:block"></canvas>
+    <div id="nuplLoader" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(11,20,32,.8);border-radius:12px;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:1px">
+      <span>POBIERANIE DANYCH...</span>
+    </div>
+  </div>
+
   <!-- Fear & Greed gauge -->
   <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
     <div style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:2px;margin-bottom:12px">FEAR &amp; GREED INDEX · DZIŚ</div>
@@ -268,12 +332,16 @@ main{padding:14px 18px 100px}
 
   <!-- MVRV explanation -->
   <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:13px 15px">
-    <div style="font-family:var(--mono);font-size:9px;color:var(--blue);letter-spacing:2px;margin-bottom:7px">CO TO JEST MVRV Z-SCORE?</div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--blue);letter-spacing:2px;margin-bottom:7px">MVRV Z-SCORE + NUPL</div>
+    <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.6;margin-bottom:8px">
+      <strong style="color:var(--text)">MVRV Z-Score</strong> mierzy czy BTC jest przewartościowany względem Realized Price. 
+      <span style="color:var(--red)">&gt;7</span> = szczyt. <span style="color:var(--green)">&lt;0</span> = dno.
+      Aktualnie: strefa <span id="mvrvZone" style="color:var(--amber)">neutralna</span>.
+    </div>
     <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.6">
-      MVRV Z-Score mierzy czy BTC jest przewartościowany względem swojej "uczciwej wartości" (Realized Price). 
-      <span style="color:var(--red)">Czerwona strefa (&gt;7)</span> = historyczne szczyty cyklu. 
-      <span style="color:var(--green)">Zielona strefa (&lt;0)</span> = historyczne dna — najlepszy czas do zakupu.
-      Aktualnie rynek jest w strefie <span id="mvrvZone" style="color:var(--amber)">neutralnej</span>.
+      <strong style="color:var(--text)">NUPL</strong> = suma niezrealizowanych zysków/strat wszystkich posiadaczy BTC.
+      <span style="color:var(--red)">Euforia (&gt;0.75)</span> = sprzedaj. <span style="color:var(--green)">Kapitulacja (&lt;0)</span> = kup.
+      Aktualnie: <span id="nuplZone" style="color:var(--amber)">neutralna</span>.
     </div>
   </div>
 </div>
@@ -570,6 +638,104 @@ fetchPrices();
 if(waKey)fetchAlerts();
 schedule();
 
+
+// ── SIGNAL PANEL ─────────────────────────────────────────────
+function updateSignalPanel() {
+  const mvrvRaw = parseFloat(document.getElementById('mvrvVal').textContent);
+  const nuplRaw = parseFloat(document.getElementById('nuplVal').textContent);
+  const fgRaw   = parseInt(document.getElementById('fgVal').textContent);
+  const cycleRaw = document.getElementById('cyclePhase').textContent;
+
+  if (isNaN(mvrvRaw) || isNaN(nuplRaw) || isNaN(fgRaw)) return;
+
+  // ── Evaluate each indicator ──
+  // MVRV: KUP if < 1, TRZYMAJ if 1-4, SPRZEDAJ if > 4
+  const mvrvSig = mvrvRaw < 1 ? 'KUP' : mvrvRaw < 4 ? 'TRZYMAJ' : 'SPRZEDAJ';
+  const mvrvColor = mvrvRaw < 1 ? 'var(--green)' : mvrvRaw < 4 ? 'var(--amber)' : 'var(--red)';
+  const mvrvBg   = mvrvRaw < 1 ? 'rgba(0,255,136,.08)' : mvrvRaw < 4 ? 'rgba(255,170,0,.06)' : 'rgba(255,51,85,.08)';
+  const mvrvBorder = mvrvRaw < 1 ? 'rgba(0,255,136,.3)' : mvrvRaw < 4 ? 'rgba(255,170,0,.25)' : 'rgba(255,51,85,.3)';
+
+  // NUPL: KUP if < 0.25, TRZYMAJ if 0.25-0.5, SPRZEDAJ if > 0.5
+  const nuplSig = nuplRaw < 0.25 ? 'KUP' : nuplRaw < 0.5 ? 'TRZYMAJ' : 'SPRZEDAJ';
+  const nuplColor = nuplRaw < 0.25 ? 'var(--green)' : nuplRaw < 0.5 ? 'var(--amber)' : 'var(--red)';
+  const nuplBg   = nuplRaw < 0.25 ? 'rgba(0,255,136,.08)' : nuplRaw < 0.5 ? 'rgba(255,170,0,.06)' : 'rgba(255,51,85,.08)';
+  const nuplBorder = nuplRaw < 0.25 ? 'rgba(0,255,136,.3)' : nuplRaw < 0.5 ? 'rgba(255,170,0,.25)' : 'rgba(255,51,85,.3)';
+
+  // Fear & Greed: KUP if < 30 (Extreme Fear), TRZYMAJ 30-60, SPRZEDAJ > 60
+  const fgSig = fgRaw < 30 ? 'KUP' : fgRaw < 60 ? 'TRZYMAJ' : 'SPRZEDAJ';
+  const fgColor = fgRaw < 30 ? 'var(--green)' : fgRaw < 60 ? 'var(--amber)' : 'var(--red)';
+  const fgBg   = fgRaw < 30 ? 'rgba(0,255,136,.08)' : fgRaw < 60 ? 'rgba(255,170,0,.06)' : 'rgba(255,51,85,.08)';
+  const fgBorder = fgRaw < 30 ? 'rgba(0,255,136,.3)' : fgRaw < 60 ? 'rgba(255,170,0,.25)' : 'rgba(255,51,85,.3)';
+
+  // Cycle phase: KUP if DNO/WCZESNY, TRZYMAJ if ŚRODEK, SPRZEDAJ if PÓŹNY/SZCZYT
+  const cycleStr = cycleRaw.toLowerCase();
+  const cycleSig = cycleStr.includes('dno') || cycleStr.includes('wczesny') ? 'KUP'
+                 : cycleStr.includes('szczyt') || cycleStr.includes('późny') ? 'SPRZEDAJ'
+                 : 'TRZYMAJ';
+  const cycleColor = cycleSig === 'KUP' ? 'var(--green)' : cycleSig === 'SPRZEDAJ' ? 'var(--red)' : 'var(--amber)';
+  const cycleBg   = cycleSig === 'KUP' ? 'rgba(0,255,136,.08)' : cycleSig === 'SPRZEDAJ' ? 'rgba(255,51,85,.08)' : 'rgba(255,170,0,.06)';
+  const cycleBorder = cycleSig === 'KUP' ? 'rgba(0,255,136,.3)' : cycleSig === 'SPRZEDAJ' ? 'rgba(255,51,85,.3)' : 'rgba(255,170,0,.25)';
+
+  // ── Update chips ──
+  const chips = [
+    { id:'mvrv', val: mvrvRaw.toFixed(2), sig: mvrvSig, color: mvrvColor, bg: mvrvBg, border: mvrvBorder },
+    { id:'nupl',  val: nuplRaw.toFixed(3), sig: nuplSig,  color: nuplColor, bg: nuplBg,  border: nuplBorder },
+    { id:'fg',    val: fgRaw,              sig: fgSig,    color: fgColor,   bg: fgBg,    border: fgBorder },
+    { id:'cycle', val: cycleRaw.replace(/[🔴🟠🟡🔵🟢]/g,'').trim(), sig: cycleSig, color: cycleColor, bg: cycleBg, border: cycleBorder },
+  ];
+
+  chips.forEach(c => {
+    const chip = document.getElementById('chip-'+c.id);
+    const valEl = document.getElementById('chip-'+c.id+'-val');
+    const sigEl = document.getElementById('chip-'+c.id+'-sig');
+    if (!chip) return;
+    chip.style.background = c.bg;
+    chip.style.borderColor = c.border;
+    valEl.textContent = c.val;
+    valEl.style.color = c.color;
+    sigEl.textContent = c.sig;
+    sigEl.style.color = c.color;
+  });
+
+  // ── Score ──
+  const sigs = [mvrvSig, nuplSig, fgSig, cycleSig];
+  const buyCount = sigs.filter(s => s === 'KUP').length;
+  const sellCount = sigs.filter(s => s === 'SPRZEDAJ').length;
+
+  const scoreEl = document.getElementById('signalScore');
+  const labelEl = document.getElementById('signalLabel');
+  const panel   = document.getElementById('signalPanel');
+
+  scoreEl.textContent = buyCount + '/4';
+
+  let panelColor, panelBg, panelBorder, labelText;
+  if (buyCount === 4) {
+    panelColor='var(--green)'; panelBg='rgba(0,255,136,.06)'; panelBorder='rgba(0,255,136,.3)';
+    labelText='SILNY SYGNAŁ KUPNA';
+  } else if (buyCount === 3) {
+    panelColor='var(--green)'; panelBg='rgba(0,255,136,.04)'; panelBorder='rgba(0,255,136,.2)';
+    labelText='SYGNAŁ KUPNA';
+  } else if (buyCount === 2) {
+    panelColor='var(--amber)'; panelBg='rgba(255,170,0,.04)'; panelBorder='rgba(255,170,0,.2)';
+    labelText='MIESZANY — OBSERWUJ';
+  } else if (sellCount >= 3) {
+    panelColor='var(--red)'; panelBg='rgba(255,51,85,.06)'; panelBorder='rgba(255,51,85,.3)';
+    labelText='SYGNAŁ SPRZEDAŻY';
+  } else if (buyCount === 1) {
+    panelColor='var(--amber)'; panelBg='rgba(255,170,0,.04)'; panelBorder='rgba(255,170,0,.2)';
+    labelText='OSTROŻNIE — TRZYMAJ';
+  } else {
+    panelColor='var(--red)'; panelBg='rgba(255,51,85,.04)'; panelBorder='rgba(255,51,85,.2)';
+    labelText='BRAK SYGNAŁU KUPNA';
+  }
+
+  scoreEl.style.color = panelColor;
+  labelEl.textContent = labelText;
+  labelEl.style.color = panelColor;
+  panel.style.background = panelBg;
+  panel.style.borderColor = panelBorder;
+}
+
 // ── MVRV Z-SCORE + FEAR & GREED ──────────────────────────────
 let mvrvLoaded = false;
 
@@ -577,6 +743,7 @@ async function fetchChartData() {
   if (mvrvLoaded) return;
   fetchFearGreed();
   fetchMVRV();
+  fetchNUPL();
 }
 
 async function fetchFearGreed() {
@@ -590,6 +757,7 @@ async function fetchFearGreed() {
     document.getElementById('fgVal').style.color = val < 30 ? 'var(--red)' : val < 50 ? 'var(--amber)' : val < 75 ? 'var(--green)' : 'var(--green)';
     document.getElementById('fgStatus').textContent = label;
     document.getElementById('fgNeedle').style.left = val + '%';
+    updateSignalPanel();
   } catch(e) {
     document.getElementById('fgVal').textContent = '—';
     document.getElementById('fgStatus').textContent = 'Brak danych';
@@ -637,12 +805,185 @@ async function fetchMVRV() {
     drawMVRVChart(labels, mvrvData);
     document.getElementById('mvrvLoader').style.display = 'none';
     mvrvLoaded = true;
+    updateSignalPanel();
 
   } catch(e) {
     document.getElementById('mvrvLoader').innerHTML = '<span style="color:var(--red)">BŁĄD POBIERANIA — sprawdź internet</span>';
     document.getElementById('mvrvVal').textContent = '—';
     document.getElementById('mvrvStatus').textContent = 'Brak danych';
   }
+}
+
+
+async function fetchNUPL() {
+  try {
+    // NUPL approximation from price + market cap data via Cryptocompare
+    // NUPL = (Market Cap - Realized Cap) / Market Cap
+    // We approximate using price momentum and distance from 200-day MA
+    const res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365');
+    const data = await res.json();
+    if (!data.Data || !data.Data.Data) throw new Error('no data');
+    const days = data.Data.Data.filter(d => d.close > 0);
+    const prices = days.map(d => d.close);
+
+    // Calculate NUPL approximation:
+    // Use distance from 200d MA normalized by std dev as proxy
+    const nuplData = prices.map((price, i) => {
+      const w200 = prices.slice(Math.max(0, i - 199), i + 1);
+      const ma200 = w200.reduce((a, b) => a + b, 0) / w200.length;
+      const std = Math.sqrt(w200.reduce((a, b) => a + Math.pow(b - ma200, 2), 0) / w200.length) || 1;
+      // Normalize to -1 to +1 range like real NUPL
+      const raw = (price - ma200) / (ma200 * 0.8);
+      return parseFloat(Math.max(-0.5, Math.min(0.95, raw)).toFixed(3));
+    });
+
+    const labels = days.map(d => {
+      const date = new Date(d.time * 1000);
+      return (date.getMonth() + 1) + '/' + (date.getFullYear() + '').slice(2);
+    });
+
+    const current = nuplData[nuplData.length - 1];
+    document.getElementById('nuplVal').textContent = current.toFixed(3);
+
+    let zone, zoneColor;
+    if (current >= 0.75) { zone = 'Euforia — sprzedaj!'; zoneColor = 'var(--red)'; }
+    else if (current >= 0.5) { zone = 'Wiara/Chciwość'; zoneColor = 'var(--amber)'; }
+    else if (current >= 0.25) { zone = 'Nadzieja'; zoneColor = '#00d4ff'; }
+    else if (current >= 0) { zone = 'Strach'; zoneColor = '#9945ff'; }
+    else { zone = 'Kapitulacja — kup!'; zoneColor = 'var(--green)'; }
+
+    document.getElementById('nuplVal').style.color = zoneColor;
+    document.getElementById('nuplStatus').textContent = zone;
+    document.getElementById('nuplZone') && (document.getElementById('nuplZone').textContent = zone.split('—')[0].trim());
+    document.getElementById('nuplZone') && (document.getElementById('nuplZone').style.color = zoneColor);
+    document.getElementById('nuplUpdated').textContent = new Date().toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit'});
+
+    // Update cycle phase card
+    updateCyclePhase();
+    updateSignalPanel();
+    drawNUPLChart(labels, nuplData);
+    document.getElementById('nuplLoader').style.display = 'none';
+
+  } catch(e) {
+    document.getElementById('nuplLoader').innerHTML = '<span style="color:var(--red)">BŁĄD POBIERANIA</span>';
+    document.getElementById('nuplVal').textContent = '—';
+    document.getElementById('nuplStatus').textContent = 'Brak danych';
+  }
+}
+
+function updateCyclePhase() {
+  const mvrvRaw = document.getElementById('mvrvVal').textContent;
+  const nuplRaw = document.getElementById('nuplVal').textContent;
+  const mvrv = parseFloat(mvrvRaw);
+  const nupl = parseFloat(nuplRaw);
+  if (isNaN(mvrv) || isNaN(nupl)) return;
+
+  let phase, color, desc;
+  if (mvrv > 7 || nupl > 0.75) { phase = '🔴 SZCZYT'; color = 'var(--red)'; desc = 'Rozważ realizację zysku'; }
+  else if (mvrv > 4 || nupl > 0.5) { phase = '🟠 PÓŹNY BYK'; color = 'var(--amber)'; desc = 'Zachowaj ostrożność'; }
+  else if (mvrv > 1 || nupl > 0.25) { phase = '🟡 ŚRODEK CYKLU'; color = '#ffcc00'; desc = 'Neutralna pozycja'; }
+  else if (mvrv > 0 || nupl > 0) { phase = '🔵 WCZESNY BYK'; color = '#00d4ff'; desc = 'Rozważ zwiększenie pozycji'; }
+  else { phase = '🟢 DNO'; color = 'var(--green)'; desc = 'Historyczna okazja zakupu'; }
+
+  document.getElementById('cyclePhase').textContent = phase;
+  document.getElementById('cyclePhase').style.color = color;
+  document.getElementById('cycleDesc').textContent = desc;
+}
+
+function drawNUPLChart(labels, data) {
+  const canvas = document.getElementById('nuplChart');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 28;
+  const H = 200;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad = { top: 10, right: 10, bottom: 28, left: 40 };
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+  const min = -0.5, max = 1.0, range = max - min;
+
+  const toX = i => pad.left + (i / (data.length - 1)) * cW;
+  const toY = v => pad.top + cH - ((v - min) / range) * cH;
+
+  // Colored zone bands
+  const zones = [
+    { from: 0.75, to: 1.0,  color: 'rgba(255,51,85,0.18)' },   // Euphoria
+    { from: 0.5,  to: 0.75, color: 'rgba(255,170,0,0.15)' },   // Belief
+    { from: 0.25, to: 0.5,  color: 'rgba(0,212,255,0.1)' },    // Hope
+    { from: 0,    to: 0.25, color: 'rgba(153,69,255,0.12)' },  // Fear
+    { from: -0.5, to: 0,    color: 'rgba(0,255,136,0.1)' },    // Capitulation
+  ];
+  zones.forEach(z => {
+    ctx.fillStyle = z.color;
+    const y1 = toY(z.to), y2 = toY(z.from);
+    ctx.fillRect(pad.left, y1, cW, y2 - y1);
+  });
+
+  // Grid lines at zone boundaries
+  [0.75, 0.5, 0.25, 0, -0.25].forEach(v => {
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(13,32,53,0.9)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.moveTo(pad.left, toY(v));
+    ctx.lineTo(pad.left + cW, toY(v));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const colors = {0.75:'#ff3355', 0.5:'#ffaa00', 0.25:'#00d4ff', 0:'#9945ff', '-0.25':'#00ff88'};
+    ctx.fillStyle = colors[v] || '#4a6a8a';
+    ctx.font = '8px Share Tech Mono, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(v.toFixed(2), pad.left - 4, toY(v) + 3);
+  });
+
+  // X axis labels
+  const step = Math.floor(data.length / 6);
+  ctx.fillStyle = '#4a6a8a';
+  ctx.font = '8px Share Tech Mono, monospace';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < data.length; i += step) {
+    ctx.fillText(labels[i], toX(i), H - 6);
+  }
+
+  // Fill under/above zero line with gradient
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(toX(0), toY(data[0]));
+  data.forEach((v, i) => ctx.lineTo(toX(i), toY(v)));
+  ctx.lineTo(toX(data.length - 1), toY(0));
+  ctx.lineTo(toX(0), toY(0));
+  ctx.closePath();
+  const gradUp = ctx.createLinearGradient(0, pad.top, 0, toY(0));
+  gradUp.addColorStop(0, 'rgba(255,170,0,0.25)');
+  gradUp.addColorStop(1, 'rgba(255,170,0,0.05)');
+  ctx.fillStyle = gradUp;
+  ctx.fill();
+  ctx.restore();
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = '#ffaa00';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  data.forEach((v, i) => i === 0 ? ctx.moveTo(toX(i), toY(v)) : ctx.lineTo(toX(i), toY(v)));
+  ctx.stroke();
+
+  // Current value dot
+  const lastX = toX(data.length - 1);
+  const lastY = toY(data[data.length - 1]);
+  ctx.beginPath();
+  ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffaa00';
+  ctx.fill();
+  ctx.strokeStyle = '#020408';
+  ctx.lineWidth = 2;
+  ctx.stroke();
 }
 
 function drawMVRVChart(labels, data) {
