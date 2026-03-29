@@ -325,8 +325,8 @@ main{padding:14px 18px 100px}
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
       <div style="background:rgba(255,51,85,.08);border:1px solid rgba(255,51,85,.25);border-radius:10px;padding:10px 12px">
         <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">ALL TIME HIGH</div>
-        <div style="font-family:var(--display);font-size:16px;font-weight:700;color:var(--red)">$109,114</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px">20 Styczeń 2025</div>
+        <div style="font-family:var(--display);font-size:16px;font-weight:700;color:var(--red)">$126,198</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px">6 Październik 2025</div>
       </div>
       <div style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:10px;padding:10px 12px">
         <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">DNI OD ATH</div>
@@ -336,7 +336,7 @@ main{padding:14px 18px 100px}
       <div style="background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.2);border-radius:10px;padding:10px 12px">
         <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">SPADEK OD ATH</div>
         <div style="font-family:var(--display);font-size:16px;font-weight:700" id="athDropPct">—</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px" id="athDropUsd">Pobieranie ceny...</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px" id="athDropUsd">Z zakładki KURSY</div>
       </div>
       <div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:10px;padding:10px 12px">
         <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">SYGNAŁ ATH</div>
@@ -362,7 +362,7 @@ main{padding:14px 18px 100px}
     <!-- Drawdown bar -->
     <div style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-bottom:5px">
-        <span>ATH $109,114</span>
+        <span>ATH $126,198</span>
         <span id="athCurrentPrice">Aktualna cena...</span>
       </div>
       <div style="background:var(--border);border-radius:6px;height:18px;position:relative;overflow:hidden">
@@ -1249,10 +1249,14 @@ function fmtCoin(n){ if(!n||n===0)return'—'; if(n>=1e6)return(n/1e6).toFixed(2
 
 
 // ── ATH DRAWDOWN ─────────────────────────────────────────────
-var BTC_ATH_PRICE = 109114;
-var BTC_ATH_DATE  = new Date('2025-01-20').getTime();
+var BTC_ATH_PRICE = 126198;
+var BTC_ATH_DATE  = new Date('2025-10-06').getTime();
 
 function calcATHStats(currentPrice) {
+  // Always use live price from prices object if available
+  if (prices['BTC'] && prices['BTC'].price) {
+    currentPrice = prices['BTC'].price;
+  }
   var now = Date.now();
   var daysFromATH = Math.floor((now - BTC_ATH_DATE) / 86400000);
   var dropPct = ((BTC_ATH_PRICE - currentPrice) / BTC_ATH_PRICE * 100);
@@ -1334,7 +1338,7 @@ function calcATHStats(currentPrice) {
   // Register signal
   setChip ? setChip('ath', '-'+dropPct.toFixed(1)+'% · '+daysFromATH+'d', isBuySignal ? 'KUP' : isPartial ? 'TRZYMAJ' : 'SPRZEDAJ', dropColor) : null;
 
-  drawATHChart(currentPrice, daysFromATH, dropPct);
+  drawATHChart(prices['BTC'] ? prices['BTC'].price : currentPrice, daysFromATH, dropPct);
 }
 
 function drawATHChart(currentPrice, daysFromATH, dropPct) {
@@ -1465,16 +1469,14 @@ function drawATHChart(currentPrice, daysFromATH, dropPct) {
 var _origAfterFetch = afterFetch;
 afterFetch = function(src) {
   _origAfterFetch(src);
-  var btcPrice = prices['BTC'] && prices['BTC'].price;
-  if (btcPrice) calcATHStats(btcPrice);
+  calcATHStats(prices['BTC'] ? prices['BTC'].price : 0);
 };
 
 // Also call when chart tab opens
 var _origLoadChart = loadChartData;
 loadChartData = function() {
   _origLoadChart();
-  var btcPrice = prices['BTC'] && prices['BTC'].price;
-  if (btcPrice) calcATHStats(btcPrice);
+  calcATHStats(prices['BTC'] ? prices['BTC'].price : 0);
 };
 
 // ── START ─────────────────────────────────────────────────────
