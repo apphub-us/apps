@@ -317,7 +317,7 @@ main{padding:14px 18px 100px}
   <!-- ATH DRAWDOWN CHART -->
   <div class="chart-box" style="margin-bottom:12px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div class="chart-title">ATH DRAWDOWN · BITCOIN</div>
+      <div class="chart-title">CZAS I PROCENTOWOŚĆ · OD ATH</div>
       <div class="chart-updated" id="upd-ath">—</div>
     </div>
 
@@ -502,7 +502,7 @@ main{padding:14px 18px 100px}
     </div>
 
     <!-- Fear & Greed -->
-    <div style="background:rgba(255,170,0,.04);border:1px solid rgba(255,170,0,.15);border-radius:12px;padding:15px 16px">
+    <div style="background:rgba(255,170,0,.04);border:1px solid rgba(255,170,0,.15);border-radius:12px;padding:15px 16px;margin-bottom:10px">
       <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
         <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--amber)">Fear &amp; Greed Index</span>
         <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Crypto Fear &amp; Greed Index</span>
@@ -517,6 +517,28 @@ main{padding:14px 18px 100px}
         <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;75 = SKRAJNA CHCIWOŚĆ / SELL</div>
         <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">30–75 = NEUTRAL / HOLD</div>
         <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;30 = SKRAJNY STRACH / BUY</div>
+      </div>
+    </div>
+
+    <!-- Czas i Procentowość -->
+    <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:15px 16px">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--blue)">Czas i Procentowość</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">ATH Drawdown + Time Since ATH</span>
+      </div>
+      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
+        Wskaźnik łączy dwa kluczowe wymiary bessy: <b>głębokość spadku od ATH</b> (procentowość) oraz <b>czas trwania korekty</b> (dni od szczytu). Historycznie najlepsze okazje zakupu BTC pojawiają się gdy <b>oba warunki</b> są spełnione jednocześnie — cena jest mocno zdołowana (<b>&gt;50% poniżej ATH</b>) i minął wystarczający czas (<b>&gt;365 dni</b> od szczytu), co wskazuje na wyczerpanie sprzedających i akumulację przez długoterminowych inwestorów.
+      </div>
+      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
+        This indicator combines two dimensions of a bear market: the <b>depth of the drawdown from ATH</b> and the <b>time elapsed since the peak</b>. Historically, the strongest BTC buy signals occur when both conditions are met simultaneously — price is deeply discounted (&gt;50% below ATH) and enough time has passed (&gt;365 days) indicating seller exhaustion and long-term accumulation.
+      </div>
+      <div style="font-family:var(--body);font-size:13px;color:var(--text);line-height:1.6;background:rgba(0,212,255,.06);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+        📊 <b>Dane historyczne:</b> W cyklu 2018/2019 BTC spadł o <b>84%</b> przez <b>364 dni</b>. W cyklu 2021/2022 spadł o <b>77%</b> przez <b>376 dni</b>. Mediana głębokości bessy BTC to ok. <b>77%</b>, a mediana czasu to ok. <b>370 dni</b>.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&gt;50% + &gt;365d = SILNY SYGNAŁ / BUY</div>
+        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">JEDEN WARUNEK = CZEKAJ / WATCH</div>
+        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">ŻADEN WARUNEK = BRAK SYGNAŁU</div>
       </div>
     </div>
 
