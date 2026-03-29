@@ -330,6 +330,24 @@ main{padding:14px 18px 100px}
     </div>
   </div>
 
+
+  <!-- HALVING CYCLE CHART -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:2px">HALVING CYCLE · POZYCJA</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--dim)" id="halvingChartLabel">—</div>
+    </div>
+    <!-- Phase legend -->
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--green)"><div style="width:8px;height:8px;border-radius:1px;background:rgba(0,255,136,.3)"></div>AKUMULACJA</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:#00d4ff"><div style="width:8px;height:8px;border-radius:1px;background:rgba(0,212,255,.25)"></div>WCZESNY BYK</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--amber)"><div style="width:8px;height:8px;border-radius:1px;background:rgba(255,170,0,.25)"></div>ŚRODEK BYKA</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--red)"><div style="width:8px;height:8px;border-radius:1px;background:rgba(255,51,85,.25)"></div>SZCZYT</div>
+      <div style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:#9945ff"><div style="width:8px;height:8px;border-radius:1px;background:rgba(153,69,255,.2)"></div>NIEDŹWIEDŹ</div>
+    </div>
+    <canvas id="halvingChart" style="width:100%;display:block"></canvas>
+  </div>
+
   <!-- MVRV explanation -->
   <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:13px 15px">
     <div style="font-family:var(--mono);font-size:9px;color:var(--blue);letter-spacing:2px;margin-bottom:7px">MVRV Z-SCORE + NUPL</div>
@@ -700,6 +718,7 @@ function calcHalvingCycle() {
 // Call halving calc on chart load (doesn't need API)
 function initHalvingCard() {
   calcHalvingCycle();
+  drawHalvingChart();
 }
 
 // ── SIGNAL PANEL ─────────────────────────────────────────────
@@ -1060,6 +1079,161 @@ function drawNUPLChart(labels, data) {
   ctx.strokeStyle = '#020408';
   ctx.lineWidth = 2;
   ctx.stroke();
+}
+
+
+// ── HALVING CYCLE CHART ───────────────────────────────────────
+function drawHalvingChart() {
+  const canvas = document.getElementById('halvingChart');
+  if (!canvas) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 28;
+  const H = 180;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad = { top: 16, right: 16, bottom: 32, left: 10 };
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+
+  // Total cycle = 1460 days (4 years approx)
+  const CYCLE = 1460;
+
+  // Phase zones (days)
+  const phases = [
+    { from:0,    to:180,  color:'rgba(0,255,136,0.18)',   label:'Akumulacja' },
+    { from:180,  to:400,  color:'rgba(0,212,255,0.18)',   label:'Wczesny byk' },
+    { from:400,  to:600,  color:'rgba(255,170,0,0.18)',   label:'Środek byka' },
+    { from:600,  to:900,  color:'rgba(255,51,85,0.2)',    label:'Szczyt' },
+    { from:900,  to:1100, color:'rgba(255,51,85,0.12)',   label:'Dystrybucja' },
+    { from:1100, to:1460, color:'rgba(153,69,255,0.15)',  label:'Niedźwiedź' },
+  ];
+
+  const toX = d => pad.left + (d / CYCLE) * cW;
+
+  // Draw phase backgrounds
+  phases.forEach(p => {
+    ctx.fillStyle = p.color;
+    ctx.fillRect(toX(p.from), pad.top, toX(p.to) - toX(p.from), cH);
+  });
+
+  // Historical price curve (normalized 0-1, based on avg BTC cycle shape)
+  // Points: [day, normalized_price]
+  const curve = [
+    [0,0.08],[60,0.1],[120,0.12],[180,0.15],[240,0.22],[300,0.32],
+    [360,0.45],[400,0.55],[440,0.65],[480,0.72],[520,0.78],[560,0.82],
+    [580,0.88],[600,0.92],[630,0.97],[660,1.0],[680,0.96],[700,0.88],
+    [730,0.78],[760,0.65],[800,0.52],[840,0.42],[880,0.35],[920,0.28],
+    [960,0.22],[1000,0.18],[1060,0.15],[1120,0.13],[1200,0.1],[1300,0.09],[1460,0.08]
+  ];
+
+  // Draw curve
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]);
+  curve.forEach(([d, v], i) => {
+    const x = toX(d);
+    const y = pad.top + cH - v * cH;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Historical events markers
+  const events = [
+    { day: 366, label: 'ATH
+2021', color: '#ff3355' },
+    { day: 660, label: 'ATH
+2021', color: '#ff3355' },
+  ];
+
+  // Phase day markers on x-axis
+  const markers = [0, 180, 400, 600, 900, 1100, 1460];
+  markers.forEach(d => {
+    const x = toX(d);
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(13,32,53,1)';
+    ctx.lineWidth = 1;
+    ctx.moveTo(x, pad.top);
+    ctx.lineTo(x, pad.top + cH);
+    ctx.stroke();
+    ctx.fillStyle = '#4a6a8a';
+    ctx.font = '8px Share Tech Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(d+'d', x, H - 4);
+  });
+
+  // Current position
+  const halvings = [new Date('2024-04-20').getTime()];
+  const daysNow = Math.floor((Date.now() - halvings[0]) / (1000 * 60 * 60 * 24));
+  const clampedDays = Math.min(daysNow, CYCLE);
+  const nowX = toX(clampedDays);
+
+  // Shade "past" area
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(nowX, pad.top, toX(CYCLE) - nowX, cH);
+
+  // Current position line
+  ctx.beginPath();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.moveTo(nowX, pad.top - 4);
+  ctx.lineTo(nowX, pad.top + cH);
+  ctx.stroke();
+
+  // "JESTEŚ TUTAJ" label
+  const labelX = Math.min(nowX + 4, W - 80);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 9px Share Tech Mono, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('▶ TERAZ', labelX, pad.top + 12);
+  ctx.font = '8px Share Tech Mono, monospace';
+  ctx.fillStyle = '#00d4ff';
+  ctx.fillText(daysNow + ' dni', labelX, pad.top + 23);
+
+  // Triangle marker on top
+  ctx.beginPath();
+  ctx.fillStyle = '#ffffff';
+  ctx.moveTo(nowX, pad.top - 4);
+  ctx.lineTo(nowX - 5, pad.top - 12);
+  ctx.lineTo(nowX + 5, pad.top - 12);
+  ctx.closePath();
+  ctx.fill();
+
+  // Historical cycle peaks labels
+  const peakDays = 630;
+  const peakX = toX(peakDays);
+  ctx.fillStyle = 'rgba(255,51,85,0.8)';
+  ctx.font = '8px Share Tech Mono, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('SZCZYT', peakX, pad.top + 10);
+  ctx.fillText('hist.', peakX, pad.top + 20);
+
+  // Progress bar at bottom
+  const barY = pad.top + cH + 6;
+  const barH = 4;
+  ctx.fillStyle = 'var(--border)';
+  ctx.fillStyle = '#0d2035';
+  ctx.fillRect(pad.left, barY, cW, barH);
+  const progGrad = ctx.createLinearGradient(pad.left, 0, pad.left + cW, 0);
+  progGrad.addColorStop(0, '#00ff88');
+  progGrad.addColorStop(0.28, '#00d4ff');
+  progGrad.addColorStop(0.45, '#ffaa00');
+  progGrad.addColorStop(0.65, '#ff3355');
+  progGrad.addColorStop(1, '#9945ff');
+  ctx.fillStyle = progGrad;
+  ctx.fillRect(pad.left, barY, (clampedDays / CYCLE) * cW, barH);
+
+  // Update label
+  const pct = Math.round((clampedDays / CYCLE) * 100);
+  const halvChartLbl = document.getElementById('halvingChartLabel');
+  if (halvChartLbl) halvChartLbl.textContent = daysNow + ' DNI · ' + pct + '% CYKLU';
 }
 
 function drawMVRVChart(labels, data) {
