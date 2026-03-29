@@ -524,63 +524,82 @@ async function fetchPrices(){
 
 // ① Cryptocompare — pełny CORS, działa wszędzie
 async function tryCryptocompare(){
-  try{
-    const url='https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC,ETH,SOL,LINK&tsyms=USD';
-    const res=await fetch(url,{signal:AbortSignal.timeout(6000)});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    if(!data.RAW)throw new Error('no data');
-    COINS.forEach(sym=>{
-      const d=data.RAW[sym]?.USD;
-      if(!d)return;
-      prices[sym]={price:d.PRICE,change:d.CHANGEPCT24HOUR,vol:d.VOLUME24HOURTO,high:d.HIGH24HOUR,low:d.LOW24HOUR};
-      updateCard(sym,prices[sym]);
-    });
-    afterFetch('Cryptocompare');
-    return true;
-  }catch(e){console.warn('Cryptocompare:',e.message);return false;}
+  const urls = [
+    'https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC,ETH,SOL,LINK&tsyms=USD',
+    'https://corsproxy.io/?url=https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC,ETH,SOL,LINK&tsyms=USD',
+  ];
+  for (const url of urls) {
+    try{
+      const res=await fetch(url,{signal:AbortSignal.timeout(7000)});
+      if(!res.ok)continue;
+      const data=await res.json();
+      if(!data.RAW)continue;
+      COINS.forEach(sym=>{
+        const d=data.RAW[sym]?.USD;
+        if(!d)return;
+        prices[sym]={price:d.PRICE,change:d.CHANGEPCT24HOUR,vol:d.VOLUME24HOURTO,high:d.HIGH24HOUR,low:d.LOW24HOUR};
+        updateCard(sym,prices[sym]);
+      });
+      afterFetch('Cryptocompare');
+      return true;
+    }catch(e){continue;}
+  }
+  console.warn('Cryptocompare: all URLs failed');
+  return false;
 }
 
 // ② MEXC public API — bez klucza, pełny CORS
 async function tryMexc(){
+  // Try OKX which has better CORS support
+  const okxPairs = [['BTC-USDT','BTC'],['ETH-USDT','ETH'],['SOL-USDT','SOL'],['LINK-USDT','LINK']];
   try{
-    const pairs=['BTCUSDT','ETHUSDT','SOLUSDT','LINKUSDT'];
-    const url='https://api.mexc.com/api/v3/ticker/24hr?symbols='+encodeURIComponent(JSON.stringify(pairs));
-    const res=await fetch(url,{signal:AbortSignal.timeout(6000)});
-    if(!res.ok)throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    const map={BTCUSDT:'BTC',ETHUSDT:'ETH',SOLUSDT:'SOL',LINKUSDT:'LINK'};
-    data.forEach(t=>{
-      const sym=map[t.symbol];if(!sym)return;
-      const price=parseFloat(t.lastPrice),open=parseFloat(t.openPrice);
+    const results = await Promise.all(okxPairs.map(([pair]) =>
+      fetch('https://www.okx.com/api/v5/market/ticker?instId='+pair,{signal:AbortSignal.timeout(6000)}).then(r=>r.json())
+    ));
+    let anyOk = false;
+    results.forEach((r,i)=>{
+      const d=r?.data?.[0]; if(!d)return;
+      const sym=okxPairs[i][1];
+      const price=parseFloat(d.last);
+      const open=parseFloat(d.open24h)||price;
       const change=((price-open)/open)*100;
-      prices[sym]={price,change,vol:parseFloat(t.quoteVolume),high:parseFloat(t.highPrice),low:parseFloat(t.lowPrice)};
+      prices[sym]={price,change:parseFloat(change.toFixed(2)),vol:parseFloat(d.volCcy24h)*price,high:parseFloat(d.high24h),low:parseFloat(d.low24h)};
       updateCard(sym,prices[sym]);
+      anyOk=true;
     });
-    afterFetch('MEXC');
-    return true;
-  }catch(e){console.warn('MEXC:',e.message);return false;}
+    if(anyOk){afterFetch('OKX');return true;}
+  }catch(e){console.warn('OKX:',e.message);}
+  return false;
 }
 
 // ③ Bitget — backup
 async function tryBitget(){
+  // Kraken — excellent CORS support
+  const krakenPairs = {
+    'XXBTZUSD':'BTC','XETHZUSD':'ETH','SOLUSD':'SOL','LINKUSD':'LINK'
+  };
   try{
-    const syms=['BTCUSDT','ETHUSDT','SOLUSDT','LINKUSDT'];
-    const results=await Promise.all(syms.map(s=>
-      fetch(`https://api.bitget.com/api/v2/spot/market/tickers?symbol=${s}`,{signal:AbortSignal.timeout(6000)}).then(r=>r.json())
-    ));
-    const map={BTCUSDT:'BTC',ETHUSDT:'ETH',SOLUSDT:'SOL',LINKUSDT:'LINK'};
-    results.forEach(r=>{
-      const t=r?.data?.[0];if(!t)return;
-      const sym=map[t.symbol];if(!sym)return;
-      const price=parseFloat(t.lastPr),open=parseFloat(t.open24h);
-      const change=((price-open)/open)*100;
-      prices[sym]={price,change,vol:parseFloat(t.quoteVolume),high:parseFloat(t.high24h),low:parseFloat(t.low24h)};
+    const res=await fetch('https://api.kraken.com/0/public/Ticker?pair=XXBTZUSD,XETHZUSD,SOLUSD,LINKUSD',{signal:AbortSignal.timeout(7000)});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    if(data.error?.length)throw new Error(data.error[0]);
+    let anyOk=false;
+    Object.entries(data.result).forEach(([pair,t])=>{
+      // Match pair to symbol
+      const sym=krakenPairs[pair]||krakenPairs[Object.keys(krakenPairs).find(k=>pair.startsWith(k.slice(0,4)))];
+      if(!sym)return;
+      const price=parseFloat(t.c[0]);
+      const open=parseFloat(t.o)||price;
+      const change=parseFloat(((price-open)/open*100).toFixed(2));
+      const high=parseFloat(t.h[1]),low=parseFloat(t.l[1]);
+      const vol=parseFloat(t.v[1])*price;
+      prices[sym]={price,change,vol,high,low};
       updateCard(sym,prices[sym]);
+      anyOk=true;
     });
-    afterFetch('Bitget');
-    return true;
-  }catch(e){console.warn('Bitget:',e.message);return false;}
+    if(anyOk){afterFetch('Kraken');return true;}
+  }catch(e){console.warn('Kraken:',e.message);}
+  return false;
 }
 
 // ④ Fallback — jeśli wszystko zawiedzie, pokaż dane cache lub symulowane
@@ -748,7 +767,9 @@ schedule();
 // ── RSI ───────────────────────────────────────────────────────
 async function fetchRSI() {
   try {
-    const res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=100');
+    let res;
+    try { res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=100',{signal:AbortSignal.timeout(8000)}); }
+    catch(e) { res = await fetch('https://corsproxy.io/?url=https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=100'); }
     const data = await res.json();
     if (!data.Data || !data.Data.Data) throw new Error('no data');
     const closes = data.Data.Data.map(d => d.close).filter(p => p > 0);
@@ -859,7 +880,9 @@ async function fetchVDD() {
   try {
     // VDD = (coin_days_destroyed * price) / 365d_avg(coin_days_destroyed * price)
     // Approximation: use volume*price momentum as proxy
-    const res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365');
+    let res;
+    try { res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365',{signal:AbortSignal.timeout(8000)}); }
+    catch(e) { res = await fetch('https://corsproxy.io/?url=https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365'); }
     const data = await res.json();
     if (!data.Data || !data.Data.Data) throw new Error('no data');
     const days = data.Data.Data.filter(d => d.close > 0);
@@ -953,7 +976,9 @@ function drawVDDChart(labels, data) {
 // ── LTH REALIZED PRICE ────────────────────────────────────────
 async function fetchLTH() {
   try {
-    const res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365');
+    let res;
+    try { res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365',{signal:AbortSignal.timeout(8000)}); }
+    catch(e) { res = await fetch('https://corsproxy.io/?url=https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365'); }
     const data = await res.json();
     if (!data.Data || !data.Data.Data) throw new Error('no data');
     const days = data.Data.Data.filter(d => d.close > 0);
@@ -1293,7 +1318,9 @@ async function fetchMVRV() {
     // Use Cryptocompare historical data to approximate MVRV trend
     // Real MVRV needs on-chain data; we use BTC price history as proxy
     // and generate realistic MVRV Z-Score simulation based on price cycles
-    const res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365');
+    let res;
+    try { res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365',{signal:AbortSignal.timeout(8000)}); }
+    catch(e) { res = await fetch('https://corsproxy.io/?url=https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365'); }
     const data = await res.json();
     if (!data.Data || !data.Data.Data) throw new Error('no data');
 
@@ -1344,7 +1371,9 @@ async function fetchNUPL() {
     // NUPL approximation from price + market cap data via Cryptocompare
     // NUPL = (Market Cap - Realized Cap) / Market Cap
     // We approximate using price momentum and distance from 200-day MA
-    const res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365');
+    let res;
+    try { res = await fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365',{signal:AbortSignal.timeout(8000)}); }
+    catch(e) { res = await fetch('https://corsproxy.io/?url=https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365'); }
     const data = await res.json();
     if (!data.Data || !data.Data.Data) throw new Error('no data');
     const days = data.Data.Data.filter(d => d.close > 0);
