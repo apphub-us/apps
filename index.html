@@ -1170,7 +1170,6 @@ function updateSignalPanel() {
   const mvrvRaw = parseFloat(document.getElementById('mvrvVal').textContent);
   const nuplRaw = parseFloat(document.getElementById('nuplVal').textContent);
   const fgRaw   = parseInt(document.getElementById('fgVal').textContent);
-  const cycleRaw = document.getElementById('cyclePhase').textContent;
 
   if (isNaN(mvrvRaw) || isNaN(nuplRaw) || isNaN(fgRaw)) return;
 
@@ -1193,23 +1192,7 @@ function updateSignalPanel() {
   const fgBg   = fgRaw < 30 ? 'rgba(0,255,136,.08)' : fgRaw < 60 ? 'rgba(255,170,0,.06)' : 'rgba(255,51,85,.08)';
   const fgBorder = fgRaw < 30 ? 'rgba(0,255,136,.3)' : fgRaw < 60 ? 'rgba(255,170,0,.25)' : 'rgba(255,51,85,.3)';
 
-  // Cycle phase: KUP if DNO/WCZESNY, TRZYMAJ if ŚRODEK, SPRZEDAJ if PÓŹNY/SZCZYT
-  const cycleStr = cycleRaw.toLowerCase();
-  const cycleSig = cycleStr.includes('dno') || cycleStr.includes('wczesny') ? 'KUP'
-                 : cycleStr.includes('szczyt') || cycleStr.includes('późny') ? 'SPRZEDAJ'
-                 : 'TRZYMAJ';
-  const cycleColor = cycleSig === 'KUP' ? 'var(--green)' : cycleSig === 'SPRZEDAJ' ? 'var(--red)' : 'var(--amber)';
-  const cycleBg   = cycleSig === 'KUP' ? 'rgba(0,255,136,.08)' : cycleSig === 'SPRZEDAJ' ? 'rgba(255,51,85,.08)' : 'rgba(255,170,0,.06)';
-  const cycleBorder = cycleSig === 'KUP' ? 'rgba(0,255,136,.3)' : cycleSig === 'SPRZEDAJ' ? 'rgba(255,51,85,.3)' : 'rgba(255,170,0,.25)';
-
   // ── Update chips ──
-  const chips = [
-    { id:'mvrv', val: mvrvRaw.toFixed(2), sig: mvrvSig, color: mvrvColor, bg: mvrvBg, border: mvrvBorder },
-    { id:'nupl',  val: nuplRaw.toFixed(3), sig: nuplSig,  color: nuplColor, bg: nuplBg,  border: nuplBorder },
-    { id:'fg',    val: fgRaw,              sig: fgSig,    color: fgColor,   bg: fgBg,    border: fgBorder },
-
-
-  // Halving cycle signal
   const halvingInfo = calcHalvingCycle();
   const halvingSig = halvingInfo.signal;
   const halvingColor = halvingSig === 'KUP' ? 'var(--green)' : halvingSig === 'SPRZEDAJ' ? 'var(--red)' : 'var(--amber)';
@@ -1220,7 +1203,7 @@ function updateSignalPanel() {
     { id:'mvrv',    val: mvrvRaw.toFixed(2),  sig: mvrvSig,   color: mvrvColor,   bg: mvrvBg,    border: mvrvBorder },
     { id:'nupl',    val: nuplRaw.toFixed(3),  sig: nuplSig,   color: nuplColor,   bg: nuplBg,    border: nuplBorder },
     { id:'fg',      val: fgRaw,               sig: fgSig,     color: fgColor,     bg: fgBg,      border: fgBorder },
-    { id:'halving', val: halvingInfo.label,   sig: halvingSig,color: halvingColor, bg: halvingBg, border: halvingBorder },
+    { id:'halving', val: halvingInfo.label,   sig: halvingSig, color: halvingColor, bg: halvingBg, border: halvingBorder },
   ];
 
   chips.forEach(c => {
