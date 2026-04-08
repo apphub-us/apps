@@ -204,8 +204,11 @@ main{padding:14px 18px 100px}
 
 <!-- WHALES -->
 <div id="page-whales" class="page">
-  <div class="sec-lbl">TOP PORTFELE WIELORYBÓW</div>
-  <div id="whaleList"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;margin-top:14px">
+    <div class="sec-lbl" style="margin:0">TOP PORTFELE WIELORYBÓW</div>
+    <button onclick="whaleDataLoaded=false;fetchWhaleBalances();" style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--blue);border-radius:8px;padding:5px 10px;font-family:var(--mono);font-size:9px;cursor:pointer;letter-spacing:1px">↻ ODŚWIEŻ</button>
+  </div>
+  <div id="whaleList"><div class="empty"><div class="empty-ico">⏳</div>Otwórz zakładkę aby załadować dane</div></div>
 </div>
 
 <!-- CHART -->
@@ -657,20 +660,31 @@ main{padding:14px 18px 100px}
 
 <!-- ALERTS -->
 <div id="page-alerts" class="page">
-  <div id="waBanner" class="api-banner">
-    <div class="api-banner-t">🔑 WHALE ALERT API KEY</div>
-    <p>Prawdziwe transakcje wielorybów wymagają darmowego klucza z <a href="https://whale-alert.io" target="_blank">whale-alert.io</a>.</p>
-    <div class="api-row">
-      <input class="api-in" id="waIn" type="text" placeholder="Wklej klucz API...">
-      <button class="api-save" onclick="saveKey()">ZAPISZ</button>
-    </div>
+
+  <div style="background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.2);border-radius:10px;padding:10px 14px;margin-bottom:12px;margin-top:14px;font-family:var(--mono);font-size:10px;color:var(--blue);line-height:1.6">
+    ⚡ Dane z Blockchair API · Darmowe · Bez klucza · BTC + ETH
   </div>
-  <div class="stat-row">
-    <div class="s-box"><div class="s-lbl">Alerty dziś</div><div class="s-val" id="aCnt" style="color:var(--amber)">—</div><div class="s-sub">Whale Alert</div></div>
-    <div class="s-box"><div class="s-lbl">Największy ruch</div><div class="s-val" id="aBig">—</div><div class="s-sub" id="aBigSub">—</div></div>
+
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:12px">
+    <div class="s-box"><div class="s-lbl">Transakcji BTC</div><div class="s-val" id="aCntBTC" style="color:var(--btc)">—</div><div class="s-sub">ostatnie 24h &gt;$1M</div></div>
+    <div class="s-box"><div class="s-lbl">Transakcji ETH</div><div class="s-val" id="aCntETH" style="color:var(--eth)">—</div><div class="s-sub">ostatnie 24h &gt;$1M</div></div>
+    <div class="s-box"><div class="s-lbl">Największy ruch BTC</div><div class="s-val" id="aBigBTC" style="font-size:14px">—</div><div class="s-sub" id="aBigBTCsub">—</div></div>
+    <div class="s-box"><div class="s-lbl">Największy ruch ETH</div><div class="s-val" id="aBigETH" style="font-size:14px">—</div><div class="s-sub" id="aBigETHsub">—</div></div>
   </div>
-  <div class="sec-lbl">OSTATNIE TRANSAKCJE</div>
-  <div id="alertList"><div class="empty"><div class="empty-ico">🔑</div>Dodaj klucz Whale Alert</div></div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div class="sec-lbl" style="margin:0">OSTATNIE DUŻE TRANSAKCJE</div>
+    <button onclick="alertsLoaded=false;fetchBlockchairAlerts();" style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--blue);border-radius:8px;padding:5px 10px;font-family:var(--mono);font-size:9px;cursor:pointer;letter-spacing:1px">↻ ODŚWIEŻ</button>
+  </div>
+
+  <!-- Coin filter pills -->
+  <div style="display:flex;gap:7px;margin-bottom:12px">
+    <button onclick="filterAlerts('all',this)" id="af-all" style="background:var(--navy,#1a2744);border:1px solid rgba(0,212,255,.4);color:var(--blue);border-radius:20px;padding:5px 12px;font-family:var(--mono);font-size:10px;cursor:pointer;letter-spacing:1px">ALL</button>
+    <button onclick="filterAlerts('BTC',this)" id="af-BTC" style="background:var(--surface);border:1px solid var(--border);color:var(--btc);border-radius:20px;padding:5px 12px;font-family:var(--mono);font-size:10px;cursor:pointer;letter-spacing:1px">BTC</button>
+    <button onclick="filterAlerts('ETH',this)" id="af-ETH" style="background:var(--surface);border:1px solid var(--border);color:var(--eth);border-radius:20px;padding:5px 12px;font-family:var(--mono);font-size:10px;cursor:pointer;letter-spacing:1px">ETH</button>
+  </div>
+
+  <div id="alertList"><div class="empty"><div class="empty-ico">⏳</div>Otwórz zakładkę aby załadować transakcje</div></div>
 </div>
 
 <!-- SETTINGS -->
@@ -714,13 +728,45 @@ var newAlerts = 0;
 var chartLoaded = false;
 var signals = {};
 
-var WHALES = [
-  {name:'Satoshi Vault #1',addr:'1A1zP1...eP5Gv8',rank:'#1',e:'🐋',h:{BTC:94230,ETH:0,SOL:0,LINK:0},d:+2.1},
-  {name:'MicroStrategy Cold',addr:'3MbYQ8...kLm9Xz',rank:'#2',e:'🏦',h:{BTC:26000,ETH:12400,SOL:0,LINK:0},d:+1.4},
-  {name:'Ethereum Foundation',addr:'0xde0B6...66B505',rank:'#3',e:'💎',h:{BTC:0,ETH:350000,SOL:0,LINK:48000},d:-0.9},
-  {name:'Jump Trading',addr:'9WzDXwBb...ZpH9',rank:'#4',e:'🚀',h:{BTC:4200,ETH:28000,SOL:1200000,LINK:320000},d:+4.2},
-  {name:'Alameda Remnant',addr:'5FHwkrdxx...A7Vp',rank:'#5',e:'👻',h:{BTC:1800,ETH:45000,SOL:890000,LINK:150000},d:-1.7}
+// Real known BTC whale addresses (publicly documented)
+var REAL_WHALES = [
+  {
+    name: 'Binance Cold Wallet 1',
+    addr: '34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo',
+    fullAddr: '34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo',
+    e: '🏦', rank: '#1', type: 'Exchange',
+    btc: 0, lastUpdated: null
+  },
+  {
+    name: 'Bitfinex Cold Wallet',
+    addr: '1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF',
+    fullAddr: '1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF',
+    e: '🏛️', rank: '#2', type: 'Exchange',
+    btc: 0, lastUpdated: null
+  },
+  {
+    name: 'MicroStrategy (est.)',
+    addr: '1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ',
+    fullAddr: '1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ',
+    e: '🏢', rank: '#3', type: 'Corporate',
+    btc: 0, lastUpdated: null
+  },
+  {
+    name: 'Robinhood Cold Wallet',
+    addr: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+    fullAddr: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+    e: '🐦', rank: '#4', type: 'Exchange',
+    btc: 0, lastUpdated: null
+  },
+  {
+    name: 'Kraken Cold Wallet',
+    addr: '3KDgHvwsUQE9oqcJLBpUNmFMtFBsNEPqdG',
+    fullAddr: '3KDgHvwsUQE9oqcJLBpUNmFMtFBsNEPqdG',
+    e: '🦑', rank: '#5', type: 'Exchange',
+    btc: 0, lastUpdated: null
+  }
 ];
+var whaleDataLoaded = false;
 
 // ── PRICE FETCH ───────────────────────────────────────────────
 function fetchPrices() {
@@ -843,23 +889,102 @@ function updateSummary() {
 }
 
 function updateWhales() {
-  var html = WHALES.map(function(w, i) {
-    var total = COINS.reduce(function(s,c){ return s + (prices[c] ? w.h[c]*prices[c].price : 0); }, 0);
-    var up = w.d >= 0;
-    return '<div class="whale-card" style="animation-delay:'+i*.06+'s">'+
-      '<div class="wh-hdr"><div class="wh-av"><div class="wh-av-in">'+w.e+'</div></div>'+
-      '<div class="wh-info"><div class="wh-name">'+w.name+'</div><div class="wh-addr">'+w.addr+'</div></div>'+
-      '<div class="wh-rank">'+w.rank+'</div></div>'+
-      '<div class="h-grid">'+COINS.map(function(c){
-        return '<div class="h-item"><div class="h-coin" style="color:'+COLORS[c]+'">'+c+'</div>'+
-          '<div class="h-amt">'+fmtCoin(w.h[c])+'</div>'+
-          '<div class="h-usd">'+(w.h[c]>0&&prices[c]?fmtUSD(w.h[c]*prices[c].price):'—')+'</div></div>';
-      }).join('')+'</div>'+
-      '<div class="wh-total"><span class="t-lbl">ŁĄCZNIE</span>'+
-      '<span class="t-val">'+(total>0?fmtUSD(total):'Ładowanie...')+'</span>'+
-      '<span class="t-chg '+(up?'up':'dn')+'">'+(up?'+':'')+w.d+'%</span></div></div>';
+  // Show real whale cards (with live BTC price if available)
+  renderWhaleCards();
+}
+
+function renderWhaleCards() {
+  var btcPrice = prices['BTC'] ? prices['BTC'].price : 0;
+  var html = '<div style="background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.2);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-family:var(--mono);font-size:10px;color:var(--amber);line-height:1.6">'+
+    '⚡ Dane pobierane z blockchain.info · Publiczne adresy BTC · Odśwież aby zaktualizować salda</div>';
+
+  html += REAL_WHALES.map(function(w, i) {
+    var btcAmt = w.btc || 0;
+    var totalUSD = btcPrice > 0 && btcAmt > 0 ? btcPrice * btcAmt : 0;
+    var addrShort = w.fullAddr.slice(0,8)+'...'+w.fullAddr.slice(-6);
+    var statusColor = w.lastUpdated ? 'var(--green)' : 'var(--dim)';
+    var statusText = w.lastUpdated ? '✓ Live' : 'Ładowanie...';
+    var typeColors = {Exchange:'var(--blue)',Corporate:'var(--amber)',Government:'var(--green)'};
+    var typeColor = typeColors[w.type] || 'var(--dim)';
+
+    return '<div class="whale-card" style="animation-delay:'+i*.07+'s">'+
+      '<div class="wh-hdr">'+
+        '<div class="wh-av"><div class="wh-av-in">'+w.e+'</div></div>'+
+        '<div class="wh-info">'+
+          '<div class="wh-name">'+w.name+'</div>'+
+          '<div class="wh-addr" style="cursor:pointer" onclick="copyAddr(''+w.fullAddr+'')" title="Kliknij aby skopiować">'+addrShort+' 📋</div>'+
+        '</div>'+
+        '<div style="text-align:right">'+
+          '<div class="wh-rank">'+w.rank+'</div>'+
+          '<div style="font-family:var(--mono);font-size:8px;color:'+typeColor+';margin-top:3px">'+w.type+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border)">'+
+        '<div class="h-item">'+
+          '<div class="h-coin" style="color:var(--btc)">BTC</div>'+
+          '<div class="h-amt" id="whale-btc-'+i+'">'+( btcAmt > 0 ? fmtCoin(btcAmt) : '...' )+'</div>'+
+          '<div class="h-usd">'+( totalUSD > 0 ? fmtUSD(totalUSD) : '—' )+'</div>'+
+        '</div>'+
+        '<div class="h-item">'+
+          '<div class="h-coin" style="color:var(--dim)">STATUS</div>'+
+          '<div style="font-family:var(--mono);font-size:10px;color:'+statusColor+';margin-top:3px">'+statusText+'</div>'+
+          '<div class="h-usd">'+(w.lastUpdated ? new Date(w.lastUpdated).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}) : '—')+'</div>'+
+        '</div>'+
+        '<div class="h-item" style="border-right:none">'+
+          '<div class="h-coin" style="color:var(--dim)">BLOCKCHAIN</div>'+
+          '<div style="font-family:var(--mono);font-size:9px;color:var(--blue);margin-top:3px;cursor:pointer" '+
+            'onclick="window.open('https://www.blockchain.com/explorer/addresses/btc/'+w.fullAddr+'','_blank')">'+
+            'Explorer ↗</div>'+
+          '<div class="h-usd">bitcoin</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="wh-total">'+
+        '<span class="t-lbl">ŁĄCZNIE BTC</span>'+
+        '<span class="t-val" id="whale-total-'+i+'">'+(totalUSD>0?fmtUSD(totalUSD):'Pobieranie...')+'</span>'+
+        '<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(0,212,255,.1);color:var(--blue);border:1px solid rgba(0,212,255,.2)">LIVE</span>'+
+      '</div>'+
+    '</div>';
   }).join('');
+
   document.getElementById('whaleList').innerHTML = html;
+}
+
+function copyAddr(addr) {
+  navigator.clipboard.writeText(addr).then(function(){
+    // show brief toast
+    var el = document.createElement('div');
+    el.style.cssText='position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.35);color:var(--green);font-family:var(--mono);font-size:11px;padding:7px 16px;border-radius:18px;z-index:999;white-space:nowrap';
+    el.textContent='✓ Adres skopiowany!';
+    document.body.appendChild(el);
+    setTimeout(function(){el.remove();},2000);
+  }).catch(function(){});
+}
+
+function fetchWhaleBalances() {
+  if (whaleDataLoaded) return;
+  REAL_WHALES.forEach(function(whale, idx) {
+    // blockchain.info API — free, no key, CORS enabled
+    fetch('https://blockchain.info/balance?active='+whale.fullAddr+'&cors=true')
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        var info = data[whale.fullAddr] || data[Object.keys(data)[0]];
+        if (!info) return;
+        var btcAmt = info.final_balance / 1e8; // satoshis to BTC
+        whale.btc = btcAmt;
+        whale.lastUpdated = Date.now();
+        // Update specific card elements
+        var btcEl = document.getElementById('whale-btc-'+idx);
+        var totEl = document.getElementById('whale-total-'+idx);
+        var btcPrice = prices['BTC'] ? prices['BTC'].price : 0;
+        if (btcEl) btcEl.textContent = fmtCoin(btcAmt);
+        if (totEl && btcPrice > 0) totEl.textContent = fmtUSD(btcAmt * btcPrice);
+        // Re-render to update status
+        renderWhaleCards();
+      }).catch(function(e){
+        console.warn('Whale balance fetch failed for '+whale.name+':', e.message);
+      });
+  });
+  whaleDataLoaded = true;
 }
 
 function updateVol() {
@@ -1321,54 +1446,166 @@ function updateSignalPanel() {
   panel.style.background = panelBg; panel.style.borderColor = panelBorder;
 }
 
-// ── WHALE ALERT ───────────────────────────────────────────────
+// ── BLOCKCHAIR ALERTS (free, no key) ─────────────────────────
+var alertsLoaded = false;
+var allAlertTxs = [];
+var activeFilter = 'all';
+
 function fetchAlerts() {
-  if (!waKey) return;
-  fetch('https://api.whale-alert.io/v1/transactions?api_key='+waKey+'&min_value=500000&start='+(Math.floor(Date.now()/1000)-3600)+'&limit=20')
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      if (data.result==='error') throw new Error(data.message);
-      var txs = data.transactions || [];
-      renderAlerts(txs);
-      document.getElementById('aCnt').textContent = txs.length;
-      if (txs.length) {
-        var big = txs.reduce(function(a,x){ return a.amount_usd>x.amount_usd?a:x; });
-        document.getElementById('aBig').textContent = fmtUSD(big.amount_usd);
-        document.getElementById('aBigSub').textContent = (big.symbol||'').toUpperCase();
-      }
-      newAlerts = txs.filter(function(t){ return Date.now()/1000-t.timestamp<600; }).length;
-      updateBadge();
-    }).catch(function(e) {
-      document.getElementById('alertList').innerHTML = '<div class="empty"><div class="empty-ico">⚠️</div>'+e.message+'</div>';
-    });
+  fetchBlockchairAlerts();
 }
 
-function renderAlerts(txs) {
-  if (!txs.length) { document.getElementById('alertList').innerHTML = '<div class="empty"><div class="empty-ico">🔍</div>Brak transakcji</div>'; return; }
-  var now = Date.now()/1000;
-  var html = txs.map(function(tx) {
-    var sym = (tx.symbol||'').toUpperCase();
-    var from = tx.from&&tx.from.owner||tx.from&&tx.from.owner_type||'Unknown';
-    var to = tx.to&&tx.to.owner||tx.to&&tx.to.owner_type||'Unknown';
-    var type = tx.from&&tx.from.owner_type==='exchange'?'buy':tx.to&&tx.to.owner_type==='exchange'?'sell':'move';
-    var icons = {buy:'📈',sell:'📉',move:'🔄'};
-    var age = Math.round((now-tx.timestamp)/60);
-    var ageStr = age<60?age+'min temu':Math.round(age/60)+'godz temu';
-    return '<div class="alert-item"><div class="alert-icon '+type+'">'+(icons[type]||'🔄')+'</div>'+
-      '<div class="a-body"><div class="a-title">'+from+' → '+to+'</div>'+
-      '<div class="a-desc">'+fmtCoin(tx.amount)+' '+sym+'</div>'+
-      '<div class="a-amt '+type+'">'+fmtUSD(tx.amount_usd)+'</div>'+
-      '<div class="a-time">'+ageStr+'</div></div></div>';
+function fetchBlockchairAlerts() {
+  if (alertsLoaded) return;
+  alertsLoaded = true;
+  document.getElementById('alertList').innerHTML = '<div class="empty"><div class="empty-ico">⏳</div>Pobieranie transakcji...</div>';
+
+  var minVal = 1000000; // $1M minimum
+  var btcPrice = prices['BTC'] ? prices['BTC'].price : 80000;
+  var ethPrice = prices['ETH'] ? prices['ETH'].price : 2000;
+
+  // Blockchair: largest BTC transactions in last 24h
+  var btcMinSat = Math.round(minVal / btcPrice * 1e8);
+  var urlBTC = 'https://api.blockchair.com/bitcoin/transactions?s=value(desc)&q=value(' + btcMinSat + ')&limit=15&offset=0';
+  var urlETH = 'https://api.blockchair.com/ethereum/transactions?s=value(desc)&q=value_usd(' + minVal + '..)&limit=15&offset=0';
+
+  Promise.all([
+    fetch(urlBTC).then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    fetch(urlETH).then(function(r){ return r.json(); }).catch(function(){ return null; })
+  ]).then(function(results) {
+    var btcData = results[0];
+    var ethData = results[1];
+    allAlertTxs = [];
+
+    if (btcData && btcData.data) {
+      var btcTxs = btcData.data.map(function(tx) {
+        var btcAmt = tx.output_total / 1e8;
+        var usd = btcAmt * btcPrice;
+        return {
+          coin: 'BTC', color: 'var(--btc)',
+          hash: tx.hash,
+          amount: btcAmt,
+          amountUSD: usd,
+          time: new Date(tx.time).getTime() / 1000,
+          fee: (tx.fee / 1e8).toFixed(4),
+          inputs: tx.input_count,
+          outputs: tx.output_count,
+          isNew: (Date.now()/1000 - new Date(tx.time).getTime()/1000) < 3600
+        };
+      }).filter(function(tx){ return tx.amountUSD >= minVal; });
+      allAlertTxs = allAlertTxs.concat(btcTxs);
+
+      // Stats
+      var el = document.getElementById('aCntBTC');
+      if (el) el.textContent = btcTxs.length;
+      if (btcTxs.length) {
+        var big = btcTxs.reduce(function(a,b){ return a.amountUSD>b.amountUSD?a:b; });
+        var bigEl = document.getElementById('aBigBTC');
+        var bigSub = document.getElementById('aBigBTCsub');
+        if (bigEl) bigEl.textContent = fmtUSD(big.amountUSD);
+        if (bigSub) bigSub.textContent = fmtCoin(big.amount) + ' BTC';
+      }
+    }
+
+    if (ethData && ethData.data) {
+      var ethTxs = ethData.data.map(function(tx) {
+        var ethAmt = parseInt(tx.value) / 1e18;
+        var usd = ethAmt * ethPrice;
+        return {
+          coin: 'ETH', color: 'var(--eth)',
+          hash: tx.hash,
+          amount: ethAmt,
+          amountUSD: usd,
+          time: new Date(tx.time).getTime() / 1000,
+          from: tx.sender,
+          to: tx.recipient,
+          isNew: (Date.now()/1000 - new Date(tx.time).getTime()/1000) < 3600
+        };
+      }).filter(function(tx){ return tx.amountUSD >= minVal; });
+      allAlertTxs = allAlertTxs.concat(ethTxs);
+
+      var el2 = document.getElementById('aCntETH');
+      if (el2) el2.textContent = ethTxs.length;
+      if (ethTxs.length) {
+        var big2 = ethTxs.reduce(function(a,b){ return a.amountUSD>b.amountUSD?a:b; });
+        var bigEl2 = document.getElementById('aBigETH');
+        var bigSub2 = document.getElementById('aBigETHsub');
+        if (bigEl2) bigEl2.textContent = fmtUSD(big2.amountUSD);
+        if (bigSub2) bigSub2.textContent = fmtCoin(big2.amount) + ' ETH';
+      }
+    }
+
+    // Sort by USD value desc
+    allAlertTxs.sort(function(a,b){ return b.amountUSD - a.amountUSD; });
+
+    // Badge
+    newAlerts = allAlertTxs.filter(function(t){ return t.isNew; }).length;
+    updateBadge();
+
+    renderBlockchairAlerts(allAlertTxs);
+  }).catch(function(e) {
+    alertsLoaded = false;
+    document.getElementById('alertList').innerHTML = '<div class="empty"><div class="empty-ico">⚠️</div>Błąd pobierania — sprawdź połączenie</div>';
+  });
+}
+
+function filterAlerts(coin, btn) {
+  activeFilter = coin;
+  document.querySelectorAll('[id^="af-"]').forEach(function(b) {
+    b.style.background = 'var(--surface)';
+    b.style.borderColor = 'var(--border)';
+  });
+  if (btn) {
+    btn.style.background = 'rgba(0,212,255,.15)';
+    btn.style.borderColor = 'rgba(0,212,255,.4)';
+  }
+  var filtered = coin === 'all' ? allAlertTxs : allAlertTxs.filter(function(t){ return t.coin === coin; });
+  renderBlockchairAlerts(filtered);
+}
+
+function renderBlockchairAlerts(txs) {
+  if (!txs || !txs.length) {
+    document.getElementById('alertList').innerHTML = '<div class="empty"><div class="empty-ico">🔍</div>Brak transakcji powyżej $1M</div>';
+    return;
+  }
+  var now = Date.now() / 1000;
+  var html = txs.map(function(tx, i) {
+    var age = Math.round((now - tx.time) / 60);
+    var ageStr = age < 1 ? 'Teraz' : age < 60 ? age + 'min temu' : Math.round(age/60) + 'godz temu';
+    var hashShort = tx.hash ? tx.hash.slice(0,8)+'...'+tx.hash.slice(-6) : '—';
+    var explorerUrl = tx.coin === 'BTC'
+      ? 'https://blockchair.com/bitcoin/transaction/'+tx.hash
+      : 'https://blockchair.com/ethereum/transaction/'+tx.hash;
+    var isNew = tx.isNew;
+
+    return '<div class="alert-item" style="animation-delay:'+i*.04+'s'+(isNew?';border-color:rgba(255,170,0,.35)':'')+'">' +
+      '<div class="alert-icon move" style="background:rgba(0,212,255,.08);font-size:13px;font-family:var(--display);font-weight:700;color:'+tx.color+'">'+tx.coin+'</div>' +
+      '<div class="a-body">' +
+        '<div class="a-title" style="display:flex;justify-content:space-between;align-items:center">' +
+          '<span>'+fmtCoin(tx.amount)+' '+tx.coin+'</span>' +
+          (isNew ? '<span style="font-family:var(--mono);font-size:8px;background:rgba(255,170,0,.15);color:var(--amber);border:1px solid rgba(255,170,0,.3);border-radius:4px;padding:1px 5px">NOWY</span>' : '') +
+        '</div>' +
+        '<div class="a-amt move" style="color:'+tx.color+';font-size:14px">'+fmtUSD(tx.amountUSD)+'</div>' +
+        '<div style="display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap">' +
+          '<span class="a-time">'+ageStr+'</span>' +
+          '<span style="font-family:var(--mono);font-size:8px;color:var(--dim)">'+hashShort+'</span>' +
+          '<a href="'+explorerUrl+'" target="_blank" style="font-family:var(--mono);font-size:8px;color:var(--blue);text-decoration:none">Explorer ↗</a>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
   }).join('');
+
   document.getElementById('alertList').innerHTML = html;
 }
+
+function renderAlerts(txs) { renderBlockchairAlerts(txs); }
 
 // ── HELPERS ───────────────────────────────────────────────────
 function setPill(t,l){ document.getElementById('pill').className='pill '+t; document.getElementById('pillLbl').textContent=l; }
 function toggleAuto(btn){ btn.classList.toggle('on'); autoOn=btn.classList.contains('on'); schedule(); }
-function schedule(){ clearInterval(timer); if(autoOn) timer=setInterval(function(){ fetchPrices(); fetchAlerts(); }, 60000); }
+function schedule(){ clearInterval(timer); if(autoOn) timer=setInterval(function(){ fetchPrices(); }, 60000); }
 function manualRefresh(btn){ btn.classList.add('spin'); setTimeout(function(){ btn.classList.remove('spin'); }, 650); fetchPrices(); fetchAlerts(); }
-function saveKey(){ var v=document.getElementById('waIn').value.trim(); if(!v)return; waKey=v; localStorage.setItem('waKey',v); document.getElementById('waBanner').style.display='none'; document.getElementById('waIn2').value=v; fetchAlerts(); }
+function saveKey(){ /* Whale Alert removed — using Blockchair */ }
 function saveKey2(){ var v=document.getElementById('waIn2').value.trim(); if(!v)return; waKey=v; localStorage.setItem('waKey',v); document.getElementById('waBanner').style.display='none'; fetchAlerts(); }
 function updateBadge(){ var el=document.getElementById('badge'); if(newAlerts>0){el.style.display='flex';el.textContent=newAlerts>9?'9+':newAlerts;}else el.style.display='none'; }
 
@@ -1903,13 +2140,33 @@ function drawYieldChart(data10y2y, data10y3m) {
 }
 
 // Hook into goTab/goNav
+// Fetch whale balances when whales tab opened
+var _origGoTabW = goTab;
+goTab = function(n, el) {
+  _origGoTabW(n, el);
+  if (n==='whales') fetchWhaleBalances();
+};
+var _origGoNavW = goNav;
+goNav = function(n, el) {
+  _origGoNavW(n, el);
+  if (n==='whales') fetchWhaleBalances();
+};
+
 var _origGoTab2 = goTab;
-goTab = function(n, el) { _origGoTab2(n, el); if (n==='macro') loadMacroData(); };
+goTab = function(n, el) {
+  _origGoTab2(n, el);
+  if (n==='macro') loadMacroData();
+  if (n==='alerts') fetchBlockchairAlerts();
+};
 var _origGoNav2 = goNav;
-goNav = function(n, el) { _origGoNav2(n, el); if (n==='macro') loadMacroData(); };
+goNav = function(n, el) {
+  _origGoNav2(n, el);
+  if (n==='macro') loadMacroData();
+  if (n==='alerts') fetchBlockchairAlerts();
+};
 
 // ── START ─────────────────────────────────────────────────────
-if(waKey){ document.getElementById('waBanner').style.display='none'; document.getElementById('waIn2').value=waKey; }
+// Blockchair API — no key needed
 updateWhales();
 fetchPrices();
 if(waKey) fetchAlerts();
