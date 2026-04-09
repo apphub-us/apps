@@ -912,7 +912,7 @@ function renderWhaleCards() {
         '<div class="wh-av"><div class="wh-av-in">'+w.e+'</div></div>'+
         '<div class="wh-info">'+
           '<div class="wh-name">'+w.name+'</div>'+
-          '<div class="wh-addr" style="cursor:pointer" onclick="copyAddr(''+w.fullAddr+'')" title="Kliknij aby skopiować">'+addrShort+' 📋</div>'+
+          '<div class="wh-addr" style="cursor:pointer" data-addr="'+w.fullAddr+'" onclick="copyAddr(this.dataset.addr)" title="Kliknij aby skopiować">'+addrShort+' 📋</div>'+
         '</div>'+
         '<div style="text-align:right">'+
           '<div class="wh-rank">'+w.rank+'</div>'+
@@ -932,9 +932,7 @@ function renderWhaleCards() {
         '</div>'+
         '<div class="h-item" style="border-right:none">'+
           '<div class="h-coin" style="color:var(--dim)">BLOCKCHAIN</div>'+
-          '<div style="font-family:var(--mono);font-size:9px;color:var(--blue);margin-top:3px;cursor:pointer" '+
-            'onclick="window.open('https://www.blockchain.com/explorer/addresses/btc/'+w.fullAddr+'','_blank')">'+
-            'Explorer ↗</div>'+
+          '<a href="https://www.blockchain.com/explorer/addresses/btc/'+w.fullAddr+'" target="_blank" style="font-family:var(--mono);font-size:9px;color:var(--blue);margin-top:3px;display:block;text-decoration:none">Explorer ↗</a>'+
           '<div class="h-usd">bitcoin</div>'+
         '</div>'+
       '</div>'+
