@@ -1460,95 +1460,104 @@ function fetchBlockchairAlerts() {
 
   var btcPrice = prices['BTC'] ? prices['BTC'].price : 80000;
   var ethPrice = prices['ETH'] ? prices['ETH'].price : 2000;
-  var minVal = 1000000;
-
+  var minVal = 500000; // $500K minimum
   allAlertTxs = [];
 
-  // BTC: mempool.space — darmowe, bez klucza, świetne CORS
-  var btcPromise = fetch('https://mempool.space/api/mempool/recent')
+  // BTC — mempool.space recent transactions (free, no key, CORS OK)
+  var btcDone = false;
+  var ethDone = false;
+
+  function checkDone() {
+    if (!btcDone || !ethDone) return;
+    allAlertTxs.sort(function(a,b){ return b.amountUSD - a.amountUSD; });
+    newAlerts = allAlertTxs.filter(function(t){ return t.isNew; }).length;
+    updateBadge();
+    if (allAlertTxs.length === 0) {
+      document.getElementById('alertList').innerHTML = '<div class="empty"><div class="empty-ico">🔍</div>Brak dużych transakcji · Odśwież za chwilę</div>';
+    } else {
+      renderBlockchairAlerts(allAlertTxs);
+    }
+  }
+
+  // BTC via mempool.space
+  fetch('https://mempool.space/api/mempool/recent')
     .then(function(r){ return r.json(); })
     .then(function(data) {
       var txs = Array.isArray(data) ? data : [];
-      var btcTxs = txs.map(function(tx) {
-        var satoshis = tx.value || 0;
-        var btcAmt = satoshis / 1e8;
+      var btcTxs = [];
+      txs.forEach(function(tx) {
+        var btcAmt = (tx.value || 0) / 1e8;
         var usd = btcAmt * btcPrice;
-        return {
-          coin: 'BTC', color: 'var(--btc)',
-          hash: tx.txid,
-          amount: btcAmt,
-          amountUSD: usd,
-          time: tx.firstSeen || Date.now()/1000,
-          fee: tx.fee ? (tx.fee/1e8).toFixed(6) : '—',
-          isNew: true
-        };
-      }).filter(function(tx){ return tx.amountUSD >= minVal; })
-        .sort(function(a,b){ return b.amountUSD - a.amountUSD; })
-        .slice(0, 15);
-
+        if (usd >= minVal) {
+          btcTxs.push({
+            coin: 'BTC', color: 'var(--btc)',
+            hash: tx.txid,
+            amount: btcAmt,
+            amountUSD: usd,
+            time: tx.firstSeen || (Date.now()/1000),
+            isNew: true
+          });
+        }
+      });
+      btcTxs.sort(function(a,b){ return b.amountUSD - a.amountUSD; });
+      btcTxs = btcTxs.slice(0, 15);
       allAlertTxs = allAlertTxs.concat(btcTxs);
       var el = document.getElementById('aCntBTC');
       if (el) el.textContent = btcTxs.length;
       if (btcTxs.length) {
-        var big = btcTxs[0];
         var bigEl = document.getElementById('aBigBTC');
         var bigSub = document.getElementById('aBigBTCsub');
-        if (bigEl) bigEl.textContent = fmtUSD(big.amountUSD);
-        if (bigSub) bigSub.textContent = fmtCoin(big.amount) + ' BTC';
+        if (bigEl) bigEl.textContent = fmtUSD(btcTxs[0].amountUSD);
+        if (bigSub) bigSub.textContent = fmtCoin(btcTxs[0].amount) + ' BTC';
       }
-    }).catch(function(e){ console.warn('mempool.space BTC:', e.message); });
+      btcDone = true;
+      checkDone();
+    }).catch(function(e) {
+      console.warn('BTC mempool:', e.message);
+      btcDone = true;
+      checkDone();
+    });
 
-  // ETH: ethplorer — darmowe API, bez klucza
-  var ethPromise = fetch('https://api.ethplorer.io/getTopTokens?apiKey=freekey&limit=1')
-    .then(function(){ 
-      // ethplorer doesn't have large tx endpoint, use alternative
-      // Use blockchain.info unconfirmed txs for ETH-like approach
-      return fetch('https://api.etherscan.io/api?module=account&action=txlist&address=0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae&startblock=0&endblock=99999999&page=1&offset=10&sort=desc&apikey=YourApiKeyToken');
-    }).catch(function(){ return null; });
-
-  // Better ETH source: use mempool.space equivalent for ETH — blockscout
-  var ethPromise2 = fetch('https://api.etherscan.io/api?module=proxy&action=eth_getBlockByNumber&tag=latest&boolean=true&apikey=YourApiKeyToken')
+  // ETH via Etherscan free (latest block transactions)
+  fetch('https://api.etherscan.io/api?module=proxy&action=eth_getBlockByNumber&tag=latest&boolean=true&apikey=YourApiKeyToken')
     .then(function(r){ return r.json(); })
     .then(function(data) {
-      if (!data.result || !data.result.transactions) return;
-      var ethTxs = data.result.transactions.map(function(tx) {
+      if (!data.result || !data.result.transactions) throw new Error('no txs');
+      var blockTime = parseInt(data.result.timestamp, 16);
+      var ethTxs = [];
+      data.result.transactions.forEach(function(tx) {
         var wei = parseInt(tx.value, 16) || 0;
         var ethAmt = wei / 1e18;
         var usd = ethAmt * ethPrice;
-        return {
-          coin: 'ETH', color: 'var(--eth)',
-          hash: tx.hash,
-          amount: ethAmt,
-          amountUSD: usd,
-          time: parseInt(data.result.timestamp, 16),
-          isNew: true
-        };
-      }).filter(function(tx){ return tx.amountUSD >= minVal; })
-        .sort(function(a,b){ return b.amountUSD - a.amountUSD; })
-        .slice(0, 15);
-
+        if (usd >= minVal) {
+          ethTxs.push({
+            coin: 'ETH', color: 'var(--eth)',
+            hash: tx.hash,
+            amount: ethAmt,
+            amountUSD: usd,
+            time: blockTime,
+            isNew: true
+          });
+        }
+      });
+      ethTxs.sort(function(a,b){ return b.amountUSD - a.amountUSD; });
+      ethTxs = ethTxs.slice(0, 15);
       allAlertTxs = allAlertTxs.concat(ethTxs);
       var el = document.getElementById('aCntETH');
       if (el) el.textContent = ethTxs.length;
       if (ethTxs.length) {
-        var big = ethTxs[0];
         var bigEl = document.getElementById('aBigETH');
         var bigSub = document.getElementById('aBigETHsub');
-        if (bigEl) bigEl.textContent = fmtUSD(big.amountUSD);
-        if (bigSub) bigSub.textContent = fmtCoin(big.amount) + ' ETH';
+        if (bigEl) bigEl.textContent = fmtUSD(ethTxs[0].amountUSD);
+        if (bigSub) bigSub.textContent = fmtCoin(ethTxs[0].amount) + ' ETH';
       }
-    }).catch(function(e){ console.warn('ETH block fetch:', e.message); });
-
-  Promise.all([btcPromise, ethPromise2]).then(function() {
-    allAlertTxs.sort(function(a,b){ return b.amountUSD - a.amountUSD; });
-    newAlerts = allAlertTxs.length;
-    updateBadge();
-    if (allAlertTxs.length === 0) {
-      document.getElementById('alertList').innerHTML = '<div class="empty"><div class="empty-ico">🔍</div>Brak dużych transakcji w mempoolu · Spróbuj ponownie</div>';
-    } else {
-      renderBlockchairAlerts(allAlertTxs);
-    }
-  });
+      ethDone = true;
+      checkDone();
+    }).catch(function(e) {
+      console.warn('ETH etherscan:', e.message);
+      ethDone = true;
+      checkDone();
+    });
 }
 
 function filterAlerts(coin, btn) {
