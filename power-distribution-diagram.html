@@ -1124,46 +1124,44 @@ document.addEventListener('click', function(e) {
 });
 
 function highlightElement(key) {
-  // Remove previous highlights
   document.querySelectorAll('.highlighted').forEach(function(el) {
     el.classList.remove('highlighted');
-    var r = el.querySelector('rect');
-    if (r) { r.style.stroke = ''; r.style.strokeWidth = ''; }
   });
 
   var el = document.querySelector('[data-tip="' + key + '"]');
   if (!el) return;
 
-  // Scroll to element
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-  // Animate rect stroke
   var rect = el.querySelector('rect');
-  if (rect) {
-    var origStroke = rect.getAttribute('stroke') || '#ffffff';
-    var origWidth = rect.getAttribute('stroke-width') || '1.5';
-    var bright = true;
-    var count = 0;
-    var interval = setInterval(function() {
-      if (bright) {
-        rect.setAttribute('stroke', '#ffffff');
-        rect.setAttribute('stroke-width', '4');
-        rect.style.filter = 'drop-shadow(0 0 12px #ffffff) drop-shadow(0 0 20px #00d4ff)';
-      } else {
-        rect.setAttribute('stroke', '#00d4ff');
-        rect.setAttribute('stroke-width', '2');
-        rect.style.filter = 'drop-shadow(0 0 6px #00d4ff)';
-      }
-      bright = !bright;
-      count++;
-      if (count >= 8) {
-        clearInterval(interval);
-        rect.setAttribute('stroke', origStroke);
-        rect.setAttribute('stroke-width', origWidth);
-        rect.style.filter = '';
-      }
-    }, 300);
-  }
+  if (!rect) return;
+
+  var origStroke = rect.getAttribute('stroke') || '#ffffff';
+  var origWidth  = rect.getAttribute('stroke-width') || '1.5';
+  var origFill   = rect.getAttribute('fill') || 'none';
+
+  var bright = true;
+  var count  = 0;
+
+  var interval = setInterval(function() {
+    if (bright) {
+      rect.setAttribute('stroke', '#ffffff');
+      rect.setAttribute('stroke-width', '5');
+      rect.setAttribute('fill', '#1a3a1a');
+    } else {
+      rect.setAttribute('stroke', '#00ff88');
+      rect.setAttribute('stroke-width', '2');
+      rect.setAttribute('fill', origFill);
+    }
+    bright = !bright;
+    count++;
+    if (count >= 10) {
+      clearInterval(interval);
+      rect.setAttribute('stroke', origStroke);
+      rect.setAttribute('stroke-width', origWidth);
+      rect.setAttribute('fill', origFill);
+    }
+  }, 250);
 }
 </script>
 </body>
