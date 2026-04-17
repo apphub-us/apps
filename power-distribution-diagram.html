@@ -1124,44 +1124,42 @@ document.addEventListener('click', function(e) {
 });
 
 function highlightElement(key) {
-  document.querySelectorAll('.highlighted').forEach(function(el) {
-    el.classList.remove('highlighted');
-  });
-
   var el = document.querySelector('[data-tip="' + key + '"]');
-  if (!el) return;
+  if (!el) { console.log('Element not found:', key); return; }
 
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-  var rect = el.querySelector('rect');
-  if (!rect) return;
+  // Find all rects inside this element
+  var rects = el.querySelectorAll('rect');
+  if (rects.length === 0) { console.log('No rect found in', key); return; }
 
-  var origStroke = rect.getAttribute('stroke') || '#ffffff';
+  var rect = rects[0];
+  var origStroke = rect.getAttribute('stroke') || '#aaaaaa';
   var origWidth  = rect.getAttribute('stroke-width') || '1.5';
-  var origFill   = rect.getAttribute('fill') || 'none';
 
   var bright = true;
   var count  = 0;
 
   var interval = setInterval(function() {
-    if (bright) {
-      rect.setAttribute('stroke', '#ffffff');
-      rect.setAttribute('stroke-width', '5');
-      rect.setAttribute('fill', '#1a3a1a');
-    } else {
-      rect.setAttribute('stroke', '#00ff88');
-      rect.setAttribute('stroke-width', '2');
-      rect.setAttribute('fill', origFill);
-    }
+    rects.forEach(function(r) {
+      if (bright) {
+        r.setAttribute('stroke', '#ffffff');
+        r.setAttribute('stroke-width', '6');
+      } else {
+        r.setAttribute('stroke', '#ff4400');
+        r.setAttribute('stroke-width', '3');
+      }
+    });
     bright = !bright;
     count++;
-    if (count >= 10) {
+    if (count >= 12) {
       clearInterval(interval);
-      rect.setAttribute('stroke', origStroke);
-      rect.setAttribute('stroke-width', origWidth);
-      rect.setAttribute('fill', origFill);
+      rects.forEach(function(r) {
+        r.setAttribute('stroke', origStroke);
+        r.setAttribute('stroke-width', origWidth);
+      });
     }
-  }, 250);
+  }, 200);
 }
 </script>
 </body>
