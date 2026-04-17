@@ -1106,12 +1106,20 @@ searchInput.addEventListener('input', function() {
       var div = document.createElement('div');
       div.className = 'search-result-item';
       div.innerHTML = '<span class="sri-icon">' + item.icon + '</span><span class="sri-name">' + item.label + '</span><span class="sri-type">' + item.type + '</span>';
-      div.addEventListener('click', function() {
-        highlightElement(item.key);
-        searchResults.classList.remove('visible');
-        searchInput.value = item.label;
-      });
+      div.setAttribute('data-key', item.key);
+      div.setAttribute('data-label', item.label);
       searchResults.appendChild(div);
+    });
+
+    searchResults.addEventListener('click', function(e) {
+      var item = e.target.closest('.search-result-item');
+      if (!item) return;
+      var key = item.getAttribute('data-key');
+      var label = item.getAttribute('data-label');
+      console.log('Clicked:', key);
+      searchResults.classList.remove('visible');
+      searchInput.value = label;
+      highlightElement(key);
     });
   }
   searchResults.classList.add('visible');
@@ -1124,14 +1132,18 @@ document.addEventListener('click', function(e) {
 });
 
 function highlightElement(key) {
+  console.log('highlightElement called with:', key);
   var el = document.querySelector('[data-tip="' + key + '"]');
-  if (!el) { console.log('Element not found:', key); return; }
+  console.log('Element found:', el);
+  if (!el) return;
 
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(function() {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 100);
 
-  // Find all rects inside this element
   var rects = el.querySelectorAll('rect');
-  if (rects.length === 0) { console.log('No rect found in', key); return; }
+  console.log('Rects found:', rects.length);
+  if (rects.length === 0) return;
 
   var rect = rects[0];
   var origStroke = rect.getAttribute('stroke') || '#aaaaaa';
