@@ -222,9 +222,77 @@
     line-height: 1.6;
   }
 
-  footer {
-    text-align: center;
-    margin-top: 50px;
+  /* Search bar */
+  .search-wrap {
+    max-width: 600px;
+    margin: 0 auto 30px;
+    position: relative;
+  }
+  .search-wrap input {
+    width: 100%;
+    padding: 12px 20px 12px 46px;
+    background: #0f1628;
+    border: 1.5px solid #1e3a5f;
+    border-radius: 10px;
+    color: #c8dff0;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-wrap input:focus {
+    border-color: #00d4ff;
+    box-shadow: 0 0 12px rgba(0,212,255,0.2);
+  }
+  .search-wrap input::placeholder { color: #3a5a7a; }
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: #3a5a7a;
+  }
+  .search-results {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0; right: 0;
+    background: #0f1628;
+    border: 1px solid #1e3a5f;
+    border-radius: 10px;
+    overflow: hidden;
+    z-index: 200;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    display: none;
+  }
+  .search-results.visible { display: block; }
+  .search-result-item {
+    padding: 10px 18px;
+    cursor: pointer;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px;
+    color: #c8dff0;
+    border-bottom: 1px solid #1a2a40;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.15s;
+  }
+  .search-result-item:last-child { border-bottom: none; }
+  .search-result-item:hover { background: #1a2a40; }
+  .search-result-item .sri-icon { font-size: 16px; }
+  .search-result-item .sri-name { font-weight: 700; color: #00d4ff; }
+  .search-result-item .sri-type { font-size: 12px; color: #5a7a9a; margin-left: auto; }
+  .search-no-results { padding: 14px 18px; color: #5a7a9a; font-family: 'Rajdhani'; font-size: 15px; }
+
+  /* Highlight glow animation */
+  @keyframes highlight-pulse {
+    0%   { filter: drop-shadow(0 0 0px #fff) drop-shadow(0 0 0px #00d4ff); }
+    30%  { filter: drop-shadow(0 0 16px #fff) drop-shadow(0 0 30px #00d4ff); }
+    60%  { filter: drop-shadow(0 0 8px #fff) drop-shadow(0 0 16px #00d4ff); }
+    100% { filter: drop-shadow(0 0 0px #fff) drop-shadow(0 0 0px #00d4ff); }
+  }
+  .highlighted { animation: highlight-pulse 1.8s ease-in-out 2; }
     font-family: 'Share Tech Mono', monospace;
     font-size: 15px;
     color: var(--text-dim);
@@ -238,6 +306,12 @@
   <h1>Electrical System</h1>
   <h2>Power Distribution Diagram</h2>
 </header>
+
+<div class="search-wrap">
+  <span class="search-icon">🔍</span>
+  <input type="text" id="searchInput" placeholder="Search e.g. Transformer E, Panel F, Breaker 319..." autocomplete="off"/>
+  <div class="search-results" id="searchResults"></div>
+</div>
 
 <div class="legend">
   <div class="legend-item"><div class="legend-dot dot-gen"></div> Generator / Power Source</div>
@@ -964,7 +1038,107 @@ document.querySelectorAll('[data-tip]').forEach(el => {
   el.addEventListener('mouseleave', () => {
     tooltip.classList.remove('visible');
   });
+// ===== SEARCH =====
+const searchIndex = [
+  { key: 'generator',       label: 'Generator 480/277V',          icon: '⚡', type: 'Power Source' },
+  { key: 'mainpanel',       label: 'Main Distribution Panel',      icon: '🗃️', type: 'Panel' },
+  { key: 'breaker316',      label: 'Circuit Breaker #316',         icon: '🔒', type: 'Breaker' },
+  { key: 'breaker322',      label: 'Circuit Breaker #322',         icon: '🔒', type: 'Breaker' },
+  { key: 'breaker319',      label: 'Circuit Breaker #319',         icon: '🔒', type: 'Breaker' },
+  { key: 'breaker313',      label: 'Circuit Breaker #313',         icon: '🔒', type: 'Breaker' },
+  { key: 'panel316',        label: 'Sub-Panel #316',               icon: '🗃️', type: 'Sub-Panel' },
+  { key: 'bktransA',        label: 'Circuit Breaker Transformer A', icon: '🔒', type: 'Breaker' },
+  { key: 'bktransB',        label: 'Circuit Breaker Transformer B', icon: '🔒', type: 'Breaker' },
+  { key: 'bktransD',        label: 'Circuit Breaker Transformer D', icon: '🔒', type: 'Breaker' },
+  { key: 'disconnectA',     label: 'Disconnect Switch A',          icon: '🔌', type: 'Disconnect' },
+  { key: 'disconnectB',     label: 'Disconnect Switch B',          icon: '🔌', type: 'Disconnect' },
+  { key: 'disconnectD',     label: 'Disconnect Switch D',          icon: '🔌', type: 'Disconnect' },
+  { key: 'transformerA',    label: 'Transformer A',                icon: '🔧', type: 'Transformer' },
+  { key: 'transformerB',    label: 'Transformer B',                icon: '🔧', type: 'Transformer' },
+  { key: 'transformerD',    label: 'Transformer D',                icon: '🔧', type: 'Transformer' },
+  { key: 'panelA',          label: 'Electrical Panel A',           icon: '📋', type: 'Panel' },
+  { key: 'panelB',          label: 'Electrical Panel B',           icon: '📋', type: 'Panel' },
+  { key: 'panelD',          label: 'Electrical Panel D',           icon: '📋', type: 'Panel' },
+  { key: 'disconnect319',   label: 'Disconnect Switch Transformer EF', icon: '🔌', type: 'Disconnect' },
+  { key: 'transformerEF',   label: 'Transformer EF',               icon: '🔧', type: 'Transformer' },
+  { key: 'panelEF',         label: 'Sub-Panel EF',                 icon: '🗃️', type: 'Sub-Panel' },
+  { key: 'breakerHeater',   label: 'Circuit Breaker Heater',       icon: '🔒', type: 'Breaker' },
+  { key: 'breakerE',        label: 'Circuit Breaker Transformer E', icon: '🔒', type: 'Breaker' },
+  { key: 'breakerF',        label: 'Circuit Breaker Transformer F', icon: '🔒', type: 'Breaker' },
+  { key: 'disconnectE',     label: 'Disconnect Switch Transformer E', icon: '🔌', type: 'Disconnect' },
+  { key: 'disconnectF',     label: 'Disconnect Switch Transformer F', icon: '🔌', type: 'Disconnect' },
+  { key: 'transformerE',    label: 'Transformer E',                icon: '🔧', type: 'Transformer' },
+  { key: 'transformerF',    label: 'Transformer F',                icon: '🔧', type: 'Transformer' },
+  { key: 'shoreDisconnectE','label': 'Disconnect Switch Shore E',  icon: '🔌', type: 'Disconnect' },
+  { key: 'shoreDisconnectF','label': 'Disconnect Switch Shore F',  icon: '🔌', type: 'Disconnect' },
+  { key: 'transferSwitchE', label: 'Transfer Switch E',            icon: '⚡', type: 'Transfer Switch' },
+  { key: 'transferSwitchF', label: 'Transfer Switch F',            icon: '⚡', type: 'Transfer Switch' },
+  { key: 'panelE',          label: 'Electrical Panel E',           icon: '📋', type: 'Panel' },
+  { key: 'panelF',          label: 'Electrical Panel F',           icon: '📋', type: 'Panel' },
+  { key: 'disconnectC',     label: 'Disconnect Switch Transformer C', icon: '🔌', type: 'Disconnect' },
+  { key: 'transformerC',    label: 'Transformer C',                icon: '🔧', type: 'Transformer' },
+  { key: 'panelC',          label: 'Electrical Panel C',           icon: '📋', type: 'Panel' },
+  { key: 'disconnectG',     label: 'Disconnect Switch Transformer G', icon: '🔌', type: 'Disconnect' },
+  { key: 'transformerG',    label: 'Transformer G',                icon: '🔧', type: 'Transformer' },
+  { key: 'shoreDisconnectG','label': 'Disconnect Switch Shore G',  icon: '🔌', type: 'Disconnect' },
+  { key: 'transferSwitchG', label: 'Transfer Switch G',            icon: '⚡', type: 'Transfer Switch' },
+  { key: 'panelG',          label: 'Electrical Panel G',           icon: '📋', type: 'Panel' },
+];
+
+const searchInput = document.getElementById('searchInput');
+const searchResults = document.getElementById('searchResults');
+
+searchInput.addEventListener('input', function() {
+  var q = this.value.trim().toLowerCase();
+  searchResults.innerHTML = '';
+  if (q.length < 1) { searchResults.classList.remove('visible'); return; }
+
+  var matches = searchIndex.filter(function(item) {
+    return item.label.toLowerCase().includes(q) || item.type.toLowerCase().includes(q) || item.key.toLowerCase().includes(q);
+  }).slice(0, 8);
+
+  if (matches.length === 0) {
+    searchResults.innerHTML = '<div class="search-no-results">No results found</div>';
+  } else {
+    matches.forEach(function(item) {
+      var div = document.createElement('div');
+      div.className = 'search-result-item';
+      div.innerHTML = '<span class="sri-icon">' + item.icon + '</span><span class="sri-name">' + item.label + '</span><span class="sri-type">' + item.type + '</span>';
+      div.addEventListener('click', function() {
+        highlightElement(item.key);
+        searchResults.classList.remove('visible');
+        searchInput.value = item.label;
+      });
+      searchResults.appendChild(div);
+    });
+  }
+  searchResults.classList.add('visible');
 });
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.search-wrap')) {
+    searchResults.classList.remove('visible');
+  }
+});
+
+function highlightElement(key) {
+  // Remove previous highlights
+  document.querySelectorAll('.highlighted').forEach(function(el) {
+    el.classList.remove('highlighted');
+  });
+
+  var el = document.querySelector('[data-tip="' + key + '"]');
+  if (!el) return;
+
+  // Scroll to element
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Add highlight class
+  el.classList.add('highlighted');
+
+  // Remove after animation finishes
+  setTimeout(function() { el.classList.remove('highlighted'); }, 4000);
+}
 </script>
 </body>
 </html>
