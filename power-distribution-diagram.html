@@ -1138,25 +1138,18 @@ function highlightElement(key) {
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, 100);
 
-  var rects = el.querySelectorAll('rect');
-  if (rects.length === 0) return;
-
-  var bright = true;
-  var count  = 0;
+  // iOS Safari compatible: animate opacity of the whole group
+  var count = 0;
+  var visible = true;
+  var origOpacity = el.getAttribute('opacity') || '1';
 
   var interval = setInterval(function() {
-    rects.forEach(function(r) {
-      r.style.stroke = bright ? '#ffffff' : '#ff6600';
-      r.style.strokeWidth = bright ? '6px' : '3px';
-    });
-    bright = !bright;
+    el.setAttribute('opacity', visible ? '0.15' : '1');
+    visible = !visible;
     count++;
     if (count >= 12) {
       clearInterval(interval);
-      rects.forEach(function(r) {
-        r.style.stroke = '';
-        r.style.strokeWidth = '';
-      });
+      el.setAttribute('opacity', origOpacity);
     }
   }, 200);
 }
