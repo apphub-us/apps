@@ -1153,49 +1153,6 @@ function highlightElement(key) {
     }
   }, 200);
 }
-
-function highlightElement(key) {
-  console.log('highlightElement called with:', key);
-  var el = document.querySelector('[data-tip="' + key + '"]');
-  console.log('Element found:', el);
-  if (!el) return;
-
-  setTimeout(function() {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, 100);
-
-  var rects = el.querySelectorAll('rect');
-  console.log('Rects found:', rects.length);
-  if (rects.length === 0) return;
-
-  var rect = rects[0];
-  var origStroke = rect.getAttribute('stroke') || '#aaaaaa';
-  var origWidth  = rect.getAttribute('stroke-width') || '1.5';
-
-  var bright = true;
-  var count  = 0;
-
-  var interval = setInterval(function() {
-    rects.forEach(function(r) {
-      if (bright) {
-        r.setAttribute('stroke', '#ffffff');
-        r.setAttribute('stroke-width', '6');
-      } else {
-        r.setAttribute('stroke', '#ff4400');
-        r.setAttribute('stroke-width', '3');
-      }
-    });
-    bright = !bright;
-    count++;
-    if (count >= 12) {
-      clearInterval(interval);
-      rects.forEach(function(r) {
-        r.setAttribute('stroke', origStroke);
-        r.setAttribute('stroke-width', origWidth);
-      });
-    }
-  }, 200);
-}
 </script>
 </body>
 </html>
