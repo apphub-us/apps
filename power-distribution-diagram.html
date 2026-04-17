@@ -1069,8 +1069,8 @@ const searchIndex = [
   { key: 'disconnectF',     label: 'Disconnect Switch Transformer F', icon: '🔌', type: 'Disconnect' },
   { key: 'transformerE',    label: 'Transformer E',                icon: '🔧', type: 'Transformer' },
   { key: 'transformerF',    label: 'Transformer F',                icon: '🔧', type: 'Transformer' },
-  { key: 'shoreDisconnectE','label': 'Disconnect Switch Shore E',  icon: '🔌', type: 'Disconnect' },
-  { key: 'shoreDisconnectF','label': 'Disconnect Switch Shore F',  icon: '🔌', type: 'Disconnect' },
+  { key: 'shoreDisconnectE',label: 'Disconnect Switch Shore E',  icon: '🔌', type: 'Disconnect' },
+  { key: 'shoreDisconnectF',label: 'Disconnect Switch Shore F',  icon: '🔌', type: 'Disconnect' },
   { key: 'transferSwitchE', label: 'Transfer Switch E',            icon: '⚡', type: 'Transfer Switch' },
   { key: 'transferSwitchF', label: 'Transfer Switch F',            icon: '⚡', type: 'Transfer Switch' },
   { key: 'panelE',          label: 'Electrical Panel E',           icon: '📋', type: 'Panel' },
@@ -1080,7 +1080,7 @@ const searchIndex = [
   { key: 'panelC',          label: 'Electrical Panel C',           icon: '📋', type: 'Panel' },
   { key: 'disconnectG',     label: 'Disconnect Switch Transformer G', icon: '🔌', type: 'Disconnect' },
   { key: 'transformerG',    label: 'Transformer G',                icon: '🔧', type: 'Transformer' },
-  { key: 'shoreDisconnectG','label': 'Disconnect Switch Shore G',  icon: '🔌', type: 'Disconnect' },
+  { key: 'shoreDisconnectG',label: 'Disconnect Switch Shore G',  icon: '🔌', type: 'Disconnect' },
   { key: 'transferSwitchG', label: 'Transfer Switch G',            icon: '⚡', type: 'Transfer Switch' },
   { key: 'panelG',          label: 'Electrical Panel G',           icon: '📋', type: 'Panel' },
 ];
@@ -1125,6 +1125,8 @@ function highlightElement(key) {
   // Remove previous highlights
   document.querySelectorAll('.highlighted').forEach(function(el) {
     el.classList.remove('highlighted');
+    var r = el.querySelector('rect');
+    if (r) { r.style.stroke = ''; r.style.strokeWidth = ''; }
   });
 
   var el = document.querySelector('[data-tip="' + key + '"]');
@@ -1133,11 +1135,33 @@ function highlightElement(key) {
   // Scroll to element
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-  // Add highlight class
-  el.classList.add('highlighted');
-
-  // Remove after animation finishes
-  setTimeout(function() { el.classList.remove('highlighted'); }, 4000);
+  // Animate rect stroke
+  var rect = el.querySelector('rect');
+  if (rect) {
+    var origStroke = rect.getAttribute('stroke') || '#ffffff';
+    var origWidth = rect.getAttribute('stroke-width') || '1.5';
+    var bright = true;
+    var count = 0;
+    var interval = setInterval(function() {
+      if (bright) {
+        rect.setAttribute('stroke', '#ffffff');
+        rect.setAttribute('stroke-width', '4');
+        rect.style.filter = 'drop-shadow(0 0 12px #ffffff) drop-shadow(0 0 20px #00d4ff)';
+      } else {
+        rect.setAttribute('stroke', '#00d4ff');
+        rect.setAttribute('stroke-width', '2');
+        rect.style.filter = 'drop-shadow(0 0 6px #00d4ff)';
+      }
+      bright = !bright;
+      count++;
+      if (count >= 8) {
+        clearInterval(interval);
+        rect.setAttribute('stroke', origStroke);
+        rect.setAttribute('stroke-width', origWidth);
+        rect.style.filter = '';
+      }
+    }, 300);
+  }
 }
 </script>
 </body>
