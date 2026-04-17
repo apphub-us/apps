@@ -76,7 +76,6 @@ main{padding:14px 18px 100px}
 .vol-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .vl{font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:2px}
 .vv{font-family:var(--mono);font-size:11px}
-/* CHART PAGE */
 .signal-panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;text-align:center}
 .signal-score{font-family:var(--display);font-size:42px;font-weight:900;line-height:1;margin-bottom:6px}
 .signal-label{font-family:var(--mono);font-size:12px;letter-spacing:1px;margin-bottom:14px}
@@ -92,10 +91,9 @@ main{padding:14px 18px 100px}
 .chart-legend-item{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:12px}
 .chart-legend-dot{width:8px;height:8px;border-radius:1px}
 .chart-loader{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(11,20,32,.85);border-radius:12px;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:1px}
-.fg-bar-wrap{position:relative;height:12px;background:linear-gradient(90deg,var(--red),var(--amber),var(--green));border-radius:6px;margin-bottom:8px}
+.fg-bar-wrap{position:relative;height:12px;background:linear-gradient(to right,var(--red),var(--amber),var(--green));border-radius:6px;margin-bottom:8px}
 .fg-needle{position:absolute;top:-4px;width:4px;height:20px;background:white;border-radius:2px;transform:translateX(-50%);transition:left .8s ease;box-shadow:0 0 8px rgba(255,255,255,.5);left:50%}
 .fg-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--dim)}
-/* WHALE CARDS */
 .whale-card{background:var(--card);border:1px solid var(--border);border-radius:13px;margin-bottom:10px;overflow:hidden;animation:si .4s ease both}
 @keyframes si{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .wh-hdr{display:flex;align-items:center;gap:11px;padding:13px 15px 11px}
@@ -119,7 +117,6 @@ main{padding:14px 18px 100px}
 .t-chg{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px}
 .t-chg.up{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.2)}
 .t-chg.dn{background:rgba(255,51,85,.1);color:var(--red);border:1px solid rgba(255,51,85,.2)}
-/* ALERTS */
 .api-banner{background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.25);border-radius:12px;padding:13px 15px;margin-bottom:14px}
 .api-banner-t{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:2px;margin-bottom:7px}
 .api-banner p{font-family:var(--body);font-size:12px;color:var(--dim);margin-bottom:9px;line-height:1.5}
@@ -137,7 +134,6 @@ main{padding:14px 18px 100px}
 .a-amt{font-family:var(--mono);font-size:12px;font-weight:600;margin-top:3px}
 .a-amt.buy{color:var(--green)}.a-amt.sell{color:var(--red)}.a-amt.move{color:var(--amber)}
 .a-time{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:3px}
-/* SETTINGS */
 .setting{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .s-name{font-family:var(--body);font-size:14px;font-weight:600;color:var(--text)}
 .s-desc{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px}
@@ -145,7 +141,6 @@ main{padding:14px 18px 100px}
 .toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--dim);transition:all .3s}
 .toggle.on{background:rgba(0,255,136,.28);border:1px solid rgba(0,255,136,.5)}
 .toggle.on::after{left:21px;background:var(--green);box-shadow:0 0 8px var(--green)}
-/* NAV */
 .bnav{position:fixed;bottom:0;left:0;right:0;background:rgba(8,14,22,.98);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding:7px 0 max(7px,env(safe-area-inset-bottom));z-index:100}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 0;cursor:pointer;border:none;background:none;position:relative}
 .nb-ico{font-size:21px;line-height:1;transition:transform .2s}
@@ -156,6 +151,43 @@ main{padding:14px 18px 100px}
 .empty{text-align:center;padding:32px 16px;font-family:var(--mono);font-size:11px;color:var(--dim)}
 .empty-ico{font-size:34px;opacity:.3;margin-bottom:10px}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── STOCKS TAB STYLES ── */
+.stk-warn{background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.25);border-radius:10px;padding:10px 14px;margin-bottom:14px;margin-top:14px;font-family:var(--mono);font-size:10px;color:var(--amber);line-height:1.6}
+.stk-card{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:16px;margin-bottom:12px;position:relative;transition:border-color .2s}
+.stk-card:hover{border-color:#1a3555}
+.stk-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.stk-ticker{font-family:var(--display);font-size:18px;font-weight:900;letter-spacing:2px;color:var(--text)}
+.stk-lev{display:inline-block;font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:7px;background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3);vertical-align:middle}
+.stk-name{font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:3px}
+.stk-price-block{text-align:right}
+.stk-price{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--text)}
+.stk-chg{font-family:var(--mono);font-size:11px;margin-top:2px}
+.stk-pos{color:var(--green)}.stk-neg{color:var(--red)}
+.stk-verdict{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;font-weight:700;padding:4px 12px;border-radius:999px;margin:8px 0 12px;letter-spacing:.5px;text-transform:uppercase}
+.sv-danger{background:rgba(255,51,85,.12);color:var(--red);border:1px solid rgba(255,51,85,.35)}
+.sv-caution{background:rgba(255,170,0,.1);color:var(--amber);border:1px solid rgba(255,170,0,.3)}
+.sv-neutral{background:rgba(13,32,53,.8);color:var(--dim);border:1px solid var(--border)}
+.sv-ok{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3)}
+.sv-buy{background:rgba(0,212,255,.08);color:var(--blue);border:1px solid rgba(0,212,255,.3)}
+.stk-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:12px}
+.stk-metric{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;text-align:center}
+.stk-ml{font-family:var(--mono);font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px}
+.stk-mv{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text)}
+.stk-ms{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:1px}
+.stk-bar-section{margin-bottom:10px}
+.stk-bar-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8px;color:var(--dim);margin-bottom:4px}
+.stk-bar-track{height:7px;background:var(--border);border-radius:4px;position:relative}
+.stk-bar-fill{height:100%;border-radius:4px;transition:width .8s ease}
+.stk-bar-dot{position:absolute;top:-4px;width:15px;height:15px;border-radius:50%;border:2px solid var(--bg);transform:translateX(-50%);transition:left .8s ease}
+.stk-bar-sub{text-align:center;font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:3px}
+.stk-rsi-track{height:8px;border-radius:4px;background:linear-gradient(to right,#58a6ff,var(--green) 30%,var(--green) 50%,var(--amber) 70%,var(--red) 100%);position:relative;margin-bottom:4px}
+.stk-rsi-needle{position:absolute;top:-4px;width:16px;height:16px;border-radius:50%;border:2px solid var(--bg);transform:translateX(-50%);transition:left .8s ease}
+.stk-divider{border-top:1px solid var(--border);padding-top:8px;margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--dim);display:flex;align-items:center;gap:6px}
+.stk-divider span{color:var(--red);font-weight:700}
+.stk-refresh-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;margin-top:14px}
+.stk-ts{font-family:var(--mono);font-size:8px;color:var(--dim)}
+.stk-ref-btn{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--blue);border-radius:8px;padding:5px 10px;font-family:var(--mono);font-size:9px;cursor:pointer;letter-spacing:1px}
 </style>
 </head>
 <body>
@@ -180,6 +212,7 @@ main{padding:14px 18px 100px}
   <button class="tab" onclick="goTab('chart',this)">CHART</button>
   <button class="tab" onclick="goTab('macro',this)">MACRO</button>
   <button class="tab" onclick="goTab('alerts',this)">ALERTY</button>
+  <button class="tab" onclick="goTab('stocks',this)">AKCJE</button>
   <button class="tab" onclick="goTab('settings',this)">USTAWIENIA</button>
 </div>
 <main>
@@ -213,8 +246,6 @@ main{padding:14px 18px 100px}
 
 <!-- CHART -->
 <div id="page-chart" class="page">
-
-  <!-- Signal Panel -->
   <div class="signal-panel" id="signalPanel">
     <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:3px;margin-bottom:10px">SYGNAŁY ZAKUPU</div>
     <div class="signal-score" id="signalScore">—</div>
@@ -229,462 +260,128 @@ main{padding:14px 18px 100px}
       <div class="chip" id="chip-lth" style="grid-column:span 2"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="chip-lbl">LTH REALIZED PRICE</div><div class="chip-val" id="cv-lth">—</div></div><div class="chip-sig" id="cs-lth">—</div></div></div>
     </div>
   </div>
-
-  <!-- MVRV Chart -->
   <div class="chart-box">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div class="chart-title">MVRV Z-SCORE · 365 DNI</div>
-      <div class="chart-updated" id="upd-mvrv">—</div>
-    </div>
-    <div class="chart-legend">
-      <div class="chart-legend-item" style="color:var(--red)"><div class="chart-legend-dot" style="background:rgba(255,51,85,.4)"></div>PRZEGRZANIE &gt;7</div>
-      <div class="chart-legend-item" style="color:var(--green)"><div class="chart-legend-dot" style="background:rgba(0,255,136,.3)"></div>KUPNO &lt;0</div>
-    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="chart-title">MVRV Z-SCORE · 365 DNI</div><div class="chart-updated" id="upd-mvrv">—</div></div>
+    <div class="chart-legend"><div class="chart-legend-item" style="color:var(--red)"><div class="chart-legend-dot" style="background:rgba(255,51,85,.4)"></div>PRZEGRZANIE &gt;7</div><div class="chart-legend-item" style="color:var(--green)"><div class="chart-legend-dot" style="background:rgba(0,255,136,.3)"></div>KUPNO &lt;0</div></div>
     <canvas id="cvMVRV" style="width:100%;display:block"></canvas>
     <div class="chart-loader" id="ld-mvrv">POBIERANIE...</div>
   </div>
-
-  <!-- NUPL Chart -->
   <div class="chart-box">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div class="chart-title">NUPL · 365 DNI</div>
-      <div class="chart-updated" id="upd-nupl">—</div>
-    </div>
-    <div class="chart-legend">
-      <div class="chart-legend-item" style="color:var(--red)"><div class="chart-legend-dot" style="background:rgba(255,51,85,.4)"></div>EUFORIA &gt;0.75</div>
-      <div class="chart-legend-item" style="color:var(--amber)"><div class="chart-legend-dot" style="background:rgba(255,170,0,.4)"></div>WIARA 0.5–0.75</div>
-      <div class="chart-legend-item" style="color:var(--green)"><div class="chart-legend-dot" style="background:rgba(0,255,136,.3)"></div>KAPITULACJA &lt;0</div>
-    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="chart-title">NUPL · 365 DNI</div><div class="chart-updated" id="upd-nupl">—</div></div>
+    <div class="chart-legend"><div class="chart-legend-item" style="color:var(--red)"><div class="chart-legend-dot" style="background:rgba(255,51,85,.4)"></div>EUFORIA &gt;0.75</div><div class="chart-legend-item" style="color:var(--amber)"><div class="chart-legend-dot" style="background:rgba(255,170,0,.4)"></div>WIARA 0.5–0.75</div><div class="chart-legend-item" style="color:var(--green)"><div class="chart-legend-dot" style="background:rgba(0,255,136,.3)"></div>KAPITULACJA &lt;0</div></div>
     <canvas id="cvNUPL" style="width:100%;display:block"></canvas>
     <div class="chart-loader" id="ld-nupl">POBIERANIE...</div>
   </div>
-
-  <!-- RSI Chart -->
   <div class="chart-box">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div class="chart-title">RSI 14 DNI · BTC</div>
-      <div class="chart-updated" id="upd-rsi">—</div>
-    </div>
-    <div class="chart-legend">
-      <div class="chart-legend-item" style="color:var(--red)"><div class="chart-legend-dot" style="background:rgba(255,51,85,.4)"></div>WYKUPIENIE &gt;70</div>
-      <div class="chart-legend-item" style="color:var(--green)"><div class="chart-legend-dot" style="background:rgba(0,255,136,.3)"></div>WYPRZEDANIE &lt;30</div>
-    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="chart-title">RSI 14 DNI · BTC</div><div class="chart-updated" id="upd-rsi">—</div></div>
+    <div class="chart-legend"><div class="chart-legend-item" style="color:var(--red)"><div class="chart-legend-dot" style="background:rgba(255,51,85,.4)"></div>WYKUPIENIE &gt;70</div><div class="chart-legend-item" style="color:var(--green)"><div class="chart-legend-dot" style="background:rgba(0,255,136,.3)"></div>WYPRZEDANIE &lt;30</div></div>
     <canvas id="cvRSI" style="width:100%;display:block"></canvas>
     <div class="chart-loader" id="ld-rsi">POBIERANIE...</div>
   </div>
-
-  <!-- VDD Chart -->
   <div class="chart-box">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div class="chart-title">VDD MULTIPLE · BTC</div>
-      <div class="chart-updated" id="upd-vdd">—</div>
-    </div>
-    <div class="chart-legend">
-      <div class="chart-legend-item" style="color:var(--red)"><div class="chart-legend-dot" style="background:rgba(255,51,85,.4)"></div>SZCZYT &gt;1.5</div>
-      <div class="chart-legend-item" style="color:var(--green)"><div class="chart-legend-dot" style="background:rgba(0,255,136,.3)"></div>AKUMULACJA &lt;0.5</div>
-    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="chart-title">VDD MULTIPLE · BTC</div><div class="chart-updated" id="upd-vdd">—</div></div>
+    <div class="chart-legend"><div class="chart-legend-item" style="color:var(--red)"><div class="chart-legend-dot" style="background:rgba(255,51,85,.4)"></div>SZCZYT &gt;1.5</div><div class="chart-legend-item" style="color:var(--green)"><div class="chart-legend-dot" style="background:rgba(0,255,136,.3)"></div>AKUMULACJA &lt;0.5</div></div>
     <canvas id="cvVDD" style="width:100%;display:block"></canvas>
     <div class="chart-loader" id="ld-vdd">POBIERANIE...</div>
   </div>
-
-  <!-- LTH Chart -->
   <div class="chart-box">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div class="chart-title">LTH REALIZED PRICE · BTC</div>
-      <div class="chart-updated" id="upd-lth">—</div>
-    </div>
-    <div class="chart-legend">
-      <div class="chart-legend-item" style="color:var(--blue)"><div class="chart-legend-dot" style="background:var(--blue);border-radius:50%"></div>CENA BTC</div>
-      <div class="chart-legend-item" style="color:var(--amber)"><div style="width:16px;height:2px;background:var(--amber)"></div>LTH REALIZED PRICE</div>
-    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="chart-title">LTH REALIZED PRICE · BTC</div><div class="chart-updated" id="upd-lth">—</div></div>
+    <div class="chart-legend"><div class="chart-legend-item" style="color:var(--blue)"><div class="chart-legend-dot" style="background:var(--blue);border-radius:50%"></div>CENA BTC</div><div class="chart-legend-item" style="color:var(--amber)"><div style="width:16px;height:2px;background:var(--amber)"></div>LTH REALIZED PRICE</div></div>
     <canvas id="cvLTH" style="width:100%;display:block"></canvas>
     <div class="chart-loader" id="ld-lth">POBIERANIE...</div>
   </div>
-
-  <!-- Fear & Greed -->
   <div class="chart-box">
     <div class="chart-title" style="margin-bottom:12px">FEAR &amp; GREED INDEX · DZIŚ</div>
     <div class="fg-bar-wrap"><div class="fg-needle" id="fgNeedle"></div></div>
     <div class="fg-labels"><span style="color:var(--red)">SKRAJNY STRACH</span><span>NEUTRALNY</span><span style="color:var(--green)">SKRAJNA CHCIWOŚĆ</span></div>
   </div>
-
-  <!-- Halving Cycle -->
   <div class="chart-box">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div class="chart-title">HALVING CYCLE · POZYCJA</div>
-      <div class="chart-updated" id="upd-halving">—</div>
-    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="chart-title">HALVING CYCLE · POZYCJA</div><div class="chart-updated" id="upd-halving">—</div></div>
     <canvas id="cvHalving" style="width:100%;display:block"></canvas>
   </div>
-
-
-  <!-- ATH DRAWDOWN CHART -->
   <div class="chart-box" style="margin-bottom:12px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div class="chart-title">CZAS I PROCENTOWOŚĆ · OD ATH</div>
-      <div class="chart-updated" id="upd-ath">—</div>
-    </div>
-
-    <!-- ATH Key Stats -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="chart-title">CZAS I PROCENTOWOŚĆ · OD ATH</div><div class="chart-updated" id="upd-ath">—</div></div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
-      <div style="background:rgba(255,51,85,.08);border:1px solid rgba(255,51,85,.25);border-radius:10px;padding:10px 12px">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">ALL TIME HIGH</div>
-        <div style="font-family:var(--display);font-size:16px;font-weight:700;color:var(--red)">$126,198</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px">6 Październik 2025</div>
-      </div>
-      <div style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:10px;padding:10px 12px">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">DNI OD ATH</div>
-        <div style="font-family:var(--display);font-size:16px;font-weight:700;color:var(--blue)" id="athDays">—</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px" id="athDaysLabel">Obliczanie...</div>
-      </div>
-      <div style="background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.2);border-radius:10px;padding:10px 12px">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">SPADEK OD ATH</div>
-        <div style="font-family:var(--display);font-size:16px;font-weight:700" id="athDropPct">—</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px" id="athDropUsd">Z zakładki KURSY</div>
-      </div>
-      <div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:10px;padding:10px 12px">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">SYGNAŁ ATH</div>
-        <div style="font-family:var(--display);font-size:16px;font-weight:700" id="athSignal">—</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px">&gt;50% spadek + &gt;365 dni</div>
-      </div>
+      <div style="background:rgba(255,51,85,.08);border:1px solid rgba(255,51,85,.25);border-radius:10px;padding:10px 12px"><div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">ALL TIME HIGH</div><div style="font-family:var(--display);font-size:16px;font-weight:700;color:var(--red)">$126,198</div><div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px">6 Październik 2025</div></div>
+      <div style="background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);border-radius:10px;padding:10px 12px"><div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">DNI OD ATH</div><div style="font-family:var(--display);font-size:16px;font-weight:700;color:var(--blue)" id="athDays">—</div><div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px" id="athDaysLabel">Obliczanie...</div></div>
+      <div style="background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.2);border-radius:10px;padding:10px 12px"><div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">SPADEK OD ATH</div><div style="font-family:var(--display);font-size:16px;font-weight:700" id="athDropPct">—</div><div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px" id="athDropUsd">Z zakładki KURSY</div></div>
+      <div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:10px;padding:10px 12px"><div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">SYGNAŁ ATH</div><div style="font-family:var(--display);font-size:16px;font-weight:700" id="athSignal">—</div><div style="font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:2px">&gt;50% spadek + &gt;365 dni</div></div>
     </div>
-
-    <!-- Two conditions checklist -->
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px">
-      <div id="condDropBox" style="border-radius:9px;padding:9px 12px;border:1px solid;transition:all .5s">
-        <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;margin-bottom:3px">WARUNEK 1</div>
-        <div style="font-family:var(--body);font-size:13px;font-weight:600">Spadek &gt; 50%</div>
-        <div id="condDropStatus" style="font-family:var(--mono);font-size:10px;margin-top:3px">—</div>
-      </div>
-      <div id="condTimeBox" style="border-radius:9px;padding:9px 12px;border:1px solid;transition:all .5s">
-        <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;margin-bottom:3px">WARUNEK 2</div>
-        <div style="font-family:var(--body);font-size:13px;font-weight:600">Czas &gt; 365 dni</div>
-        <div id="condTimeStatus" style="font-family:var(--mono);font-size:10px;margin-top:3px">—</div>
-      </div>
+      <div id="condDropBox" style="border-radius:9px;padding:9px 12px;border:1px solid;transition:all .5s"><div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;margin-bottom:3px">WARUNEK 1</div><div style="font-family:var(--body);font-size:13px;font-weight:600">Spadek &gt; 50%</div><div id="condDropStatus" style="font-family:var(--mono);font-size:10px;margin-top:3px">—</div></div>
+      <div id="condTimeBox" style="border-radius:9px;padding:9px 12px;border:1px solid;transition:all .5s"><div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;margin-bottom:3px">WARUNEK 2</div><div style="font-family:var(--body);font-size:13px;font-weight:600">Czas &gt; 365 dni</div><div id="condTimeStatus" style="font-family:var(--mono);font-size:10px;margin-top:3px">—</div></div>
     </div>
-
-    <!-- Drawdown bar -->
     <div style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-bottom:5px">
-        <span>ATH $126,198</span>
-        <span id="athCurrentPrice">Aktualna cena...</span>
-      </div>
-      <div style="background:var(--border);border-radius:6px;height:18px;position:relative;overflow:hidden">
-        <div id="athDropBar" style="height:100%;border-radius:6px;transition:width 1s ease;background:var(--red);width:0%"></div>
-        <div id="athDropBarLabel" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10px;color:white;font-weight:700">—</div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:4px">
-        <span style="color:var(--green)">0% (ATH)</span>
-        <span>25%</span>
-        <span style="color:var(--amber)">50%</span>
-        <span>75%</span>
-        <span style="color:var(--red)">100%</span>
-      </div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--dim);margin-bottom:5px"><span>ATH $126,198</span><span id="athCurrentPrice">Aktualna cena...</span></div>
+      <div style="background:var(--border);border-radius:6px;height:18px;position:relative;overflow:hidden"><div id="athDropBar" style="height:100%;border-radius:6px;transition:width 1s ease;background:var(--red);width:0%"></div><div id="athDropBarLabel" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10px;color:white;font-weight:700">—</div></div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:4px"><span style="color:var(--green)">0% (ATH)</span><span>25%</span><span style="color:var(--amber)">50%</span><span>75%</span><span style="color:var(--red)">100%</span></div>
     </div>
-
-    <!-- Historical context -->
     <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:2px;margin-bottom:8px;text-transform:uppercase">Historyczne obsunięcia od ATH</div>
     <canvas id="cvATH" style="width:100%;display:block"></canvas>
-  </div>
-
-  <!-- Info box expanded -->
-  <div style="margin-bottom:12px">
-    <div style="font-family:var(--mono);font-size:10px;color:var(--blue);letter-spacing:3px;margin-bottom:12px;display:flex;align-items:center;gap:8px">O WSKAŹNIKACH <span style="flex:1;height:1px;background:var(--border);display:inline-block"></span></div>
-
-    <!-- MVRV -->
-    <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:15px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
-        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--blue)">MVRV Z-Score</span>
-        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Market Value to Realized Value</span>
-      </div>
-      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
-        Porównuje aktualną <b>wartość rynkową</b> BTC do <b>wartości zrealizowanej</b> (ceny po której każdy coin ostatnio zmienił właściciela). Z-Score normalizuje wynik do odchylenia standardowego.
-      </div>
-      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
-        Compares market cap to realized cap — the price at which every BTC last moved. Z-Score normalizes by standard deviation to identify extremes.
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;7 = SZCZYT / SELL</div>
-        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">0–7 = NEUTRAL / HOLD</div>
-        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;0 = DNO / BUY</div>
-      </div>
-    </div>
-
-    <!-- NUPL -->
-    <div style="background:rgba(255,170,0,.04);border:1px solid rgba(255,170,0,.15);border-radius:12px;padding:15px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
-        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--amber)">NUPL</span>
-        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Net Unrealized Profit / Loss</span>
-      </div>
-      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
-        Mierzy <b>łączny niezrealizowany zysk lub stratę</b> wszystkich posiadaczy BTC jako procent kapitalizacji rynkowej. Gdy wszyscy są głęboko na plusie — rynek jest przegrzany. Gdy wszyscy są na stracie — to historyczne dna.
-      </div>
-      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
-        Measures total unrealized profit/loss of all BTC holders as a ratio of market cap. High values indicate euphoria; negative values signal capitulation and historically mark cycle bottoms.
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;0.75 = EUFORIA / SELL</div>
-        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">0.25–0.75 = NADZIEJA / HOLD</div>
-        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;0 = KAPITULACJA / BUY</div>
-      </div>
-    </div>
-
-    <!-- RSI -->
-    <div style="background:rgba(255,170,0,.04);border:1px solid rgba(255,170,0,.15);border-radius:12px;padding:15px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
-        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--amber)">RSI</span>
-        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Relative Strength Index</span>
-      </div>
-      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
-        Klasyczny wskaźnik analizy technicznej mierzący <b>prędkość i siłę ruchów cenowych</b> w skali 0–100. Obliczany jako stosunek średnich wzrostów do spadków w ostatnich 14 dniach. Jeden z najstarszych i najpopularniejszych wskaźników na rynkach finansowych.
-      </div>
-      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
-        Classic technical indicator measuring speed and magnitude of price changes on a 0–100 scale. Calculated as the ratio of average gains to average losses over 14 periods. Widely used across all financial markets.
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;70 = WYKUPIENIE / SELL</div>
-        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">30–70 = NEUTRALNY / HOLD</div>
-        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;30 = WYPRZEDANIE / BUY</div>
-      </div>
-    </div>
-
-    <!-- VDD -->
-    <div style="background:rgba(153,69,255,.04);border:1px solid rgba(153,69,255,.2);border-radius:12px;padding:15px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
-        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:#9945ff">VDD Multiple</span>
-        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Value Days Destroyed Multiple</span>
-      </div>
-      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
-        Mierzy <b>aktywność starych coinów</b> — ile "dni coinowych" zostało zniszczonych (coin przesunięty = dni nieaktywności × ilość BTC). Wysoki VDD oznacza że długoterminowi hodlerzy i wieloryby zaczynają <b>sprzedawać</b>. Historycznie spiki VDD pokrywają się ze szczytami rynku.
-      </div>
-      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
-        Tracks how many "coin days" are destroyed when old coins move. A coin day = 1 BTC held for 1 day. High VDD means long-term holders are distributing. Historically, VDD spikes align with market tops.
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;1.5x = DYSTRYBUCJA / SELL</div>
-        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">0.5–1.5x = NEUTRAL / HOLD</div>
-        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;0.5x = AKUMULACJA / BUY</div>
-      </div>
-    </div>
-
-    <!-- LTH -->
-    <div style="background:rgba(0,255,136,.03);border:1px solid rgba(0,255,136,.15);border-radius:12px;padding:15px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
-        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--green)">LTH Realized Price</span>
-        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Long Term Holder Realized Price</span>
-      </div>
-      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
-        Średnia cena nabycia BTC przez <b>długoterminowych hodlerów</b> (osoby trzymające BTC ponad 155 dni). Gdy aktualna cena BTC spada <b>poniżej</b> tej linii — LTH są na stracie i rynek historycznie osiąga dno. To jedna z najsilniejszych stref wsparcia w całym cyklu.
-      </div>
-      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
-        The average acquisition price of BTC for long-term holders (coins held 155+ days). When spot price falls below this level, LTHs are in loss — historically marking cycle bottoms. Acts as the strongest support level of the entire cycle.
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;3x LTH = PRZEGRZANIE / SELL</div>
-        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">1.5–3x LTH = NEUTRAL / HOLD</div>
-        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;1.5x LTH = OKAZJA / BUY</div>
-      </div>
-    </div>
-
-    <!-- HALVING -->
-    <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:15px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
-        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--blue)">Halving Cycle</span>
-        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Bitcoin 4-Year Halving Cycle</span>
-      </div>
-      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
-        Co 210 000 bloków (~4 lata) nagroda górników za wydobycie bloku jest <b>zmniejszana o połowę</b> (halving). Podaż nowych BTC spada, co historycznie wywołuje wzrost ceny. Każdy cykl ma podobny schemat: akumulacja → wczesny byk → szczyt → niedźwiedź. Ostatni halving: <b>20 kwietnia 2024</b>.
-      </div>
-      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
-        Every 210,000 blocks (~4 years), Bitcoin's block reward is cut in half — reducing new supply. This has historically triggered bull markets. Each cycle follows a similar pattern: accumulation → early bull → peak → bear market. Last halving: April 20, 2024.
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">0–400d = AKUMULACJA + WCZESNY BYK / BUY</div>
-        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">400–600d = ŚRODEK BYKA / HOLD</div>
-        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">600–900d = SZCZYT / SELL</div>
-      </div>
-    </div>
-
-    <!-- Fear & Greed -->
-    <div style="background:rgba(255,170,0,.04);border:1px solid rgba(255,170,0,.15);border-radius:12px;padding:15px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
-        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--amber)">Fear &amp; Greed Index</span>
-        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">Crypto Fear &amp; Greed Index</span>
-      </div>
-      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
-        Kompozytowy wskaźnik mierzący <b>emocje rynku</b> w skali 0–100. Łączy: wolumen, zmienność, dominację BTC, media społecznościowe i trendy wyszukiwania. Słynna zasada Warrena Buffetta: <b>"bój się gdy inni są chciwi, bądź chciwy gdy inni się boją"</b>.
-      </div>
-      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
-        Composite sentiment indicator (0–100) combining volatility, volume, social media, BTC dominance and search trends. Reflects Warren Buffett's principle: "Be fearful when others are greedy, and greedy when others are fearful."
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">&gt;75 = SKRAJNA CHCIWOŚĆ / SELL</div>
-        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">30–75 = NEUTRAL / HOLD</div>
-        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&lt;30 = SKRAJNY STRACH / BUY</div>
-      </div>
-    </div>
-
-    <!-- Czas i Procentowość -->
-    <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:15px 16px">
-      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
-        <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--blue)">Czas i Procentowość</span>
-        <span style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px">ATH Drawdown + Time Since ATH</span>
-      </div>
-      <div style="font-family:var(--body);font-size:14px;color:var(--text);line-height:1.65;margin-bottom:8px">
-        Wskaźnik łączy dwa kluczowe wymiary bessy: <b>głębokość spadku od ATH</b> (procentowość) oraz <b>czas trwania korekty</b> (dni od szczytu). Historycznie najlepsze okazje zakupu BTC pojawiają się gdy <b>oba warunki</b> są spełnione jednocześnie — cena jest mocno zdołowana (<b>&gt;50% poniżej ATH</b>) i minął wystarczający czas (<b>&gt;365 dni</b> od szczytu), co wskazuje na wyczerpanie sprzedających i akumulację przez długoterminowych inwestorów.
-      </div>
-      <div style="font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.65;font-style:italic;margin-bottom:8px">
-        This indicator combines two dimensions of a bear market: the <b>depth of the drawdown from ATH</b> and the <b>time elapsed since the peak</b>. Historically, the strongest BTC buy signals occur when both conditions are met simultaneously — price is deeply discounted (&gt;50% below ATH) and enough time has passed (&gt;365 days) indicating seller exhaustion and long-term accumulation.
-      </div>
-      <div style="font-family:var(--body);font-size:13px;color:var(--text);line-height:1.6;background:rgba(0,212,255,.06);border-radius:8px;padding:10px 12px;margin-bottom:10px">
-        📊 <b>Dane historyczne:</b> W cyklu 2018/2019 BTC spadł o <b>84%</b> przez <b>364 dni</b>. W cyklu 2021/2022 spadł o <b>77%</b> przez <b>376 dni</b>. Mediana głębokości bessy BTC to ok. <b>77%</b>, a mediana czasu to ok. <b>370 dni</b>.
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--green)">&gt;50% + &gt;365d = SILNY SYGNAŁ / BUY</div>
-        <div style="background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.25);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--amber)">JEDEN WARUNEK = CZEKAJ / WATCH</div>
-        <div style="background:rgba(255,51,85,.12);border:1px solid rgba(255,51,85,.3);border-radius:7px;padding:5px 10px;font-family:var(--mono);font-size:10px;color:var(--red)">ŻADEN WARUNEK = BRAK SYGNAŁU</div>
-      </div>
-    </div>
-
   </div>
 </div>
 
 <!-- MACRO -->
 <div id="page-macro" class="page">
-
-  <!-- Risk Signal Panel -->
   <div id="macroPanel" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center">
     <div style="font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:3px;margin-bottom:10px">FAZA RYZYKA MAKRO</div>
     <div style="font-family:var(--display);font-size:36px;font-weight:900;line-height:1;margin-bottom:6px" id="macroSignal">—</div>
     <div style="font-family:var(--mono);font-size:11px;letter-spacing:1px;margin-bottom:14px" id="macroLabel" style="color:var(--dim)">Ładowanie danych...</div>
-    <!-- 3 macro chips -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-      <div id="mchip-10y2y" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 6px;transition:all .4s">
-        <div style="font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">10Y − 2Y</div>
-        <div style="font-family:var(--mono);font-size:13px;color:var(--dim)" id="mv-10y2y">—</div>
-        <div style="font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)" id="ms-10y2y">—</div>
-      </div>
-      <div id="mchip-10y3m" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 6px;transition:all .4s">
-        <div style="font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">10Y − 3M</div>
-        <div style="font-family:var(--mono);font-size:13px;color:var(--dim)" id="mv-10y3m">—</div>
-        <div style="font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)" id="ms-10y3m">—</div>
-      </div>
-      <div id="mchip-phase" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 6px;transition:all .4s">
-        <div style="font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">FAZA</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--dim)" id="mv-phase">—</div>
-        <div style="font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)" id="ms-phase">—</div>
-      </div>
+      <div id="mchip-10y2y" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 6px;transition:all .4s"><div style="font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">10Y − 2Y</div><div style="font-family:var(--mono);font-size:13px;color:var(--dim)" id="mv-10y2y">—</div><div style="font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)" id="ms-10y2y">—</div></div>
+      <div id="mchip-10y3m" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 6px;transition:all .4s"><div style="font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">10Y − 3M</div><div style="font-family:var(--mono);font-size:13px;color:var(--dim)" id="mv-10y3m">—</div><div style="font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)" id="ms-10y3m">—</div></div>
+      <div id="mchip-phase" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 6px;transition:all .4s"><div style="font-family:var(--mono);font-size:8px;color:var(--dim);letter-spacing:1px;margin-bottom:4px">FAZA</div><div style="font-family:var(--mono);font-size:11px;color:var(--dim)" id="mv-phase">—</div><div style="font-family:var(--display);font-size:9px;font-weight:700;letter-spacing:1px;margin-top:3px;color:var(--dim)" id="ms-phase">—</div></div>
     </div>
   </div>
-
-  <!-- Risk explanation card -->
-  <div id="macroRiskCard" style="border-radius:12px;padding:14px 16px;margin-bottom:14px;border:1px solid;transition:all .5s">
-    <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:8px" id="riskTitle">ANALIZA FAZY</div>
-    <div style="font-family:var(--body);font-size:14px;line-height:1.7" id="riskDesc">Ładowanie...</div>
-    <div style="margin-top:10px;font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.6;font-style:italic" id="riskDescEn"></div>
-  </div>
-
-  <!-- Yield Curve Chart -->
+  <div id="macroRiskCard" style="border-radius:12px;padding:14px 16px;margin-bottom:14px;border:1px solid;transition:all .5s"><div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;margin-bottom:8px" id="riskTitle">ANALIZA FAZY</div><div style="font-family:var(--body);font-size:14px;line-height:1.7" id="riskDesc">Ładowanie...</div><div style="margin-top:10px;font-family:var(--body);font-size:13px;color:var(--dim);line-height:1.6;font-style:italic" id="riskDescEn"></div></div>
   <div class="chart-box">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <div class="chart-title">KRZYWA RENTOWNOŚCI · USA</div>
-      <div class="chart-updated" id="upd-macro">—</div>
-    </div>
-    <div class="chart-legend">
-      <div class="chart-legend-item" style="color:var(--blue)"><div style="width:16px;height:2px;background:var(--blue);display:inline-block;margin-right:4px"></div>10Y − 2Y</div>
-      <div class="chart-legend-item" style="color:var(--amber)"><div style="width:16px;height:2px;background:var(--amber);display:inline-block;margin-right:4px;border-top:2px dashed var(--amber)"></div>10Y − 3M</div>
-      <div class="chart-legend-item" style="color:var(--red)"><div style="width:8px;height:8px;background:rgba(255,51,85,.3);display:inline-block;margin-right:4px;border-radius:1px"></div>INWERSJA</div>
-    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="chart-title">KRZYWA RENTOWNOŚCI · USA</div><div class="chart-updated" id="upd-macro">—</div></div>
+    <div class="chart-legend"><div class="chart-legend-item" style="color:var(--blue)"><div style="width:16px;height:2px;background:var(--blue);display:inline-block;margin-right:4px"></div>10Y − 2Y</div><div class="chart-legend-item" style="color:var(--amber)"><div style="width:16px;height:2px;background:var(--amber);display:inline-block;margin-right:4px;border-top:2px dashed var(--amber)"></div>10Y − 3M</div><div class="chart-legend-item" style="color:var(--red)"><div style="width:8px;height:8px;background:rgba(255,51,85,.3);display:inline-block;margin-right:4px;border-radius:1px"></div>INWERSJA</div></div>
     <canvas id="cvYield" style="width:100%;display:block"></canvas>
     <div class="chart-loader" id="ld-macro">POBIERANIE DANYCH FRED...</div>
   </div>
-
-  <!-- What does it mean for investing -->
-  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:15px 16px;margin-bottom:10px">
-    <div style="font-family:var(--mono);font-size:10px;color:var(--blue);letter-spacing:2px;margin-bottom:12px">CO TO ZNACZY DLA INWESTORA?</div>
-
-    <div style="display:grid;grid-template-columns:repeat(1,1fr);gap:10px">
-
-      <div style="background:rgba(255,51,85,.06);border:1px solid rgba(255,51,85,.2);border-left:3px solid var(--red);border-radius:8px;padding:12px 14px">
-        <div style="font-family:var(--display);font-size:11px;font-weight:700;color:var(--red);margin-bottom:5px">🔴 INWERSJA (spread &lt; 0)</div>
-        <div style="font-family:var(--body);font-size:13px;color:var(--text);line-height:1.6;margin-bottom:5px">Krótkoterminowe obligacje płacą <b>więcej</b> niż długoterminowe — rynek spodziewa się obniżek stóp (recesja). Historycznie recesja następuje <b>6–18 miesięcy</b> po inwersji.</div>
-        <div style="font-family:var(--body);font-size:12px;color:var(--dim);font-style:italic">Short-term bonds yield more than long-term — markets anticipate rate cuts (recession). Recession historically follows 6–18 months after inversion.</div>
-        <div style="margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--red)">AKCJE ↓ · KRYPTO ↓ · ZŁOTO ↑ · OBLIGACJE DŁ. ↑</div>
-      </div>
-
-      <div style="background:rgba(255,170,0,.04);border:1px solid rgba(255,170,0,.2);border-left:3px solid var(--amber);border-radius:8px;padding:12px 14px">
-        <div style="font-family:var(--display);font-size:11px;font-weight:700;color:var(--amber);margin-bottom:5px">🟡 SPŁASZCZENIE (spread 0–0.5%)</div>
-        <div style="font-family:var(--body);font-size:13px;color:var(--text);line-height:1.6;margin-bottom:5px">Krzywa zmierza ku inwersji lub właśnie się "de-inwertuje". Faza <b>podwyższonego ryzyka</b> — recesja możliwa. Uwaga: de-inwersja przed recesją jest często bardziej niebezpieczna niż sama inwersja.</div>
-        <div style="font-family:var(--body);font-size:12px;color:var(--dim);font-style:italic">Curve heading toward inversion or just un-inverting. Elevated risk phase. Note: de-inversion before recession is often more dangerous than inversion itself.</div>
-        <div style="margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--amber)">OSTROŻNOŚĆ · ZMNIEJSZ RYZYKO · OBSERWUJ</div>
-      </div>
-
-      <div style="background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.2);border-left:3px solid var(--green);border-radius:8px;padding:12px 14px">
-        <div style="font-family:var(--display);font-size:11px;font-weight:700;color:var(--green);margin-bottom:5px">🟢 NORMALNA (spread &gt; 0.5%)</div>
-        <div style="font-family:var(--body);font-size:13px;color:var(--text);line-height:1.6;margin-bottom:5px">Długoterminowe obligacje płacą więcej — normalne środowisko gospodarcze. Rynek wycenia <b>wzrost i inflację</b> w przyszłości. Historycznie sprzyjające środowisko dla aktywów ryzykownych.</div>
-        <div style="font-family:var(--body);font-size:12px;color:var(--dim);font-style:italic">Long-term bonds yield more — normal economic environment. Markets pricing in future growth and inflation. Historically favorable for risk assets including equities and crypto.</div>
-        <div style="margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--green)">AKCJE ↑ · KRYPTO ↑ · RYZYKOWNE AKTYWA SPRZYJAJĄCE</div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- Historical context -->
-  <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:14px 16px;margin-bottom:10px">
-    <div style="font-family:var(--mono);font-size:9px;color:var(--blue);letter-spacing:2px;margin-bottom:10px">HISTORIA INWERSJI → RECESJE USA</div>
-    <div style="display:flex;flex-direction:column;gap:7px">
-      <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;padding:7px 10px;background:rgba(255,51,85,.08);border-radius:7px;border:1px solid rgba(255,51,85,.2)">
-        <span style="color:var(--red)">2006–2007</span>
-        <span style="color:var(--dim)">Inwersja → Kryzys 2008 (Great Financial Crisis)</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;padding:7px 10px;background:rgba(255,51,85,.08);border-radius:7px;border:1px solid rgba(255,51,85,.2)">
-        <span style="color:var(--red)">2019–2020</span>
-        <span style="color:var(--dim)">Inwersja → Recesja COVID 2020</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;padding:7px 10px;background:rgba(255,51,85,.08);border-radius:7px;border:1px solid rgba(255,51,85,.2)">
-        <span style="color:var(--red)">2022–2024</span>
-        <span style="color:var(--dim)">Najdłuższa inwersja w historii (~2 lata) → ?</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;padding:7px 10px;background:rgba(255,170,0,.08);border-radius:7px;border:1px solid rgba(255,170,0,.2)">
-        <span style="color:var(--amber)">2024–2025</span>
-        <span style="color:var(--dim)">De-inwersja — potencjalnie najniebezpieczniejsza faza</span>
-      </div>
-    </div>
-    <div style="font-family:var(--body);font-size:12px;color:var(--dim);line-height:1.5;margin-top:10px;font-style:italic">
-      ⚠️ Każda inwersja 10Y–2Y od 1955 roku poprzedzała recesję USA. Wskaźnik ma 100% skuteczność z 1 fałszywym sygnałem (1966). / Every 10Y–2Y inversion since 1955 preceded a US recession — 100% hit rate with 1 near-miss (1966).
-    </div>
-  </div>
-
 </div>
-
 
 <!-- ALERTS -->
 <div id="page-alerts" class="page">
-
-  <div style="background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.2);border-radius:10px;padding:10px 14px;margin-bottom:12px;margin-top:14px;font-family:var(--mono);font-size:10px;color:var(--blue);line-height:1.6">
-    ⚡ BTC: mempool.space · ETH: Etherscan · Darmowe · Bez klucza
-  </div>
-
+  <div style="background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.2);border-radius:10px;padding:10px 14px;margin-bottom:12px;margin-top:14px;font-family:var(--mono);font-size:10px;color:var(--blue);line-height:1.6">⚡ BTC: mempool.space · ETH: Etherscan · Darmowe · Bez klucza</div>
   <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:12px">
     <div class="s-box"><div class="s-lbl">Transakcji BTC</div><div class="s-val" id="aCntBTC" style="color:var(--btc)">—</div><div class="s-sub">ostatnie 24h &gt;$1M</div></div>
     <div class="s-box"><div class="s-lbl">Transakcji ETH</div><div class="s-val" id="aCntETH" style="color:var(--eth)">—</div><div class="s-sub">ostatnie 24h &gt;$1M</div></div>
     <div class="s-box"><div class="s-lbl">Największy ruch BTC</div><div class="s-val" id="aBigBTC" style="font-size:14px">—</div><div class="s-sub" id="aBigBTCsub">—</div></div>
     <div class="s-box"><div class="s-lbl">Największy ruch ETH</div><div class="s-val" id="aBigETH" style="font-size:14px">—</div><div class="s-sub" id="aBigETHsub">—</div></div>
   </div>
-
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
     <div class="sec-lbl" style="margin:0">OSTATNIE DUŻE TRANSAKCJE</div>
     <button onclick="alertsLoaded=false;fetchBlockchairAlerts();" style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--blue);border-radius:8px;padding:5px 10px;font-family:var(--mono);font-size:9px;cursor:pointer;letter-spacing:1px">↻ ODŚWIEŻ</button>
   </div>
-
-  <!-- Coin filter pills -->
   <div style="display:flex;gap:7px;margin-bottom:12px">
     <button onclick="filterAlerts('all',this)" id="af-all" style="background:var(--navy,#1a2744);border:1px solid rgba(0,212,255,.4);color:var(--blue);border-radius:20px;padding:5px 12px;font-family:var(--mono);font-size:10px;cursor:pointer;letter-spacing:1px">ALL</button>
     <button onclick="filterAlerts('BTC',this)" id="af-BTC" style="background:var(--surface);border:1px solid var(--border);color:var(--btc);border-radius:20px;padding:5px 12px;font-family:var(--mono);font-size:10px;cursor:pointer;letter-spacing:1px">BTC</button>
     <button onclick="filterAlerts('ETH',this)" id="af-ETH" style="background:var(--surface);border:1px solid var(--border);color:var(--eth);border-radius:20px;padding:5px 12px;font-family:var(--mono);font-size:10px;cursor:pointer;letter-spacing:1px">ETH</button>
   </div>
-
   <div id="alertList"><div class="empty"><div class="empty-ico">⏳</div>Otwórz zakładkę aby załadować transakcje</div></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     STOCKS TAB — SOXL / BEX / TSLL
+     ══════════════════════════════════════════ -->
+<div id="page-stocks" class="page">
+
+  <div class="stk-warn">
+    ⚠ SOXL (3×), BEX (2×), TSLL (2×) — lewarowane ETF.<br>
+    RSI &gt;65 = poważne ryzyko korekty. Decay niszczy wartość długoterminowo.
+  </div>
+
+  <div class="stk-refresh-row">
+    <span class="stk-ts" id="stk-ts">— nie załadowano —</span>
+    <button class="stk-ref-btn" onclick="stkForceLoad()">↻ ODŚWIEŻ</button>
+  </div>
+
+  <div id="stk-grid">
+    <div class="empty"><div class="empty-ico">⏳</div>Otwórz zakładkę aby załadować dane</div>
+  </div>
+
 </div>
 
 <!-- SETTINGS -->
@@ -692,10 +389,7 @@ main{padding:14px 18px 100px}
   <div class="sec-lbl">WHALE ALERT API</div>
   <div class="setting" style="flex-direction:column;align-items:stretch;gap:9px">
     <div class="s-name">Whale Alert API Key</div>
-    <div class="api-row">
-      <input class="api-in" id="waIn2" type="text" placeholder="Twój klucz...">
-      <button class="api-save" onclick="saveKey2()">ZAPISZ</button>
-    </div>
+    <div class="api-row"><input class="api-in" id="waIn2" type="text" placeholder="Twój klucz..."><button class="api-save" onclick="saveKey2()">ZAPISZ</button></div>
     <div style="font-family:var(--mono);font-size:9px;color:var(--dim)">Darmowy klucz → <a href="https://whale-alert.io" style="color:var(--blue)">whale-alert.io</a></div>
   </div>
   <div class="sec-lbl">ODŚWIEŻANIE</div>
@@ -712,7 +406,8 @@ main{padding:14px 18px 100px}
   <button class="nb" onclick="goNav('chart',this)"><span class="nb-ico">📈</span><span class="nb-lbl">Chart</span></button>
   <button class="nb" onclick="goNav('macro',this)"><span class="nb-ico">🏦</span><span class="nb-lbl">Macro</span></button>
   <button class="nb" onclick="goNav('alerts',this)"><span class="nb-ico">🔔</span><span class="nb-lbl">Alerty</span><span class="nb-badge" id="badge" style="display:none">0</span></button>
-  <button class="nb" onclick="goNav('settings',this)"><span class="nb-ico">⚙️</span><span class="nb-lbl">Ustawienia</span></button>
+  <button class="nb" onclick="goNav('stocks',this)"><span class="nb-ico">💹</span><span class="nb-lbl">Akcje</span></button>
+  <button class="nb" onclick="goNav('settings',this)"><span class="nb-ico">⚙️</span><span class="nb-lbl">Ustaw.</span></button>
 </nav>
 </div>
 
@@ -728,1459 +423,675 @@ var newAlerts = 0;
 var chartLoaded = false;
 var signals = {};
 
-// Real known BTC whale addresses (publicly documented)
 var REAL_WHALES = [
-  {
-    name: 'Binance Cold Wallet 1',
-    addr: '34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo',
-    fullAddr: '34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo',
-    e: '🏦', rank: '#1', type: 'Exchange',
-    btc: 0, lastUpdated: null
-  },
-  {
-    name: 'Bitfinex Cold Wallet',
-    addr: '1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF',
-    fullAddr: '1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF',
-    e: '🏛️', rank: '#2', type: 'Exchange',
-    btc: 0, lastUpdated: null
-  },
-  {
-    name: 'MicroStrategy (est.)',
-    addr: '1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ',
-    fullAddr: '1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ',
-    e: '🏢', rank: '#3', type: 'Corporate',
-    btc: 0, lastUpdated: null
-  },
-  {
-    name: 'Robinhood Cold Wallet',
-    addr: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-    fullAddr: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-    e: '🐦', rank: '#4', type: 'Exchange',
-    btc: 0, lastUpdated: null
-  },
-  {
-    name: 'Kraken Cold Wallet',
-    addr: '3KDgHvwsUQE9oqcJLBpUNmFMtFBsNEPqdG',
-    fullAddr: '3KDgHvwsUQE9oqcJLBpUNmFMtFBsNEPqdG',
-    e: '🦑', rank: '#5', type: 'Exchange',
-    btc: 0, lastUpdated: null
-  }
+  {name:'Binance Cold Wallet 1',addr:'34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo',fullAddr:'34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo',e:'🏦',rank:'#1',type:'Exchange',btc:0,lastUpdated:null},
+  {name:'Bitfinex Cold Wallet',addr:'1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF',fullAddr:'1FeexV6bAHb8ybZjqQMjJrcCrHGW9sb6uF',e:'🏛️',rank:'#2',type:'Exchange',btc:0,lastUpdated:null},
+  {name:'MicroStrategy (est.)',addr:'1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ',fullAddr:'1P5ZEDWTKTFGxQjZphgWPQUpe554WKDfHQ',e:'🏢',rank:'#3',type:'Corporate',btc:0,lastUpdated:null},
+  {name:'Robinhood Cold Wallet',addr:'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',fullAddr:'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',e:'🐦',rank:'#4',type:'Exchange',btc:0,lastUpdated:null},
+  {name:'Kraken Cold Wallet',addr:'3KDgHvwsUQE9oqcJLBpUNmFMtFBsNEPqdG',fullAddr:'3KDgHvwsUQE9oqcJLBpUNmFMtFBsNEPqdG',e:'🦑',rank:'#5',type:'Exchange',btc:0,lastUpdated:null}
 ];
 var whaleDataLoaded = false;
 
 // ── PRICE FETCH ───────────────────────────────────────────────
-function fetchPrices() {
+function fetchPrices(){
   setPill('loading','ŁADOWANIE');
-  // Try OKX first (best CORS support)
-  var okxPairs = [['BTC-USDT','BTC'],['ETH-USDT','ETH'],['SOL-USDT','SOL'],['LINK-USDT','LINK']];
-  var fetches = okxPairs.map(function(p) {
-    return fetch('https://www.okx.com/api/v5/market/ticker?instId='+p[0])
-      .then(function(r){ return r.json(); })
-      .then(function(json){ return {sym:p[1], data:json.data&&json.data[0]}; });
-  });
-  Promise.all(fetches).then(function(results) {
-    var ok = false;
-    results.forEach(function(r) {
-      if (!r.data) return;
-      var price = parseFloat(r.data.last);
-      var open = parseFloat(r.data.open24h) || price;
-      var change = ((price - open) / open * 100);
-      prices[r.sym] = {
-        price: price,
-        change: parseFloat(change.toFixed(2)),
-        high: parseFloat(r.data.high24h),
-        low: parseFloat(r.data.low24h),
-        vol: parseFloat(r.data.volCcy24h) * price
-      };
-      updateCard(r.sym);
-      ok = true;
-    });
-    if (ok) {
-      afterFetch('OKX');
-    } else {
-      tryKraken();
-    }
-  }).catch(function() { tryKraken(); });
+  var okxPairs=[['BTC-USDT','BTC'],['ETH-USDT','ETH'],['SOL-USDT','SOL'],['LINK-USDT','LINK']];
+  var fetches=okxPairs.map(function(p){return fetch('https://www.okx.com/api/v5/market/ticker?instId='+p[0]).then(function(r){return r.json();}).then(function(json){return{sym:p[1],data:json.data&&json.data[0]};});});
+  Promise.all(fetches).then(function(results){
+    var ok=false;
+    results.forEach(function(r){if(!r.data)return;var price=parseFloat(r.data.last);var open=parseFloat(r.data.open24h)||price;var change=((price-open)/open*100);prices[r.sym]={price:price,change:parseFloat(change.toFixed(2)),high:parseFloat(r.data.high24h),low:parseFloat(r.data.low24h),vol:parseFloat(r.data.volCcy24h)*price};updateCard(r.sym);ok=true;});
+    if(ok)afterFetch('OKX');else tryKraken();
+  }).catch(function(){tryKraken();});
 }
-
-function tryKraken() {
-  fetch('https://api.kraken.com/0/public/Ticker?pair=XXBTZUSD,XETHZUSD,SOLUSD,LINKUSD')
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      if (data.error && data.error.length) throw new Error('kraken error');
-      var map = {XXBTZUSD:'BTC',XETHZUSD:'ETH',SOLUSD:'SOL',LINKUSD:'LINK'};
-      var ok = false;
-      Object.keys(data.result).forEach(function(pair) {
-        var sym = map[pair];
-        if (!sym) return;
-        var t = data.result[pair];
-        var price = parseFloat(t.c[0]);
-        var open = parseFloat(t.o) || price;
-        prices[sym] = {
-          price: price,
-          change: parseFloat(((price-open)/open*100).toFixed(2)),
-          high: parseFloat(t.h[1]),
-          low: parseFloat(t.l[1]),
-          vol: parseFloat(t.v[1]) * price
-        };
-        updateCard(sym);
-        ok = true;
-      });
-      if (ok) afterFetch('Kraken');
-      else throw new Error('no data');
-    }).catch(function() {
-      tryCC();
-    });
+function tryKraken(){
+  fetch('https://api.kraken.com/0/public/Ticker?pair=XXBTZUSD,XETHZUSD,SOLUSD,LINKUSD').then(function(r){return r.json();}).then(function(data){
+    if(data.error&&data.error.length)throw new Error('kraken error');
+    var map={XXBTZUSD:'BTC',XETHZUSD:'ETH',SOLUSD:'SOL',LINKUSD:'LINK'};var ok=false;
+    Object.keys(data.result).forEach(function(pair){var sym=map[pair];if(!sym)return;var t=data.result[pair];var price=parseFloat(t.c[0]);var open=parseFloat(t.o)||price;prices[sym]={price:price,change:parseFloat(((price-open)/open*100).toFixed(2)),high:parseFloat(t.h[1]),low:parseFloat(t.l[1]),vol:parseFloat(t.v[1])*price};updateCard(sym);ok=true;});
+    if(ok)afterFetch('Kraken');else throw new Error('no data');
+  }).catch(function(){tryCC();});
 }
-
-function tryCC() {
-  fetch('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC,ETH,SOL,LINK&tsyms=USD')
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      if (!data.RAW) throw new Error('no RAW');
-      COINS.forEach(function(sym) {
-        var d = data.RAW[sym] && data.RAW[sym].USD;
-        if (!d) return;
-        prices[sym] = {price:d.PRICE, change:d.CHANGEPCT24HOUR, high:d.HIGH24HOUR, low:d.LOW24HOUR, vol:d.VOLUME24HOURTO};
-        updateCard(sym);
-      });
-      afterFetch('Cryptocompare');
-    }).catch(function() {
-      setPill('err','BŁĄD API');
-      document.getElementById('lastUp').textContent = 'Błąd — sprawdź połączenie';
-    });
+function tryCC(){
+  fetch('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC,ETH,SOL,LINK&tsyms=USD').then(function(r){return r.json();}).then(function(data){
+    if(!data.RAW)throw new Error('no RAW');
+    COINS.forEach(function(sym){var d=data.RAW[sym]&&data.RAW[sym].USD;if(!d)return;prices[sym]={price:d.PRICE,change:d.CHANGEPCT24HOUR,high:d.HIGH24HOUR,low:d.LOW24HOUR,vol:d.VOLUME24HOURTO};updateCard(sym);});
+    afterFetch('Cryptocompare');
+  }).catch(function(){setPill('err','BŁĄD API');document.getElementById('lastUp').textContent='Błąd — sprawdź połączenie';});
 }
-
-function updateCard(sym) {
-  var d = prices[sym];
-  if (!d) return;
-  var pEl = document.getElementById('p-'+sym);
-  var cEl = document.getElementById('c-'+sym);
-  var hEl = document.getElementById('hl-'+sym);
-  var up = d.change >= 0;
-  pEl.textContent = d.price >= 1000 ? '$'+Math.round(d.price).toLocaleString('en') : '$'+d.price.toFixed(2);
-  pEl.classList.add('flash');
-  setTimeout(function(){ pEl.classList.remove('flash'); }, 600);
-  cEl.textContent = (up?'+':'')+d.change.toFixed(2)+'%';
-  cEl.className = 'pc-chg '+(up?'up':'dn');
-  if (d.high && d.low) {
-    hEl.innerHTML = '<span class="h">H:$'+fmtN(d.high)+'</span>&nbsp;<span class="l">L:$'+fmtN(d.low)+'</span>';
-  }
+function updateCard(sym){
+  var d=prices[sym];if(!d)return;
+  var pEl=document.getElementById('p-'+sym),cEl=document.getElementById('c-'+sym),hEl=document.getElementById('hl-'+sym);
+  var up=d.change>=0;
+  pEl.textContent=d.price>=1000?'$'+Math.round(d.price).toLocaleString('en'):'$'+d.price.toFixed(2);
+  pEl.classList.add('flash');setTimeout(function(){pEl.classList.remove('flash');},600);
+  cEl.textContent=(up?'+':'')+d.change.toFixed(2)+'%';cEl.className='pc-chg '+(up?'up':'dn');
+  if(d.high&&d.low)hEl.innerHTML='<span class="h">H:$'+fmtN(d.high)+'</span>&nbsp;<span class="l">L:$'+fmtN(d.low)+'</span>';
 }
-
-function afterFetch(src) {
-  updateSummary();
-  updateWhales();
-  updateVol();
+function afterFetch(src){
+  updateSummary();updateWhales();updateVol();
   setPill('ok','LIVE · '+src);
-  document.getElementById('lastUp').textContent = 'Aktualizacja: '+new Date().toLocaleTimeString('pl-PL')+' · '+src;
+  document.getElementById('lastUp').textContent='Aktualizacja: '+new Date().toLocaleTimeString('pl-PL')+' · '+src;
+  calcATHStats(prices['BTC']?prices['BTC'].price:0);
 }
-
-function updateSummary() {
-  var entries = COINS.filter(function(s){ return prices[s]; }).map(function(s){ return {sym:s, d:prices[s]}; });
-  if (!entries.length) return;
-  entries.sort(function(a,b){ return b.d.change - a.d.change; });
-  var top = entries[0], bot = entries[entries.length-1];
-  document.getElementById('topG').textContent = top.sym+' '+(top.d.change>=0?'+':'')+top.d.change.toFixed(2)+'%';
-  document.getElementById('topG').style.color = top.d.change>=0?'var(--green)':'var(--red)';
-  document.getElementById('topGsub').textContent = '$'+fmtN(top.d.price);
-  document.getElementById('botG').textContent = bot.sym+' '+(bot.d.change>=0?'+':'')+bot.d.change.toFixed(2)+'%';
-  document.getElementById('botGsub').textContent = '$'+fmtN(bot.d.price);
+function updateSummary(){
+  var entries=COINS.filter(function(s){return prices[s];}).map(function(s){return{sym:s,d:prices[s]};});
+  if(!entries.length)return;
+  entries.sort(function(a,b){return b.d.change-a.d.change;});
+  var top=entries[0],bot=entries[entries.length-1];
+  document.getElementById('topG').textContent=top.sym+' '+(top.d.change>=0?'+':'')+top.d.change.toFixed(2)+'%';
+  document.getElementById('topG').style.color=top.d.change>=0?'var(--green)':'var(--red)';
+  document.getElementById('topGsub').textContent='$'+fmtN(top.d.price);
+  document.getElementById('botG').textContent=bot.sym+' '+(bot.d.change>=0?'+':'')+bot.d.change.toFixed(2)+'%';
+  document.getElementById('botGsub').textContent='$'+fmtN(bot.d.price);
 }
-
-function updateWhales() {
-  // Show real whale cards (with live BTC price if available)
-  renderWhaleCards();
-}
-
-function renderWhaleCards() {
-  var btcPrice = prices['BTC'] ? prices['BTC'].price : 0;
-  var html = '<div style="background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.2);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-family:var(--mono);font-size:10px;color:var(--amber);line-height:1.6">'+
-    '⚡ Dane pobierane z blockchain.info · Publiczne adresy BTC · Odśwież aby zaktualizować salda</div>';
-
-  html += REAL_WHALES.map(function(w, i) {
-    var btcAmt = w.btc || 0;
-    var totalUSD = btcPrice > 0 && btcAmt > 0 ? btcPrice * btcAmt : 0;
-    var addrShort = w.fullAddr.slice(0,8)+'...'+w.fullAddr.slice(-6);
-    var statusColor = w.lastUpdated ? 'var(--green)' : 'var(--dim)';
-    var statusText = w.lastUpdated ? '✓ Live' : 'Ładowanie...';
-    var typeColors = {Exchange:'var(--blue)',Corporate:'var(--amber)',Government:'var(--green)'};
-    var typeColor = typeColors[w.type] || 'var(--dim)';
-
-    return '<div class="whale-card" style="animation-delay:'+i*.07+'s">'+
-      '<div class="wh-hdr">'+
-        '<div class="wh-av"><div class="wh-av-in">'+w.e+'</div></div>'+
-        '<div class="wh-info">'+
-          '<div class="wh-name">'+w.name+'</div>'+
-          '<div class="wh-addr" style="cursor:pointer" data-addr="'+w.fullAddr+'" onclick="copyAddr(this.dataset.addr)" title="Kliknij aby skopiować">'+addrShort+' 📋</div>'+
-        '</div>'+
-        '<div style="text-align:right">'+
-          '<div class="wh-rank">'+w.rank+'</div>'+
-          '<div style="font-family:var(--mono);font-size:8px;color:'+typeColor+';margin-top:3px">'+w.type+'</div>'+
-        '</div>'+
-      '</div>'+
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border)">'+
-        '<div class="h-item">'+
-          '<div class="h-coin" style="color:var(--btc)">BTC</div>'+
-          '<div class="h-amt" id="whale-btc-'+i+'">'+( btcAmt > 0 ? fmtCoin(btcAmt) : '...' )+'</div>'+
-          '<div class="h-usd">'+( totalUSD > 0 ? fmtUSD(totalUSD) : '—' )+'</div>'+
-        '</div>'+
-        '<div class="h-item">'+
-          '<div class="h-coin" style="color:var(--dim)">STATUS</div>'+
-          '<div style="font-family:var(--mono);font-size:10px;color:'+statusColor+';margin-top:3px">'+statusText+'</div>'+
-          '<div class="h-usd">'+(w.lastUpdated ? new Date(w.lastUpdated).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}) : '—')+'</div>'+
-        '</div>'+
-        '<div class="h-item" style="border-right:none">'+
-          '<div class="h-coin" style="color:var(--dim)">BLOCKCHAIN</div>'+
-          '<a href="https://www.blockchain.com/explorer/addresses/btc/'+w.fullAddr+'" target="_blank" style="font-family:var(--mono);font-size:9px;color:var(--blue);margin-top:3px;display:block;text-decoration:none">Explorer ↗</a>'+
-          '<div class="h-usd">bitcoin</div>'+
-        '</div>'+
-      '</div>'+
-      '<div class="wh-total">'+
-        '<span class="t-lbl">ŁĄCZNIE BTC</span>'+
-        '<span class="t-val" id="whale-total-'+i+'">'+(totalUSD>0?fmtUSD(totalUSD):'Pobieranie...')+'</span>'+
-        '<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(0,212,255,.1);color:var(--blue);border:1px solid rgba(0,212,255,.2)">LIVE</span>'+
-      '</div>'+
-    '</div>';
+function updateWhales(){renderWhaleCards();}
+function renderWhaleCards(){
+  var btcPrice=prices['BTC']?prices['BTC'].price:0;
+  var html='<div style="background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.2);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-family:var(--mono);font-size:10px;color:var(--amber);line-height:1.6">⚡ Dane pobierane z blockchain.info · Publiczne adresy BTC · Odśwież aby zaktualizować salda</div>';
+  html+=REAL_WHALES.map(function(w,i){
+    var btcAmt=w.btc||0,totalUSD=btcPrice>0&&btcAmt>0?btcPrice*btcAmt:0;
+    var addrShort=w.fullAddr.slice(0,8)+'...'+w.fullAddr.slice(-6);
+    var statusColor=w.lastUpdated?'var(--green)':'var(--dim)';
+    var statusText=w.lastUpdated?'✓ Live':'Ładowanie...';
+    var typeColors={Exchange:'var(--blue)',Corporate:'var(--amber)',Government:'var(--green)'};
+    var typeColor=typeColors[w.type]||'var(--dim)';
+    return '<div class="whale-card" style="animation-delay:'+i*.07+'s"><div class="wh-hdr"><div class="wh-av"><div class="wh-av-in">'+w.e+'</div></div><div class="wh-info"><div class="wh-name">'+w.name+'</div><div class="wh-addr" style="cursor:pointer" data-addr="'+w.fullAddr+'" onclick="copyAddr(this.dataset.addr)" title="Kliknij aby skopiować">'+addrShort+' 📋</div></div><div style="text-align:right"><div class="wh-rank">'+w.rank+'</div><div style="font-family:var(--mono);font-size:8px;color:'+typeColor+';margin-top:3px">'+w.type+'</div></div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border)"><div class="h-item"><div class="h-coin" style="color:var(--btc)">BTC</div><div class="h-amt" id="whale-btc-'+i+'">'+(btcAmt>0?fmtCoin(btcAmt):'...')+'</div><div class="h-usd">'+(totalUSD>0?fmtUSD(totalUSD):'—')+'</div></div><div class="h-item"><div class="h-coin" style="color:var(--dim)">STATUS</div><div style="font-family:var(--mono);font-size:10px;color:'+statusColor+';margin-top:3px">'+statusText+'</div><div class="h-usd">'+(w.lastUpdated?new Date(w.lastUpdated).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}):'—')+'</div></div><div class="h-item" style="border-right:none"><div class="h-coin" style="color:var(--dim)">BLOCKCHAIN</div><a href="https://www.blockchain.com/explorer/addresses/btc/'+w.fullAddr+'" target="_blank" style="font-family:var(--mono);font-size:9px;color:var(--blue);margin-top:3px;display:block;text-decoration:none">Explorer ↗</a><div class="h-usd">bitcoin</div></div></div><div class="wh-total"><span class="t-lbl">ŁĄCZNIE BTC</span><span class="t-val" id="whale-total-'+i+'">'+(totalUSD>0?fmtUSD(totalUSD):'Pobieranie...')+'</span><span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(0,212,255,.1);color:var(--blue);border:1px solid rgba(0,212,255,.2)">LIVE</span></div></div>';
   }).join('');
-
-  document.getElementById('whaleList').innerHTML = html;
+  document.getElementById('whaleList').innerHTML=html;
 }
-
-function copyAddr(addr) {
-  navigator.clipboard.writeText(addr).then(function(){
-    // show brief toast
-    var el = document.createElement('div');
-    el.style.cssText='position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.35);color:var(--green);font-family:var(--mono);font-size:11px;padding:7px 16px;border-radius:18px;z-index:999;white-space:nowrap';
-    el.textContent='✓ Adres skopiowany!';
-    document.body.appendChild(el);
-    setTimeout(function(){el.remove();},2000);
-  }).catch(function(){});
+function copyAddr(addr){
+  navigator.clipboard.writeText(addr).then(function(){var el=document.createElement('div');el.style.cssText='position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.35);color:var(--green);font-family:var(--mono);font-size:11px;padding:7px 16px;border-radius:18px;z-index:999;white-space:nowrap';el.textContent='✓ Adres skopiowany!';document.body.appendChild(el);setTimeout(function(){el.remove();},2000);}).catch(function(){});
 }
-
-function fetchWhaleBalances() {
-  if (whaleDataLoaded) return;
-  REAL_WHALES.forEach(function(whale, idx) {
-    // blockchain.info API — free, no key, CORS enabled
-    fetch('https://blockchain.info/balance?active='+whale.fullAddr+'&cors=true')
-      .then(function(r){ return r.json(); })
-      .then(function(data) {
-        var info = data[whale.fullAddr] || data[Object.keys(data)[0]];
-        if (!info) return;
-        var btcAmt = info.final_balance / 1e8; // satoshis to BTC
-        whale.btc = btcAmt;
-        whale.lastUpdated = Date.now();
-        // Update specific card elements
-        var btcEl = document.getElementById('whale-btc-'+idx);
-        var totEl = document.getElementById('whale-total-'+idx);
-        var btcPrice = prices['BTC'] ? prices['BTC'].price : 0;
-        if (btcEl) btcEl.textContent = fmtCoin(btcAmt);
-        if (totEl && btcPrice > 0) totEl.textContent = fmtUSD(btcAmt * btcPrice);
-        // Re-render to update status
-        renderWhaleCards();
-      }).catch(function(e){
-        console.warn('Whale balance fetch failed for '+whale.name+':', e.message);
-      });
+function fetchWhaleBalances(){
+  if(whaleDataLoaded)return;
+  REAL_WHALES.forEach(function(whale,idx){
+    fetch('https://blockchain.info/balance?active='+whale.fullAddr+'&cors=true').then(function(r){return r.json();}).then(function(data){
+      var info=data[whale.fullAddr]||data[Object.keys(data)[0]];if(!info)return;
+      whale.btc=info.final_balance/1e8;whale.lastUpdated=Date.now();
+      var btcEl=document.getElementById('whale-btc-'+idx),totEl=document.getElementById('whale-total-'+idx);
+      var btcPrice=prices['BTC']?prices['BTC'].price:0;
+      if(btcEl)btcEl.textContent=fmtCoin(whale.btc);
+      if(totEl&&btcPrice>0)totEl.textContent=fmtUSD(whale.btc*btcPrice);
+      renderWhaleCards();
+    }).catch(function(e){console.warn('Whale balance fetch failed for '+whale.name+':',e.message);});
   });
-  whaleDataLoaded = true;
+  whaleDataLoaded=true;
 }
-
-function updateVol() {
-  var html = COINS.map(function(sym) {
-    var d = prices[sym];
-    if (!d) return '';
-    var up = d.change >= 0;
-    var col = COLORS[sym];
-    var bar = Math.min(Math.abs(d.change)*6, 100);
-    return '<div class="vol-card" style="border-left-color:'+col+'">'+
-      '<div class="vol-top"><div class="vol-sym" style="color:'+col+'">'+sym+'/USD</div>'+
-      '<div class="vol-chg" style="color:'+(up?'var(--green)':'var(--red)')+'">'+
-      (up?'+':'')+d.change.toFixed(2)+'%</div></div>'+
-      '<div class="vol-bar-bg"><div class="vol-bar" style="width:'+bar+'%;background:'+(up?'var(--green)':'var(--red)')+'"></div></div>'+
-      '<div class="vol-grid">'+
-      '<div><div class="vl">24H HIGH</div><div class="vv" style="color:var(--green)">$'+fmtN(d.high)+'</div></div>'+
-      '<div><div class="vl">24H LOW</div><div class="vv" style="color:var(--red)">$'+fmtN(d.low)+'</div></div>'+
-      '<div><div class="vl">VOL 24H</div><div class="vv">'+fmtUSD(d.vol)+'</div></div>'+
-      '</div></div>';
-  }).join('');
-  document.getElementById('volDetails').innerHTML = html;
+function updateVol(){
+  var html=COINS.map(function(sym){var d=prices[sym];if(!d)return'';var up=d.change>=0;var col=COLORS[sym];var bar=Math.min(Math.abs(d.change)*6,100);return'<div class="vol-card" style="border-left-color:'+col+'"><div class="vol-top"><div class="vol-sym" style="color:'+col+'">'+sym+'/USD</div><div class="vol-chg" style="color:'+(up?'var(--green)':'var(--red)')+'">'+((up?'+':'')+d.change.toFixed(2)+'%')+'</div></div><div class="vol-bar-bg"><div class="vol-bar" style="width:'+bar+'%;background:'+(up?'var(--green)':'var(--red)')+'"></div></div><div class="vol-grid"><div><div class="vl">24H HIGH</div><div class="vv" style="color:var(--green)">$'+fmtN(d.high)+'</div></div><div><div class="vl">24H LOW</div><div class="vv" style="color:var(--red)">$'+fmtN(d.low)+'</div></div><div><div class="vl">VOL 24H</div><div class="vv">'+fmtUSD(d.vol)+'</div></div></div></div>';}).join('');
+  document.getElementById('volDetails').innerHTML=html;
 }
 
 // ── CHART DATA ────────────────────────────────────────────────
-function loadChartData() {
-  if (chartLoaded) return;
-  chartLoaded = true;
-  fetchHistorical();
-  fetchFearGreed();
-  drawHalvingChart();
+function loadChartData(){if(chartLoaded)return;chartLoaded=true;fetchHistorical();fetchFearGreed();drawHalvingChart();}
+function fetchHistorical(){
+  fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365').then(function(r){return r.json();}).then(function(data){
+    if(!data.Data||!data.Data.Data)throw new Error('no data');
+    var days=data.Data.Data.filter(function(d){return d.close>0;});
+    calcAndDrawMVRV(days);calcAndDrawNUPL(days);calcAndDrawRSI(days);calcAndDrawVDD(days);calcAndDrawLTH(days);
+  }).catch(function(e){console.warn('Historical data error:',e);['mvrv','nupl','rsi','vdd','lth'].forEach(function(id){var ld=document.getElementById('ld-'+id);if(ld)ld.innerHTML='<span style="color:var(--red)">BŁĄD POBIERANIA</span>';});});
 }
-
-function fetchHistorical() {
-  fetch('https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=365')
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      if (!data.Data || !data.Data.Data) throw new Error('no data');
-      var days = data.Data.Data.filter(function(d){ return d.close > 0; });
-      calcAndDrawMVRV(days);
-      calcAndDrawNUPL(days);
-      calcAndDrawRSI(days);
-      calcAndDrawVDD(days);
-      calcAndDrawLTH(days);
-    }).catch(function(e) {
-      console.warn('Historical data error:', e);
-      ['mvrv','nupl','rsi','vdd','lth'].forEach(function(id) {
-        var ld = document.getElementById('ld-'+id);
-        if (ld) ld.innerHTML = '<span style="color:var(--red)">BŁĄD POBIERANIA</span>';
-      });
-    });
+function calcAndDrawMVRV(days){
+  var pa=days.map(function(d){return d.close;});
+  var mvrv=pa.map(function(price,i){var win=pa.slice(Math.max(0,i-180),i+1);var avg=win.reduce(function(a,b){return a+b;},0)/win.length;var std=Math.sqrt(win.reduce(function(a,b){return a+Math.pow(b-avg,2);},0)/win.length)||1;return parseFloat(((price-avg)/std).toFixed(2));});
+  var labels=days.map(function(d){var dt=new Date(d.time*1000);return(dt.getMonth()+1)+'/'+(dt.getFullYear()+'').slice(2);});
+  var cur=mvrv[mvrv.length-1];var sig=cur>7?'SPRZEDAJ':cur<0?'KUP':'TRZYMAJ';var col=cur>7?'var(--red)':cur<0?'var(--green)':'var(--amber)';
+  setChip('mvrv',cur.toFixed(2),sig,col);document.getElementById('upd-mvrv').textContent=new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+  drawLineChart('cvMVRV',labels,mvrv,{min:-2,max:9,color:'#00d4ff',zones:[{from:7,to:9,fill:'rgba(255,51,85,.15)'},{from:-2,to:0,fill:'rgba(0,255,136,.12)'}],gridLines:[{v:7,col:'rgba(255,51,85,.5)'},{v:0,col:'rgba(0,255,136,.4)'}]});
+  document.getElementById('ld-mvrv').style.display='none';updateSignalPanel();
 }
-
-// ── MVRV ─────────────────────────────────────────────────────
-function calcAndDrawMVRV(days) {
-  var prices_arr = days.map(function(d){ return d.close; });
-  var mvrv = prices_arr.map(function(price, i) {
-    var win = prices_arr.slice(Math.max(0, i-180), i+1);
-    var avg = win.reduce(function(a,b){ return a+b; }, 0) / win.length;
-    var std = Math.sqrt(win.reduce(function(a,b){ return a+Math.pow(b-avg,2); }, 0) / win.length) || 1;
-    return parseFloat(((price-avg)/std).toFixed(2));
-  });
-  var labels = days.map(function(d) {
-    var dt = new Date(d.time*1000);
-    return (dt.getMonth()+1)+'/'+(dt.getFullYear()+'').slice(2);
-  });
-  var cur = mvrv[mvrv.length-1];
-  var sig = cur > 7 ? 'SPRZEDAJ' : cur < 0 ? 'KUP' : 'TRZYMAJ';
-  var col = cur > 7 ? 'var(--red)' : cur < 0 ? 'var(--green)' : 'var(--amber)';
-  setChip('mvrv', cur.toFixed(2), sig, col);
-  document.getElementById('upd-mvrv').textContent = new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
-  drawLineChart('cvMVRV', labels, mvrv, {
-    min:-2, max:9, color:'#00d4ff',
-    zones:[{from:7,to:9,fill:'rgba(255,51,85,.15)'},{from:-2,to:0,fill:'rgba(0,255,136,.12)'}],
-    gridLines:[{v:7,col:'rgba(255,51,85,.5)'},{v:0,col:'rgba(0,255,136,.4)'}]
-  });
-  document.getElementById('ld-mvrv').style.display = 'none';
+function calcAndDrawNUPL(days){
+  var pa=days.map(function(d){return d.close;});
+  var nupl=pa.map(function(price,i){var win=pa.slice(Math.max(0,i-199),i+1);var ma=win.reduce(function(a,b){return a+b;},0)/win.length;var raw=(price-ma)/(ma*0.8);return parseFloat(Math.max(-0.5,Math.min(0.95,raw)).toFixed(3));});
+  var labels=days.map(function(d){var dt=new Date(d.time*1000);return(dt.getMonth()+1)+'/'+(dt.getFullYear()+'').slice(2);});
+  var cur=nupl[nupl.length-1];var sig=cur>=0.75?'SPRZEDAJ':cur<0.25?'KUP':'TRZYMAJ';var col=cur>=0.75?'var(--red)':cur<0.25?'var(--green)':'var(--amber)';
+  setChip('nupl',cur.toFixed(3),sig,col);document.getElementById('upd-nupl').textContent=new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+  drawLineChart('cvNUPL',labels,nupl,{min:-0.5,max:1.0,color:'#ffaa00',zones:[{from:0.75,to:1,fill:'rgba(255,51,85,.15)'},{from:-0.5,to:0,fill:'rgba(0,255,136,.12)'}],gridLines:[{v:0.75,col:'rgba(255,51,85,.5)'},{v:0.5,col:'rgba(255,170,0,.4)'},{v:0,col:'rgba(0,255,136,.4)'}]});
+  document.getElementById('ld-nupl').style.display='none';updateSignalPanel();
+}
+function calcAndDrawRSI(days){
+  var closes=days.map(function(d){return d.close;});var period=14;var rsi=[];
+  for(var i=period;i<closes.length;i++){var gains=0,losses=0;for(var j=i-period+1;j<=i;j++){var diff=closes[j]-closes[j-1];if(diff>0)gains+=diff;else losses-=diff;}var avgG=gains/period,avgL=losses/period;var rs=avgL===0?100:avgG/avgL;rsi.push(parseFloat((100-100/(1+rs)).toFixed(1)));}
+  var labels=days.slice(period).map(function(d){var dt=new Date(d.time*1000);return(dt.getMonth()+1)+'/'+(dt.getFullYear()+'').slice(2);});
+  var cur=rsi[rsi.length-1];var sig=cur>70?'SPRZEDAJ':cur<30?'KUP':'TRZYMAJ';var col=cur>70?'var(--red)':cur<30?'var(--green)':'var(--amber)';
+  setChip('rsi',cur.toFixed(1),sig,col);document.getElementById('upd-rsi').textContent=new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+  drawLineChart('cvRSI',labels,rsi,{min:0,max:100,color:'#ffaa00',zones:[{from:70,to:100,fill:'rgba(255,51,85,.15)'},{from:0,to:30,fill:'rgba(0,255,136,.12)'}],gridLines:[{v:70,col:'rgba(255,51,85,.5)'},{v:50,col:'rgba(255,255,255,.1)'},{v:30,col:'rgba(0,255,136,.4)'}]});
+  document.getElementById('ld-rsi').style.display='none';updateSignalPanel();
+}
+function calcAndDrawVDD(days){
+  var vols=days.map(function(d){return d.volumeto;});
+  var vdd=vols.map(function(v,i){var win=vols.slice(Math.max(0,i-364),i+1);var avg=win.reduce(function(a,b){return a+b;},0)/win.length;return avg>0?parseFloat((v/avg).toFixed(3)):1;});
+  var labels=days.map(function(d){var dt=new Date(d.time*1000);return(dt.getMonth()+1)+'/'+(dt.getFullYear()+'').slice(2);});
+  var cur=vdd[vdd.length-1];var sig=cur>1.5?'SPRZEDAJ':cur<0.5?'KUP':'TRZYMAJ';var col=cur>1.5?'var(--red)':cur<0.5?'var(--green)':'var(--amber)';
+  setChip('vdd',cur.toFixed(2)+'x',sig,col);document.getElementById('upd-vdd').textContent=new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+  drawBarChart('cvVDD',labels,vdd);document.getElementById('ld-vdd').style.display='none';updateSignalPanel();
+}
+function calcAndDrawLTH(days){
+  var closes=days.map(function(d){return d.close;});
+  var lth=closes.map(function(price,i){var win=closes.slice(Math.max(0,i-199),i+1);var ws=0,wt=0;win.forEach(function(p,wi){ws+=p*(wi+1);wt+=(wi+1);});return Math.round(ws/wt);});
+  var labels=days.map(function(d){var dt=new Date(d.time*1000);return(dt.getMonth()+1)+'/'+(dt.getFullYear()+'').slice(2);});
+  var curPrice=closes[closes.length-1],curLTH=lth[lth.length-1],ratio=curPrice/curLTH;
+  var sig=ratio<1.5?'KUP':ratio>3?'SPRZEDAJ':'TRZYMAJ';var col=ratio<1.5?'var(--green)':ratio>3?'var(--red)':'var(--amber)';
+  var lthFmt=curLTH>=1000?'$'+Math.round(curLTH/1000)+'K':'$'+curLTH;
+  setChip('lth',lthFmt+' · '+ratio.toFixed(1)+'x',sig,col);document.getElementById('upd-lth').textContent=new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+  drawDualLineChart('cvLTH',labels,closes,lth);document.getElementById('ld-lth').style.display='none';updateSignalPanel();
+}
+function fetchFearGreed(){
+  fetch('https://api.alternative.me/fng/?limit=1').then(function(r){return r.json();}).then(function(data){
+    var d=data.data[0];var val=parseInt(d.value);var sig=val<30?'KUP':val>60?'SPRZEDAJ':'TRZYMAJ';var col=val<30?'var(--green)':val>60?'var(--red)':'var(--amber)';
+    setChip('fg',val+' · '+d.value_classification,sig,col);document.getElementById('fgNeedle').style.left=val+'%';updateSignalPanel();
+  }).catch(function(){setChip('fg','—','—','var(--dim)');});
+}
+function drawHalvingChart(){
+  var lastHalving=new Date('2024-04-20').getTime();var nextHalving=new Date('2028-03-01').getTime();var now=Date.now();
+  var daysNow=Math.floor((now-lastHalving)/86400000);var totalDays=Math.floor((nextHalving-lastHalving)/86400000);var pct=Math.min(100,Math.round(daysNow/totalDays*100));
+  var sig=daysNow<400?'KUP':daysNow<600?'TRZYMAJ':'SPRZEDAJ';var phase=daysNow<180?'Akumulacja':daysNow<400?'Wczesny byk':daysNow<600?'Środek byka':daysNow<900?'Późny byk':'Niedźwiedź';var col=sig==='KUP'?'var(--green)':sig==='SPRZEDAJ'?'var(--red)':'var(--amber)';
+  setChip('halving',daysNow+'d · '+phase,sig,col);document.getElementById('upd-halving').textContent=pct+'% cyklu · '+daysNow+' dni';
+  var canvas=document.getElementById('cvHalving');if(!canvas)return;
+  var dpr=window.devicePixelRatio||1;var W=canvas.parentElement.clientWidth-28;var H=80;
+  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';
+  var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  var zones=[{from:0,to:180,col:'rgba(0,255,136,.2)'},{from:180,to:400,col:'rgba(0,212,255,.2)'},{from:400,to:600,col:'rgba(255,170,0,.2)'},{from:600,to:900,col:'rgba(255,51,85,.25)'},{from:900,to:totalDays,col:'rgba(153,69,255,.2)'}];
+  zones.forEach(function(z){var x1=z.from/totalDays*W,x2=Math.min(z.to/totalDays*W,W);ctx.fillStyle=z.col;ctx.fillRect(x1,0,x2-x1,H-20);});
+  ctx.fillStyle='#0d2035';ctx.fillRect(0,H-16,W,8);
+  var grad=ctx.createLinearGradient(0,0,W,0);grad.addColorStop(0,'#00ff88');grad.addColorStop(0.3,'#00d4ff');grad.addColorStop(0.5,'#ffaa00');grad.addColorStop(0.7,'#ff3355');grad.addColorStop(1,'#9945ff');
+  ctx.fillStyle=grad;ctx.fillRect(0,H-16,daysNow/totalDays*W,8);
+  var nowX=Math.min(daysNow/totalDays*W,W-2);ctx.fillStyle='#ffffff';ctx.fillRect(nowX-1,0,2,H-18);
+  ctx.fillStyle='#ffffff';ctx.font='bold 9px Share Tech Mono,monospace';ctx.textAlign=nowX>W*0.7?'right':'left';ctx.fillText('▶ '+daysNow+'d',nowX+(nowX>W*0.7?-4:4),14);
+  ctx.fillStyle='#00d4ff';ctx.font='8px Share Tech Mono,monospace';ctx.fillText(phase,nowX+(nowX>W*0.7?-4:4),26);
+  var phaseLabels=[{d:0,lbl:'0'},{d:180,lbl:'180d'},{d:400,lbl:'400d'},{d:600,lbl:'600d'},{d:900,lbl:'900d'}];
+  ctx.fillStyle='#4a6a8a';ctx.font='8px Share Tech Mono,monospace';ctx.textAlign='center';
+  phaseLabels.forEach(function(p){ctx.fillText(p.lbl,p.d/totalDays*W,H-4);});
   updateSignalPanel();
 }
-
-// ── NUPL ─────────────────────────────────────────────────────
-function calcAndDrawNUPL(days) {
-  var prices_arr = days.map(function(d){ return d.close; });
-  var nupl = prices_arr.map(function(price, i) {
-    var win = prices_arr.slice(Math.max(0, i-199), i+1);
-    var ma = win.reduce(function(a,b){ return a+b; }, 0) / win.length;
-    var raw = (price - ma) / (ma * 0.8);
-    return parseFloat(Math.max(-0.5, Math.min(0.95, raw)).toFixed(3));
-  });
-  var labels = days.map(function(d) {
-    var dt = new Date(d.time*1000);
-    return (dt.getMonth()+1)+'/'+(dt.getFullYear()+'').slice(2);
-  });
-  var cur = nupl[nupl.length-1];
-  var sig = cur >= 0.75 ? 'SPRZEDAJ' : cur < 0.25 ? 'KUP' : 'TRZYMAJ';
-  var col = cur >= 0.75 ? 'var(--red)' : cur < 0.25 ? 'var(--green)' : 'var(--amber)';
-  setChip('nupl', cur.toFixed(3), sig, col);
-  document.getElementById('upd-nupl').textContent = new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
-  drawLineChart('cvNUPL', labels, nupl, {
-    min:-0.5, max:1.0, color:'#ffaa00',
-    zones:[{from:0.75,to:1,fill:'rgba(255,51,85,.15)'},{from:-0.5,to:0,fill:'rgba(0,255,136,.12)'}],
-    gridLines:[{v:0.75,col:'rgba(255,51,85,.5)'},{v:0.5,col:'rgba(255,170,0,.4)'},{v:0,col:'rgba(0,255,136,.4)'}]
-  });
-  document.getElementById('ld-nupl').style.display = 'none';
-  updateSignalPanel();
+function drawLineChart(canvasId,labels,data,opts){
+  var canvas=document.getElementById(canvasId);if(!canvas)return;
+  var dpr=window.devicePixelRatio||1;var W=canvas.parentElement.clientWidth-28;var H=160;
+  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';
+  var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  var pad={top:8,right:10,bottom:26,left:36};var cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
+  var min=opts.min,max=opts.max,range=max-min;
+  var toX=function(i){return pad.left+(i/(data.length-1))*cW;};var toY=function(v){return pad.top+cH-((v-min)/range)*cH;};
+  if(opts.zones)opts.zones.forEach(function(z){var y1=toY(Math.min(z.to,max)),y2=toY(Math.max(z.from,min));ctx.fillStyle=z.fill;ctx.fillRect(pad.left,y1,cW,y2-y1);});
+  if(opts.gridLines)opts.gridLines.forEach(function(gl){if(gl.v<min||gl.v>max)return;ctx.beginPath();ctx.strokeStyle=gl.col;ctx.lineWidth=1;ctx.setLineDash([3,4]);ctx.moveTo(pad.left,toY(gl.v));ctx.lineTo(pad.left+cW,toY(gl.v));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=gl.col;ctx.font='9px Share Tech Mono,monospace';ctx.textAlign='right';ctx.fillText(gl.v,pad.left-4,toY(gl.v)+3);});
+  var step=Math.floor(data.length/5);ctx.fillStyle='#4a6a8a';ctx.font='8px Share Tech Mono,monospace';ctx.textAlign='center';
+  for(var i=0;i<labels.length;i+=step)ctx.fillText(labels[i],toX(i),H-4);
+  var grd=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);grd.addColorStop(0,opts.color+'55');grd.addColorStop(1,opts.color+'05');
+  ctx.beginPath();data.forEach(function(v,i){i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v));});
+  ctx.lineTo(toX(data.length-1),toY(min));ctx.lineTo(toX(0),toY(min));ctx.closePath();ctx.fillStyle=grd;ctx.fill();
+  ctx.beginPath();ctx.strokeStyle=opts.color;ctx.lineWidth=2;ctx.lineJoin='round';data.forEach(function(v,i){i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v));});ctx.stroke();
+  var lx=toX(data.length-1),ly=toY(data[data.length-1]);ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fillStyle=opts.color;ctx.fill();ctx.strokeStyle='#020408';ctx.lineWidth=2;ctx.stroke();
+}
+function drawBarChart(canvasId,labels,data){
+  var canvas=document.getElementById(canvasId);if(!canvas)return;
+  var dpr=window.devicePixelRatio||1;var W=canvas.parentElement.clientWidth-28;var H=140;
+  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';
+  var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  var pad={top:8,right:10,bottom:26,left:36};var cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
+  var maxV=Math.max.apply(null,data.concat([2]));
+  var toX=function(i){return pad.left+(i/(data.length-1))*cW;};var toY=function(v){return pad.top+cH-(v/maxV)*cH;};
+  ctx.fillStyle='rgba(255,51,85,.12)';ctx.fillRect(pad.left,pad.top,cW,toY(1.5)-pad.top);
+  ctx.fillStyle='rgba(0,255,136,.1)';ctx.fillRect(pad.left,toY(0.5),cW,pad.top+cH-toY(0.5));
+  [0.5,1,1.5].forEach(function(v){if(v>maxV)return;ctx.beginPath();ctx.strokeStyle='rgba(255,255,255,.1)';ctx.lineWidth=1;ctx.setLineDash([3,4]);ctx.moveTo(pad.left,toY(v));ctx.lineTo(pad.left+cW,toY(v));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=v>=1.5?'#ff3355':v<=0.5?'#00ff88':'#4a6a8a';ctx.font='9px Share Tech Mono,monospace';ctx.textAlign='right';ctx.fillText(v+'x',pad.left-4,toY(v)+3);});
+  var step=Math.floor(data.length/5);ctx.fillStyle='#4a6a8a';ctx.font='8px Share Tech Mono,monospace';ctx.textAlign='center';
+  for(var i=0;i<labels.length;i+=step)ctx.fillText(labels[i],toX(i),H-4);
+  var bw=Math.max(1,cW/data.length-0.5);
+  data.forEach(function(v,i){var x=toX(i)-bw/2;var barTop=toY(v),baseY=toY(1);ctx.fillStyle=v>1.5?'rgba(255,51,85,.7)':v<0.5?'rgba(0,255,136,.6)':'rgba(0,212,255,.5)';if(v>=1)ctx.fillRect(x,barTop,bw,baseY-barTop);else ctx.fillRect(x,baseY,bw,toY(v)-baseY);});
+}
+function drawDualLineChart(canvasId,labels,line1,line2){
+  var canvas=document.getElementById(canvasId);if(!canvas)return;
+  var dpr=window.devicePixelRatio||1;var W=canvas.parentElement.clientWidth-28;var H=180;
+  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';
+  var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  var pad={top:8,right:10,bottom:26,left:44};var cW=W-pad.left-pad.right,cH=H-pad.top-pad.bottom;
+  var allV=line1.concat(line2);var minV=Math.min.apply(null,allV)*0.9,maxV=Math.max.apply(null,allV)*1.05;
+  var toX=function(i){return pad.left+(i/(line1.length-1))*cW;};var toY=function(v){return pad.top+cH-((v-minV)/(maxV-minV))*cH;};
+  var gVals=[minV,(minV+maxV)/2,maxV];
+  gVals.forEach(function(v){ctx.beginPath();ctx.strokeStyle='rgba(13,32,53,.9)';ctx.lineWidth=1;ctx.setLineDash([3,4]);ctx.moveTo(pad.left,toY(v));ctx.lineTo(pad.left+cW,toY(v));ctx.stroke();ctx.setLineDash([]);var lbl=v>=1000?'$'+Math.round(v/1000)+'K':'$'+Math.round(v);ctx.fillStyle='#4a6a8a';ctx.font='8px Share Tech Mono,monospace';ctx.textAlign='right';ctx.fillText(lbl,pad.left-4,toY(v)+3);});
+  var step=Math.floor(line1.length/5);ctx.fillStyle='#4a6a8a';ctx.font='8px Share Tech Mono,monospace';ctx.textAlign='center';
+  for(var i=0;i<labels.length;i+=step)ctx.fillText(labels[i],toX(i),H-4);
+  ctx.beginPath();line1.forEach(function(v,i){i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v));});for(var i=line2.length-1;i>=0;i--)ctx.lineTo(toX(i),toY(line2[i]));ctx.closePath();
+  var fg=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);fg.addColorStop(0,'rgba(0,255,136,.2)');fg.addColorStop(1,'rgba(0,255,136,.03)');ctx.fillStyle=fg;ctx.fill();
+  ctx.beginPath();ctx.strokeStyle='#ffaa00';ctx.lineWidth=2;ctx.setLineDash([6,3]);line2.forEach(function(v,i){i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v));});ctx.stroke();ctx.setLineDash([]);
+  ctx.beginPath();ctx.strokeStyle='#00d4ff';ctx.lineWidth=2;ctx.lineJoin='round';line1.forEach(function(v,i){i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v));});ctx.stroke();
+  [[line1,'#00d4ff'],[line2,'#ffaa00']].forEach(function(pair){var arr=pair[0],col=pair[1];var lx=toX(arr.length-1),ly=toY(arr[arr.length-1]);ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.strokeStyle='#020408';ctx.lineWidth=2;ctx.stroke();});
+}
+function setChip(id,val,sig,col){
+  signals[id]=sig;var chip=document.getElementById('chip-'+id);var valEl=document.getElementById('cv-'+id);var sigEl=document.getElementById('cs-'+id);if(!chip)return;
+  var bg=sig==='KUP'?'rgba(0,255,136,.08)':sig==='SPRZEDAJ'?'rgba(255,51,85,.08)':'rgba(255,170,0,.06)';
+  var border=sig==='KUP'?'rgba(0,255,136,.3)':sig==='SPRZEDAJ'?'rgba(255,51,85,.3)':'rgba(255,170,0,.25)';
+  chip.style.background=bg;chip.style.borderColor=border;
+  if(valEl){valEl.textContent=val;valEl.style.color=col;}if(sigEl){sigEl.textContent=sig;sigEl.style.color=col;}
+}
+function updateSignalPanel(){
+  var allSigs=Object.values(signals).filter(function(s){return s==='KUP'||s==='SPRZEDAJ'||s==='TRZYMAJ';});if(!allSigs.length)return;
+  var buyCount=allSigs.filter(function(s){return s==='KUP';}).length;var total=allSigs.length;
+  var panel=document.getElementById('signalPanel');var scoreEl=document.getElementById('signalScore');var labelEl=document.getElementById('signalLabel');
+  scoreEl.textContent=buyCount+'/'+total;
+  var panelCol,panelBg,panelBorder,lbl;
+  if(buyCount===total){panelCol='var(--green)';panelBg='rgba(0,255,136,.06)';panelBorder='rgba(0,255,136,.3)';lbl='SILNY SYGNAŁ KUPNA';}
+  else if(buyCount>=total*0.7){panelCol='var(--green)';panelBg='rgba(0,255,136,.04)';panelBorder='rgba(0,255,136,.2)';lbl='SYGNAŁ KUPNA';}
+  else if(buyCount>=total*0.5){panelCol='var(--amber)';panelBg='rgba(255,170,0,.04)';panelBorder='rgba(255,170,0,.2)';lbl='MIESZANY — OBSERWUJ';}
+  else if(buyCount>=total*0.3){panelCol='var(--amber)';panelBg='rgba(255,170,0,.04)';panelBorder='rgba(255,170,0,.2)';lbl='OSTROŻNIE — TRZYMAJ';}
+  else{panelCol='var(--red)';panelBg='rgba(255,51,85,.04)';panelBorder='rgba(255,51,85,.2)';lbl='BRAK SYGNAŁU KUPNA';}
+  scoreEl.style.color=panelCol;labelEl.textContent=lbl;labelEl.style.color=panelCol;panel.style.background=panelBg;panel.style.borderColor=panelBorder;
 }
 
-// ── RSI ──────────────────────────────────────────────────────
-function calcAndDrawRSI(days) {
-  var closes = days.map(function(d){ return d.close; });
-  var period = 14;
-  var rsi = [];
-  for (var i = period; i < closes.length; i++) {
-    var gains = 0, losses = 0;
-    for (var j = i - period + 1; j <= i; j++) {
-      var diff = closes[j] - closes[j-1];
-      if (diff > 0) gains += diff; else losses -= diff;
-    }
-    var avgG = gains / period, avgL = losses / period;
-    var rs = avgL === 0 ? 100 : avgG / avgL;
-    rsi.push(parseFloat((100 - 100/(1+rs)).toFixed(1)));
-  }
-  var labels = days.slice(period).map(function(d) {
-    var dt = new Date(d.time*1000);
-    return (dt.getMonth()+1)+'/'+(dt.getFullYear()+'').slice(2);
-  });
-  var cur = rsi[rsi.length-1];
-  var sig = cur > 70 ? 'SPRZEDAJ' : cur < 30 ? 'KUP' : 'TRZYMAJ';
-  var col = cur > 70 ? 'var(--red)' : cur < 30 ? 'var(--green)' : 'var(--amber)';
-  setChip('rsi', cur.toFixed(1), sig, col);
-  document.getElementById('upd-rsi').textContent = new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
-  drawLineChart('cvRSI', labels, rsi, {
-    min:0, max:100, color:'#ffaa00',
-    zones:[{from:70,to:100,fill:'rgba(255,51,85,.15)'},{from:0,to:30,fill:'rgba(0,255,136,.12)'}],
-    gridLines:[{v:70,col:'rgba(255,51,85,.5)'},{v:50,col:'rgba(255,255,255,.1)'},{v:30,col:'rgba(0,255,136,.4)'}]
-  });
-  document.getElementById('ld-rsi').style.display = 'none';
-  updateSignalPanel();
+// ── ALERTS ───────────────────────────────────────────────────
+var alertsLoaded=false;var allAlertTxs=[];var activeFilter='all';
+function fetchAlerts(){fetchBlockchairAlerts();}
+function fetchBlockchairAlerts(){
+  if(alertsLoaded)return;alertsLoaded=true;
+  document.getElementById('alertList').innerHTML='<div class="empty"><div class="empty-ico">⏳</div>Pobieranie transakcji...</div>';
+  var btcPrice=prices['BTC']?prices['BTC'].price:80000;var ethPrice=prices['ETH']?prices['ETH'].price:2000;var minVal=500000;allAlertTxs=[];
+  var btcDone=false;var ethDone=false;
+  function checkDone(){if(!btcDone||!ethDone)return;allAlertTxs.sort(function(a,b){return b.amountUSD-a.amountUSD;});newAlerts=allAlertTxs.filter(function(t){return t.isNew;}).length;updateBadge();if(allAlertTxs.length===0)document.getElementById('alertList').innerHTML='<div class="empty"><div class="empty-ico">🔍</div>Brak dużych transakcji · Odśwież za chwilę</div>';else renderBlockchairAlerts(allAlertTxs);}
+  fetch('https://mempool.space/api/mempool/recent').then(function(r){return r.json();}).then(function(data){
+    var txs=Array.isArray(data)?data:[];var btcTxs=[];
+    txs.forEach(function(tx){var btcAmt=(tx.value||0)/1e8;var usd=btcAmt*btcPrice;if(usd>=minVal)btcTxs.push({coin:'BTC',color:'var(--btc)',hash:tx.txid,amount:btcAmt,amountUSD:usd,time:tx.firstSeen||(Date.now()/1000),isNew:true});});
+    btcTxs.sort(function(a,b){return b.amountUSD-a.amountUSD;});btcTxs=btcTxs.slice(0,15);allAlertTxs=allAlertTxs.concat(btcTxs);
+    var el=document.getElementById('aCntBTC');if(el)el.textContent=btcTxs.length;
+    if(btcTxs.length){var bigEl=document.getElementById('aBigBTC');var bigSub=document.getElementById('aBigBTCsub');if(bigEl)bigEl.textContent=fmtUSD(btcTxs[0].amountUSD);if(bigSub)bigSub.textContent=fmtCoin(btcTxs[0].amount)+' BTC';}
+    btcDone=true;checkDone();
+  }).catch(function(e){console.warn('BTC mempool:',e.message);btcDone=true;checkDone();});
+  fetch('https://api.etherscan.io/api?module=proxy&action=eth_getBlockByNumber&tag=latest&boolean=true&apikey=YourApiKeyToken').then(function(r){return r.json();}).then(function(data){
+    if(!data.result||!data.result.transactions)throw new Error('no txs');
+    var blockTime=parseInt(data.result.timestamp,16);var ethTxs=[];
+    data.result.transactions.forEach(function(tx){var wei=parseInt(tx.value,16)||0;var ethAmt=wei/1e18;var usd=ethAmt*ethPrice;if(usd>=minVal)ethTxs.push({coin:'ETH',color:'var(--eth)',hash:tx.hash,amount:ethAmt,amountUSD:usd,time:blockTime,isNew:true});});
+    ethTxs.sort(function(a,b){return b.amountUSD-a.amountUSD;});ethTxs=ethTxs.slice(0,15);allAlertTxs=allAlertTxs.concat(ethTxs);
+    var el=document.getElementById('aCntETH');if(el)el.textContent=ethTxs.length;
+    if(ethTxs.length){var bigEl=document.getElementById('aBigETH');var bigSub=document.getElementById('aBigETHsub');if(bigEl)bigEl.textContent=fmtUSD(ethTxs[0].amountUSD);if(bigSub)bigSub.textContent=fmtCoin(ethTxs[0].amount)+' ETH';}
+    ethDone=true;checkDone();
+  }).catch(function(e){console.warn('ETH etherscan:',e.message);ethDone=true;checkDone();});
 }
-
-// ── VDD ──────────────────────────────────────────────────────
-function calcAndDrawVDD(days) {
-  var vols = days.map(function(d){ return d.volumeto; });
-  var vdd = vols.map(function(v, i) {
-    var win = vols.slice(Math.max(0,i-364), i+1);
-    var avg = win.reduce(function(a,b){ return a+b; }, 0) / win.length;
-    return avg > 0 ? parseFloat((v/avg).toFixed(3)) : 1;
-  });
-  var labels = days.map(function(d) {
-    var dt = new Date(d.time*1000);
-    return (dt.getMonth()+1)+'/'+(dt.getFullYear()+'').slice(2);
-  });
-  var cur = vdd[vdd.length-1];
-  var sig = cur > 1.5 ? 'SPRZEDAJ' : cur < 0.5 ? 'KUP' : 'TRZYMAJ';
-  var col = cur > 1.5 ? 'var(--red)' : cur < 0.5 ? 'var(--green)' : 'var(--amber)';
-  setChip('vdd', cur.toFixed(2)+'x', sig, col);
-  document.getElementById('upd-vdd').textContent = new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
-  drawBarChart('cvVDD', labels, vdd);
-  document.getElementById('ld-vdd').style.display = 'none';
-  updateSignalPanel();
+function filterAlerts(coin,btn){
+  activeFilter=coin;document.querySelectorAll('[id^="af-"]').forEach(function(b){b.style.background='var(--surface)';b.style.borderColor='var(--border)';});
+  if(btn){btn.style.background='rgba(0,212,255,.15)';btn.style.borderColor='rgba(0,212,255,.4)';}
+  var filtered=coin==='all'?allAlertTxs:allAlertTxs.filter(function(t){return t.coin===coin;});renderBlockchairAlerts(filtered);
 }
-
-// ── LTH ──────────────────────────────────────────────────────
-function calcAndDrawLTH(days) {
-  var closes = days.map(function(d){ return d.close; });
-  var lth = closes.map(function(price, i) {
-    var win = closes.slice(Math.max(0,i-199), i+1);
-    var ws = 0, wt = 0;
-    win.forEach(function(p, wi){ ws += p*(wi+1); wt += (wi+1); });
-    return Math.round(ws/wt);
-  });
-  var labels = days.map(function(d) {
-    var dt = new Date(d.time*1000);
-    return (dt.getMonth()+1)+'/'+(dt.getFullYear()+'').slice(2);
-  });
-  var curPrice = closes[closes.length-1];
-  var curLTH = lth[lth.length-1];
-  var ratio = curPrice / curLTH;
-  var sig = ratio < 1.5 ? 'KUP' : ratio > 3 ? 'SPRZEDAJ' : 'TRZYMAJ';
-  var col = ratio < 1.5 ? 'var(--green)' : ratio > 3 ? 'var(--red)' : 'var(--amber)';
-  var lthFmt = curLTH >= 1000 ? '$'+Math.round(curLTH/1000)+'K' : '$'+curLTH;
-  setChip('lth', lthFmt+' · '+ratio.toFixed(1)+'x', sig, col);
-  document.getElementById('upd-lth').textContent = new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
-  drawDualLineChart('cvLTH', labels, closes, lth);
-  document.getElementById('ld-lth').style.display = 'none';
-  updateSignalPanel();
+function renderBlockchairAlerts(txs){
+  if(!txs||!txs.length){document.getElementById('alertList').innerHTML='<div class="empty"><div class="empty-ico">🔍</div>Brak transakcji powyżej $1M</div>';return;}
+  var now=Date.now()/1000;
+  var html=txs.map(function(tx,i){var age=Math.round((now-tx.time)/60);var ageStr=age<1?'Teraz':age<60?age+'min temu':Math.round(age/60)+'godz temu';var hashShort=tx.hash?tx.hash.slice(0,8)+'...'+tx.hash.slice(-6):'—';var explorerUrl=tx.coin==='BTC'?'https://blockchair.com/bitcoin/transaction/'+tx.hash:'https://blockchair.com/ethereum/transaction/'+tx.hash;
+  return'<div class="alert-item" style="animation-delay:'+i*.04+'s'+(tx.isNew?';border-color:rgba(255,170,0,.35)':'')+'"><div class="alert-icon move" style="background:rgba(0,212,255,.08);font-size:13px;font-family:var(--display);font-weight:700;color:'+tx.color+'">'+tx.coin+'</div><div class="a-body"><div class="a-title" style="display:flex;justify-content:space-between;align-items:center"><span>'+fmtCoin(tx.amount)+' '+tx.coin+'</span>'+(tx.isNew?'<span style="font-family:var(--mono);font-size:8px;background:rgba(255,170,0,.15);color:var(--amber);border:1px solid rgba(255,170,0,.3);border-radius:4px;padding:1px 5px">NOWY</span>':'')+'</div><div class="a-amt move" style="color:'+tx.color+';font-size:14px">'+fmtUSD(tx.amountUSD)+'</div><div style="display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap"><span class="a-time">'+ageStr+'</span><span style="font-family:var(--mono);font-size:8px;color:var(--dim)">'+hashShort+'</span><a href="'+explorerUrl+'" target="_blank" style="font-family:var(--mono);font-size:8px;color:var(--blue);text-decoration:none">Explorer ↗</a></div></div></div>';}).join('');
+  document.getElementById('alertList').innerHTML=html;
 }
-
-// ── FEAR & GREED ─────────────────────────────────────────────
-function fetchFearGreed() {
-  fetch('https://api.alternative.me/fng/?limit=1')
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      var d = data.data[0];
-      var val = parseInt(d.value);
-      var sig = val < 30 ? 'KUP' : val > 60 ? 'SPRZEDAJ' : 'TRZYMAJ';
-      var col = val < 30 ? 'var(--green)' : val > 60 ? 'var(--red)' : 'var(--amber)';
-      setChip('fg', val+' · '+d.value_classification, sig, col);
-      document.getElementById('fgNeedle').style.left = val+'%';
-      updateSignalPanel();
-    }).catch(function(){ setChip('fg','—','—','var(--dim)'); });
-}
-
-// ── HALVING CHART ─────────────────────────────────────────────
-function drawHalvingChart() {
-  var lastHalving = new Date('2024-04-20').getTime();
-  var nextHalving = new Date('2028-03-01').getTime();
-  var now = Date.now();
-  var daysNow = Math.floor((now - lastHalving) / 86400000);
-  var totalDays = Math.floor((nextHalving - lastHalving) / 86400000);
-  var pct = Math.min(100, Math.round(daysNow/totalDays*100));
-
-  var sig = daysNow < 180 ? 'KUP' : daysNow < 400 ? 'KUP' : daysNow < 600 ? 'TRZYMAJ' : daysNow < 900 ? 'SPRZEDAJ' : 'KUP';
-  var phase = daysNow < 180 ? 'Akumulacja' : daysNow < 400 ? 'Wczesny byk' : daysNow < 600 ? 'Środek byka' : daysNow < 900 ? 'Późny byk' : 'Niedźwiedź';
-  var col = sig === 'KUP' ? 'var(--green)' : sig === 'SPRZEDAJ' ? 'var(--red)' : 'var(--amber)';
-  setChip('halving', daysNow+'d · '+phase, sig, col);
-  document.getElementById('upd-halving').textContent = pct+'% cyklu · '+daysNow+' dni';
-
-  var canvas = document.getElementById('cvHalving');
-  if (!canvas) return;
-  var dpr = window.devicePixelRatio || 1;
-  var W = canvas.parentElement.clientWidth - 28;
-  var H = 80;
-  canvas.width = W*dpr; canvas.height = H*dpr;
-  canvas.style.width = W+'px'; canvas.style.height = H+'px';
-  var ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
-
-  // Background zones
-  var zones = [
-    {from:0,to:180,col:'rgba(0,255,136,.2)'},{from:180,to:400,col:'rgba(0,212,255,.2)'},
-    {from:400,to:600,col:'rgba(255,170,0,.2)'},{from:600,to:900,col:'rgba(255,51,85,.25)'},
-    {from:900,to:totalDays,col:'rgba(153,69,255,.2)'}
-  ];
-  zones.forEach(function(z) {
-    var x1 = z.from/totalDays*W, x2 = Math.min(z.to/totalDays*W, W);
-    ctx.fillStyle = z.col;
-    ctx.fillRect(x1, 0, x2-x1, H-20);
-  });
-
-  // Progress bar
-  ctx.fillStyle = '#0d2035'; ctx.fillRect(0, H-16, W, 8);
-  var grad = ctx.createLinearGradient(0,0,W,0);
-  grad.addColorStop(0,'#00ff88'); grad.addColorStop(0.3,'#00d4ff');
-  grad.addColorStop(0.5,'#ffaa00'); grad.addColorStop(0.7,'#ff3355'); grad.addColorStop(1,'#9945ff');
-  ctx.fillStyle = grad; ctx.fillRect(0, H-16, daysNow/totalDays*W, 8);
-
-  // Current position
-  var nowX = Math.min(daysNow/totalDays*W, W-2);
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(nowX-1, 0, 2, H-18);
-  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 9px Share Tech Mono,monospace';
-  ctx.textAlign = nowX > W*0.7 ? 'right' : 'left';
-  ctx.fillText('▶ '+daysNow+'d', nowX + (nowX > W*0.7 ? -4 : 4), 14);
-  ctx.fillStyle = '#00d4ff'; ctx.font = '8px Share Tech Mono,monospace';
-  ctx.fillText(phase, nowX + (nowX > W*0.7 ? -4 : 4), 26);
-
-  // Phase labels
-  var phaseLabels = [{d:0,lbl:'0'},{d:180,lbl:'180d'},{d:400,lbl:'400d'},{d:600,lbl:'600d'},{d:900,lbl:'900d'}];
-  ctx.fillStyle = '#4a6a8a'; ctx.font = '8px Share Tech Mono,monospace'; ctx.textAlign = 'center';
-  phaseLabels.forEach(function(p) {
-    ctx.fillText(p.lbl, p.d/totalDays*W, H-4);
-  });
-  updateSignalPanel();
-}
-
-// ── GENERIC CHART FUNCTIONS ───────────────────────────────────
-function drawLineChart(canvasId, labels, data, opts) {
-  var canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  var dpr = window.devicePixelRatio || 1;
-  var W = canvas.parentElement.clientWidth - 28;
-  var H = 160;
-  canvas.width = W*dpr; canvas.height = H*dpr;
-  canvas.style.width = W+'px'; canvas.style.height = H+'px';
-  var ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
-  var pad = {top:8,right:10,bottom:26,left:36};
-  var cW = W-pad.left-pad.right, cH = H-pad.top-pad.bottom;
-  var min = opts.min, max = opts.max, range = max-min;
-  var toX = function(i){ return pad.left + (i/(data.length-1))*cW; };
-  var toY = function(v){ return pad.top + cH - ((v-min)/range)*cH; };
-
-  // Zone fills
-  if (opts.zones) {
-    opts.zones.forEach(function(z) {
-      var y1 = toY(Math.min(z.to,max)), y2 = toY(Math.max(z.from,min));
-      ctx.fillStyle = z.fill;
-      ctx.fillRect(pad.left, y1, cW, y2-y1);
-    });
-  }
-
-  // Grid lines
-  if (opts.gridLines) {
-    opts.gridLines.forEach(function(gl) {
-      if (gl.v < min || gl.v > max) return;
-      ctx.beginPath(); ctx.strokeStyle = gl.col; ctx.lineWidth = 1; ctx.setLineDash([3,4]);
-      ctx.moveTo(pad.left,toY(gl.v)); ctx.lineTo(pad.left+cW,toY(gl.v)); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = gl.col; ctx.font = '9px Share Tech Mono,monospace'; ctx.textAlign = 'right';
-      ctx.fillText(gl.v, pad.left-4, toY(gl.v)+3);
-    });
-  }
-
-  // X labels
-  var step = Math.floor(data.length/5);
-  ctx.fillStyle = '#4a6a8a'; ctx.font = '8px Share Tech Mono,monospace'; ctx.textAlign = 'center';
-  for (var i=0; i<labels.length; i+=step) ctx.fillText(labels[i], toX(i), H-4);
-
-  // Fill gradient
-  var grd = ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
-  grd.addColorStop(0,opts.color+'55'); grd.addColorStop(1,opts.color+'05');
-  ctx.beginPath();
-  data.forEach(function(v,i){ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
-  ctx.lineTo(toX(data.length-1),toY(min)); ctx.lineTo(toX(0),toY(min));
-  ctx.closePath(); ctx.fillStyle = grd; ctx.fill();
-
-  // Line
-  ctx.beginPath(); ctx.strokeStyle = opts.color; ctx.lineWidth = 2; ctx.lineJoin = 'round';
-  data.forEach(function(v,i){ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
-  ctx.stroke();
-
-  // End dot
-  var lx = toX(data.length-1), ly = toY(data[data.length-1]);
-  ctx.beginPath(); ctx.arc(lx,ly,4,0,Math.PI*2);
-  ctx.fillStyle = opts.color; ctx.fill(); ctx.strokeStyle = '#020408'; ctx.lineWidth = 2; ctx.stroke();
-}
-
-function drawBarChart(canvasId, labels, data) {
-  var canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  var dpr = window.devicePixelRatio || 1;
-  var W = canvas.parentElement.clientWidth - 28;
-  var H = 140;
-  canvas.width = W*dpr; canvas.height = H*dpr;
-  canvas.style.width = W+'px'; canvas.style.height = H+'px';
-  var ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
-  var pad = {top:8,right:10,bottom:26,left:36};
-  var cW = W-pad.left-pad.right, cH = H-pad.top-pad.bottom;
-  var maxV = Math.max.apply(null,data.concat([2]));
-  var toX = function(i){ return pad.left+(i/(data.length-1))*cW; };
-  var toY = function(v){ return pad.top+cH-(v/maxV)*cH; };
-
-  // Zones
-  ctx.fillStyle = 'rgba(255,51,85,.12)'; ctx.fillRect(pad.left, pad.top, cW, toY(1.5)-pad.top);
-  ctx.fillStyle = 'rgba(0,255,136,.1)'; ctx.fillRect(pad.left, toY(0.5), cW, pad.top+cH-toY(0.5));
-
-  // Grid
-  [0.5,1,1.5].forEach(function(v) {
-    if (v > maxV) return;
-    ctx.beginPath(); ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth=1; ctx.setLineDash([3,4]);
-    ctx.moveTo(pad.left,toY(v)); ctx.lineTo(pad.left+cW,toY(v)); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = v>=1.5?'#ff3355':v<=0.5?'#00ff88':'#4a6a8a';
-    ctx.font='9px Share Tech Mono,monospace'; ctx.textAlign='right';
-    ctx.fillText(v+'x', pad.left-4, toY(v)+3);
-  });
-
-  // Labels
-  var step = Math.floor(data.length/5);
-  ctx.fillStyle='#4a6a8a'; ctx.font='8px Share Tech Mono,monospace'; ctx.textAlign='center';
-  for (var i=0; i<labels.length; i+=step) ctx.fillText(labels[i], toX(i), H-4);
-
-  // Bars
-  var bw = Math.max(1, cW/data.length-0.5);
-  data.forEach(function(v,i) {
-    var x = toX(i)-bw/2;
-    var barTop = toY(v), baseY = toY(1);
-    ctx.fillStyle = v>1.5?'rgba(255,51,85,.7)':v<0.5?'rgba(0,255,136,.6)':'rgba(0,212,255,.5)';
-    if (v >= 1) ctx.fillRect(x, barTop, bw, baseY-barTop);
-    else ctx.fillRect(x, baseY, bw, toY(v)-baseY);
-  });
-}
-
-function drawDualLineChart(canvasId, labels, line1, line2) {
-  var canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  var dpr = window.devicePixelRatio || 1;
-  var W = canvas.parentElement.clientWidth - 28;
-  var H = 180;
-  canvas.width = W*dpr; canvas.height = H*dpr;
-  canvas.style.width = W+'px'; canvas.style.height = H+'px';
-  var ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
-  var pad = {top:8,right:10,bottom:26,left:44};
-  var cW = W-pad.left-pad.right, cH = H-pad.top-pad.bottom;
-  var allV = line1.concat(line2);
-  var minV = Math.min.apply(null,allV)*0.9, maxV = Math.max.apply(null,allV)*1.05;
-  var toX = function(i){ return pad.left+(i/(line1.length-1))*cW; };
-  var toY = function(v){ return pad.top+cH-((v-minV)/(maxV-minV))*cH; };
-
-  // Grid
-  var gVals = [minV,(minV+maxV)/2,maxV];
-  gVals.forEach(function(v) {
-    ctx.beginPath(); ctx.strokeStyle='rgba(13,32,53,.9)'; ctx.lineWidth=1; ctx.setLineDash([3,4]);
-    ctx.moveTo(pad.left,toY(v)); ctx.lineTo(pad.left+cW,toY(v)); ctx.stroke(); ctx.setLineDash([]);
-    var lbl = v>=1000?'$'+Math.round(v/1000)+'K':'$'+Math.round(v);
-    ctx.fillStyle='#4a6a8a'; ctx.font='8px Share Tech Mono,monospace'; ctx.textAlign='right';
-    ctx.fillText(lbl, pad.left-4, toY(v)+3);
-  });
-
-  var step = Math.floor(line1.length/5);
-  ctx.fillStyle='#4a6a8a'; ctx.font='8px Share Tech Mono,monospace'; ctx.textAlign='center';
-  for (var i=0; i<labels.length; i+=step) ctx.fillText(labels[i], toX(i), H-4);
-
-  // Fill between
-  ctx.beginPath();
-  line1.forEach(function(v,i){ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
-  for (var i=line2.length-1;i>=0;i--) ctx.lineTo(toX(i),toY(line2[i]));
-  ctx.closePath();
-  var fg = ctx.createLinearGradient(0,pad.top,0,pad.top+cH);
-  fg.addColorStop(0,'rgba(0,255,136,.2)'); fg.addColorStop(1,'rgba(0,255,136,.03)');
-  ctx.fillStyle=fg; ctx.fill();
-
-  // LTH line (amber dashed)
-  ctx.beginPath(); ctx.strokeStyle='#ffaa00'; ctx.lineWidth=2; ctx.setLineDash([6,3]);
-  line2.forEach(function(v,i){ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
-  ctx.stroke(); ctx.setLineDash([]);
-
-  // Price line
-  ctx.beginPath(); ctx.strokeStyle='#00d4ff'; ctx.lineWidth=2; ctx.lineJoin='round';
-  line1.forEach(function(v,i){ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
-  ctx.stroke();
-
-  // Dots
-  [[line1,'#00d4ff'],[line2,'#ffaa00']].forEach(function(pair) {
-    var arr=pair[0],col=pair[1];
-    var lx=toX(arr.length-1),ly=toY(arr[arr.length-1]);
-    ctx.beginPath(); ctx.arc(lx,ly,4,0,Math.PI*2);
-    ctx.fillStyle=col; ctx.fill(); ctx.strokeStyle='#020408'; ctx.lineWidth=2; ctx.stroke();
-  });
-}
-
-// ── SIGNAL PANEL ──────────────────────────────────────────────
-function setChip(id, val, sig, col) {
-  signals[id] = sig;
-  var chip = document.getElementById('chip-'+id);
-  var valEl = document.getElementById('cv-'+id);
-  var sigEl = document.getElementById('cs-'+id);
-  if (!chip) return;
-  var bg = sig==='KUP'?'rgba(0,255,136,.08)':sig==='SPRZEDAJ'?'rgba(255,51,85,.08)':'rgba(255,170,0,.06)';
-  var border = sig==='KUP'?'rgba(0,255,136,.3)':sig==='SPRZEDAJ'?'rgba(255,51,85,.3)':'rgba(255,170,0,.25)';
-  chip.style.background = bg; chip.style.borderColor = border;
-  if (valEl) { valEl.textContent = val; valEl.style.color = col; }
-  if (sigEl) { sigEl.textContent = sig; sigEl.style.color = col; }
-}
-
-function updateSignalPanel() {
-  var allSigs = Object.values(signals).filter(function(s){ return s === 'KUP' || s === 'SPRZEDAJ' || s === 'TRZYMAJ'; });
-  if (!allSigs.length) return;
-  var buyCount = allSigs.filter(function(s){ return s==='KUP'; }).length;
-  var total = allSigs.length;
-  var panel = document.getElementById('signalPanel');
-  var scoreEl = document.getElementById('signalScore');
-  var labelEl = document.getElementById('signalLabel');
-  scoreEl.textContent = buyCount+'/'+total;
-  var panelCol, panelBg, panelBorder, lbl;
-  if (buyCount === total) { panelCol='var(--green)'; panelBg='rgba(0,255,136,.06)'; panelBorder='rgba(0,255,136,.3)'; lbl='SILNY SYGNAŁ KUPNA'; }
-  else if (buyCount >= total*0.7) { panelCol='var(--green)'; panelBg='rgba(0,255,136,.04)'; panelBorder='rgba(0,255,136,.2)'; lbl='SYGNAŁ KUPNA'; }
-  else if (buyCount >= total*0.5) { panelCol='var(--amber)'; panelBg='rgba(255,170,0,.04)'; panelBorder='rgba(255,170,0,.2)'; lbl='MIESZANY — OBSERWUJ'; }
-  else if (buyCount >= total*0.3) { panelCol='var(--amber)'; panelBg='rgba(255,170,0,.04)'; panelBorder='rgba(255,170,0,.2)'; lbl='OSTROŻNIE — TRZYMAJ'; }
-  else { panelCol='var(--red)'; panelBg='rgba(255,51,85,.04)'; panelBorder='rgba(255,51,85,.2)'; lbl='BRAK SYGNAŁU KUPNA'; }
-  scoreEl.style.color = panelCol;
-  labelEl.textContent = lbl; labelEl.style.color = panelCol;
-  panel.style.background = panelBg; panel.style.borderColor = panelBorder;
-}
-
-// ── BLOCKCHAIR ALERTS (free, no key) ─────────────────────────
-var alertsLoaded = false;
-var allAlertTxs = [];
-var activeFilter = 'all';
-
-function fetchAlerts() {
-  fetchBlockchairAlerts();
-}
-
-function fetchBlockchairAlerts() {
-  if (alertsLoaded) return;
-  alertsLoaded = true;
-  document.getElementById('alertList').innerHTML = '<div class="empty"><div class="empty-ico">⏳</div>Pobieranie transakcji...</div>';
-
-  var btcPrice = prices['BTC'] ? prices['BTC'].price : 80000;
-  var ethPrice = prices['ETH'] ? prices['ETH'].price : 2000;
-  var minVal = 500000; // $500K minimum
-  allAlertTxs = [];
-
-  // BTC — mempool.space recent transactions (free, no key, CORS OK)
-  var btcDone = false;
-  var ethDone = false;
-
-  function checkDone() {
-    if (!btcDone || !ethDone) return;
-    allAlertTxs.sort(function(a,b){ return b.amountUSD - a.amountUSD; });
-    newAlerts = allAlertTxs.filter(function(t){ return t.isNew; }).length;
-    updateBadge();
-    if (allAlertTxs.length === 0) {
-      document.getElementById('alertList').innerHTML = '<div class="empty"><div class="empty-ico">🔍</div>Brak dużych transakcji · Odśwież za chwilę</div>';
-    } else {
-      renderBlockchairAlerts(allAlertTxs);
-    }
-  }
-
-  // BTC via mempool.space
-  fetch('https://mempool.space/api/mempool/recent')
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      var txs = Array.isArray(data) ? data : [];
-      var btcTxs = [];
-      txs.forEach(function(tx) {
-        var btcAmt = (tx.value || 0) / 1e8;
-        var usd = btcAmt * btcPrice;
-        if (usd >= minVal) {
-          btcTxs.push({
-            coin: 'BTC', color: 'var(--btc)',
-            hash: tx.txid,
-            amount: btcAmt,
-            amountUSD: usd,
-            time: tx.firstSeen || (Date.now()/1000),
-            isNew: true
-          });
-        }
-      });
-      btcTxs.sort(function(a,b){ return b.amountUSD - a.amountUSD; });
-      btcTxs = btcTxs.slice(0, 15);
-      allAlertTxs = allAlertTxs.concat(btcTxs);
-      var el = document.getElementById('aCntBTC');
-      if (el) el.textContent = btcTxs.length;
-      if (btcTxs.length) {
-        var bigEl = document.getElementById('aBigBTC');
-        var bigSub = document.getElementById('aBigBTCsub');
-        if (bigEl) bigEl.textContent = fmtUSD(btcTxs[0].amountUSD);
-        if (bigSub) bigSub.textContent = fmtCoin(btcTxs[0].amount) + ' BTC';
-      }
-      btcDone = true;
-      checkDone();
-    }).catch(function(e) {
-      console.warn('BTC mempool:', e.message);
-      btcDone = true;
-      checkDone();
-    });
-
-  // ETH via Etherscan free (latest block transactions)
-  fetch('https://api.etherscan.io/api?module=proxy&action=eth_getBlockByNumber&tag=latest&boolean=true&apikey=YourApiKeyToken')
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      if (!data.result || !data.result.transactions) throw new Error('no txs');
-      var blockTime = parseInt(data.result.timestamp, 16);
-      var ethTxs = [];
-      data.result.transactions.forEach(function(tx) {
-        var wei = parseInt(tx.value, 16) || 0;
-        var ethAmt = wei / 1e18;
-        var usd = ethAmt * ethPrice;
-        if (usd >= minVal) {
-          ethTxs.push({
-            coin: 'ETH', color: 'var(--eth)',
-            hash: tx.hash,
-            amount: ethAmt,
-            amountUSD: usd,
-            time: blockTime,
-            isNew: true
-          });
-        }
-      });
-      ethTxs.sort(function(a,b){ return b.amountUSD - a.amountUSD; });
-      ethTxs = ethTxs.slice(0, 15);
-      allAlertTxs = allAlertTxs.concat(ethTxs);
-      var el = document.getElementById('aCntETH');
-      if (el) el.textContent = ethTxs.length;
-      if (ethTxs.length) {
-        var bigEl = document.getElementById('aBigETH');
-        var bigSub = document.getElementById('aBigETHsub');
-        if (bigEl) bigEl.textContent = fmtUSD(ethTxs[0].amountUSD);
-        if (bigSub) bigSub.textContent = fmtCoin(ethTxs[0].amount) + ' ETH';
-      }
-      ethDone = true;
-      checkDone();
-    }).catch(function(e) {
-      console.warn('ETH etherscan:', e.message);
-      ethDone = true;
-      checkDone();
-    });
-}
-
-function filterAlerts(coin, btn) {
-  activeFilter = coin;
-  document.querySelectorAll('[id^="af-"]').forEach(function(b) {
-    b.style.background = 'var(--surface)';
-    b.style.borderColor = 'var(--border)';
-  });
-  if (btn) {
-    btn.style.background = 'rgba(0,212,255,.15)';
-    btn.style.borderColor = 'rgba(0,212,255,.4)';
-  }
-  var filtered = coin === 'all' ? allAlertTxs : allAlertTxs.filter(function(t){ return t.coin === coin; });
-  renderBlockchairAlerts(filtered);
-}
-
-function renderBlockchairAlerts(txs) {
-  if (!txs || !txs.length) {
-    document.getElementById('alertList').innerHTML = '<div class="empty"><div class="empty-ico">🔍</div>Brak transakcji powyżej $1M</div>';
-    return;
-  }
-  var now = Date.now() / 1000;
-  var html = txs.map(function(tx, i) {
-    var age = Math.round((now - tx.time) / 60);
-    var ageStr = age < 1 ? 'Teraz' : age < 60 ? age + 'min temu' : Math.round(age/60) + 'godz temu';
-    var hashShort = tx.hash ? tx.hash.slice(0,8)+'...'+tx.hash.slice(-6) : '—';
-    var explorerUrl = tx.coin === 'BTC'
-      ? 'https://blockchair.com/bitcoin/transaction/'+tx.hash
-      : 'https://blockchair.com/ethereum/transaction/'+tx.hash;
-    var isNew = tx.isNew;
-
-    return '<div class="alert-item" style="animation-delay:'+i*.04+'s'+(isNew?';border-color:rgba(255,170,0,.35)':'')+'">' +
-      '<div class="alert-icon move" style="background:rgba(0,212,255,.08);font-size:13px;font-family:var(--display);font-weight:700;color:'+tx.color+'">'+tx.coin+'</div>' +
-      '<div class="a-body">' +
-        '<div class="a-title" style="display:flex;justify-content:space-between;align-items:center">' +
-          '<span>'+fmtCoin(tx.amount)+' '+tx.coin+'</span>' +
-          (isNew ? '<span style="font-family:var(--mono);font-size:8px;background:rgba(255,170,0,.15);color:var(--amber);border:1px solid rgba(255,170,0,.3);border-radius:4px;padding:1px 5px">NOWY</span>' : '') +
-        '</div>' +
-        '<div class="a-amt move" style="color:'+tx.color+';font-size:14px">'+fmtUSD(tx.amountUSD)+'</div>' +
-        '<div style="display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap">' +
-          '<span class="a-time">'+ageStr+'</span>' +
-          '<span style="font-family:var(--mono);font-size:8px;color:var(--dim)">'+hashShort+'</span>' +
-          '<a href="'+explorerUrl+'" target="_blank" style="font-family:var(--mono);font-size:8px;color:var(--blue);text-decoration:none">Explorer ↗</a>' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-
-  document.getElementById('alertList').innerHTML = html;
-}
-
-function renderAlerts(txs) { renderBlockchairAlerts(txs); }
-
-// ── HELPERS ───────────────────────────────────────────────────
-function setPill(t,l){ document.getElementById('pill').className='pill '+t; document.getElementById('pillLbl').textContent=l; }
-function toggleAuto(btn){ btn.classList.toggle('on'); autoOn=btn.classList.contains('on'); schedule(); }
-function schedule(){ clearInterval(timer); if(autoOn) timer=setInterval(function(){ fetchPrices(); }, 60000); }
-function manualRefresh(btn){ btn.classList.add('spin'); setTimeout(function(){ btn.classList.remove('spin'); }, 650); fetchPrices(); fetchAlerts(); }
-function saveKey(){ /* Whale Alert removed — using Blockchair */ }
-function saveKey2(){ var v=document.getElementById('waIn2').value.trim(); if(!v)return; waKey=v; localStorage.setItem('waKey',v); document.getElementById('waBanner').style.display='none'; fetchAlerts(); }
-function updateBadge(){ var el=document.getElementById('badge'); if(newAlerts>0){el.style.display='flex';el.textContent=newAlerts>9?'9+':newAlerts;}else el.style.display='none'; }
-
-function goTab(n,el){ document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');}); el.classList.add('on'); document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');}); document.getElementById('page-'+n).classList.add('on'); if(n==='alerts'){newAlerts=0;updateBadge();} if(n==='chart')loadChartData(); }
-function goNav(n,el){ document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('on');}); el.classList.add('on'); var pg=['prices','whales','chart','macro','alerts','settings']; document.querySelectorAll('.tab').forEach(function(t,i){t.classList.toggle('on',pg[i]===n);}); document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');}); document.getElementById('page-'+n).classList.add('on'); if(n==='alerts'){newAlerts=0;updateBadge();} if(n==='chart')loadChartData(); }
-
-function fmtPrice(n){ if(!n)return'—'; if(n>=1000)return'$'+Math.round(n).toLocaleString('en'); if(n>=1)return'$'+n.toFixed(2); return'$'+n.toFixed(4); }
-function fmtN(n){ if(!n)return'—'; if(n>=10000)return n.toLocaleString('en',{maximumFractionDigits:0}); return n.toLocaleString('en',{maximumFractionDigits:2}); }
-function fmtUSD(n){ if(!n||isNaN(n))return'—'; if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T'; if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B'; if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M'; if(n>=1e3)return'$'+(n/1e3).toFixed(0)+'K'; return'$'+n.toFixed(0); }
-function fmtCoin(n){ if(!n||n===0)return'—'; if(n>=1e6)return(n/1e6).toFixed(2)+'M'; if(n>=1e3)return(n/1e3).toFixed(1)+'K'; return n.toLocaleString('en',{maximumFractionDigits:2}); }
-
+function renderAlerts(txs){renderBlockchairAlerts(txs);}
 
 // ── ATH DRAWDOWN ─────────────────────────────────────────────
-var BTC_ATH_PRICE = 126198;
-var BTC_ATH_DATE  = new Date('2025-10-06').getTime();
+var BTC_ATH_PRICE=126198;var BTC_ATH_DATE=new Date('2025-10-06').getTime();
+function calcATHStats(currentPrice){
+  if(prices['BTC']&&prices['BTC'].price)currentPrice=prices['BTC'].price;
+  var now=Date.now();var daysFromATH=Math.floor((now-BTC_ATH_DATE)/86400000);var dropPct=((BTC_ATH_PRICE-currentPrice)/BTC_ATH_PRICE*100);
+  var condDrop=dropPct>=50;var condTime=daysFromATH>=365;var isBuySignal=condDrop&&condTime;var isPartial=condDrop||condTime;
+  var dropColor=isBuySignal?'var(--green)':isPartial?'var(--amber)':'var(--red)';var barColor=isBuySignal?'var(--green)':condDrop?'var(--amber)':'var(--red)';var dropUsd=BTC_ATH_PRICE-currentPrice;
+  var daysEl=document.getElementById('athDays');var daysLblEl=document.getElementById('athDaysLabel');
+  if(daysEl)daysEl.textContent=daysFromATH+'d';if(daysLblEl)daysLblEl.textContent=Math.floor(daysFromATH/30)+' miesięcy temu · '+new Date(BTC_ATH_DATE).toLocaleDateString('pl-PL');
+  var dropPctEl=document.getElementById('athDropPct');var dropUsdEl=document.getElementById('athDropUsd');
+  if(dropPctEl){dropPctEl.textContent='-'+dropPct.toFixed(1)+'%';dropPctEl.style.color=dropColor;}if(dropUsdEl)dropUsdEl.textContent='-$'+Math.round(dropUsd).toLocaleString('en');
+  var sigEl=document.getElementById('athSignal');
+  if(sigEl){if(isBuySignal){sigEl.textContent='SILNY KUP ✓';sigEl.style.color='var(--green)';}else if(condDrop&&!condTime){sigEl.textContent='CZEKAJ (czas)';sigEl.style.color='var(--amber)';}else if(!condDrop&&condTime){sigEl.textContent='CZEKAJ (cena)';sigEl.style.color='var(--amber)';}else{sigEl.textContent='BRAK';sigEl.style.color='var(--red)';}}
+  var condDropBox=document.getElementById('condDropBox');var condTimeBox=document.getElementById('condTimeBox');var condDropStatus=document.getElementById('condDropStatus');var condTimeStatus=document.getElementById('condTimeStatus');
+  if(condDropBox){condDropBox.style.background=condDrop?'rgba(0,255,136,.08)':'rgba(255,51,85,.06)';condDropBox.style.borderColor=condDrop?'rgba(0,255,136,.35)':'rgba(255,51,85,.3)';condDropStatus.textContent=condDrop?'✓ '+dropPct.toFixed(1)+'% — SPEŁNIONY':'✗ '+dropPct.toFixed(1)+'% — BRAKUJE '+(50-dropPct).toFixed(1)+'%';condDropStatus.style.color=condDrop?'var(--green)':'var(--red)';}
+  if(condTimeBox){condTimeBox.style.background=condTime?'rgba(0,255,136,.08)':'rgba(255,51,85,.06)';condTimeBox.style.borderColor=condTime?'rgba(0,255,136,.35)':'rgba(255,51,85,.3)';condTimeStatus.textContent=condTime?'✓ '+daysFromATH+'d — SPEŁNIONY':'✗ '+daysFromATH+'d — BRAKUJE '+(365-daysFromATH)+'d';condTimeStatus.style.color=condTime?'var(--green)':'var(--red)';}
+  var barEl=document.getElementById('athDropBar');var barLblEl=document.getElementById('athDropBarLabel');
+  if(barEl){barEl.style.width=Math.min(dropPct,100)+'%';barEl.style.background=barColor;}if(barLblEl)barLblEl.textContent='-'+dropPct.toFixed(1)+'%';
+  var curEl=document.getElementById('athCurrentPrice');if(curEl){curEl.textContent='Aktualnie $'+Math.round(currentPrice).toLocaleString('en');curEl.style.color=dropColor;}
+  var updEl=document.getElementById('upd-ath');if(updEl)updEl.textContent=new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+  drawATHChart(prices['BTC']?prices['BTC'].price:currentPrice,daysFromATH,dropPct);
+}
+function drawATHChart(currentPrice,daysFromATH,dropPct){
+  var canvas=document.getElementById('cvATH');if(!canvas)return;
+  var dpr=window.devicePixelRatio||1;var W=canvas.parentElement.clientWidth-28;var H=180;
+  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';
+  var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  var pad={top:14,right:14,bottom:32,left:10};var cW=W-pad.left-pad.right;var cH=H-pad.top-pad.bottom;
+  var TOTAL_DAYS=500;var hist2017=[],hist2021=[],curr=[];
+  for(var d=0;d<=TOTAL_DAYS;d++){var t17=d/365;var dd17=Math.min(84,d<365?84*Math.pow(Math.sin(t17*Math.PI/2),0.7):84-(d-365)/4);hist2017.push(Math.max(0,dd17));var t21=d/375;var dd21=Math.min(77,d<375?77*Math.pow(Math.sin(t21*Math.PI/2),0.6):77-(d-375)/5);hist2021.push(Math.max(0,dd21));if(d<=daysFromATH){var ratio=d/daysFromATH;curr.push(dropPct*Math.pow(Math.sin(ratio*Math.PI/2),0.5));}}
+  var toX=function(d){return pad.left+(d/TOTAL_DAYS)*cW;};var toY=function(v){return pad.top+(v/100)*cH;};
+  ctx.fillStyle='rgba(0,255,136,0.08)';ctx.fillRect(pad.left,toY(50),cW,cH-toY(50)+pad.top);
+  ctx.fillStyle='rgba(255,170,0,0.06)';ctx.fillRect(pad.left,toY(30),cW,toY(50)-toY(30));
+  ctx.fillStyle='rgba(255,51,85,0.06)';ctx.fillRect(pad.left,pad.top,cW,toY(30)-pad.top);
+  [0,30,50,77,84].forEach(function(v){ctx.beginPath();ctx.strokeStyle=v===50?'rgba(0,255,136,.4)':v===30?'rgba(255,170,0,.3)':'rgba(255,255,255,.07)';ctx.lineWidth=v===50?1.5:1;ctx.setLineDash(v===50?[5,3]:[3,5]);ctx.moveTo(pad.left,toY(v));ctx.lineTo(pad.left+cW,toY(v));ctx.stroke();ctx.setLineDash([]);var lbls={0:'0%',30:'-30%',50:'-50%',77:'-77%',84:'-84%'};ctx.fillStyle=v===50?'var(--green)':v===30?'var(--amber)':'#4a6a8a';ctx.font='9px Share Tech Mono,monospace';ctx.textAlign='left';ctx.fillText(lbls[v],pad.left+2,toY(v)-3);});
+  [0,90,180,270,365,450].forEach(function(d){if(d>TOTAL_DAYS)return;ctx.fillStyle='#4a6a8a';ctx.font='8px Share Tech Mono,monospace';ctx.textAlign='center';ctx.fillText(d+'d',toX(d),H-4);ctx.beginPath();ctx.strokeStyle='rgba(13,32,53,.8)';ctx.lineWidth=1;ctx.setLineDash([2,4]);ctx.moveTo(toX(d),pad.top);ctx.lineTo(toX(d),pad.top+cH);ctx.stroke();ctx.setLineDash([]);});
+  ctx.beginPath();ctx.strokeStyle='rgba(255,170,0,0.45)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);hist2017.forEach(function(v,i){i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v));});ctx.stroke();ctx.setLineDash([]);
+  ctx.beginPath();ctx.strokeStyle='rgba(153,69,255,0.45)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);hist2021.forEach(function(v,i){i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v));});ctx.stroke();ctx.setLineDash([]);
+  var currColor=dropPct>=50?'#00ff88':dropPct>=30?'#ffaa00':'#00d4ff';
+  ctx.beginPath();ctx.strokeStyle=currColor;ctx.lineWidth=2.5;ctx.lineJoin='round';curr.forEach(function(v,i){i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v));});ctx.stroke();
+  if(curr.length>0){var lastX=toX(curr.length-1);var lastY=toY(curr[curr.length-1]);ctx.beginPath();ctx.arc(lastX,lastY,5,0,Math.PI*2);ctx.fillStyle=currColor;ctx.fill();ctx.strokeStyle='#020408';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle=currColor;ctx.font='bold 10px Share Tech Mono,monospace';ctx.textAlign=lastX>W*0.7?'right':'left';ctx.fillText('TERAZ',lastX+(lastX>W*0.7?-8:8),lastY-8);ctx.fillText('-'+dropPct.toFixed(1)+'%',lastX+(lastX>W*0.7?-8:8),lastY+12);}
+  ctx.font='9px Share Tech Mono,monospace';ctx.textAlign='left';ctx.fillStyle='rgba(255,170,0,0.7)';ctx.fillRect(W-110,4,24,2);ctx.fillStyle='#4a6a8a';ctx.fillText('2017',W-82,8);ctx.fillStyle='rgba(153,69,255,0.7)';ctx.fillRect(W-110,14,24,2);ctx.fillText('2021',W-82,18);ctx.fillStyle='#00d4ff';ctx.fillRect(W-110,24,24,2);ctx.fillText('2025',W-82,28);
+  ctx.fillStyle='rgba(0,255,136,0.5)';ctx.font='9px Share Tech Mono,monospace';ctx.textAlign='center';ctx.fillText('STREFA KUPNA',pad.left+cW*0.75,toY(65));
+}
 
-function calcATHStats(currentPrice) {
-  // Always use live price from prices object if available
-  if (prices['BTC'] && prices['BTC'].price) {
-    currentPrice = prices['BTC'].price;
+// ── MACRO ─────────────────────────────────────────────────────
+var macroLoaded=false;
+function loadMacroData(){if(macroLoaded)return;macroLoaded=true;fetchYieldCurve();}
+async function fetchYieldCurve(){
+  try{
+    var end=new Date().toISOString().slice(0,10);var start=new Date(Date.now()-365*3*24*60*60*1000).toISOString().slice(0,10);
+    var url10y2y='https://api.stlouisfed.org/fred/series/observations?series_id=T10Y2Y&api_key=b02cf065ac694b39bfb1bea04eae9b28&file_type=json&observation_start='+start+'&observation_end='+end+'&sort_order=asc';
+    var url10y3m='https://api.stlouisfed.org/fred/series/observations?series_id=T10Y3M&api_key=b02cf065ac694b39bfb1bea04eae9b28&file_type=json&observation_start='+start+'&observation_end='+end+'&sort_order=asc';
+    var[r1,r2]=await Promise.all([fetch(url10y2y),fetch(url10y3m)]);var[d1,d2]=await Promise.all([r1.json(),r2.json()]);
+    if(!d1.observations||!d2.observations)throw new Error('no data');
+    var data10y2y=d1.observations.filter(function(o){return o.value!=='.';}).map(function(o){return{date:o.date,val:parseFloat(o.value)};});
+    var data10y3m=d2.observations.filter(function(o){return o.value!=='.';}).map(function(o){return{date:o.date,val:parseFloat(o.value)};});
+    processYieldData(data10y2y,data10y3m,'FRED');
+  }catch(e){console.warn('FRED API failed:',e.message);useFallbackYieldData();}
+}
+function useFallbackYieldData(){
+  var data10y2y=[],data10y3m=[];var baseDate=new Date('2022-01-01');
+  var knownData=[[0,0.85,0.05],[3,0.20,-0.30],[6,-0.20,-0.70],[9,-0.45,-1.10],[12,-0.70,-1.35],[15,-0.90,-1.50],[18,-1.05,-1.65],[21,-0.95,-1.55],[24,-0.75,-1.40],[27,-0.50,-1.20],[30,-0.30,-0.90],[33,-0.10,-0.50],[36,0.10,-0.20],[38,0.25,0.05]];
+  knownData.forEach(function(row){var d=new Date(baseDate.getTime()+row[0]*30*24*60*60*1000);var dateStr=d.toISOString().slice(0,10);data10y2y.push({date:dateStr,val:row[1]});data10y3m.push({date:dateStr,val:row[2]});});
+  processYieldData(data10y2y,data10y3m,'Dane szacunkowe');
+}
+function processYieldData(data10y2y,data10y3m,source){
+  if(!data10y2y.length)return;
+  var cur10y2y=data10y2y[data10y2y.length-1].val;var cur10y3m=data10y3m.length?data10y3m[data10y3m.length-1].val:cur10y2y;
+  var inverted10y2y=cur10y2y<0;var inverted10y3m=cur10y3m<0;var flat10y2y=cur10y2y>=0&&cur10y2y<0.5;
+  var phase,phaseColor,phaseBg,phaseBorder,riskLevel,riskTitle,riskDesc,riskDescEn;
+  if(inverted10y2y&&inverted10y3m){phase='INWERSJA';phaseColor='var(--red)';phaseBg='rgba(255,51,85,.06)';phaseBorder='rgba(255,51,85,.3)';riskLevel='🔴 WYSOKIE RYZYKO';riskTitle='UWAGA — KRZYW INVERTOWANA';riskDesc='Obie pary obligacji są odwrócone. Historycznie jest to <b style="color:var(--red)">najsilniejszy sygnał ostrzegawczy</b> przed recesją.';riskDescEn='Both spreads inverted. Historically the strongest pre-recession signal.';}
+  else if(flat10y2y||inverted10y2y||inverted10y3m){var prevVal=data10y2y.length>5?data10y2y[data10y2y.length-6].val:cur10y2y;var deInverting=prevVal<0&&cur10y2y>=0;if(deInverting){phase='DE-INWERSJA';phaseColor='var(--red)';phaseBg='rgba(255,51,85,.06)';phaseBorder='rgba(255,51,85,.3)';riskLevel='🔴 EKSTREMALNIE WYSOKIE RYZYKO';riskTitle='DE-INWERSJA — NAJNIEBEZPIECZNIEJSZA FAZA';riskDesc='Krzywa właśnie wychodzi z inwersji. <b style="color:var(--red)">Historycznie to najniebezpieczniejszy moment.</b>';riskDescEn='Curve exiting inversion. Historically the most dangerous phase.';}else{phase='SPŁASZCZENIE';phaseColor='var(--amber)';phaseBg='rgba(255,170,0,.06)';phaseBorder='rgba(255,170,0,.3)';riskLevel='🟡 PODWYŻSZONE RYZYKO';riskTitle='SPŁASZCZONA KRZYWA — OSTROŻNOŚĆ';riskDesc='Różnica między rentownościami jest bardzo mała. Zalecane zmniejszenie ryzyka portfela.';riskDescEn='Spread very small. Reduce portfolio risk and monitor macro data.';}
+  }else if(cur10y2y>=0.5&&cur10y2y<1.5){phase='NORMALIZACJA';phaseColor='#00d4ff';phaseBg='rgba(0,212,255,.05)';phaseBorder='rgba(0,212,255,.25)';riskLevel='🔵 NEUTRALNE';riskTitle='NORMALIZACJA KRZYWEJ';riskDesc='Krzywa powraca do normalnego kształtu. Środowisko stopniowo korzystniejsze.';riskDescEn='Curve normalizing. Environment gradually improving for risk assets.';}
+  else{phase='NORMALNA';phaseColor='var(--green)';phaseBg='rgba(0,255,136,.05)';phaseBorder='rgba(0,255,136,.25)';riskLevel='🟢 NISKIE RYZYKO';riskTitle='NORMALNA KRZYWA — SPRZYJAJĄCE ŚRODOWISKO';riskDesc='Krzywa rentowności ma normalny kształt. Historycznie najlepsze środowisko dla akcji i kryptowalut.';riskDescEn='Normal yield curve. Historically the best environment for equities and crypto.';}
+  var panelEl=document.getElementById('macroPanel');var sigEl=document.getElementById('macroSignal');var lblEl=document.getElementById('macroLabel');
+  if(panelEl){panelEl.style.background=phaseBg;panelEl.style.borderColor=phaseBorder;}if(sigEl){sigEl.textContent=riskLevel;sigEl.style.color=phaseColor;sigEl.style.fontSize='22px';}if(lblEl){lblEl.textContent=phase+' · '+source;lblEl.style.color=phaseColor;}
+  updateMacroChip('10y2y',cur10y2y.toFixed(2)+'%',inverted10y2y?'INWERSJA':flat10y2y?'PŁASKI':'NORMALNY',inverted10y2y?'var(--red)':flat10y2y?'var(--amber)':'var(--green)');
+  updateMacroChip('10y3m',cur10y3m.toFixed(2)+'%',inverted10y3m?'INWERSJA':'NORMALNY',inverted10y3m?'var(--red)':'var(--green)');
+  updateMacroChip('phase',phase,'',phaseColor);
+  var riskCard=document.getElementById('macroRiskCard');var riskTitleEl=document.getElementById('riskTitle');var riskDescEl=document.getElementById('riskDesc');var riskDescEnEl=document.getElementById('riskDescEn');
+  if(riskCard){riskCard.style.background=phaseBg;riskCard.style.borderColor=phaseBorder;}if(riskTitleEl){riskTitleEl.textContent=riskTitle;riskTitleEl.style.color=phaseColor;}if(riskDescEl){riskDescEl.innerHTML=riskDesc;}if(riskDescEnEl)riskDescEnEl.textContent=riskDescEn;
+  var updEl=document.getElementById('upd-macro');if(updEl)updEl.textContent=new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+  drawYieldChart(data10y2y,data10y3m);var ldEl=document.getElementById('ld-macro');if(ldEl)ldEl.style.display='none';
+}
+function updateMacroChip(id,val,sig,col){
+  var chip=document.getElementById('mchip-'+id);var valEl=document.getElementById('mv-'+id);var sigEl=document.getElementById('ms-'+id);if(!chip)return;
+  var bg=col==='var(--red)'?'rgba(255,51,85,.08)':col==='var(--green)'?'rgba(0,255,136,.08)':col==='var(--amber)'?'rgba(255,170,0,.06)':'rgba(0,212,255,.06)';
+  var border=col==='var(--red)'?'rgba(255,51,85,.3)':col==='var(--green)'?'rgba(0,255,136,.3)':col==='var(--amber)'?'rgba(255,170,0,.25)':'rgba(0,212,255,.25)';
+  chip.style.background=bg;chip.style.borderColor=border;if(valEl){valEl.textContent=val;valEl.style.color=col;}if(sigEl){sigEl.textContent=sig;sigEl.style.color=col;}
+}
+function drawYieldChart(data10y2y,data10y3m){
+  var canvas=document.getElementById('cvYield');if(!canvas)return;
+  var dpr=window.devicePixelRatio||1;var W=canvas.parentElement.clientWidth-28;var H=220;
+  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';
+  var ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  var pad={top:10,right:14,bottom:32,left:38};var cW=W-pad.left-pad.right;var cH=H-pad.top-pad.bottom;
+  var allVals=data10y2y.map(function(d){return d.val;}).concat(data10y3m.map(function(d){return d.val;}));
+  var minV=Math.min.apply(null,allVals)-0.2;var maxV=Math.max.apply(null,allVals)+0.2;var range=maxV-minV;
+  var toX=function(i,len){return pad.left+(i/(len-1))*cW;};var toY=function(v){return pad.top+cH-((v-minV)/range)*cH;};var zeroY=toY(0);
+  if(zeroY>pad.top&&zeroY<pad.top+cH){ctx.fillStyle='rgba(255,51,85,0.08)';ctx.fillRect(pad.left,zeroY,cW,pad.top+cH-zeroY);}
+  ctx.beginPath();ctx.strokeStyle='rgba(255,51,85,0.6)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);ctx.moveTo(pad.left,zeroY);ctx.lineTo(pad.left+cW,zeroY);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,51,85,0.8)';ctx.font='9px Share Tech Mono,monospace';ctx.textAlign='right';ctx.fillText('0%',pad.left-4,zeroY+3);
+  var gridVals=[-2,-1,0.5,1,2];gridVals.forEach(function(v){if(v<minV||v>maxV)return;ctx.beginPath();ctx.strokeStyle='rgba(13,32,53,0.9)';ctx.lineWidth=1;ctx.setLineDash([3,5]);ctx.moveTo(pad.left,toY(v));ctx.lineTo(pad.left+cW,toY(v));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#4a6a8a';ctx.font='8px Share Tech Mono,monospace';ctx.textAlign='right';ctx.fillText(v+'%',pad.left-4,toY(v)+3);});
+  var xStep=Math.floor(data10y2y.length/5);ctx.fillStyle='#4a6a8a';ctx.font='8px Share Tech Mono,monospace';ctx.textAlign='center';
+  for(var i=0;i<data10y2y.length;i+=xStep){var d=new Date(data10y2y[i].date);ctx.fillText((d.getMonth()+1)+'/'+String(d.getFullYear()).slice(2),toX(i,data10y2y.length),H-4);}
+  ctx.beginPath();data10y2y.forEach(function(d,i){i===0?ctx.moveTo(toX(i,data10y2y.length),toY(d.val)):ctx.lineTo(toX(i,data10y2y.length),toY(d.val));});ctx.lineTo(toX(data10y2y.length-1,data10y2y.length),zeroY);ctx.lineTo(toX(0,data10y2y.length),zeroY);ctx.closePath();
+  var fillGrad=ctx.createLinearGradient(0,pad.top,0,pad.top+cH);fillGrad.addColorStop(0,'rgba(0,212,255,0.2)');fillGrad.addColorStop(1,'rgba(0,212,255,0.02)');ctx.fillStyle=fillGrad;ctx.fill();
+  if(data10y3m.length>1){ctx.beginPath();ctx.strokeStyle='rgba(255,170,0,0.7)';ctx.lineWidth=1.5;ctx.setLineDash([5,3]);data10y3m.forEach(function(d,i){i===0?ctx.moveTo(toX(i,data10y3m.length),toY(d.val)):ctx.lineTo(toX(i,data10y3m.length),toY(d.val));});ctx.stroke();ctx.setLineDash([]);}
+  ctx.beginPath();ctx.strokeStyle='#00d4ff';ctx.lineWidth=2.5;ctx.lineJoin='round';data10y2y.forEach(function(d,i){i===0?ctx.moveTo(toX(i,data10y2y.length),toY(d.val)):ctx.lineTo(toX(i,data10y2y.length),toY(d.val));});ctx.stroke();
+  var lx=toX(data10y2y.length-1,data10y2y.length);var ly=toY(data10y2y[data10y2y.length-1].val);ctx.beginPath();ctx.arc(lx,ly,5,0,Math.PI*2);ctx.fillStyle='#00d4ff';ctx.fill();ctx.strokeStyle='#020408';ctx.lineWidth=2;ctx.stroke();
+  if(minV<0){ctx.fillStyle='rgba(255,51,85,0.5)';ctx.font='9px Share Tech Mono,monospace';ctx.textAlign='center';ctx.fillText('STREFA INWERSJI',pad.left+cW*0.5,toY(minV/2));}
+}
+
+// ══════════════════════════════════════════
+// STOCKS TAB — SOXL / BEX / TSLL
+// Yahoo Finance via allorigins proxy
+// ══════════════════════════════════════════
+var STK_TICKERS = [
+  { symbol:'SOXL', name:'Direxion Daily Semiconductors Bull 3×', leverage:'3×', ath:74.21 },
+  { symbol:'BEX',  name:'GraniteShares 2× Long Bloom Energy',    leverage:'2×', ath:35.00 },
+  { symbol:'TSLL', name:'Direxion Daily TSLA Bull 2×',           leverage:'2×', ath:35.79 }
+];
+var STK_DATA = {};
+var stkLoaded = false;
+
+function loadStocks() {
+  if (stkLoaded) return;
+  stkForceLoad();
+}
+
+function stkForceLoad() {
+  stkLoaded = false;
+  document.getElementById('stk-grid').innerHTML = '<div class="empty"><div class="empty-ico">⟳</div>Pobieranie Yahoo Finance...</div>';
+  var done = 0;
+  STK_DATA = {};
+  STK_TICKERS.forEach(function(t) {
+    stkFetch(t, function(d) {
+      if (d) STK_DATA[t.symbol] = d;
+      done++;
+      if (done === STK_TICKERS.length) {
+        stkLoaded = true;
+        stkRender();
+        document.getElementById('stk-ts').textContent = 'odświeżono: ' + new Date().toLocaleTimeString('pl-PL', {hour:'2-digit',minute:'2-digit'});
+      }
+    });
+  });
+}
+
+function stkFetch(ticker, cb) {
+  var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + ticker.symbol + '?interval=1d&range=60d&includePrePost=false';
+  var proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+  fetch(proxy, {cache:'no-cache'})
+    .then(function(r) { return r.json(); })
+    .then(function(raw) {
+      var contents = JSON.parse(raw.contents);
+      var result = contents.chart.result[0];
+      var meta = result.meta;
+      var closes = result.indicators.quote[0].close;
+      var volumes = result.indicators.quote[0].volume;
+      var validCloses = closes.filter(function(v) { return v != null; });
+      var validVols = volumes.filter(function(v) { return v != null; });
+      var price = meta.regularMarketPrice;
+      var prevClose = meta.chartPreviousClose || validCloses[validCloses.length - 2] || price;
+      var chg = price - prevClose;
+      var chgPct = (chg / prevClose) * 100;
+      var w52lo = meta.fiftyTwoWeekLow;
+      var w52hi = meta.fiftyTwoWeekHigh;
+      var vol = meta.regularMarketVolume || validVols[validVols.length - 1];
+      var avgVol = stkAvg(validVols.slice(-20));
+      var rsi = stkRSI(validCloses, 14);
+      var ath = ticker.ath || w52hi;
+      var drawdown = ((price - ath) / ath) * 100;
+      cb({ symbol:ticker.symbol, name:ticker.name, leverage:ticker.leverage,
+           price:price, chg:chg, chgPct:chgPct, w52lo:w52lo, w52hi:w52hi,
+           vol:vol, avgVol:avgVol, rsi:rsi, drawdown:drawdown, ath:ath });
+    })
+    .catch(function(e) {
+      console.warn('STK fetch error', ticker.symbol, e);
+      cb(null);
+    });
+}
+
+function stkAvg(arr) {
+  if (!arr.length) return 0;
+  return arr.reduce(function(a,b) { return a+(b||0); }, 0) / arr.length;
+}
+
+function stkRSI(closes, period) {
+  if (closes.length < period + 1) return null;
+  var gains = 0, losses = 0;
+  for (var i = closes.length - period; i < closes.length; i++) {
+    var diff = closes[i] - closes[i-1];
+    if (diff >= 0) gains += diff; else losses -= diff;
   }
-  var now = Date.now();
-  var daysFromATH = Math.floor((now - BTC_ATH_DATE) / 86400000);
-  var dropPct = ((BTC_ATH_PRICE - currentPrice) / BTC_ATH_PRICE * 100);
-  // BOTH conditions must be met: >50% drop AND >365 days from ATH
-  var condDrop = dropPct >= 50;
-  var condTime = daysFromATH >= 365;
-  var isBuySignal = condDrop && condTime;
-  var isPartial = condDrop || condTime; // one of two
-  var dropColor = isBuySignal ? 'var(--green)' : isPartial ? 'var(--amber)' : 'var(--red)';
-  var barColor = isBuySignal ? 'var(--green)' : condDrop ? 'var(--amber)' : 'var(--red)';
-  var dropUsd = BTC_ATH_PRICE - currentPrice;
+  var avgGain = gains / period, avgLoss = losses / period;
+  if (avgLoss === 0) return 100;
+  return parseFloat((100 - 100 / (1 + avgGain/avgLoss)).toFixed(1));
+}
 
-  // Days label
-  var daysEl = document.getElementById('athDays');
-  var daysLblEl = document.getElementById('athDaysLabel');
-  if (daysEl) { daysEl.textContent = daysFromATH + 'd'; }
-  if (daysLblEl) {
-    var months = Math.floor(daysFromATH / 30);
-    daysLblEl.textContent = months + ' miesięcy temu · ' + new Date(BTC_ATH_DATE).toLocaleDateString('pl-PL');
+function stkVerdict(d) {
+  var score = 0;
+  if (d.rsi != null) {
+    if (d.rsi >= 75) score += 3;
+    else if (d.rsi >= 65) score += 2;
+    else if (d.rsi >= 55) score += 1;
+    else if (d.rsi <= 30) score -= 3;
+    else if (d.rsi <= 40) score -= 2;
+    else if (d.rsi <= 45) score -= 1;
   }
+  var w52pct = d.w52hi > d.w52lo ? (d.price - d.w52lo) / (d.w52hi - d.w52lo) : 0.5;
+  if (w52pct > 0.88) score += 2;
+  else if (w52pct > 0.70) score += 1;
+  else if (w52pct < 0.15) score -= 2;
+  else if (w52pct < 0.30) score -= 1;
+  var volRatio = d.avgVol > 0 ? d.vol / d.avgVol : 1;
+  if (volRatio > 2) score += 1;
+  if (score >= 4) return { label:'🔴 MOCNO WYKUPIONY', cls:'sv-danger' };
+  if (score >= 2) return { label:'🟡 Ostrożność', cls:'sv-caution' };
+  if (score <= -3) return { label:'🔵 Możliwe odbicie', cls:'sv-buy' };
+  if (score <= -1) return { label:'🟢 Niedowartościowany', cls:'sv-ok' };
+  return { label:'⚪ Neutralny', cls:'sv-neutral' };
+}
 
-  // Drop stats
-  var dropPctEl = document.getElementById('athDropPct');
-  var dropUsdEl = document.getElementById('athDropUsd');
-  if (dropPctEl) { dropPctEl.textContent = '-' + dropPct.toFixed(1) + '%'; dropPctEl.style.color = dropColor; }
-  if (dropUsdEl) { dropUsdEl.textContent = '-$' + Math.round(dropUsd).toLocaleString('en'); }
+function stkRsiColor(rsi) {
+  if (rsi == null) return 'var(--dim)';
+  if (rsi >= 70) return 'var(--red)';
+  if (rsi >= 60) return 'var(--amber)';
+  if (rsi <= 30) return '#58a6ff';
+  if (rsi <= 40) return 'var(--green)';
+  return 'var(--dim)';
+}
 
-  // Signal — both conditions required
-  var sigEl = document.getElementById('athSignal');
-  if (sigEl) {
-    if (isBuySignal) {
-      sigEl.textContent = 'SILNY KUP ✓';
-      sigEl.style.color = 'var(--green)';
-    } else if (condDrop && !condTime) {
-      sigEl.textContent = 'CZEKAJ (czas)';
-      sigEl.style.color = 'var(--amber)';
-    } else if (!condDrop && condTime) {
-      sigEl.textContent = 'CZEKAJ (cena)';
-      sigEl.style.color = 'var(--amber)';
-    } else {
-      sigEl.textContent = 'BRAK';
-      sigEl.style.color = 'var(--red)';
+function stkFmtVol(n) {
+  if (!n) return '—';
+  if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0)+'K';
+  return ''+Math.round(n);
+}
+
+function stkRender() {
+  var html = '';
+  STK_TICKERS.forEach(function(t) {
+    var d = STK_DATA[t.symbol];
+    if (!d) {
+      html += '<div class="stk-card"><div style="font-family:var(--mono);font-size:11px;color:var(--red);text-align:center;padding:20px">⚠ Brak danych dla '+t.symbol+'<br><span style="color:var(--dim);font-size:9px">Yahoo Finance może być niedostępne przez proxy</span></div></div>';
+      return;
     }
-  }
+    var verdict = stkVerdict(d);
+    var w52pct = d.w52hi > d.w52lo ? Math.round((d.price - d.w52lo) / (d.w52hi - d.w52lo) * 100) : 50;
+    var fillColor = w52pct > 75 ? 'var(--red)' : w52pct < 25 ? '#58a6ff' : 'var(--green)';
+    var rsiColor = stkRsiColor(d.rsi);
+    var volRatio = d.avgVol > 0 ? (d.vol / d.avgVol) : 0;
+    var volFillPct = Math.min(volRatio / 3 * 100, 100);
+    var volColor = volRatio > 2 ? 'var(--red)' : volRatio > 1.3 ? 'var(--amber)' : 'var(--green)';
+    var chgCls = d.chg >= 0 ? 'stk-pos' : 'stk-neg';
+    var chgStr = (d.chg >= 0 ? '+' : '') + d.chg.toFixed(2) + ' (' + (d.chgPct >= 0 ? '+' : '') + d.chgPct.toFixed(2) + '%)';
+    var ddColor = d.drawdown < -50 ? 'var(--red)' : d.drawdown < -25 ? 'var(--amber)' : 'var(--green)';
+    var rsiLeft = d.rsi != null ? d.rsi : 50;
 
-  // Checklist boxes
-  var condDropBox = document.getElementById('condDropBox');
-  var condTimeBox = document.getElementById('condTimeBox');
-  var condDropStatus = document.getElementById('condDropStatus');
-  var condTimeStatus = document.getElementById('condTimeStatus');
+    html += '<div class="stk-card">' +
+      '<div class="stk-head">' +
+        '<div>' +
+          '<div class="stk-ticker">' + d.symbol + '<span class="stk-lev">' + d.leverage + '</span></div>' +
+          '<div class="stk-name">' + d.name + '</div>' +
+        '</div>' +
+        '<div class="stk-price-block">' +
+          '<div class="stk-price">$' + d.price.toFixed(2) + '</div>' +
+          '<div class="stk-chg ' + chgCls + '">' + chgStr + '</div>' +
+        '</div>' +
+      '</div>' +
 
-  if (condDropBox) {
-    condDropBox.style.background = condDrop ? 'rgba(0,255,136,.08)' : 'rgba(255,51,85,.06)';
-    condDropBox.style.borderColor = condDrop ? 'rgba(0,255,136,.35)' : 'rgba(255,51,85,.3)';
-    condDropStatus.textContent = condDrop ? '✓ ' + dropPct.toFixed(1) + '% — SPEŁNIONY' : '✗ ' + dropPct.toFixed(1) + '% — BRAKUJE ' + (50 - dropPct).toFixed(1) + '%';
-    condDropStatus.style.color = condDrop ? 'var(--green)' : 'var(--red)';
-  }
-  if (condTimeBox) {
-    condTimeBox.style.background = condTime ? 'rgba(0,255,136,.08)' : 'rgba(255,51,85,.06)';
-    condTimeBox.style.borderColor = condTime ? 'rgba(0,255,136,.35)' : 'rgba(255,51,85,.3)';
-    condTimeStatus.textContent = condTime ? '✓ ' + daysFromATH + 'd — SPEŁNIONY' : '✗ ' + daysFromATH + 'd — BRAKUJE ' + (365 - daysFromATH) + 'd';
-    condTimeStatus.style.color = condTime ? 'var(--green)' : 'var(--red)';
-  }
+      '<div class="stk-verdict ' + verdict.cls + '">' + verdict.label + '</div>' +
 
-  // Bar
-  var barEl = document.getElementById('athDropBar');
-  var barLblEl = document.getElementById('athDropBarLabel');
-  if (barEl) { barEl.style.width = Math.min(dropPct, 100) + '%'; barEl.style.background = barColor; }
-  if (barLblEl) { barLblEl.textContent = '-' + dropPct.toFixed(1) + '%'; }
+      '<div class="stk-metrics">' +
+        '<div class="stk-metric">' +
+          '<div class="stk-ml">RSI 14d</div>' +
+          '<div class="stk-mv" style="color:' + rsiColor + '">' + (d.rsi != null ? d.rsi.toFixed(1) : '—') + '</div>' +
+          '<div class="stk-ms">' + (d.rsi >= 70 ? 'wykupiony' : d.rsi <= 30 ? 'wyprzedany' : 'normalny') + '</div>' +
+        '</div>' +
+        '<div class="stk-metric">' +
+          '<div class="stk-ml">Vol / Avg</div>' +
+          '<div class="stk-mv" style="color:' + volColor + '">' + (volRatio > 0 ? 'x' + volRatio.toFixed(1) : '—') + '</div>' +
+          '<div class="stk-ms">' + stkFmtVol(Math.round(d.avgVol)) + ' avg</div>' +
+        '</div>' +
+        '<div class="stk-metric">' +
+          '<div class="stk-ml">Drawdown ATH</div>' +
+          '<div class="stk-mv" style="color:' + ddColor + '">' + d.drawdown.toFixed(1) + '%</div>' +
+          '<div class="stk-ms">ATH $' + d.ath.toFixed(2) + '</div>' +
+        '</div>' +
+      '</div>' +
 
-  // Current price
-  var curEl = document.getElementById('athCurrentPrice');
-  if (curEl) { curEl.textContent = 'Aktualnie $' + Math.round(currentPrice).toLocaleString('en'); curEl.style.color = dropColor; }
+      '<div class="stk-bar-section">' +
+        '<div class="stk-bar-labels"><span>RSI Wyprzedany &lt;30</span><span style="color:' + rsiColor + '">' + rsiLeft.toFixed(0) + '</span><span>&gt;70 Wykupiony</span></div>' +
+        '<div class="stk-rsi-track">' +
+          '<div class="stk-rsi-needle" style="left:' + rsiLeft + '%;background:' + rsiColor + '"></div>' +
+        '</div>' +
+      '</div>' +
 
-  // Update timestamp
-  var updEl = document.getElementById('upd-ath');
-  if (updEl) { updEl.textContent = new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}); }
+      '<div class="stk-bar-section">' +
+        '<div class="stk-bar-labels"><span>52W MIN $' + d.w52lo.toFixed(2) + '</span><span>Zakres roczny</span><span>52W MAX $' + d.w52hi.toFixed(2) + '</span></div>' +
+        '<div class="stk-bar-track">' +
+          '<div class="stk-bar-fill" style="width:' + w52pct + '%;background:' + fillColor + '"></div>' +
+          '<div class="stk-bar-dot" style="left:' + w52pct + '%;background:' + fillColor + '"></div>' +
+        '</div>' +
+        '<div class="stk-bar-sub">' + w52pct + '% zakresu 52-tygodniowego</div>' +
+      '</div>' +
 
-  // Register signal
-  setChip ? setChip('ath', '-'+dropPct.toFixed(1)+'% · '+daysFromATH+'d', isBuySignal ? 'KUP' : isPartial ? 'TRZYMAJ' : 'SPRZEDAJ', dropColor) : null;
+      '<div class="stk-bar-section">' +
+        '<div class="stk-bar-labels"><span>Wolumen vs śr. 20d</span><span style="color:' + volColor + '">' + stkFmtVol(d.vol) + ' dziś</span></div>' +
+        '<div class="stk-bar-track">' +
+          '<div class="stk-bar-fill" style="width:' + volFillPct + '%;background:' + volColor + '"></div>' +
+          '<div style="position:absolute;top:-2px;left:33.3%;width:2px;height:11px;background:var(--dim)"></div>' +
+        '</div>' +
+      '</div>' +
 
-  drawATHChart(prices['BTC'] ? prices['BTC'].price : currentPrice, daysFromATH, dropPct);
-}
+      '<div class="stk-divider">Drawdown od ATH: <span>' + d.drawdown.toFixed(1) + '%</span>' +
+        (d.drawdown < -50 ? ' · 🔴 ekstremalny — uwaga na decay!' : d.drawdown < -30 ? ' · 🟡 znaczący' : ' · ✓') +
+      '</div>' +
 
-function drawATHChart(currentPrice, daysFromATH, dropPct) {
-  var canvas = document.getElementById('cvATH');
-  if (!canvas) return;
-  var dpr = window.devicePixelRatio || 1;
-  var W = canvas.parentElement.clientWidth - 28;
-  var H = 180;
-  canvas.width = W*dpr; canvas.height = H*dpr;
-  canvas.style.width = W+'px'; canvas.style.height = H+'px';
-  var ctx = canvas.getContext('2d'); ctx.scale(dpr,dpr);
-
-  var pad = {top:14, right:14, bottom:32, left:10};
-  var cW = W - pad.left - pad.right;
-  var cH = H - pad.top - pad.bottom;
-
-  // Historical BTC drawdowns from ATH (days after ATH, max drawdown %)
-  // 2021 cycle: ATH Nov 2021, bottom Nov 2022 (~365d, -77%)
-  // 2017 cycle: ATH Dec 2017, bottom Dec 2018 (~365d, -84%)
-  // 2019 cycle: ATH Jun 2019, bottom Dec 2019 (~180d, -54%)
-  var TOTAL_DAYS = 500;
-
-  // Simulated historical drawdown curves
-  var hist2017 = [];
-  var hist2021 = [];
-  var curr = [];
-
-  for (var d = 0; d <= TOTAL_DAYS; d++) {
-    // 2017 cycle: peaked at ~day 0, bottomed ~84% down at day 365
-    var t17 = d / 365;
-    var dd17 = Math.min(84, d < 365 ? 84 * Math.pow(Math.sin(t17 * Math.PI/2), 0.7) : 84 - (d-365)/4);
-    hist2017.push(Math.max(0, dd17));
-
-    // 2021 cycle: peaked at day 0, bottomed ~77% at day 375
-    var t21 = d / 375;
-    var dd21 = Math.min(77, d < 375 ? 77 * Math.pow(Math.sin(t21 * Math.PI/2), 0.6) : 77 - (d-375)/5);
-    hist2021.push(Math.max(0, dd21));
-
-    // Current cycle (only up to today)
-    if (d <= daysFromATH) {
-      // Approximate current drawdown path
-      var ratio = d / daysFromATH;
-      curr.push(dropPct * Math.pow(Math.sin(ratio * Math.PI/2), 0.5));
-    }
-  }
-
-  var toX = function(d) { return pad.left + (d/TOTAL_DAYS)*cW; };
-  var toY = function(v) { return pad.top + (v/100)*cH; }; // 0% top, 100% bottom
-
-  // Zone backgrounds
-  ctx.fillStyle = 'rgba(0,255,136,0.08)';
-  ctx.fillRect(pad.left, toY(50), cW, cH - toY(50) + pad.top);
-  ctx.fillStyle = 'rgba(255,170,0,0.06)';
-  ctx.fillRect(pad.left, toY(30), cW, toY(50) - toY(30));
-  ctx.fillStyle = 'rgba(255,51,85,0.06)';
-  ctx.fillRect(pad.left, pad.top, cW, toY(30) - pad.top);
-
-  // Grid lines
-  [0, 30, 50, 77, 84].forEach(function(v) {
-    ctx.beginPath();
-    ctx.strokeStyle = v===50?'rgba(0,255,136,.4)':v===30?'rgba(255,170,0,.3)':'rgba(255,255,255,.07)';
-    ctx.lineWidth = v===50?1.5:1; ctx.setLineDash(v===50?[5,3]:[3,5]);
-    ctx.moveTo(pad.left, toY(v)); ctx.lineTo(pad.left+cW, toY(v)); ctx.stroke();
-    ctx.setLineDash([]);
-    var lbls = {0:'0%',30:'-30%',50:'-50%',77:'-77%',84:'-84%'};
-    ctx.fillStyle = v===50?'var(--green)':v===30?'var(--amber)':'#4a6a8a';
-    ctx.font = '9px Share Tech Mono,monospace'; ctx.textAlign = 'left';
-    ctx.fillText(lbls[v], pad.left+2, toY(v)-3);
+    '</div>';
   });
+  document.getElementById('stk-grid').innerHTML = html;
+}
 
-  // X axis labels (days)
-  [0,90,180,270,365,450].forEach(function(d) {
-    if (d > TOTAL_DAYS) return;
-    ctx.fillStyle = '#4a6a8a'; ctx.font = '8px Share Tech Mono,monospace'; ctx.textAlign = 'center';
-    ctx.fillText(d+'d', toX(d), H-4);
-    ctx.beginPath(); ctx.strokeStyle = 'rgba(13,32,53,.8)'; ctx.lineWidth=1; ctx.setLineDash([2,4]);
-    ctx.moveTo(toX(d), pad.top); ctx.lineTo(toX(d), pad.top+cH); ctx.stroke(); ctx.setLineDash([]);
+// Auto-refresh stocks every 5min when tab is active
+setInterval(function() {
+  if (document.getElementById('page-stocks') &&
+      document.getElementById('page-stocks').classList.contains('on')) {
+    stkForceLoad();
+  }
+}, 300000);
+
+// ── HELPERS ───────────────────────────────────────────────────
+function setPill(t,l){document.getElementById('pill').className='pill '+t;document.getElementById('pillLbl').textContent=l;}
+function toggleAuto(btn){btn.classList.toggle('on');autoOn=btn.classList.contains('on');schedule();}
+function schedule(){clearInterval(timer);if(autoOn)timer=setInterval(function(){fetchPrices();},60000);}
+function manualRefresh(btn){btn.classList.add('spin');setTimeout(function(){btn.classList.remove('spin');},650);fetchPrices();fetchAlerts();}
+function saveKey2(){var v=document.getElementById('waIn2').value.trim();if(!v)return;waKey=v;localStorage.setItem('waKey',v);}
+function updateBadge(){var el=document.getElementById('badge');if(newAlerts>0){el.style.display='flex';el.textContent=newAlerts>9?'9+':newAlerts;}else el.style.display='none';}
+
+function goTab(n,el){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});el.classList.add('on');
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+  document.getElementById('page-'+n).classList.add('on');
+  if(n==='alerts'){newAlerts=0;updateBadge();}
+  if(n==='chart')loadChartData();
+  if(n==='whales')fetchWhaleBalances();
+  if(n==='macro')loadMacroData();
+  if(n==='alerts')fetchBlockchairAlerts();
+  if(n==='stocks')loadStocks();
+}
+function goNav(n,el){
+  document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('on');});el.classList.add('on');
+  document.querySelectorAll('.tab').forEach(function(t,i){
+    var pg=['prices','whales','chart','macro','alerts','stocks','settings'];t.classList.toggle('on',pg[i]===n);
   });
-
-  // 2017 cycle line
-  ctx.beginPath(); ctx.strokeStyle = 'rgba(255,170,0,0.45)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
-  hist2017.forEach(function(v,i){ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
-  ctx.stroke(); ctx.setLineDash([]);
-
-  // 2021 cycle line
-  ctx.beginPath(); ctx.strokeStyle = 'rgba(153,69,255,0.45)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
-  hist2021.forEach(function(v,i){ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
-  ctx.stroke(); ctx.setLineDash([]);
-
-  // Current cycle line (solid, bright)
-  var currColor = dropPct >= 50 ? '#00ff88' : dropPct >= 30 ? '#ffaa00' : '#00d4ff';
-  ctx.beginPath(); ctx.strokeStyle = currColor; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
-  curr.forEach(function(v,i){ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
-  ctx.stroke();
-
-  // Current position dot
-  if (curr.length > 0) {
-    var lastX = toX(curr.length-1);
-    var lastY = toY(curr[curr.length-1]);
-    ctx.beginPath(); ctx.arc(lastX, lastY, 5, 0, Math.PI*2);
-    ctx.fillStyle = currColor; ctx.fill();
-    ctx.strokeStyle = '#020408'; ctx.lineWidth = 2; ctx.stroke();
-
-    // Label next to dot
-    ctx.fillStyle = currColor;
-    ctx.font = 'bold 10px Share Tech Mono,monospace';
-    ctx.textAlign = lastX > W*0.7 ? 'right' : 'left';
-    ctx.fillText('TERAZ', lastX + (lastX > W*0.7 ? -8 : 8), lastY - 8);
-    ctx.fillText('-'+dropPct.toFixed(1)+'%', lastX + (lastX > W*0.7 ? -8 : 8), lastY + 12);
-  }
-
-  // Legend
-  ctx.font = '9px Share Tech Mono,monospace'; ctx.textAlign = 'left';
-  ctx.fillStyle = 'rgba(255,170,0,0.7)'; ctx.fillRect(W-110, 4, 24, 2);
-  ctx.fillStyle = '#4a6a8a'; ctx.fillText('2017', W-82, 8);
-  ctx.fillStyle = 'rgba(153,69,255,0.7)'; ctx.fillRect(W-110, 14, 24, 2);
-  ctx.fillText('2021', W-82, 18);
-  ctx.fillStyle = '#00d4ff'; ctx.fillRect(W-110, 24, 24, 2);
-  ctx.fillText('2025', W-82, 28);
-
-  // Buy zone label
-  ctx.fillStyle = 'rgba(0,255,136,0.5)';
-  ctx.font = '9px Share Tech Mono,monospace'; ctx.textAlign = 'center';
-  ctx.fillText('STREFA KUPNA', pad.left + cW*0.75, toY(65));
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+  document.getElementById('page-'+n).classList.add('on');
+  if(n==='alerts'){newAlerts=0;updateBadge();}
+  if(n==='chart')loadChartData();
+  if(n==='whales')fetchWhaleBalances();
+  if(n==='macro')loadMacroData();
+  if(n==='alerts')fetchBlockchairAlerts();
+  if(n==='stocks')loadStocks();
 }
 
-// Call calcATHStats whenever prices load
-var _origAfterFetch = afterFetch;
-afterFetch = function(src) {
-  _origAfterFetch(src);
-  calcATHStats(prices['BTC'] ? prices['BTC'].price : 0);
-};
-
-// Also call when chart tab opens
-var _origLoadChart = loadChartData;
-loadChartData = function() {
-  _origLoadChart();
-  calcATHStats(prices['BTC'] ? prices['BTC'].price : 0);
-};
-
-
-// ── MACRO: YIELD CURVE ───────────────────────────────────────
-var macroLoaded = false;
-
-function loadMacroData() {
-  if (macroLoaded) return;
-  macroLoaded = true;
-  fetchYieldCurve();
-}
-
-async function fetchYieldCurve() {
-  // FRED API — free, no key needed for basic data
-  // Use stlouisfed observations endpoint
-  // Fallback: use hardcoded recent data if API fails
-  try {
-    // Try fetching via allorigins proxy to avoid CORS
-    var end = new Date().toISOString().slice(0,10);
-    var start = new Date(Date.now() - 365*3*24*60*60*1000).toISOString().slice(0,10);
-
-    var url10y2y = 'https://api.stlouisfed.org/fred/series/observations?series_id=T10Y2Y&api_key=b02cf065ac694b39bfb1bea04eae9b28&file_type=json&observation_start='+start+'&observation_end='+end+'&sort_order=asc';
-    var url10y3m = 'https://api.stlouisfed.org/fred/series/observations?series_id=T10Y3M&api_key=b02cf065ac694b39bfb1bea04eae9b28&file_type=json&observation_start='+start+'&observation_end='+end+'&sort_order=asc';
-
-    var [r1, r2] = await Promise.all([fetch(url10y2y), fetch(url10y3m)]);
-    var [d1, d2] = await Promise.all([r1.json(), r2.json()]);
-
-    if (!d1.observations || !d2.observations) throw new Error('no data');
-
-    var data10y2y = d1.observations
-      .filter(function(o){ return o.value !== '.'; })
-      .map(function(o){ return {date: o.date, val: parseFloat(o.value)}; });
-
-    var data10y3m = d2.observations
-      .filter(function(o){ return o.value !== '.'; })
-      .map(function(o){ return {date: o.date, val: parseFloat(o.value)}; });
-
-    processYieldData(data10y2y, data10y3m, 'FRED');
-
-  } catch(e) {
-    console.warn('FRED API failed:', e.message);
-    // Use realistic simulated data based on known history
-    useFallbackYieldData();
-  }
-}
-
-function useFallbackYieldData() {
-  // Realistic yield curve data based on actual FRED history
-  // 2022 inversion, 2023-2024 deeply inverted, 2024-2025 de-inverting
-  var data10y2y = [];
-  var data10y3m = [];
-  var baseDate = new Date('2022-01-01');
-
-  // Known approximate values from FRED history
-  var knownData = [
-    // [months_from_start, T10Y2Y, T10Y3M]
-    [0,  0.85,  0.05],
-    [3,  0.20, -0.30],
-    [6, -0.20, -0.70],
-    [9, -0.45, -1.10],
-    [12,-0.70, -1.35],
-    [15,-0.90, -1.50],
-    [18,-1.05, -1.65],
-    [21,-0.95, -1.55],
-    [24,-0.75, -1.40],
-    [27,-0.50, -1.20],
-    [30,-0.30, -0.90],
-    [33,-0.10, -0.50],
-    [36, 0.10, -0.20],
-    [38, 0.25,  0.05],
-  ];
-
-  knownData.forEach(function(row) {
-    var d = new Date(baseDate.getTime() + row[0] * 30 * 24 * 60 * 60 * 1000);
-    var dateStr = d.toISOString().slice(0,10);
-    data10y2y.push({date: dateStr, val: row[1]});
-    data10y3m.push({date: dateStr, val: row[2]});
-  });
-
-  processYieldData(data10y2y, data10y3m, 'Dane szacunkowe');
-}
-
-function processYieldData(data10y2y, data10y3m, source) {
-  if (!data10y2y.length) return;
-
-  var cur10y2y = data10y2y[data10y2y.length-1].val;
-  var cur10y3m = data10y3m.length ? data10y3m[data10y3m.length-1].val : cur10y2y;
-
-  // Determine phase
-  var inverted10y2y = cur10y2y < 0;
-  var inverted10y3m = cur10y3m < 0;
-  var bothInverted = inverted10y2y && inverted10y3m;
-  var bothNormal = !inverted10y2y && !inverted10y3m;
-  var flat10y2y = cur10y2y >= 0 && cur10y2y < 0.5;
-
-  var phase, phaseColor, phaseBg, phaseBorder;
-  var riskLevel, riskTitle, riskDesc, riskDescEn;
-
-  if (bothInverted) {
-    phase = 'INWERSJA';
-    phaseColor = 'var(--red)'; phaseBg = 'rgba(255,51,85,.06)'; phaseBorder = 'rgba(255,51,85,.3)';
-    riskLevel = '🔴 WYSOKIE RYZYKO';
-    riskTitle = 'UWAGA — KRZYW INVERTOWANA';
-    riskDesc = 'Obie pary obligacji są odwrócone. Historycznie jest to <b style="color:var(--red)">najsilniejszy sygnał ostrzegawczy</b> przed recesją. Rynek wycenia nadchodzące obniżki stóp przez Fed. Środowisko <b>niekorzystne dla aktywów ryzykownych</b> — akcji i kryptowalut. Rozważ zwiększenie ekspozycji na gotówkę, obligacje długoterminowe i złoto.';
-    riskDescEn = 'Both spreads inverted. Historically the strongest pre-recession signal. Fed rate cuts are being priced in. Risk-off environment — consider increasing cash, long bonds, and gold exposure.';
-  } else if (flat10y2y || inverted10y2y || inverted10y3m) {
-    // Check if de-inverting (was inverted, now normalizing)
-    var prevVal = data10y2y.length > 5 ? data10y2y[data10y2y.length-6].val : cur10y2y;
-    var deInverting = prevVal < 0 && cur10y2y >= 0;
-
-    if (deInverting) {
-      phase = 'DE-INWERSJA';
-      phaseColor = 'var(--red)'; phaseBg = 'rgba(255,51,85,.06)'; phaseBorder = 'rgba(255,51,85,.3)';
-      riskLevel = '🔴 EKSTREMALNIE WYSOKIE RYZYKO';
-      riskTitle = 'DE-INWERSJA — NAJNIEBEZPIECZNIEJSZA FAZA';
-      riskDesc = 'Krzywa właśnie wychodzi z inwersji. <b style="color:var(--red)">Historycznie to najniebezpieczniejszy moment</b> — recesja zazwyczaj rozpoczyna się dokładnie w tej fazie, nie podczas samej inwersji. W 2000 roku de-inwersja poprzedzała krach dot-com o kilka miesięcy. W 2007 roku — kryzys finansowy. <b>Maksymalna ostrożność.</b>';
-      riskDescEn = 'Curve is exiting inversion. Historically the most dangerous phase — recessions typically begin at this moment, not during inversion itself. Maximum caution warranted.';
-    } else {
-      phase = 'SPŁASZCZENIE';
-      phaseColor = 'var(--amber)'; phaseBg = 'rgba(255,170,0,.06)'; phaseBorder = 'rgba(255,170,0,.3)';
-      riskLevel = '🟡 PODWYŻSZONE RYZYKO';
-      riskTitle = 'SPŁASZCZONA KRZYWA — OSTROŻNOŚĆ';
-      riskDesc = 'Różnica między rentownościami krótko- i długoterminowymi jest bardzo mała. Rynek jest <b>niepewny co do przyszłości</b>. Historycznie ta faza poprzedza inwersję lub oznacza wychodzenie z niej. Zalecane <b>zmniejszenie ryzyka portfela</b> i obserwowanie kolejnych danych makro (NFP, CPI, Fed).';
-      riskDescEn = 'Spread between short and long-term yields is very small. Market uncertain about future direction. Historically precedes inversion or signals exit from it. Reduce portfolio risk and monitor macro data closely.';
-    }
-  } else if (cur10y2y >= 0.5 && cur10y2y < 1.5) {
-    phase = 'NORMALIZACJA';
-    phaseColor = '#00d4ff'; phaseBg = 'rgba(0,212,255,.05)'; phaseBorder = 'rgba(0,212,255,.25)';
-    riskLevel = '🔵 NEUTRALNE';
-    riskTitle = 'NORMALIZACJA KRZYWEJ';
-    riskDesc = 'Krzywa powraca do normalnego kształtu po inwersji. Środowisko <b>stopniowo staje się korzystniejsze</b> dla aktywów ryzykownych. Fed prawdopodobnie zakończył cykl podwyżek. Historycznie to dobry moment na <b>stopniowe zwiększanie ekspozycji</b> na akcje i krypto — ale z uwagą na dane makro.';
-    riskDescEn = 'Curve normalizing after inversion. Environment gradually becoming more favorable for risk assets. Fed likely done hiking. Historically a good time to gradually increase risk exposure — but monitor macro data closely.';
-  } else {
-    phase = 'NORMALNA';
-    phaseColor = 'var(--green)'; phaseBg = 'rgba(0,255,136,.05)'; phaseBorder = 'rgba(0,255,136,.25)';
-    riskLevel = '🟢 NISKIE RYZYKO';
-    riskTitle = 'NORMALNA KRZYWA — SPRZYJAJĄCE ŚRODOWISKO';
-    riskDesc = 'Krzywa rentowności ma normalny kształt — długoterminowe obligacje płacą więcej niż krótkoterminowe. Rynek wycenia <b>wzrost gospodarczy i inflację</b>. Historycznie <b>najlepsze środowisko</b> dla akcji i aktywów ryzykownych, w tym kryptowalut. Fed ma przestrzeń do działania w razie potrzeby.';
-    riskDescEn = 'Normal yield curve shape — long-term bonds yield more than short-term. Markets pricing in economic growth and inflation. Historically the best environment for equities and risk assets including crypto.';
-  }
-
-  // Update signal panel
-  var panelEl = document.getElementById('macroPanel');
-  var sigEl = document.getElementById('macroSignal');
-  var lblEl = document.getElementById('macroLabel');
-  if (panelEl) { panelEl.style.background = phaseBg; panelEl.style.borderColor = phaseBorder; }
-  if (sigEl) { sigEl.textContent = riskLevel; sigEl.style.color = phaseColor; sigEl.style.fontSize = '22px'; }
-  if (lblEl) { lblEl.textContent = phase + ' · ' + source; lblEl.style.color = phaseColor; }
-
-  // Update chips
-  updateMacroChip('10y2y', cur10y2y.toFixed(2)+'%', inverted10y2y ? 'INWERSJA' : flat10y2y ? 'PŁASKI' : 'NORMALNY',
-    inverted10y2y ? 'var(--red)' : flat10y2y ? 'var(--amber)' : 'var(--green)');
-  updateMacroChip('10y3m', cur10y3m.toFixed(2)+'%', inverted10y3m ? 'INWERSJA' : 'NORMALNY',
-    inverted10y3m ? 'var(--red)' : 'var(--green)');
-  updateMacroChip('phase', phase, '', phaseColor);
-
-  // Update risk card
-  var riskCard = document.getElementById('macroRiskCard');
-  var riskTitleEl = document.getElementById('riskTitle');
-  var riskDescEl = document.getElementById('riskDesc');
-  var riskDescEnEl = document.getElementById('riskDescEn');
-  if (riskCard) { riskCard.style.background = phaseBg; riskCard.style.borderColor = phaseBorder; }
-  if (riskTitleEl) { riskTitleEl.textContent = riskTitle; riskTitleEl.style.color = phaseColor; }
-  if (riskDescEl) { riskDescEl.innerHTML = riskDesc; riskDescEl.style.color = 'var(--text)'; }
-  if (riskDescEnEl) { riskDescEnEl.textContent = riskDescEn; }
-
-  // Update time
-  var updEl = document.getElementById('upd-macro');
-  if (updEl) updEl.textContent = new Date().toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
-
-  // Draw chart
-  drawYieldChart(data10y2y, data10y3m);
-  var ldEl = document.getElementById('ld-macro');
-  if (ldEl) ldEl.style.display = 'none';
-}
-
-function updateMacroChip(id, val, sig, col) {
-  var chip = document.getElementById('mchip-'+id);
-  var valEl = document.getElementById('mv-'+id);
-  var sigEl = document.getElementById('ms-'+id);
-  if (!chip) return;
-  var bg = col==='var(--red)'?'rgba(255,51,85,.08)':col==='var(--green)'?'rgba(0,255,136,.08)':col==='var(--amber)'?'rgba(255,170,0,.06)':'rgba(0,212,255,.06)';
-  var border = col==='var(--red)'?'rgba(255,51,85,.3)':col==='var(--green)'?'rgba(0,255,136,.3)':col==='var(--amber)'?'rgba(255,170,0,.25)':'rgba(0,212,255,.25)';
-  chip.style.background = bg; chip.style.borderColor = border;
-  if (valEl) { valEl.textContent = val; valEl.style.color = col; }
-  if (sigEl) { sigEl.textContent = sig; sigEl.style.color = col; }
-}
-
-function drawYieldChart(data10y2y, data10y3m) {
-  var canvas = document.getElementById('cvYield');
-  if (!canvas) return;
-  var dpr = window.devicePixelRatio || 1;
-  var W = canvas.parentElement.clientWidth - 28;
-  var H = 220;
-  canvas.width = W*dpr; canvas.height = H*dpr;
-  canvas.style.width = W+'px'; canvas.style.height = H+'px';
-  var ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
-
-  var pad = {top:10, right:14, bottom:32, left:38};
-  var cW = W - pad.left - pad.right;
-  var cH = H - pad.top - pad.bottom;
-
-  // Combine all values to find min/max
-  var allVals = data10y2y.map(function(d){return d.val;}).concat(data10y3m.map(function(d){return d.val;}));
-  var minV = Math.min.apply(null, allVals) - 0.2;
-  var maxV = Math.max.apply(null, allVals) + 0.2;
-  var range = maxV - minV;
-
-  var toX = function(i, len) { return pad.left + (i/(len-1))*cW; };
-  var toY = function(v) { return pad.top + cH - ((v - minV)/range)*cH; };
-  var zeroY = toY(0);
-
-  // Inversion zone (below zero) — red background
-  if (zeroY > pad.top && zeroY < pad.top + cH) {
-    ctx.fillStyle = 'rgba(255,51,85,0.08)';
-    ctx.fillRect(pad.left, zeroY, cW, pad.top + cH - zeroY);
-  }
-
-  // Zero line
-  ctx.beginPath();
-  ctx.strokeStyle = 'rgba(255,51,85,0.6)';
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([5,4]);
-  ctx.moveTo(pad.left, zeroY);
-  ctx.lineTo(pad.left + cW, zeroY);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = 'rgba(255,51,85,0.8)';
-  ctx.font = '9px Share Tech Mono,monospace';
-  ctx.textAlign = 'right';
-  ctx.fillText('0%', pad.left - 4, zeroY + 3);
-
-  // Grid lines
-  var gridVals = [-2, -1, 0.5, 1, 2];
-  gridVals.forEach(function(v) {
-    if (v < minV || v > maxV) return;
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(13,32,53,0.9)';
-    ctx.lineWidth = 1; ctx.setLineDash([3,5]);
-    ctx.moveTo(pad.left, toY(v)); ctx.lineTo(pad.left+cW, toY(v));
-    ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = '#4a6a8a';
-    ctx.font = '8px Share Tech Mono,monospace'; ctx.textAlign = 'right';
-    ctx.fillText(v+'%', pad.left-4, toY(v)+3);
-  });
-
-  // X axis labels (dates)
-  var xStep = Math.floor(data10y2y.length / 5);
-  ctx.fillStyle = '#4a6a8a'; ctx.font = '8px Share Tech Mono,monospace'; ctx.textAlign = 'center';
-  for (var i=0; i<data10y2y.length; i+=xStep) {
-    var d = new Date(data10y2y[i].date);
-    var lbl = (d.getMonth()+1)+'/'+String(d.getFullYear()).slice(2);
-    ctx.fillText(lbl, toX(i, data10y2y.length), H-4);
-  }
-
-  // Fill area under 10Y-2Y line
-  ctx.beginPath();
-  data10y2y.forEach(function(d,i){ i===0?ctx.moveTo(toX(i,data10y2y.length),toY(d.val)):ctx.lineTo(toX(i,data10y2y.length),toY(d.val)); });
-  ctx.lineTo(toX(data10y2y.length-1,data10y2y.length), zeroY);
-  ctx.lineTo(toX(0,data10y2y.length), zeroY);
-  ctx.closePath();
-  var fillGrad = ctx.createLinearGradient(0, pad.top, 0, pad.top+cH);
-  fillGrad.addColorStop(0, 'rgba(0,212,255,0.2)');
-  fillGrad.addColorStop(1, 'rgba(0,212,255,0.02)');
-  ctx.fillStyle = fillGrad; ctx.fill();
-
-  // 10Y-3M line (dashed amber)
-  if (data10y3m.length > 1) {
-    ctx.beginPath(); ctx.strokeStyle = 'rgba(255,170,0,0.7)'; ctx.lineWidth = 1.5; ctx.setLineDash([5,3]);
-    data10y3m.forEach(function(d,i){ i===0?ctx.moveTo(toX(i,data10y3m.length),toY(d.val)):ctx.lineTo(toX(i,data10y3m.length),toY(d.val)); });
-    ctx.stroke(); ctx.setLineDash([]);
-  }
-
-  // 10Y-2Y line (solid blue)
-  ctx.beginPath(); ctx.strokeStyle = '#00d4ff'; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
-  data10y2y.forEach(function(d,i){ i===0?ctx.moveTo(toX(i,data10y2y.length),toY(d.val)):ctx.lineTo(toX(i,data10y2y.length),toY(d.val)); });
-  ctx.stroke();
-
-  // End dots
-  var lx = toX(data10y2y.length-1, data10y2y.length);
-  var ly = toY(data10y2y[data10y2y.length-1].val);
-  ctx.beginPath(); ctx.arc(lx, ly, 5, 0, Math.PI*2);
-  ctx.fillStyle = '#00d4ff'; ctx.fill(); ctx.strokeStyle = '#020408'; ctx.lineWidth=2; ctx.stroke();
-
-  // "INWERSJA" label in red zone
-  if (minV < 0) {
-    ctx.fillStyle = 'rgba(255,51,85,0.5)';
-    ctx.font = '9px Share Tech Mono,monospace'; ctx.textAlign = 'center';
-    ctx.fillText('STREFA INWERSJI', pad.left + cW*0.5, toY(minV/2));
-  }
-}
-
-// Hook into goTab/goNav
-// Fetch whale balances when whales tab opened
-var _origGoTabW = goTab;
-goTab = function(n, el) {
-  _origGoTabW(n, el);
-  if (n==='whales') fetchWhaleBalances();
-};
-var _origGoNavW = goNav;
-goNav = function(n, el) {
-  _origGoNavW(n, el);
-  if (n==='whales') fetchWhaleBalances();
-};
-
-var _origGoTab2 = goTab;
-goTab = function(n, el) {
-  _origGoTab2(n, el);
-  if (n==='macro') loadMacroData();
-  if (n==='alerts') fetchBlockchairAlerts();
-};
-var _origGoNav2 = goNav;
-goNav = function(n, el) {
-  _origGoNav2(n, el);
-  if (n==='macro') loadMacroData();
-  if (n==='alerts') fetchBlockchairAlerts();
-};
+function fmtN(n){if(!n)return'—';if(n>=10000)return n.toLocaleString('en',{maximumFractionDigits:0});return n.toLocaleString('en',{maximumFractionDigits:2});}
+function fmtUSD(n){if(!n||isNaN(n))return'—';if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(0)+'K';return'$'+n.toFixed(0);}
+function fmtCoin(n){if(!n||n===0)return'—';if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toLocaleString('en',{maximumFractionDigits:2});}
 
 // ── START ─────────────────────────────────────────────────────
-// Blockchair API — no key needed
 updateWhales();
 fetchPrices();
-if(waKey) fetchAlerts();
 schedule();
 </script>
 </body>
