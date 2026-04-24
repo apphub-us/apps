@@ -136,9 +136,9 @@
   .node-breaker-blue .label { fill: #9977dd; font-size: 12px; font-family: 'Share Tech Mono'; }
   .node-breaker-blue .main { fill: #66bbdd; font-family: 'Rajdhani'; font-weight: 700; }
   .node-breaker-blue .sub3 { fill: #3a7a9a; font-size: 12px; font-family: 'Rajdhani'; }
-  .node-bktrans rect { fill: #0e0a1f; stroke: #cc44ff; stroke-width: 2; filter: drop-shadow(0 0 10px rgba(200,68,255,0.5)); }
-  .node-bktrans text { fill: #dd88ff; font-family: 'Rajdhani'; font-weight: 700; }
-  .node-bktrans .sub2 { fill: #9955cc; font-size: 14px; }
+  .node-bktrans rect { fill: #1a0e00; stroke: #ff6b35; stroke-width: 2; filter: drop-shadow(0 0 10px rgba(255,107,53,0.5)); }
+  .node-bktrans text { fill: #ff8c42; font-family: 'Rajdhani'; font-weight: 700; }
+  .node-bktrans .sub2 { fill: #cc5500; font-size: 14px; }
   .node-bktrans .ts-src1 { fill: #00cc66; font-family: 'Share Tech Mono'; }
   .node-bktrans .ts-src2 { fill: #cc9900; font-family: 'Share Tech Mono'; }
 
@@ -315,8 +315,8 @@
 </div>
 
 <div class="legend">
-  <div class="legend-item"><div class="legend-dot dot-gen"></div> Generator / Power Source</div>
-  <div class="legend-item"><div class="legend-dot dot-panel"></div> Distribution Panel</div>
+  <div class="legend-item"><div class="legend-dot dot-gen"></div> Generator / Transfer Switch</div>
+  <div class="legend-item"><div class="legend-dot dot-panel"></div> Electrical Panel</div>
   <div class="legend-item"><div class="legend-dot dot-breaker"></div> Circuit Breaker</div>
   <div class="legend-item"><div class="legend-dot dot-transformer"></div> Transformer</div>
   <div class="legend-item"><div class="legend-dot dot-disconnect"></div> Disconnect Switch</div>
@@ -398,15 +398,12 @@
 
 <!-- Line: Breaker 316 → straight down to middle of Sub-Panel 316 -->
 <polyline points="157,278 157,360 400,360 400,400" stroke="#00d4ff" stroke-width="3" fill="none" stroke-dasharray="10,5" opacity="0.85" marker-end="url(#arr-blue)"/>
-<!-- Label -->
-<rect x="210" y="338" width="130" height="20" rx="4" fill="#0a0e1a" opacity="0.85"/>
-<text x="275" y="352" text-anchor="middle" font-size="14" fill="#00d4ff" font-family="Share Tech Mono" letter-spacing="1">→ SUB-PANEL 316</text>
+
 
 <!-- Line: Breaker 319 → routes around right of sub-panel → touches right side of Disconnect SW EF -->
 <polyline points="507,278 507,295 810,295 810,878 580,878" stroke="#ffcc00" stroke-width="3" fill="none" stroke-dasharray="10,5" opacity="0.85" marker-end="url(#arr-yellow)"/>
 <!-- Label -->
-<rect x="818" y="700" width="148" height="22" rx="4" fill="#0a0e1a" opacity="0.85"/>
-<text x="892" y="715" text-anchor="middle" font-size="14" fill="#ffcc00" font-family="Share Tech Mono" letter-spacing="1">→ DISCONNECT SW. EF</text>
+
 
 
 <!-- ===== SUB-PANEL 316 — moved down to y=400 ===== -->
@@ -611,9 +608,9 @@
 <g class="node node-bktrans" data-tip="transferSwitchE" style="cursor:pointer">
   <rect x="250" y="1283" width="200" height="100" rx="8"/>
   <text x="350" y="1301" text-anchor="middle" font-size="15" font-weight="700" fill="#dd88ff" font-family="Rajdhani" letter-spacing="1">⚡ TRANSFER SWITCH E</text>
-  <line x1="260" y1="1308" x2="440" y2="1308" stroke="#5533aa" stroke-width="1" opacity="0.6"/>
+  <line x1="260" y1="1308" x2="440" y2="1308" stroke="#8a3000" stroke-width="1" opacity="0.6"/>
   <text x="310" y="1326" text-anchor="middle" font-size="11" fill="#00cc66" font-family="Share Tech Mono">① GENERATOR</text>
-  <text x="350" y="1342" text-anchor="middle" font-size="15" font-weight="700" fill="#cc44ff" font-family="Rajdhani">— OR —</text>
+  <text x="350" y="1342" text-anchor="middle" font-size="15" font-weight="700" fill="#ff6b35" font-family="Rajdhani">— OR —</text>
   <text x="390" y="1358" text-anchor="middle" font-size="11" fill="#cc9900" font-family="Share Tech Mono">② SHORE</text>
   <text x="350" y="1376" text-anchor="middle" font-size="9" fill="#9955cc" font-family="Share Tech Mono">▼ ONE SOURCE AT A TIME</text>
 </g>
@@ -645,9 +642,9 @@
 <g class="node node-bktrans" data-tip="transferSwitchF" style="cursor:pointer">
   <rect x="470" y="1283" width="200" height="100" rx="8"/>
   <text x="570" y="1301" text-anchor="middle" font-size="15" font-weight="700" fill="#dd88ff" font-family="Rajdhani" letter-spacing="1">⚡ TRANSFER SWITCH F</text>
-  <line x1="480" y1="1308" x2="660" y2="1308" stroke="#5533aa" stroke-width="1" opacity="0.6"/>
+  <line x1="480" y1="1308" x2="660" y2="1308" stroke="#8a3000" stroke-width="1" opacity="0.6"/>
   <text x="520" y="1326" text-anchor="middle" font-size="11" fill="#00cc66" font-family="Share Tech Mono">① GENERATOR</text>
-  <text x="570" y="1342" text-anchor="middle" font-size="15" font-weight="700" fill="#cc44ff" font-family="Rajdhani">— OR —</text>
+  <text x="570" y="1342" text-anchor="middle" font-size="15" font-weight="700" fill="#ff6b35" font-family="Rajdhani">— OR —</text>
   <text x="618" y="1358" text-anchor="middle" font-size="11" fill="#cc9900" font-family="Share Tech Mono">② SHORE</text>
   <text x="570" y="1376" text-anchor="middle" font-size="9" fill="#9955cc" font-family="Share Tech Mono">▼ ONE SOURCE AT A TIME</text>
 </g>
@@ -679,8 +676,7 @@
 
 <!-- Dashed green line from #322, goes left outside all content, then down, then right to Disconnect C -->
 <polyline points="332,278 332,295 -60,295 -60,1563 217,1563" stroke="#00ff88" stroke-width="3" fill="none" stroke-dasharray="10,5" opacity="0.85" marker-end="url(#arr-green)"/>
-<rect x="-108" y="892" width="148" height="22" rx="4" fill="#0a0e1a" opacity="0.85"/>
-<text x="-34" y="906" text-anchor="middle" font-size="14" fill="#00ff88" font-family="Share Tech Mono" letter-spacing="1">→ DISCONNECT SW. C</text>
+
 
 <!-- Disconnect Switch C -->
 <g class="node node-disconnect" data-tip="disconnectC" style="cursor:pointer">
@@ -714,8 +710,7 @@
 
 <!-- Dashed orange line from #1, goes right side down — past x=1060 to clear all content -->
 <polyline points="682,278 682,360 990,360 990,1563 770,1563" stroke="#ff6b35" stroke-width="3" fill="none" stroke-dasharray="10,5" opacity="0.85" marker-end="url(#arr-orange)"/>
-<rect x="998" y="892" width="130" height="22" rx="4" fill="#0a0e1a" opacity="0.85"/>
-<text x="1063" y="906" text-anchor="middle" font-size="14" fill="#ff6b35" font-family="Share Tech Mono" letter-spacing="1">→ DISCONNECT G</text>
+
 
 
 <!-- Disconnect Switch G -->
@@ -742,9 +737,9 @@
 <g class="node node-bktrans" data-tip="transferSwitchG" style="cursor:pointer">
   <rect x="525" y="1708" width="200" height="100" rx="8"/>
   <text x="625" y="1727" text-anchor="middle" font-size="15" font-weight="700" fill="#dd88ff" font-family="Rajdhani" letter-spacing="1">⚡ TRANSFER SWITCH G</text>
-  <line x1="535" y1="1734" x2="715" y2="1734" stroke="#5533aa" stroke-width="1" opacity="0.6"/>
+  <line x1="535" y1="1734" x2="715" y2="1734" stroke="#8a3000" stroke-width="1" opacity="0.6"/>
   <text x="580" y="1752" text-anchor="middle" font-size="11" fill="#00cc66" font-family="Share Tech Mono">① GENERATOR</text>
-  <text x="625" y="1768" text-anchor="middle" font-size="15" font-weight="700" fill="#cc44ff" font-family="Rajdhani">— OR —</text>
+  <text x="625" y="1768" text-anchor="middle" font-size="15" font-weight="700" fill="#ff6b35" font-family="Rajdhani">— OR —</text>
   <text x="668" y="1784" text-anchor="middle" font-size="11" fill="#cc9900" font-family="Share Tech Mono">② SHORE</text>
   <text x="625" y="1800" text-anchor="middle" font-size="9" fill="#9955cc" font-family="Share Tech Mono">▼ ONE SOURCE AT A TIME</text>
 </g>
