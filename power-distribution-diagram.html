@@ -28,7 +28,7 @@
     font-family: 'Rajdhani', sans-serif;
     color: var(--text);
     min-height: 100vh;
-    padding: 30px 20px 60px;
+    padding: 30px 20px 0;
     background-image:
       radial-gradient(ellipse at 20% 10%, rgba(0,80,120,0.15) 0%, transparent 60%),
       radial-gradient(ellipse at 80% 90%, rgba(0,60,100,0.1) 0%, transparent 60%);
@@ -305,6 +305,7 @@
 <header>
   <h1>Electrical System</h1>
   <h2>Power Distribution Diagram</h2>
+  <h3 style="font-size: 16px; letter-spacing: 8px; color: #5a9abc; font-family: 'Share Tech Mono', monospace; margin-top: 6px; font-weight: 700;">BAYLANDER</h3>
 </header>
 
 <div class="search-wrap">
@@ -322,7 +323,7 @@
 </div>
 
 <div class="diagram-wrap">
-<svg viewBox="-180 0 1380 3400" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="-180 0 1380 1980" xmlns="http://www.w3.org/2000/svg">
 <defs>
   <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
     <path d="M0,0 L0,6 L8,3 Z" fill="#00d4ff"/>
@@ -407,8 +408,6 @@
 <rect x="818" y="700" width="148" height="22" rx="4" fill="#0a0e1a" opacity="0.85"/>
 <text x="892" y="715" text-anchor="middle" font-size="14" fill="#ffcc00" font-family="Share Tech Mono" letter-spacing="1">→ DISCONNECT SW. EF</text>
 
-<text x="330" y="298" text-anchor="middle" font-size="14" fill="#5a7a9a" font-family="Share Tech Mono">→ other circuits (not shown)</text>
-<text x="682" y="298" text-anchor="middle" font-size="14" fill="#5a7a9a" font-family="Share Tech Mono">→ other circuits (not shown)</text>
 
 <!-- ===== SUB-PANEL 316 — moved down to y=400 ===== -->
 <g data-tip="panel316" style="cursor:pointer">
@@ -531,7 +530,6 @@
 <!-- ============================================================ -->
 
 <!-- Separator label -->
-<text x="430" y="840" text-anchor="middle" font-size="15" fill="#5a7a9a" font-family="Share Tech Mono" letter-spacing="3">── BREAKER #319 CIRCUIT ──</text>
 
 <!-- Disconnect Switch EF -->
 <g class="node node-disconnect" data-tip="disconnect319" style="cursor:pointer">
@@ -719,7 +717,6 @@
 <rect x="998" y="892" width="130" height="22" rx="4" fill="#0a0e1a" opacity="0.85"/>
 <text x="1063" y="906" text-anchor="middle" font-size="14" fill="#ff6b35" font-family="Share Tech Mono" letter-spacing="1">→ DISCONNECT G</text>
 
-<text x="655" y="1395" text-anchor="middle" font-size="15" fill="#5a7a9a" font-family="Share Tech Mono" letter-spacing="3">── BREAKER #1 CIRCUIT ──</text>
 
 <!-- Disconnect Switch G -->
 <g class="node node-disconnect" data-tip="disconnectG" style="cursor:pointer">
@@ -784,43 +781,6 @@
   <p id="tip-body"></p>
 </div>
 
-<!-- Info cards -->
-<div class="info-grid">
-  <div class="info-card">
-    <div class="ic-icon">⚡</div>
-    <div class="ic-title" style="color:#ff6b35">Generator</div>
-    <div class="ic-body">The original power source. Produces 480V / 277V three-phase electricity — a high-voltage format used for industrial and commercial buildings.</div>
-  </div>
-  <div class="info-card">
-    <div class="ic-icon">🗃️</div>
-    <div class="ic-title" style="color:#00d4ff">Distribution Panel</div>
-    <div class="ic-body">Like a highway junction — it receives all the power from the generator and splits it into separate circuits, each protected by its own breaker.</div>
-  </div>
-  <div class="info-card">
-    <div class="ic-icon">🔒</div>
-    <div class="ic-title" style="color:#bb99ff">Circuit Breaker</div>
-    <div class="ic-body">A safety device that automatically cuts power if there's a fault (overload or short circuit). Each one protects a different part of the system.</div>
-  </div>
-  <div class="info-card">
-    <div class="ic-icon">🔌</div>
-    <div class="ic-title" style="color:#ffcc00">Disconnect Switch</div>
-    <div class="ic-body">A manual switch used by electricians to safely isolate a section of the system for maintenance, without touching live wires.</div>
-  </div>
-  <div class="info-card">
-    <div class="ic-icon">🔧</div>
-    <div class="ic-title" style="color:#00ff88">Transformer</div>
-    <div class="ic-body">Converts high voltage (480V) down to a lower, safer voltage (e.g. 208V or 120V) that standard equipment and outlets can use.</div>
-  </div>
-  <div class="info-card">
-    <div class="ic-icon">📋</div>
-    <div class="ic-title" style="color:#66bbdd">Final Panel (A / B / D)</div>
-    <div class="ic-body">The last stop — the breaker panel you'd find on a wall in a room or floor. It distributes power to outlets, lights, and equipment.</div>
-  </div>
-</div>
-
-<footer>
-  480/277V — 3Ø — POWER DISTRIBUTION SYSTEM
-</footer>
 
 <script>
 const tips = {
