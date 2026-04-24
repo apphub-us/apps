@@ -390,7 +390,7 @@
   <g class="node node-breaker" data-tip="breaker313" style="cursor:pointer">
     <rect x="605" y="168" width="155" height="90" rx="6"/>
     <text x="682" y="196" text-anchor="middle" font-size="14" class="label">CIRCUIT BREAKER</text>
-    <text x="682" y="222" text-anchor="middle" font-size="22" font-weight="700">#313</text>
+    <text x="682" y="222" text-anchor="middle" font-size="22" font-weight="700">#1</text>
     <text x="682" y="248" text-anchor="middle" font-size="12" fill="#9977dd">→ Transformer G</text>
   </g>
 </g>
@@ -570,7 +570,7 @@
   <g class="node node-breaker-blue" data-tip="breakerE" style="cursor:pointer">
     <rect x="386" y="1094" width="188" height="68" rx="5"/>
     <text x="480" y="1116" text-anchor="middle" font-size="12" class="label">CIRCUIT BREAKER</text>
-    <text x="480" y="1141" text-anchor="middle" font-size="18" class="main">TRANSFORMER E</text>
+    <text x="480" y="1141" text-anchor="middle" font-size="18" class="main">SUB PANEL E</text>
     <text x="480" y="1155" text-anchor="middle" font-size="11" fill="#3a7a9a">→ Disconnect E</text>
   </g>
 
@@ -578,7 +578,7 @@
   <g class="node node-breaker-blue" data-tip="breakerF" style="cursor:pointer">
     <rect x="654" y="1094" width="188" height="68" rx="5"/>
     <text x="748" y="1116" text-anchor="middle" font-size="12" class="label">CIRCUIT BREAKER</text>
-    <text x="748" y="1141" text-anchor="middle" font-size="18" class="main">TRANSFORMER F</text>
+    <text x="748" y="1141" text-anchor="middle" font-size="18" class="main">SUB PANEL F</text>
     <text x="748" y="1155" text-anchor="middle" font-size="11" fill="#3a7a9a">→ Disconnect F</text>
   </g>
 </g>
@@ -594,49 +594,39 @@
   <text x="350" y="1251" text-anchor="middle" font-size="14">Safety Cutoff</text>
 </g>
 
-<!-- Disconnect E → Transformer E -->
-<line x1="350" y1="1257" x2="350" y2="1295" class="line-green animated" marker-end="url(#arr-green)"/>
-
-<g class="node node-transformer" data-tip="transformerE" style="cursor:pointer">
-  <rect x="260" y="1295" width="180" height="62" rx="6"/>
-  <text x="350" y="1315" text-anchor="middle" font-size="14">🔧 TRANSFORMER</text>
-  <text x="350" y="1337" text-anchor="middle" font-size="22" font-weight="700">E</text>
-  <text x="350" y="1352" text-anchor="middle" font-size="12" fill="#00cc66">Internal power source</text>
-</g>
+<!-- Disconnect E → Transfer Switch E (direct, no transformer) -->
+<line x1="350" y1="1257" x2="350" y2="1283" class="line-yellow animated" marker-end="url(#arr-yellow)"/>
 
 <!-- Shore Disconnect E — LEFT of Transfer Switch E -->
 <g class="node node-disconnect" data-tip="shoreDisconnectE" style="cursor:pointer">
-  <rect x="60" y="1383" width="160" height="100" rx="6"/>
-  <text x="140" y="1413" text-anchor="middle" font-size="12">🔌 DISCONNECT</text>
-  <text x="140" y="1429" text-anchor="middle" font-size="12">SWITCH</text>
-  <text x="140" y="1450" text-anchor="middle" font-size="19" font-weight="700">Shore E</text>
-  <text x="140" y="1470" text-anchor="middle" font-size="11" fill="#cc9900">External shore power</text>
+  <rect x="60" y="1283" width="160" height="100" rx="6"/>
+  <text x="140" y="1313" text-anchor="middle" font-size="12">🔌 DISCONNECT</text>
+  <text x="140" y="1329" text-anchor="middle" font-size="12">SWITCH</text>
+  <text x="140" y="1350" text-anchor="middle" font-size="19" font-weight="700">Shore E</text>
+  <text x="140" y="1370" text-anchor="middle" font-size="11" fill="#cc9900">External shore power</text>
 </g>
 
 <!-- Shore E → Transfer Switch E -->
-<line x1="220" y1="1433" x2="250" y2="1433" class="line-yellow animated" marker-end="url(#arr-yellow)"/>
-
-<!-- Transformer E → Transfer Switch E -->
-<line x1="350" y1="1357" x2="350" y2="1383" class="line-sub animated" marker-end="url(#arr-cyan)"/>
+<line x1="220" y1="1333" x2="250" y2="1333" class="line-yellow animated" marker-end="url(#arr-yellow)"/>
 
 <!-- Transfer Switch E -->
 <g class="node node-bktrans" data-tip="transferSwitchE" style="cursor:pointer">
-  <rect x="250" y="1383" width="200" height="100" rx="8"/>
-  <text x="350" y="1401" text-anchor="middle" font-size="15" font-weight="700" fill="#dd88ff" font-family="Rajdhani" letter-spacing="1">⚡ TRANSFER SWITCH E</text>
-  <line x1="260" y1="1408" x2="440" y2="1408" stroke="#5533aa" stroke-width="1" opacity="0.6"/>
-  <text x="310" y="1426" text-anchor="middle" font-size="11" fill="#00cc66" font-family="Share Tech Mono">① GENERATOR</text>
-  <text x="350" y="1442" text-anchor="middle" font-size="15" font-weight="700" fill="#cc44ff" font-family="Rajdhani">— OR —</text>
-  <text x="390" y="1458" text-anchor="middle" font-size="11" fill="#cc9900" font-family="Share Tech Mono">② SHORE</text>
-  <text x="350" y="1476" text-anchor="middle" font-size="9" fill="#9955cc" font-family="Share Tech Mono">▼ ONE SOURCE AT A TIME</text>
+  <rect x="250" y="1283" width="200" height="100" rx="8"/>
+  <text x="350" y="1301" text-anchor="middle" font-size="15" font-weight="700" fill="#dd88ff" font-family="Rajdhani" letter-spacing="1">⚡ TRANSFER SWITCH E</text>
+  <line x1="260" y1="1308" x2="440" y2="1308" stroke="#5533aa" stroke-width="1" opacity="0.6"/>
+  <text x="310" y="1326" text-anchor="middle" font-size="11" fill="#00cc66" font-family="Share Tech Mono">① GENERATOR</text>
+  <text x="350" y="1342" text-anchor="middle" font-size="15" font-weight="700" fill="#cc44ff" font-family="Rajdhani">— OR —</text>
+  <text x="390" y="1358" text-anchor="middle" font-size="11" fill="#cc9900" font-family="Share Tech Mono">② SHORE</text>
+  <text x="350" y="1376" text-anchor="middle" font-size="9" fill="#9955cc" font-family="Share Tech Mono">▼ ONE SOURCE AT A TIME</text>
 </g>
 
 <!-- Transfer Switch E → Panel E -->
-<line x1="350" y1="1483" x2="350" y2="1515" class="line-sub animated" marker-end="url(#arr-cyan)"/>
+<line x1="350" y1="1383" x2="350" y2="1415" class="line-sub animated" marker-end="url(#arr-cyan)"/>
 
 <g class="node node-finalpanel" data-tip="panelE" style="cursor:pointer">
-  <rect x="270" y="1515" width="160" height="60" rx="6"/>
-  <text x="350" y="1538" text-anchor="middle" font-size="15" fill="#4488aa">ELECTRICAL PANEL</text>
-  <text x="350" y="1559" text-anchor="middle" font-size="22" font-weight="700">E</text>
+  <rect x="270" y="1415" width="160" height="60" rx="6"/>
+  <text x="350" y="1438" text-anchor="middle" font-size="15" fill="#4488aa">ELECTRICAL PANEL</text>
+  <text x="350" y="1459" text-anchor="middle" font-size="22" font-weight="700">E</text>
 </g>
 
 <!-- ── BRANCH F ── -->
@@ -650,49 +640,39 @@
   <text x="570" y="1251" text-anchor="middle" font-size="14">Safety Cutoff</text>
 </g>
 
-<!-- Disconnect F → Transformer F -->
-<line x1="570" y1="1257" x2="570" y2="1295" class="line-green animated" marker-end="url(#arr-green)"/>
-
-<g class="node node-transformer" data-tip="transformerF" style="cursor:pointer">
-  <rect x="480" y="1295" width="180" height="62" rx="6"/>
-  <text x="570" y="1315" text-anchor="middle" font-size="14">🔧 TRANSFORMER</text>
-  <text x="570" y="1337" text-anchor="middle" font-size="22" font-weight="700">F</text>
-  <text x="570" y="1352" text-anchor="middle" font-size="12" fill="#00cc66">Internal power source</text>
-</g>
-
-<!-- Transformer F → Transfer Switch F -->
-<line x1="570" y1="1357" x2="570" y2="1383" class="line-sub animated" marker-end="url(#arr-cyan)"/>
+<!-- Disconnect F → Transfer Switch F (direct, no transformer) -->
+<line x1="570" y1="1257" x2="570" y2="1283" class="line-yellow animated" marker-end="url(#arr-yellow)"/>
 
 <!-- Transfer Switch F -->
 <g class="node node-bktrans" data-tip="transferSwitchF" style="cursor:pointer">
-  <rect x="470" y="1383" width="200" height="100" rx="8"/>
-  <text x="570" y="1401" text-anchor="middle" font-size="15" font-weight="700" fill="#dd88ff" font-family="Rajdhani" letter-spacing="1">⚡ TRANSFER SWITCH F</text>
-  <line x1="480" y1="1408" x2="660" y2="1408" stroke="#5533aa" stroke-width="1" opacity="0.6"/>
-  <text x="520" y="1426" text-anchor="middle" font-size="11" fill="#00cc66" font-family="Share Tech Mono">① GENERATOR</text>
-  <text x="570" y="1442" text-anchor="middle" font-size="15" font-weight="700" fill="#cc44ff" font-family="Rajdhani">— OR —</text>
-  <text x="618" y="1458" text-anchor="middle" font-size="11" fill="#cc9900" font-family="Share Tech Mono">② SHORE</text>
-  <text x="570" y="1476" text-anchor="middle" font-size="9" fill="#9955cc" font-family="Share Tech Mono">▼ ONE SOURCE AT A TIME</text>
+  <rect x="470" y="1283" width="200" height="100" rx="8"/>
+  <text x="570" y="1301" text-anchor="middle" font-size="15" font-weight="700" fill="#dd88ff" font-family="Rajdhani" letter-spacing="1">⚡ TRANSFER SWITCH F</text>
+  <line x1="480" y1="1308" x2="660" y2="1308" stroke="#5533aa" stroke-width="1" opacity="0.6"/>
+  <text x="520" y="1326" text-anchor="middle" font-size="11" fill="#00cc66" font-family="Share Tech Mono">① GENERATOR</text>
+  <text x="570" y="1342" text-anchor="middle" font-size="15" font-weight="700" fill="#cc44ff" font-family="Rajdhani">— OR —</text>
+  <text x="618" y="1358" text-anchor="middle" font-size="11" fill="#cc9900" font-family="Share Tech Mono">② SHORE</text>
+  <text x="570" y="1376" text-anchor="middle" font-size="9" fill="#9955cc" font-family="Share Tech Mono">▼ ONE SOURCE AT A TIME</text>
 </g>
 
 <!-- Shore Disconnect F — RIGHT of Transfer Switch F -->
 <g class="node node-disconnect" data-tip="shoreDisconnectF" style="cursor:pointer">
-  <rect x="680" y="1383" width="160" height="100" rx="6"/>
-  <text x="760" y="1413" text-anchor="middle" font-size="12">🔌 DISCONNECT</text>
-  <text x="760" y="1429" text-anchor="middle" font-size="12">SWITCH</text>
-  <text x="760" y="1450" text-anchor="middle" font-size="19" font-weight="700">Shore F</text>
-  <text x="760" y="1470" text-anchor="middle" font-size="11" fill="#cc9900">External shore power</text>
+  <rect x="700" y="1283" width="160" height="100" rx="6"/>
+  <text x="780" y="1313" text-anchor="middle" font-size="12">🔌 DISCONNECT</text>
+  <text x="780" y="1329" text-anchor="middle" font-size="12">SWITCH</text>
+  <text x="780" y="1350" text-anchor="middle" font-size="19" font-weight="700">Shore F</text>
+  <text x="780" y="1370" text-anchor="middle" font-size="11" fill="#cc9900">External shore power</text>
 </g>
 
 <!-- Shore F → Transfer Switch F -->
-<line x1="680" y1="1433" x2="670" y2="1433" class="line-yellow animated" marker-end="url(#arr-yellow)"/>
+<line x1="700" y1="1333" x2="671" y2="1333" class="line-yellow animated" marker-end="url(#arr-yellow)"/>
 
 <!-- Transfer Switch F → Panel F -->
-<line x1="570" y1="1483" x2="570" y2="1515" class="line-sub animated" marker-end="url(#arr-cyan)"/>
+<line x1="570" y1="1383" x2="570" y2="1415" class="line-sub animated" marker-end="url(#arr-cyan)"/>
 
 <g class="node node-finalpanel" data-tip="panelF" style="cursor:pointer">
-  <rect x="490" y="1515" width="160" height="60" rx="6"/>
-  <text x="570" y="1538" text-anchor="middle" font-size="15" fill="#4488aa">ELECTRICAL PANEL</text>
-  <text x="570" y="1559" text-anchor="middle" font-size="22" font-weight="700">F</text>
+  <rect x="490" y="1415" width="160" height="60" rx="6"/>
+  <text x="570" y="1438" text-anchor="middle" font-size="15" fill="#4488aa">ELECTRICAL PANEL</text>
+  <text x="570" y="1459" text-anchor="middle" font-size="22" font-weight="700">F</text>
 </g>
 
 <!-- ============================================================ -->
@@ -700,98 +680,98 @@
 <!-- ============================================================ -->
 
 <!-- Dashed green line from #322, goes left outside all content, then down, then right to Disconnect C -->
-<polyline points="332,278 332,295 -60,295 -60,1683 217,1683" stroke="#00ff88" stroke-width="3" fill="none" stroke-dasharray="10,5" opacity="0.85" marker-end="url(#arr-green)"/>
+<polyline points="332,278 332,295 -60,295 -60,1563 217,1563" stroke="#00ff88" stroke-width="3" fill="none" stroke-dasharray="10,5" opacity="0.85" marker-end="url(#arr-green)"/>
 <rect x="-108" y="892" width="148" height="22" rx="4" fill="#0a0e1a" opacity="0.85"/>
 <text x="-34" y="906" text-anchor="middle" font-size="14" fill="#00ff88" font-family="Share Tech Mono" letter-spacing="1">→ DISCONNECT SW. C</text>
 
 <!-- Disconnect Switch C -->
 <g class="node node-disconnect" data-tip="disconnectC" style="cursor:pointer">
-  <rect x="217" y="1655" width="230" height="52" rx="6"/>
-  <text x="332" y="1672" text-anchor="middle" font-size="14">🔌 DISCONNECT SWITCH</text>
-  <text x="332" y="1688" text-anchor="middle" font-size="16" font-weight="600">TRANSFORMER C</text>
-  <text x="332" y="1701" text-anchor="middle" font-size="14">Safety Cutoff</text>
+  <rect x="217" y="1535" width="230" height="52" rx="6"/>
+  <text x="332" y="1552" text-anchor="middle" font-size="14">🔌 DISCONNECT SWITCH</text>
+  <text x="332" y="1568" text-anchor="middle" font-size="16" font-weight="600">TRANSFORMER C</text>
+  <text x="332" y="1581" text-anchor="middle" font-size="14">Safety Cutoff</text>
 </g>
 
-<line x1="332" y1="1707" x2="332" y2="1740" class="line-green animated" marker-end="url(#arr-green)"/>
+<line x1="332" y1="1587" x2="332" y2="1620" class="line-green animated" marker-end="url(#arr-green)"/>
 
 <!-- Transformer C -->
 <g class="node node-transformer" data-tip="transformerC" style="cursor:pointer">
-  <rect x="232" y="1740" width="200" height="62" rx="6"/>
-  <text x="332" y="1760" text-anchor="middle" font-size="15">🔧 TRANSFORMER</text>
-  <text x="332" y="1783" text-anchor="middle" font-size="22" font-weight="700">C</text>
+  <rect x="232" y="1620" width="200" height="62" rx="6"/>
+  <text x="332" y="1640" text-anchor="middle" font-size="15">🔧 TRANSFORMER</text>
+  <text x="332" y="1663" text-anchor="middle" font-size="22" font-weight="700">C</text>
 </g>
 
-<line x1="332" y1="1802" x2="332" y2="1835" class="line-sub animated" marker-end="url(#arr-cyan)"/>
+<line x1="332" y1="1682" x2="332" y2="1715" class="line-sub animated" marker-end="url(#arr-cyan)"/>
 
 <!-- Panel C -->
 <g class="node node-finalpanel" data-tip="panelC" style="cursor:pointer">
-  <rect x="232" y="1835" width="200" height="60" rx="6"/>
-  <text x="332" y="1858" text-anchor="middle" font-size="15" fill="#4488aa">ELECTRICAL PANEL</text>
-  <text x="332" y="1879" text-anchor="middle" font-size="22" font-weight="700">C</text>
+  <rect x="232" y="1715" width="200" height="60" rx="6"/>
+  <text x="332" y="1738" text-anchor="middle" font-size="15" fill="#4488aa">ELECTRICAL PANEL</text>
+  <text x="332" y="1759" text-anchor="middle" font-size="22" font-weight="700">C</text>
 </g>
 
 <!-- ============================================================ -->
-<!-- ===== BREAKER #313 BRANCH — TRANSFORMER G ===== -->
+<!-- ===== BREAKER #1 BRANCH — TRANSFORMER G ===== -->
 <!-- ============================================================ -->
 
-<!-- Dashed orange line from #313, goes right side down — past x=1060 to clear all content -->
-<polyline points="682,278 682,360 990,360 990,1683 770,1683" stroke="#ff6b35" stroke-width="3" fill="none" stroke-dasharray="10,5" opacity="0.85" marker-end="url(#arr-orange)"/>
+<!-- Dashed orange line from #1, goes right side down — past x=1060 to clear all content -->
+<polyline points="682,278 682,360 990,360 990,1563 770,1563" stroke="#ff6b35" stroke-width="3" fill="none" stroke-dasharray="10,5" opacity="0.85" marker-end="url(#arr-orange)"/>
 <rect x="998" y="892" width="130" height="22" rx="4" fill="#0a0e1a" opacity="0.85"/>
 <text x="1063" y="906" text-anchor="middle" font-size="14" fill="#ff6b35" font-family="Share Tech Mono" letter-spacing="1">→ DISCONNECT G</text>
 
-<text x="655" y="1495" text-anchor="middle" font-size="15" fill="#5a7a9a" font-family="Share Tech Mono" letter-spacing="3">── BREAKER #313 CIRCUIT ──</text>
+<text x="655" y="1395" text-anchor="middle" font-size="15" fill="#5a7a9a" font-family="Share Tech Mono" letter-spacing="3">── BREAKER #1 CIRCUIT ──</text>
 
 <!-- Disconnect Switch G -->
 <g class="node node-disconnect" data-tip="disconnectG" style="cursor:pointer">
-  <rect x="540" y="1655" width="230" height="52" rx="6"/>
-  <text x="655" y="1672" text-anchor="middle" font-size="14">🔌 DISCONNECT SWITCH</text>
-  <text x="655" y="1688" text-anchor="middle" font-size="16" font-weight="600">TRANSFORMER G</text>
-  <text x="655" y="1701" text-anchor="middle" font-size="14">Safety Cutoff</text>
+  <rect x="540" y="1535" width="230" height="52" rx="6"/>
+  <text x="655" y="1552" text-anchor="middle" font-size="14">🔌 DISCONNECT SWITCH</text>
+  <text x="655" y="1568" text-anchor="middle" font-size="16" font-weight="600">TRANSFORMER G</text>
+  <text x="655" y="1581" text-anchor="middle" font-size="14">Safety Cutoff</text>
 </g>
 
-<line x1="655" y1="1707" x2="655" y2="1740" class="line-green animated" marker-end="url(#arr-green)"/>
+<line x1="655" y1="1587" x2="655" y2="1620" class="line-green animated" marker-end="url(#arr-green)"/>
 
 <!-- Transformer G -->
 <g class="node node-transformer" data-tip="transformerG" style="cursor:pointer">
-  <rect x="555" y="1740" width="200" height="62" rx="6"/>
-  <text x="655" y="1760" text-anchor="middle" font-size="15">🔧 TRANSFORMER</text>
-  <text x="655" y="1783" text-anchor="middle" font-size="22" font-weight="700">G</text>
+  <rect x="555" y="1620" width="200" height="62" rx="6"/>
+  <text x="655" y="1640" text-anchor="middle" font-size="15">🔧 TRANSFORMER</text>
+  <text x="655" y="1663" text-anchor="middle" font-size="22" font-weight="700">G</text>
 </g>
 
 <!-- Transformer G → Transfer Switch G -->
-<line x1="655" y1="1802" x2="655" y2="1828" class="line-sub animated" marker-end="url(#arr-cyan)"/>
+<line x1="655" y1="1682" x2="655" y2="1708" class="line-sub animated" marker-end="url(#arr-cyan)"/>
 
 <!-- Transfer Switch G -->
 <g class="node node-bktrans" data-tip="transferSwitchG" style="cursor:pointer">
-  <rect x="525" y="1828" width="200" height="100" rx="8"/>
-  <text x="625" y="1847" text-anchor="middle" font-size="15" font-weight="700" fill="#dd88ff" font-family="Rajdhani" letter-spacing="1">⚡ TRANSFER SWITCH G</text>
-  <line x1="535" y1="1854" x2="715" y2="1854" stroke="#5533aa" stroke-width="1" opacity="0.6"/>
-  <text x="580" y="1872" text-anchor="middle" font-size="11" fill="#00cc66" font-family="Share Tech Mono">① GENERATOR</text>
-  <text x="625" y="1888" text-anchor="middle" font-size="15" font-weight="700" fill="#cc44ff" font-family="Rajdhani">— OR —</text>
-  <text x="668" y="1904" text-anchor="middle" font-size="11" fill="#cc9900" font-family="Share Tech Mono">② SHORE</text>
-  <text x="625" y="1920" text-anchor="middle" font-size="9" fill="#9955cc" font-family="Share Tech Mono">▼ ONE SOURCE AT A TIME</text>
+  <rect x="525" y="1708" width="200" height="100" rx="8"/>
+  <text x="625" y="1727" text-anchor="middle" font-size="15" font-weight="700" fill="#dd88ff" font-family="Rajdhani" letter-spacing="1">⚡ TRANSFER SWITCH G</text>
+  <line x1="535" y1="1734" x2="715" y2="1734" stroke="#5533aa" stroke-width="1" opacity="0.6"/>
+  <text x="580" y="1752" text-anchor="middle" font-size="11" fill="#00cc66" font-family="Share Tech Mono">① GENERATOR</text>
+  <text x="625" y="1768" text-anchor="middle" font-size="15" font-weight="700" fill="#cc44ff" font-family="Rajdhani">— OR —</text>
+  <text x="668" y="1784" text-anchor="middle" font-size="11" fill="#cc9900" font-family="Share Tech Mono">② SHORE</text>
+  <text x="625" y="1800" text-anchor="middle" font-size="9" fill="#9955cc" font-family="Share Tech Mono">▼ ONE SOURCE AT A TIME</text>
 </g>
 
 <!-- Shore Disconnect G — RIGHT of Transfer Switch G -->
 <g class="node node-disconnect" data-tip="shoreDisconnectG" style="cursor:pointer">
-  <rect x="735" y="1828" width="160" height="100" rx="6"/>
-  <text x="815" y="1858" text-anchor="middle" font-size="12">🔌 DISCONNECT</text>
-  <text x="815" y="1874" text-anchor="middle" font-size="12">SWITCH</text>
-  <text x="815" y="1895" text-anchor="middle" font-size="19" font-weight="700">Shore G</text>
-  <text x="815" y="1915" text-anchor="middle" font-size="11" fill="#cc9900">External shore power</text>
+  <rect x="755" y="1708" width="160" height="100" rx="6"/>
+  <text x="835" y="1738" text-anchor="middle" font-size="12">🔌 DISCONNECT</text>
+  <text x="835" y="1754" text-anchor="middle" font-size="12">SWITCH</text>
+  <text x="835" y="1775" text-anchor="middle" font-size="19" font-weight="700">Shore G</text>
+  <text x="835" y="1795" text-anchor="middle" font-size="11" fill="#cc9900">External shore power</text>
 </g>
 
 <!-- Shore G → Transfer Switch G -->
-<line x1="735" y1="1878" x2="725" y2="1878" class="line-yellow animated" marker-end="url(#arr-yellow)"/>
+<line x1="755" y1="1758" x2="726" y2="1758" class="line-yellow animated" marker-end="url(#arr-yellow)"/>
 
 <!-- Transfer Switch G → Panel G -->
-<line x1="625" y1="1928" x2="625" y2="1962" class="line-sub animated" marker-end="url(#arr-cyan)"/>
+<line x1="625" y1="1808" x2="625" y2="1842" class="line-sub animated" marker-end="url(#arr-cyan)"/>
 
 <!-- Panel G -->
 <g class="node node-finalpanel" data-tip="panelG" style="cursor:pointer">
-  <rect x="525" y="1962" width="200" height="60" rx="6"/>
-  <text x="625" y="1985" text-anchor="middle" font-size="15" fill="#4488aa">ELECTRICAL PANEL</text>
-  <text x="625" y="2006" text-anchor="middle" font-size="22" font-weight="700">G</text>
+  <rect x="525" y="1842" width="200" height="60" rx="6"/>
+  <text x="625" y="1865" text-anchor="middle" font-size="15" fill="#4488aa">ELECTRICAL PANEL</text>
+  <text x="625" y="1886" text-anchor="middle" font-size="22" font-weight="700">G</text>
 </g>
 
 </g>
@@ -850,7 +830,7 @@ const tips = {
   },
   mainpanel: {
     title: "🗃️ Main Distribution Panel",
-    body: "The central hub. Receives power from the generator and distributes it to 4 circuit breakers (#316, #322, #319, #313), each feeding a different zone or system."
+    body: "The central hub. Receives power from the generator and distributes it to 4 circuit breakers (#316, #322, #319, #1), each feeding a different zone or system."
   },
   breaker316: {
     title: "🔒 Circuit Breaker #316",
@@ -865,7 +845,7 @@ const tips = {
     body: "Feeds a separate circuit. Each breaker is rated for a specific amperage and will cut power if exceeded."
   },
   breaker313: {
-    title: "🔒 Circuit Breaker #313",
+    title: "🔒 Circuit Breaker #1",
     body: "Feeds a separate circuit. Acts as the last line of automatic protection in the main panel."
   },
   panel316: {
@@ -1047,7 +1027,7 @@ const searchIndex = [
   { key: 'breaker316',      label: 'Circuit Breaker #316',         icon: '🔒', type: 'Breaker' },
   { key: 'breaker322',      label: 'Circuit Breaker #322',         icon: '🔒', type: 'Breaker' },
   { key: 'breaker319',      label: 'Circuit Breaker #319',         icon: '🔒', type: 'Breaker' },
-  { key: 'breaker313',      label: 'Circuit Breaker #313',         icon: '🔒', type: 'Breaker' },
+  { key: 'breaker313',      label: 'Circuit Breaker #1',         icon: '🔒', type: 'Breaker' },
   { key: 'panel316',        label: 'Sub-Panel #316',               icon: '🗃️', type: 'Sub-Panel' },
   { key: 'bktransA',        label: 'Circuit Breaker Transformer A', icon: '🔒', type: 'Breaker' },
   { key: 'bktransB',        label: 'Circuit Breaker Transformer B', icon: '🔒', type: 'Breaker' },
