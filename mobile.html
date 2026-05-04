@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SparkyPro">
+<meta name="theme-color" content="#0f0f0f">
+<title>SparkyPro Mobile</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222;
+    --border: #2e2e2e;
+    --accent: #f5a623;
+    --accent2: #e8830a;
+    --text: #e8e8e8;
+    --dim: #888;
+    --dimmer: #555;
+    --success: #52c07a;
+    --danger: #e05252;
+    --warn: #e8c23a;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html { height: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    padding: 10px 16px;
+    padding-top: calc(10px + var(--safe-top));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 3px;
+    color: var(--accent);
+  }
+
+  .logo span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 1px;
+    display: block;
+    text-transform: uppercase;
+    margin-top: -4px;
+  }
+
+  .online-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── SCREENS ── */
+  .screen {
+    display: none;
+    flex: 1;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(70px + var(--safe-bottom));
+  }
+  .screen.active { display: flex; }
+
+  /* ── BOTTOM NAV ── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding-bottom: var(--safe-bottom);
+    z-index: 100;
+    flex-shrink: 0;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px 8px;
+    cursor: pointer;
+    color: var(--dimmer);
+    transition: color 0.15s;
+    min-height: 56px;
+  }
+
+  .nav-item.active { color: var(--accent); }
+  .nav-item.active .nav-icon { background: rgba(245,166,35,0.15); }
+
+  .nav-icon {
+    font-size: 20px;
+    width: 36px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: background 0.15s;
+    margin-bottom: 2px;
+  }
+
+  .nav-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* ── SHARED COMPONENTS ── */
+  .section {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  .field-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  select, input[type=number], input[type=password], textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 16px; /* prevent iOS zoom */
+    padding: 12px 14px;
+    border-radius: 8px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .field-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .field-group { display: flex; flex-direction: column; }
+
+  /* ── RESULT CARD ── */
+  .result-card {
+    margin: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .result-header {
+    background: rgba(245,166,35,0.08);
+    padding: 10px 14px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .result-rows { padding: 4px 0; }
+
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(46,46,46,0.5);
+  }
+  .result-row:last-child { border-bottom: none; }
+
+  .result-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .result-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 1px;
+    color: var(--text);
+  }
+
+  .result-value.ok { color: var(--success); }
+  .result-value.over { color: var(--danger); }
+  .result-value.warn { color: var(--warn); }
+  .result-value.big { font-size: 28px; }
+  .result-value.small { font-size: 14px; font-family: 'IBM Plex Mono', monospace; }
+
+  /* ── CALC BUTTON ── */
+  .calc-btn {
+    margin: 0 16px 14px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    padding: 16px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    width: calc(100% - 32px);
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .calc-btn:active { background: var(--accent2); transform: scale(0.98); }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-orange { background: rgba(245,166,35,0.2); color: var(--accent); }
+  .badge-yellow { background: rgba(232,194,58,0.2); color: var(--warn); }
+  .badge-green  { background: rgba(82,192,122,0.2); color: var(--success); }
+
+  /* ── INFO ROW ── */
+  .info-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  /* ══════════════════════════
+     CHAT SCREEN
+  ══════════════════════════ */
+  #screen-chat {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-bottom: 130px;
+  }
+
+  .msg { display: flex; flex-direction: column; }
+  .msg.user { align-items: flex-end; }
+  .msg.ai { align-items: flex-start; }
+
+  .msg-who {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    padding: 0 4px;
+  }
+  .msg.user .msg-who { color: var(--accent); }
+  .msg.ai .msg-who { color: var(--dimmer); }
+
+  .msg-bubble {
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 88%;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .msg.user .msg-bubble {
+    background: #1e2a3a;
+    border: 1px solid #2a3a52;
+    border-radius: 12px 12px 2px 12px;
+  }
+
+  .msg.ai .msg-bubble {
+    background: #1a1f1a;
+    border: 1px solid #252e25;
+    border-left: 3px solid var(--accent);
+    border-radius: 2px 12px 12px 12px;
+  }
+
+  .msg.ai .msg-bubble table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+  }
+  .msg.ai .msg-bubble th {
+    background: rgba(245,166,35,0.15);
+    color: var(--accent);
+    padding: 6px 8px;
+    text-align: left;
+    border: 1px solid var(--border);
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+  .msg.ai .msg-bubble td {
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+  }
+
+  .typing-dots {
+    display: flex; gap: 4px; align-items: center;
+    padding: 14px 16px;
+    background: #1a1f1a;
+    border: 1px solid #252e25;
+    border-left: 3px solid var(--accent);
+    border-radius: 2px 12px 12px 12px;
+  }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    animation: bounce 1.2s infinite;
+  }
+  .dot:nth-child(2){animation-delay:.2s}
+  .dot:nth-child(3){animation-delay:.4s}
+  @keyframes bounce{0%,100%{transform:translateY(0);opacity:.3}50%{transform:translateY(-4px);opacity:1}}
+
+  .chat-input-bar {
+    position: fixed;
+    bottom: calc(56px + var(--safe-bottom));
+    left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 10px 12px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    z-index: 50;
+  }
+
+  .chat-input-bar textarea {
+    flex: 1;
+    min-height: 44px;
+    max-height: 120px;
+    resize: none;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+
+  .send-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+    color: #000;
+    font-weight: bold;
+  }
+  .send-btn:active { background: var(--accent2); }
+  .send-btn:disabled { background: var(--border); color: var(--dimmer); }
+
+  .trending-scroll {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .trending-scroll::-webkit-scrollbar { display: none; }
+
+  .trend-chip {
+    flex-shrink: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--dim);
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+  }
+  .trend-chip:active { border-color: var(--accent); color: var(--accent); }
+  .trend-count { font-size: 9px; color: var(--accent); }
+
+  .welcome-chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 20px 120px;
+    text-align: center;
+    gap: 8px;
+  }
+  .welcome-icon { font-size: 52px; margin-bottom: 8px; }
+  .welcome-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 3px; color: var(--accent); }
+  .welcome-sub { color: var(--dim); font-size: 13px; line-height: 1.5; }
+
+  .error-msg {
+    background: rgba(224,82,82,0.1);
+    border: 1px solid rgba(224,82,82,0.3);
+    border-left: 3px solid var(--danger);
+    color: #e08080;
+    padding: 10px 14px;
+    border-radius: 2px 12px 12px 12px;
+    font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace;
+    max-width: 88%;
+  }
+
+  /* ── API MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.88);
+    display: flex; align-items: flex-end;
+    z-index: 200;
+    padding: 0;
+  }
+  .modal {
+    background: var(--surface);
+    border-top: 3px solid var(--accent);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px;
+    padding-bottom: calc(24px + var(--safe-bottom));
+    width: 100%;
+  }
+  .modal h2 { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 2px; color: var(--accent); margin-bottom: 8px; }
+  .modal p { color: var(--dim); font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+  .modal input { margin-bottom: 12px; border-radius: 10px; }
+  .modal-btn {
+    width: 100%; background: var(--accent); color: #000;
+    border: none; border-radius: 10px; padding: 16px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px;
+    letter-spacing: 2px; cursor: pointer;
+  }
+  .modal-note { margin-top: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--dimmer); text-align: center; }
+
+  /* ── NOTE BOX ── */
+  .note-box {
+    margin: 0 16px 14px;
+    padding: 10px 12px;
+    background: rgba(82,192,122,0.06);
+    border: 1px solid rgba(82,192,122,0.2);
+    border-radius: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--success);
+    line-height: 1.6;
+  }
+
+  .warn-box {
+    margin: 0 16px 14px;
+    padding: 10px 12px;
+    background: rgba(232,194,58,0.06);
+    border: 1px solid rgba(232,194,58,0.2);
+    border-radius: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--warn);
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<!-- API MODAL -->
+<div class="modal-overlay" id="apiModal">
+  <div class="modal">
+    <h2>⚡ SparkyPro Setup</h2>
+    <p>Enter your Anthropic API key to activate AI chat. Stored securely in your browser.</p>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
+    <button class="modal-btn" onclick="saveKey()">ACTIVATE</button>
+    <p class="modal-note">GET KEY AT CONSOLE.ANTHROPIC.COM</p>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">⚡ SPARKYPRO <span>Electrician Field Assistant</span></div>
+  <div class="online-dot" id="onlineDot"></div>
+</div>
+
+<!-- ══ CHAT SCREEN ══ -->
+<div class="screen active" id="screen-chat">
+  <div class="trending-scroll" id="trendingScroll">
+    <span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--dimmer);flex-shrink:0;line-height:2">🔥</span>
+    <div class="trend-chip" style="color:var(--dimmer)">Loading...</div>
+  </div>
+
+  <div class="chat-messages" id="chatMessages">
+    <div class="welcome-chat" id="welcomeChat">
+      <div class="welcome-icon">⚡</div>
+      <div class="welcome-title">Ask SparkyPro</div>
+      <div class="welcome-sub">AI-powered NEC code assistant.<br>Box fill, conduit fill, ampacity,<br>GFCI, AFCI, load calculations and more.</div>
+    </div>
+  </div>
+
+  <div class="chat-input-bar">
+    <textarea id="chatInput" placeholder="Ask any NEC question..." rows="1"
+      oninput="autoResize(this)" onkeydown="handleChatKey(event)"></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+  </div>
+</div>
+
+<!-- ══ CONDUIT FILL SCREEN ══ -->
+<div class="screen" id="screen-conduit">
+  <div class="info-row">
+    <span class="badge badge-orange">53%</span><span style="font-size:12px;color:var(--dim)">1 wire</span>
+    <span class="badge badge-yellow">31%</span><span style="font-size:12px;color:var(--dim)">2 wires</span>
+    <span class="badge badge-green">40%</span><span style="font-size:12px;color:var(--dim)">3+ wires — NEC Ch.9</span>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Conduit</div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Type</label>
+        <select id="m-cfType" onchange="mCfCalc()">
+          <option value="emt">EMT</option>
+          <option value="imc">IMC</option>
+          <option value="rmc">RMC (Rigid)</option>
+          <option value="ent">ENT (Smurf)</option>
+          <option value="pvc40">PVC Sch 40</option>
+          <option value="pvc80">PVC Sch 80</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Size</label>
+        <select id="m-cfSize" onchange="mCfCalc()">
+          <option value="0.5">1/2"</option>
+          <option value="0.75">3/4"</option>
+          <option value="1" selected>1"</option>
+          <option value="1.25">1-1/4"</option>
+          <option value="1.5">1-1/2"</option>
+          <option value="2">2"</option>
+          <option value="2.5">2-1/2"</option>
+          <option value="3">3"</option>
+          <option value="3.5">3-1/2"</option>
+          <option value="4">4"</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Wire</div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Type</label>
+        <select id="m-cfWireType" onchange="mCfCalc()">
+          <option value="thhn">THHN/THWN-2</option>
+          <option value="thw">THW/THHW</option>
+          <option value="xhhw">XHHW-2</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Size</label>
+        <select id="m-cfWireSize" onchange="mCfCalc()">
+          <option value="14">14 AWG</option><option value="12">12 AWG</option>
+          <option value="10">10 AWG</option><option value="8">8 AWG</option>
+          <option value="6">6 AWG</option><option value="4">4 AWG</option>
+          <option value="3">3 AWG</option><option value="2">2 AWG</option>
+          <option value="1">1 AWG</option><option value="1/0">1/0 AWG</option>
+          <option value="2/0">2/0 AWG</option><option value="3/0">3/0 AWG</option>
+          <option value="4/0">4/0 AWG</option><option value="250">250 kcmil</option>
+          <option value="300">300 kcmil</option><option value="350">350 kcmil</option>
+          <option value="400">400 kcmil</option><option value="500">500 kcmil</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label"># of Wires</label>
+      <input type="number" id="m-cfNum" value="3" min="1" max="40" oninput="mCfCalc()">
+    </div>
+  </div>
+
+  <div class="result-card" id="m-cfResult" style="display:none">
+    <div class="result-header">CONDUIT FILL RESULT</div>
+    <div class="result-rows" id="m-cfRows"></div>
+  </div>
+  <div class="note-box">NEC Chapter 9, Tables 1, 4, 5 · All calculations per current NEC</div>
+</div>
+
+<!-- ══ BOX FILL SCREEN ══ -->
+<div class="screen" id="screen-boxfill">
+
+  <div class="section">
+    <div class="section-title">Box Type</div>
+    <div class="field-group">
+      <label class="field-label">Select Box</label>
+      <select id="m-bfBox" onchange="mBfCalc()">
+        <optgroup label="Metal — Square">
+          <option value="21.0">4" Square 1-1/4" deep (21.0 in³)</option>
+          <option value="25.5">4" Square 1-1/2" deep (25.5 in³)</option>
+          <option value="30.3">4" Square 2-1/8" deep (30.3 in³)</option>
+          <option value="42.0">4-11/16" Square 1-1/2" (42.0 in³)</option>
+          <option value="60.0">4-11/16" Square 2-1/8" (60.0 in³)</option>
+        </optgroup>
+        <optgroup label="Metal — Octagon">
+          <option value="15.5">4" Octagon 1-1/4" (15.5 in³)</option>
+          <option value="21.5">4" Octagon 1-1/2" (21.5 in³)</option>
+          <option value="30.3">4" Octagon 2-1/8" (30.3 in³)</option>
+        </optgroup>
+        <optgroup label="Metal — Device Box">
+          <option value="7.5">Device 3×2×1-1/2" (7.5 in³)</option>
+          <option value="10.0">Device 3×2×2" (10.0 in³)</option>
+          <option value="12.5">Device 3×2×2-1/2" (12.5 in³)</option>
+          <option value="14.0">Device 3×2×2-3/4" (14.0 in³)</option>
+          <option value="18.0">Device 3×2×3-1/2" (18.0 in³)</option>
+        </optgroup>
+        <optgroup label="Metal — Handy Box">
+          <option value="10.3">Handy Box 1-1/2" (10.3 in³)</option>
+          <option value="13.0">Handy Box 1-7/8" (13.0 in³)</option>
+        </optgroup>
+        <optgroup label="Plastic — Single Gang">
+          <option value="14.0">Plastic 1-Gang 14 cu in</option>
+          <option value="18.0">Plastic 1-Gang 18 cu in</option>
+          <option value="20.0">Plastic 1-Gang 20 cu in</option>
+          <option value="22.0">Plastic 1-Gang 22 cu in</option>
+        </optgroup>
+        <optgroup label="Plastic — Double Gang">
+          <option value="30.0">Plastic 2-Gang 30 cu in</option>
+          <option value="34.0">Plastic 2-Gang 34 cu in</option>
+          <option value="40.0">Plastic 2-Gang 40 cu in</option>
+        </optgroup>
+        <optgroup label="Plastic — Triple Gang">
+          <option value="42.0">Plastic 3-Gang 42 cu in</option>
+          <option value="50.0">Plastic 3-Gang 50 cu in</option>
+        </optgroup>
+        <optgroup label="Plastic — Round/Oct">
+          <option value="15.0">Plastic Round/Oct 15 cu in</option>
+          <option value="20.0">Plastic Round/Oct 20 cu in</option>
+        </optgroup>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Extension Ring / Raised Cover</div>
+    <div class="field-group">
+      <select id="m-bfExt" onchange="mBfCalc()">
+        <option value="0">None</option>
+        <option value="3.0">4" Square raised 1/2" (+3.0 in³)</option>
+        <option value="4.5">4" Square raised 3/4" (+4.5 in³)</option>
+        <option value="6.5">4" Square raised 1-1/4" (+6.5 in³)</option>
+        <option value="9.0">4" Square raised 1-1/2" (+9.0 in³)</option>
+        <option value="15.5">4" Square ext ring 1-1/4" (+15.5 in³)</option>
+        <option value="21.5">4" Square ext ring 1-1/2" (+21.5 in³)</option>
+        <option value="5.0">1-Gang plaster ring (+5.0 in³)</option>
+        <option value="7.5">1-Gang raised cover (+7.5 in³)</option>
+        <option value="10.0">Plastic ext 2-Gang +10 cu in</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Wire & Devices</div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Wire Size (largest)</label>
+        <select id="m-bfWire" onchange="mBfCalc()">
+          <option value="14">14 AWG (2.00 in³)</option>
+          <option value="12" selected>12 AWG (2.25 in³)</option>
+          <option value="10">10 AWG (2.50 in³)</option>
+          <option value="8">8 AWG (3.00 in³)</option>
+          <option value="6">6 AWG (5.00 in³)</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label"># Conductors</label>
+        <input type="number" id="m-bfCond" value="3" min="0" max="30" oninput="mBfCalc()">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label"># Devices</label>
+        <input type="number" id="m-bfDev" value="1" min="0" max="10" oninput="mBfCalc()">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Clamps</label>
+        <select id="m-bfClamp" onchange="mBfCalc()">
+          <option value="0">None</option>
+          <option value="1">Yes</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">EGC (grounding)</label>
+      <select id="m-bfEgc" onchange="mBfCalc()">
+        <option value="0">None</option>
+        <option value="1">Yes (1 or more)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="result-card" id="m-bfResult" style="display:none">
+    <div class="result-header">BOX FILL — NEC 314.16</div>
+    <div class="result-rows" id="m-bfRows"></div>
+  </div>
+  <div class="warn-box">⚠ For conductors 6 AWG and smaller only. For 4 AWG and larger use Pull Box rules (NEC 314.28).</div>
+</div>
+
+<!-- ══ AMPACITY SCREEN ══ -->
+<div class="screen" id="screen-amp">
+
+  <div class="section">
+    <div class="section-title">Conductor</div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Wire Size</label>
+        <select id="m-ampSize" onchange="mAmpCalc()">
+          <option value="14">14 AWG</option><option value="12">12 AWG</option>
+          <option value="10">10 AWG</option><option value="8">8 AWG</option>
+          <option value="6">6 AWG</option><option value="4">4 AWG</option>
+          <option value="3">3 AWG</option><option value="2">2 AWG</option>
+          <option value="1">1 AWG</option><option value="1/0">1/0</option>
+          <option value="2/0">2/0</option><option value="3/0">3/0</option>
+          <option value="4/0">4/0</option><option value="250">250 kcmil</option>
+          <option value="300">300 kcmil</option><option value="350">350 kcmil</option>
+          <option value="400">400 kcmil</option><option value="500">500 kcmil</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Material</label>
+        <select id="m-ampMat" onchange="mAmpCalc()">
+          <option value="cu">Copper</option>
+          <option value="al">Aluminum</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Insulation</label>
+      <select id="m-ampInsul" onchange="mAmpCalc()">
+        <option value="thhn">THHN/THWN-2 (90°C)</option>
+        <option value="thw">THW/THHW (75°C)</option>
+        <option value="tw">TW/UF (60°C)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Derating Factors</div>
+    <div class="field-group" style="margin-bottom:10px">
+      <label class="field-label">Ambient Temperature</label>
+      <select id="m-ampTemp" onchange="mAmpCalc()">
+        <option value="50">50°F / 10°C</option>
+        <option value="60">60°F / 15°C</option>
+        <option value="70">70°F / 21°C</option>
+        <option value="77" selected>77°F / 25°C (standard)</option>
+        <option value="86">86°F / 30°C</option>
+        <option value="95">95°F / 35°C</option>
+        <option value="104">104°F / 40°C</option>
+        <option value="113">113°F / 45°C</option>
+        <option value="122">122°F / 50°C</option>
+        <option value="131">131°F / 55°C</option>
+        <option value="140">140°F / 60°C</option>
+      </select>
+    </div>
+    <div class="field-group" style="margin-bottom:10px">
+      <label class="field-label">Bundled Conductors</label>
+      <select id="m-ampBundle" onchange="mAmpCalc()">
+        <option value="1.00">1-3 conductors (no derating)</option>
+        <option value="0.80">4-6 conductors (×0.80)</option>
+        <option value="0.70">7-9 conductors (×0.70)</option>
+        <option value="0.60">21-30 conductors (×0.60)</option>
+        <option value="0.50">31-40 conductors (×0.50)</option>
+        <option value="0.45">41+ conductors (×0.45)</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Rooftop Conduit (NEC 310.15(B)(3)(c))</label>
+      <select id="m-ampSun" onchange="mAmpCalc()">
+        <option value="0">No</option>
+        <option value="33">Yes (+33°F adder)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="result-card" id="m-ampResult" style="display:none">
+    <div class="result-header">AMPACITY — NEC 310.15</div>
+    <div class="result-rows" id="m-ampRows"></div>
+  </div>
+  <div class="note-box">Terminal limit: most panels/breakers are 75°C rated. Final ampacity limited accordingly per NEC 110.14(C).</div>
+</div>
+
+<!-- ══ VOLTAGE DROP SCREEN ══ -->
+<div class="screen" id="screen-vdrop">
+
+  <div class="section">
+    <div class="section-title">Circuit Parameters</div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Load (Amps)</label>
+        <input type="number" id="m-vdAmps" value="100" min="1" oninput="mVdCalc()">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Distance (feet)</label>
+        <input type="number" id="m-vdFeet" value="150" min="1" oninput="mVdCalc()">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Voltage</label>
+        <select id="m-vdVolt" onchange="mVdCalc()">
+          <option value="120">120V</option>
+          <option value="208">208V</option>
+          <option value="240" selected>240V</option>
+          <option value="277">277V</option>
+          <option value="480">480V</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Phase</label>
+        <select id="m-vdPhase" onchange="mVdCalc()">
+          <option value="1">Single Phase</option>
+          <option value="3">Three Phase</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Material</label>
+        <select id="m-vdMat" onchange="mVdCalc()">
+          <option value="cu">Copper (K=12.9)</option>
+          <option value="al">Aluminum (K=21.2)</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Max Drop %</label>
+        <select id="m-vdMax" onchange="mVdCalc()">
+          <option value="2">2%</option>
+          <option value="3" selected>3% (NEC rec.)</option>
+          <option value="5">5%</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-card" id="m-vdResult" style="display:none">
+    <div class="result-header">VOLTAGE DROP RESULT</div>
+    <div class="result-rows" id="m-vdRows"></div>
+  </div>
+
+  <div class="note-box">NEC 210.19(A): recommended max 3% branch circuit drop. NEC 215.2(A): combined feeder+branch max 5%.</div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="switchScreen('chat',this)" id="nav-chat">
+    <div class="nav-icon">💬</div>
+    <div class="nav-label">AI Chat</div>
+  </div>
+  <div class="nav-item" onclick="switchScreen('conduit',this)" id="nav-conduit">
+    <div class="nav-icon">🔧</div>
+    <div class="nav-label">Conduit</div>
+  </div>
+  <div class="nav-item" onclick="switchScreen('boxfill',this)" id="nav-boxfill">
+    <div class="nav-icon">📦</div>
+    <div class="nav-label">Box Fill</div>
+  </div>
+  <div class="nav-item" onclick="switchScreen('amp',this)" id="nav-amp">
+    <div class="nav-icon">⚡</div>
+    <div class="nav-label">Ampacity</div>
+  </div>
+  <div class="nav-item" onclick="switchScreen('vdrop',this)" id="nav-vdrop">
+    <div class="nav-icon">📏</div>
+    <div class="nav-label">V-Drop</div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+var firebaseConfig = {
+  apiKey: "AIzaSyA4sYtm1nAMQjvJPNF1cy1dQ6V5B83ZsNo",
+  authDomain: "nec-ai.firebaseapp.com",
+  projectId: "nec-ai",
+  storageBucket: "nec-ai.firebasestorage.app",
+  messagingSenderId: "836762257724",
+  appId: "1:836762257724:web:2db4d7195aa9648bbcb639"
+};
+var fbApp = initializeApp(firebaseConfig);
+var db = getFirestore(fbApp);
+window._db = db;
+window._fns = { doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs };
+window._fbReady = true;
+loadTrending();
+</script>
+
+<script>
+// ── INIT ─────────────────────────────────────────────────
+var API_KEY = localStorage.getItem('nec_ai_key') || '';
+var isLoading = false;
+var chatHistory = [];
+
+if (API_KEY) document.getElementById('apiModal').style.display = 'none';
+
+// ── NAVIGATION ───────────────────────────────────────────
+function switchScreen(name, el) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+  document.getElementById('screen-'+name).classList.add('active');
+  el.classList.add('active');
+  // Run calc when switching to calc screens
+  if (name==='conduit') mCfCalc();
+  if (name==='boxfill') mBfCalc();
+  if (name==='amp') mAmpCalc();
+  if (name==='vdrop') mVdCalc();
+}
+
+// ── TRENDING ─────────────────────────────────────────────
+async function loadTrending() {
+  var container = document.getElementById('trendingScroll');
+  var waited = 0;
+  while (!window._fbReady && waited < 3000) { await new Promise(function(r){setTimeout(r,100);}); waited+=100; }
+  if (!window._db) return;
+  try {
+    var fns=window._fns, db=window._db;
+    var q=fns.query(fns.collection(db,'trending'),fns.orderBy('count','desc'),fns.limit(5));
+    var snap=await fns.getDocs(q);
+    if (snap.empty) return;
+    container.innerHTML = '<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--dimmer);flex-shrink:0;line-height:2.2">🔥</span>';
+    snap.forEach(function(d){
+      var data=d.data();
+      var chip=document.createElement('div');
+      chip.className='trend-chip';
+      chip.innerHTML=data.label+' <span class="trend-count">'+data.count+'</span>';
+      chip.onclick=function(){ quickAsk(data.sample); };
+      container.appendChild(chip);
+    });
+  } catch(e){}
+}
+
+async function trackQuestion(q) {
+  if (!API_KEY||!window._db) return;
+  try {
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:120,system:'Categorize this NEC question. Return ONLY JSON: {"category":"snake_case_max_40","label":"Button Label Max 28 Chars"}',messages:[{role:'user',content:q}]})
+    });
+    var data=await resp.json();
+    var parsed=JSON.parse(data.content[0].text.trim());
+    var fns=window._fns,db=window._db;
+    var ref=fns.doc(db,'trending',parsed.category);
+    var snap=await fns.getDoc(ref);
+    var count=snap.exists()?((snap.data().count||0)+1):1;
+    await fns.setDoc(ref,{label:parsed.label,count:count,sample:q,category:parsed.category});
+    loadTrending();
+  } catch(e){}
+}
+
+// ── CHAT ─────────────────────────────────────────────────
+var SYSTEM = `You are SparkyPro, an expert NEC field assistant for licensed electricians. NEC 2023 knowledge. NYC uses NEC 2020 with local amendments.
+- Direct answers. Always cite NEC Article/Section.
+- Show math step by step.
+- Use markdown tables when comparing values.
+- No fluff. Lead with the answer.`;
+
+function saveKey() {
+  var key=document.getElementById('apiKeyInput').value.trim();
+  if (!key||!key.startsWith('sk-ant')){ alert('Invalid API key'); return; }
+  API_KEY=key;
+  localStorage.setItem('nec_ai_key',key);
+  document.getElementById('apiModal').style.display='none';
+}
+
+function handleChatKey(e) {
+  if (e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,120)+'px';
+}
+
+function quickAsk(text) {
+  document.getElementById('chatInput').value=text;
+  switchScreen('chat', document.getElementById('nav-chat'));
+  sendMessage();
+}
+
+function addMsg(role, content, isError) {
+  var welcome=document.getElementById('welcomeChat');
+  if (welcome) welcome.remove();
+  var msgs=document.getElementById('chatMessages');
+  var msg=document.createElement('div');
+  msg.className='msg '+role;
+  var who=document.createElement('div');
+  who.className='msg-who';
+  who.textContent=role==='user'?'YOU':'SPARKYPRO';
+  var bubble=document.createElement('div');
+  if (isError) {
+    bubble.className='error-msg';
+    bubble.textContent=content;
+  } else {
+    bubble.className='msg-bubble';
+    bubble.innerHTML=formatResp(content);
+  }
+  msg.appendChild(who);
+  msg.appendChild(bubble);
+  msgs.appendChild(msg);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function formatResp(text) {
+  var lines=text.split('\n'),result=[],inTable=false,tableRows=[];
+  for (var i=0;i<lines.length;i++){
+    var line=lines[i];
+    if (line.trim().startsWith('|')&&line.trim().endsWith('|')){
+      if(!inTable){inTable=true;tableRows=[];}
+      if(!line.includes('---'))tableRows.push(line);
+    } else {
+      if(inTable){result.push(buildTable(tableRows));tableRows=[];inTable=false;}
+      result.push(esc(line));
+    }
+  }
+  if(inTable&&tableRows.length)result.push(buildTable(tableRows));
+  return result.join('\n');
+}
+
+function buildTable(rows){
+  if(!rows.length)return'';
+  var h='<table>';
+  for(var i=0;i<rows.length;i++){
+    var cells=rows[i].split('|').filter(function(c){return c.trim()!=='';});
+    var tag=i===0?'th':'td';h+='<tr>';
+    for(var j=0;j<cells.length;j++)h+='<'+tag+'>'+cells[j].trim()+'</'+tag+'>';
+    h+='</tr>';
+  }
+  return h+'</table>';
+}
+
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function showTyping(){
+  var welcome=document.getElementById('welcomeChat');if(welcome)welcome.remove();
+  var msgs=document.getElementById('chatMessages');
+  var d=document.createElement('div');d.className='msg ai';d.id='typing';
+  var who=document.createElement('div');who.className='msg-who';who.textContent='SPARKYPRO';
+  var dots=document.createElement('div');dots.className='typing-dots';
+  dots.innerHTML='<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+  d.appendChild(who);d.appendChild(dots);msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+}
+
+function removeTyping(){var t=document.getElementById('typing');if(t)t.remove();}
+
+async function sendMessage(){
+  if(isLoading)return;
+  var input=document.getElementById('chatInput');
+  var text=input.value.trim();if(!text)return;
+  if(!API_KEY){document.getElementById('apiModal').style.display='flex';return;}
+  input.value='';input.style.height='auto';
+  isLoading=true;document.getElementById('sendBtn').disabled=true;
+  addMsg('user',text);chatHistory.push({role:'user',content:text});showTyping();
+  trackQuestion(text);
+  try {
+    var resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,system:SYSTEM,messages:chatHistory})
+    });
+    var data=await resp.json();
+    if(!resp.ok)throw new Error(data.error?data.error.message:'API error '+resp.status);
+    var txt=data.content[0].text;
+    chatHistory.push({role:'assistant',content:txt});removeTyping();addMsg('ai',txt);
+  } catch(err){removeTyping();addMsg('ai','Error: '+err.message,true);chatHistory.pop();}
+  isLoading=false;document.getElementById('sendBtn').disabled=false;
+}
+
+// ── CONDUIT FILL DATA ─────────────────────────────────────
+var CF_AREA={
+  emt:{'0.5':{t:0.304,f40:0.122,f31:0.094,f53:0.161},'0.75':{t:0.533,f40:0.213,f31:0.165,f53:0.283},'1':{t:0.864,f40:0.346,f31:0.268,f53:0.458},'1.25':{t:1.496,f40:0.598,f31:0.464,f53:0.793},'1.5':{t:2.036,f40:0.814,f31:0.631,f53:1.079},'2':{t:3.356,f40:1.342,f31:1.040,f53:1.778},'2.5':{t:5.858,f40:2.343,f31:1.816,f53:3.105},'3':{t:8.846,f40:3.538,f31:2.742,f53:4.688},'3.5':{t:11.545,f40:4.618,f31:3.579,f53:6.119},'4':{t:14.753,f40:5.901,f31:4.573,f53:7.819}},
+  imc:{'0.5':{t:0.342,f40:0.137,f31:0.106,f53:0.181},'0.75':{t:0.586,f40:0.235,f31:0.182,f53:0.311},'1':{t:0.959,f40:0.384,f31:0.297,f53:0.508},'1.25':{t:1.647,f40:0.659,f31:0.511,f53:0.873},'1.5':{t:2.225,f40:0.890,f31:0.690,f53:1.179},'2':{t:3.630,f40:1.452,f31:1.125,f53:1.924},'2.5':{t:5.135,f40:2.054,f31:1.592,f53:2.722},'3':{t:7.922,f40:3.169,f31:2.456,f53:4.199},'3.5':{t:10.584,f40:4.234,f31:3.281,f53:5.609},'4':{t:13.631,f40:5.452,f31:4.226,f53:7.224}},
+  rmc:{'0.5':{t:0.314,f40:0.125,f31:0.097,f53:0.166},'0.75':{t:0.549,f40:0.220,f31:0.170,f53:0.291},'1':{t:0.887,f40:0.355,f31:0.275,f53:0.470},'1.25':{t:1.526,f40:0.610,f31:0.473,f53:0.809},'1.5':{t:2.071,f40:0.828,f31:0.642,f53:1.098},'2':{t:3.408,f40:1.363,f31:1.056,f53:1.806},'2.5':{t:4.866,f40:1.946,f31:1.508,f53:2.579},'3':{t:7.499,f40:3.000,f31:2.325,f53:3.974},'3.5':{t:10.010,f40:4.004,f31:3.103,f53:5.305},'4':{t:12.882,f40:5.153,f31:3.993,f53:6.827}},
+  ent:{'0.5':{t:0.285,f40:0.114,f31:0.088,f53:0.151},'0.75':{t:0.508,f40:0.203,f31:0.157,f53:0.269},'1':{t:0.832,f40:0.333,f31:0.258,f53:0.441},'1.25':{t:1.453,f40:0.581,f31:0.450,f53:0.770},'1.5':{t:1.986,f40:0.794,f31:0.616,f53:1.053},'2':{t:3.291,f40:1.316,f31:1.020,f53:1.744}},
+  pvc40:{'0.5':{t:0.285,f40:0.114,f31:0.088,f53:0.151},'0.75':{t:0.508,f40:0.203,f31:0.157,f53:0.269},'1':{t:0.832,f40:0.333,f31:0.258,f53:0.441},'1.25':{t:1.453,f40:0.581,f31:0.450,f53:0.770},'1.5':{t:1.986,f40:0.794,f31:0.616,f53:1.053},'2':{t:3.291,f40:1.316,f31:1.020,f53:1.744},'2.5':{t:4.695,f40:1.878,f31:1.455,f53:2.488},'3':{t:7.268,f40:2.907,f31:2.253,f53:3.852},'3.5':{t:9.737,f40:3.895,f31:3.018,f53:5.161},'4':{t:12.554,f40:5.022,f31:3.892,f53:6.654}},
+  pvc80:{'0.5':{t:0.217,f40:0.087,f31:0.067,f53:0.115},'0.75':{t:0.409,f40:0.164,f31:0.127,f53:0.217},'1':{t:0.688,f40:0.275,f31:0.213,f53:0.365},'1.25':{t:1.237,f40:0.495,f31:0.383,f53:0.656},'1.5':{t:1.711,f40:0.684,f31:0.530,f53:0.907},'2':{t:2.874,f40:1.150,f31:0.891,f53:1.523},'2.5':{t:4.119,f40:1.648,f31:1.277,f53:2.183},'3':{t:6.442,f40:2.577,f31:1.997,f53:3.414},'3.5':{t:8.688,f40:3.475,f31:2.693,f53:4.605},'4':{t:11.258,f40:4.503,f31:3.490,f53:5.967}}
+};
+var CF_WIRE={
+  thhn:{'14':0.0097,'12':0.0133,'10':0.0211,'8':0.0366,'6':0.0507,'4':0.0824,'3':0.0973,'2':0.1158,'1':0.1562,'1/0':0.1855,'2/0':0.2223,'3/0':0.2679,'4/0':0.3237,'250':0.3970,'300':0.4608,'350':0.5242,'400':0.5863,'500':0.7073},
+  thw:{'14':0.0139,'12':0.0181,'10':0.0243,'8':0.0437,'6':0.0726,'4':0.1087,'3':0.1263,'2':0.1473,'1':0.1901,'1/0':0.2223,'2/0':0.2624,'3/0':0.3117,'4/0':0.3718,'250':0.4596,'300':0.5281,'350':0.5958,'400':0.6619,'500':0.7901},
+  xhhw:{'14':0.0097,'12':0.0133,'10':0.0211,'8':0.0366,'6':0.0590,'4':0.0814,'3':0.0962,'2':0.1146,'1':0.1534,'1/0':0.1825,'2/0':0.2190,'3/0':0.2642,'4/0':0.3197,'250':0.3904,'300':0.4536,'350':0.5166,'400':0.5782,'500':0.6984}
+};
+
+function mCfCalc(){
+  var ct=document.getElementById('m-cfType').value;
+  var cs=document.getElementById('m-cfSize').value;
+  var wt=document.getElementById('m-cfWireType').value;
+  var ws=document.getElementById('m-cfWireSize').value;
+  var nw=parseInt(document.getElementById('m-cfNum').value)||1;
+  var cdd=CF_AREA[ct]&&CF_AREA[ct][cs];
+  var wa=CF_WIRE[wt][ws];
+  if(!cdd||!wa)return;
+  var fKey=nw===1?'f53':nw===2?'f31':'f40';
+  var fPct=nw===1?53:nw===2?31:40;
+  var avail=cdd[fKey];
+  var used=wa*nw;
+  var pct=(used/cdd.t*100).toFixed(1);
+  var maxN=Math.floor(avail/wa);
+  var fits=used<=avail;
+  var sc=fits?'ok':'over';
+  document.getElementById('m-cfResult').style.display='';
+  document.getElementById('m-cfRows').innerHTML=
+    row('Status','<span class="result-value '+sc+' big">'+(fits?'✓ FITS':'✗ OVER')+'</span>')+
+    row('Fill Used','<span class="result-value '+sc+'">'+pct+'%</span>')+
+    row('Max Wires ('+fPct+'% rule)','<span class="result-value ok">'+maxN+'</span>')+
+    row('Wire Area','<span class="result-value small">'+wa.toFixed(4)+' in²</span>')+
+    row('Total Wire Area','<span class="result-value small">'+(used).toFixed(4)+' in²</span>')+
+    row('Allowed Area','<span class="result-value small">'+avail.toFixed(4)+' in²</span>');
+}
+
+// ── BOX FILL DATA ─────────────────────────────────────────
+var BF_VOL={'14':2.00,'12':2.25,'10':2.50,'8':3.00,'6':5.00};
+
+function mBfCalc(){
+  var boxVol=parseFloat(document.getElementById('m-bfBox').value)||0;
+  var extVol=parseFloat(document.getElementById('m-bfExt').value)||0;
+  var ws=document.getElementById('m-bfWire').value;
+  var nCond=parseInt(document.getElementById('m-bfCond').value)||0;
+  var nDev=parseInt(document.getElementById('m-bfDev').value)||0;
+  var hasClamp=parseInt(document.getElementById('m-bfClamp').value)||0;
+  var hasEgc=parseInt(document.getElementById('m-bfEgc').value)||0;
+  var vw=BF_VOL[ws];
+  if(!vw)return;
+  var total=boxVol+extVol;
+  var condV=nCond*vw;
+  var devV=nDev*2*vw;
+  var clampV=hasClamp*vw;
+  var egcV=hasEgc*vw;
+  var used=condV+devV+clampV+egcV;
+  var rem=total-used;
+  var pct=(used/total*100).toFixed(1);
+  var fits=used<=total;
+  var maxC=Math.max(0,Math.floor((total-devV-clampV-egcV)/vw));
+  var sc=fits?'ok':'over';
+  var extLabel=extVol>0?' (+'+extVol+' ext)':'';
+  document.getElementById('m-bfResult').style.display='';
+  document.getElementById('m-bfRows').innerHTML=
+    row('Status','<span class="result-value '+sc+' big">'+(fits?'✓ FITS':'✗ OVER')+'</span>')+
+    row('Total Volume','<span class="result-value small">'+total.toFixed(1)+' in³'+extLabel+'</span>')+
+    row('Volume Used','<span class="result-value '+sc+'">'+used.toFixed(2)+' in³</span>')+
+    row('Remaining','<span class="result-value '+(rem>=0?'ok':'over')+'">'+rem.toFixed(2)+' in³</span>')+
+    row('Fill %','<span class="result-value '+sc+'">'+pct+'%</span>')+
+    row('Max #'+ws+' Conductors','<span class="result-value ok">'+maxC+'</span>');
+}
+
+// ── AMPACITY DATA ─────────────────────────────────────────
+var AMP_CU={'14':{t60:15,t75:20,t90:25},'12':{t60:20,t75:25,t90:30},'10':{t60:30,t75:35,t90:40},'8':{t60:40,t75:50,t90:55},'6':{t60:55,t75:65,t90:75},'4':{t60:70,t75:85,t90:95},'3':{t60:85,t75:100,t90:115},'2':{t60:95,t75:115,t90:130},'1':{t60:110,t75:130,t90:145},'1/0':{t60:125,t75:150,t90:170},'2/0':{t60:145,t75:175,t90:195},'3/0':{t60:165,t75:200,t90:225},'4/0':{t60:195,t75:230,t90:260},'250':{t60:215,t75:255,t90:290},'300':{t60:240,t75:285,t90:320},'350':{t60:260,t75:310,t90:350},'400':{t60:280,t75:335,t90:380},'500':{t60:320,t75:380,t90:430}};
+var AMP_AL={'12':{t60:15,t75:20,t90:25},'10':{t60:25,t75:30,t90:35},'8':{t60:30,t75:40,t90:45},'6':{t60:40,t75:50,t90:55},'4':{t60:55,t75:65,t90:75},'3':{t60:65,t75:75,t90:85},'2':{t60:75,t75:90,t90:100},'1':{t60:85,t75:100,t90:115},'1/0':{t60:100,t75:120,t90:135},'2/0':{t60:115,t75:135,t90:150},'3/0':{t60:130,t75:155,t90:175},'4/0':{t60:150,t75:180,t90:205},'250':{t60:170,t75:205,t90:230},'300':{t60:190,t75:230,t90:255},'350':{t60:210,t75:250,t90:280},'400':{t60:225,t75:270,t90:305},'500':{t60:260,t75:310,t90:350}};
+var AMP_BRK_CU={'14':'15A','12':'20A','10':'30A','8':'40-50A','6':'55-60A','4':'70A','3':'85A','2':'95A','1':'110A','1/0':'125A','2/0':'145A','3/0':'165A','4/0':'200A','250':'215A','300':'240A','350':'260A','400':'280A','500':'320A'};
+var AMP_BRK_AL={'12':'15A','10':'25A','8':'30A','6':'40A','4':'55A','3':'65A','2':'75A','1':'85A','1/0':'100A','2/0':'115A','3/0':'130A','4/0':'150A','250':'170A','300':'190A','350':'210A','400':'225A','500':'260A'};
+var AMP_TEMP={'50':{f60:1.29,f75:1.20,f90:1.15},'60':{f60:1.22,f75:1.15,f90:1.12},'70':{f60:1.15,f75:1.11,f90:1.08},'77':{f60:1.08,f75:1.05,f90:1.04},'86':{f60:1.00,f75:1.00,f90:1.00},'95':{f60:0.91,f75:0.94,f90:0.96},'104':{f60:0.82,f75:0.88,f90:0.91},'113':{f60:0.71,f75:0.82,f90:0.87},'122':{f60:0.58,f75:0.75,f90:0.82},'131':{f60:0.41,f75:0.67,f90:0.76},'140':{f60:0,f75:0.58,f90:0.71}};
+
+function mAmpCalc(){
+  var ws=document.getElementById('m-ampSize').value;
+  var mat=document.getElementById('m-ampMat').value;
+  var ins=document.getElementById('m-ampInsul').value;
+  var ambF=parseInt(document.getElementById('m-ampTemp').value);
+  var bundle=parseFloat(document.getElementById('m-ampBundle').value);
+  var sun=parseInt(document.getElementById('m-ampSun').value)||0;
+  var tbl=mat==='cu'?AMP_CU:AMP_AL;
+  var r=tbl[ws];
+  if(!r){document.getElementById('m-ampResult').style.display='none';return;}
+  var col=ins==='tw'?'t60':ins==='thw'?'t75':'t90';
+  var base=r[col];
+  var effF=ambF+sun;
+  // find closest temp key
+  var keys=[50,60,70,77,86,95,104,113,122,131,140];
+  var closest=keys[0];
+  keys.forEach(function(k){if(Math.abs(k-effF)<Math.abs(closest-effF))closest=k;});
+  var tf=AMP_TEMP[closest];
+  var tcol=ins==='tw'?'f60':ins==='thw'?'f75':'f90';
+  var tempFactor=tf?tf[tcol]:1.0;
+  var derated=base*tempFactor*bundle;
+  var termLimit=r.t75;
+  var final=Math.floor(Math.min(derated,termLimit));
+  var brk=(mat==='cu'?AMP_BRK_CU:AMP_BRK_AL)[ws]||'—';
+  var sunNote=sun>0?' (+'+sun+'°F rooftop → '+effF+'°F eff.)':'';
+  document.getElementById('m-ampResult').style.display='';
+  document.getElementById('m-ampRows').innerHTML=
+    row('Base Ampacity ('+col.replace('t','')+'°C)','<span class="result-value">'+base+'A</span>')+
+    row('Temp Factor'+sunNote,'<span class="result-value '+(tempFactor<1?'warn':'ok')+'">'+tempFactor.toFixed(2)+'</span>')+
+    row('Bundle Factor','<span class="result-value '+(bundle<1?'warn':'ok')+'">'+bundle.toFixed(2)+'</span>')+
+    row('After Derating','<span class="result-value ok">'+Math.floor(derated)+'A</span>')+
+    row('Terminal Limit (75°C)','<span class="result-value small">'+termLimit+'A</span>')+
+    row('FINAL AMPACITY','<span class="result-value ok big">'+final+'A</span>')+
+    row('Typical Breaker','<span class="result-value">'+brk+'</span>');
+}
+
+// ── VOLTAGE DROP ──────────────────────────────────────────
+var VD_CM={'14':4110,'12':6530,'10':10380,'8':16510,'6':26240,'4':41740,'3':52620,'2':66360,'1':83690,'1/0':105600,'2/0':133100,'3/0':167800,'4/0':211600,'250':250000,'300':300000,'350':350000,'400':400000,'500':500000,'600':600000,'700':700000,'750':750000};
+var VD_SIZES=[{k:'14',l:'#14'},{k:'12',l:'#12'},{k:'10',l:'#10'},{k:'8',l:'#8'},{k:'6',l:'#6'},{k:'4',l:'#4'},{k:'3',l:'#3'},{k:'2',l:'#2'},{k:'1',l:'#1'},{k:'1/0',l:'1/0'},{k:'2/0',l:'2/0'},{k:'3/0',l:'3/0'},{k:'4/0',l:'4/0'},{k:'250',l:'250'},{k:'300',l:'300'},{k:'350',l:'350'},{k:'400',l:'400'},{k:'500',l:'500'}];
+
+function mVdCalc(){
+  var amps=parseFloat(document.getElementById('m-vdAmps').value)||0;
+  var feet=parseFloat(document.getElementById('m-vdFeet').value)||0;
+  var volt=parseFloat(document.getElementById('m-vdVolt').value);
+  var phase=document.getElementById('m-vdPhase').value;
+  var mat=document.getElementById('m-vdMat').value;
+  var maxPct=parseFloat(document.getElementById('m-vdMax').value);
+  if(!amps||!feet)return;
+  var K=mat==='cu'?12.9:21.2;
+  var mult=phase==='3'?1.732:2;
+  var maxVD=volt*(maxPct/100);
+  var minCM=(mult*K*amps*feet)/maxVD;
+  var minSize=null;
+  for(var i=0;i<VD_SIZES.length;i++){if(VD_CM[VD_SIZES[i].k]>=minCM){minSize=VD_SIZES[i];break;}}
+  var recVD=minSize?(mult*K*amps*feet)/VD_CM[minSize.k]:null;
+  var recPct=recVD?(recVD/volt*100):null;
+  var sc=minSize?'ok':'over';
+  document.getElementById('m-vdResult').style.display='';
+  document.getElementById('m-vdRows').innerHTML=
+    row('Min Wire Size','<span class="result-value '+sc+' big">'+(minSize?minSize.l+' AWG':'NONE')+'</span>')+
+    (recVD?row('Voltage Drop','<span class="result-value ok">'+recVD.toFixed(2)+'V ('+recPct.toFixed(2)+'%)</span>'):'')+
+    (recVD?row('Voltage at Load','<span class="result-value ok">'+(volt-recVD).toFixed(1)+'V</span>'):'')+
+    row('Min CM Required','<span class="result-value small">'+Math.ceil(minCM).toLocaleString()+' CM</span>')+
+    row('Distance (total)','<span class="result-value small">'+feet+'ft one-way / '+(feet*2)+'ft total</span>');
+}
+
+// ── HELPERS ───────────────────────────────────────────────
+function row(label, valueHtml){
+  return '<div class="result-row"><span class="result-label">'+label+'</span>'+valueHtml+'</div>';
+}
+
+// Init calcs
+mCfCalc(); mBfCalc(); mAmpCalc(); mVdCalc();
+</script>
+</body>
+</html>
