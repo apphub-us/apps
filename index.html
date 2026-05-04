@@ -448,6 +448,7 @@
   <div class="tab" onclick="switchTab('ampacity', this)">⚡ Ampacity</div>
   <div class="tab" onclick="switchTab('vdrop', this)">📏 Voltage Drop</div>
   <div class="tab" onclick="switchTab('pullbox', this)">🗃️ Pull Box</div>
+  <div class="tab" onclick="switchTab('gfci', this)">🔌 GFCI/AFCI</div>
 </div>
 
 <!-- ══ CHAT PANEL ══ -->
@@ -1089,6 +1090,47 @@
     <!-- RIGHT: SVG DIAGRAM -->
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow:auto;background:var(--bg)">
       <div id="pbDiagram" style="width:100%;max-width:620px"></div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ GFCI/AFCI PANEL ══ -->
+<div class="panel" id="panel-gfci">
+
+  <div class="fill-rules-bar">
+    <div class="fill-rule"><span class="fill-pill pill-orange">GFCI</span> Ground Fault Circuit Interrupter — NEC 210.8</div>
+    <div class="fill-rule"><span class="fill-pill pill-yellow">AFCI</span> Arc Fault Circuit Interrupter — NEC 210.12</div>
+    <div class="fill-rule"><span class="fill-pill" style="background:rgba(82,192,122,0.2);color:var(--success)">DUAL</span> Both GFCI + AFCI required</div>
+    <div class="fill-rule" style="margin-left:auto;color:var(--text-dimmer)">NEC 2023</div>
+  </div>
+
+  <div style="display:flex;flex:1;overflow:hidden">
+
+    <!-- LEFT: Room selector -->
+    <div style="width:220px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);overflow-y:auto;padding:12px">
+      <div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:10px">Select Location</div>
+
+      <div style="display:flex;flex-direction:column;gap:4px" id="gfciRoomList"></div>
+
+      <div style="margin-top:16px;font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:8px">Building Type</div>
+      <select id="gfciBuildingType" onchange="gfciUpdate()" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:12px;padding:7px 10px;border-radius:3px;outline:none">
+        <option value="residential">Residential (1&2 Family)</option>
+        <option value="multifamily">Multifamily (3+ units)</option>
+        <option value="commercial">Commercial</option>
+      </select>
+    </div>
+
+    <!-- RIGHT: Requirements display -->
+    <div style="flex:1;overflow-y:auto;padding:20px">
+      <div id="gfciContent">
+        <div style="text-align:center;padding:60px 20px;color:var(--text-dimmer)">
+          <div style="font-size:48px;margin-bottom:16px">🔌</div>
+          <div style="font-family:Bebas Neue,monospace;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:8px">Select a Location</div>
+          <div style="font-family:IBM Plex Mono,monospace;font-size:12px;line-height:1.6">Choose a room or location from the left panel<br>to see GFCI and AFCI requirements</div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -2148,6 +2190,341 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
+
+// ── GFCI/AFCI DATA ───────────────────────────────────────
+
+var GFCI_ROOMS = [
+  { id:'bathroom',    icon:'🚿', label:'Bathroom' },
+  { id:'kitchen',     icon:'🍳', label:'Kitchen' },
+  { id:'garage',      icon:'🚗', label:'Garage' },
+  { id:'outdoor',     icon:'🌿', label:'Outdoor / Exterior' },
+  { id:'basement',    icon:'🏠', label:'Basement' },
+  { id:'crawlspace',  icon:'📦', label:'Crawl Space' },
+  { id:'bedroom',     icon:'🛏', label:'Bedroom' },
+  { id:'living',      icon:'🛋', label:'Living / Family Room' },
+  { id:'dining',      icon:'🍽', label:'Dining Room' },
+  { id:'hallway',     icon:'🚪', label:'Hallway / Corridor' },
+  { id:'laundry',     icon:'👕', label:'Laundry Room' },
+  { id:'boiler',      icon:'🔥', label:'Boiler / Utility Room' },
+  { id:'pool',        icon:'🏊', label:'Pool / Hot Tub' },
+  { id:'rooftop',     icon:'🏗', label:'Rooftop' },
+  { id:'commercial',  icon:'🏢', label:'Commercial Kitchen' },
+];
+
+// Requirements per room — residential NEC 2023
+// gfci: true/false, afci: true/false, dual: both
+// notes: array of NEC references and conditions
+var GFCI_DATA = {
+  bathroom: {
+    gfci: true, afci: true,
+    gfciRef: 'NEC 210.8(A)(1)',
+    afciRef: 'NEC 210.12(A)',
+    gfciNote: 'ALL receptacles in bathrooms — no exceptions. Includes countertop, wall, and any outlet within the bathroom.',
+    afciNote: 'All 120V, 15A and 20A branch circuits supplying outlets in bathrooms.',
+    exceptions: [],
+    nyc: 'NYC follows NEC 2020 — GFCI required. AFCI required per NYCEC amendment.',
+    color: 'dual'
+  },
+  kitchen: {
+    gfci: true, afci: true,
+    gfciRef: 'NEC 210.8(A)(6)',
+    afciRef: 'NEC 210.12(A)',
+    gfciNote: 'All receptacles serving countertop surfaces. Also receptacles within 6 ft of sink. Refrigerator circuit if within 6 ft of sink.',
+    afciNote: 'All 120V, 15A and 20A circuits supplying kitchen outlets.',
+    exceptions: [
+      'Receptacles not serving countertop surfaces and not within 6 ft of sink do NOT require GFCI (e.g., refrigerator on dedicated circuit away from sink)',
+      'Dedicated circuits for dishwasher, disposal — no GFCI required if not near sink'
+    ],
+    nyc: 'GFCI required for all countertop receptacles. Verify with NYC DOB for specific amendments.',
+    color: 'dual'
+  },
+  garage: {
+    gfci: true, afci: false,
+    gfciRef: 'NEC 210.8(A)(2)',
+    afciRef: null,
+    gfciNote: 'ALL 125V, 15A and 20A receptacles in garages and grade-level portions of unfinished or finished accessory buildings.',
+    afciNote: null,
+    exceptions: [
+      'Receptacles not readily accessible (e.g., ceiling outlet for garage door opener) — exempt from GFCI',
+      'Dedicated branch circuit for equipment not portable — may be exempt'
+    ],
+    nyc: 'GFCI required for all garage receptacles. Ceiling outlets for door openers may be exempt.',
+    color: 'gfci'
+  },
+  outdoor: {
+    gfci: true, afci: false,
+    gfciRef: 'NEC 210.8(A)(3)',
+    afciRef: null,
+    gfciNote: 'ALL 125V, 15A and 20A receptacles installed outdoors where accessible to pedestrians. Front and back of dwelling required per NEC 210.52(E).',
+    afciNote: null,
+    exceptions: [
+      'Receptacles for snow-melting, deicing equipment — may be exempt',
+      'Lighting outlets (not receptacles) — no GFCI required'
+    ],
+    nyc: 'All outdoor receptacles require GFCI. Weatherproof covers required — in-use covers if exposed to weather during use.',
+    color: 'gfci'
+  },
+  basement: {
+    gfci: true, afci: true,
+    gfciRef: 'NEC 210.8(A)(5)',
+    afciRef: 'NEC 210.12(A)',
+    gfciNote: 'ALL 125V, 15A and 20A receptacles in unfinished basements. Finished basements follow bedroom/living room rules.',
+    afciNote: 'All 120V, 15A and 20A branch circuits supplying outlets in finished basements.',
+    exceptions: [
+      'Receptacles not readily accessible — exempt from GFCI',
+      'Single dedicated receptacle for sump pump — GFCI not required',
+      'Receptacles for fire alarm or burglar alarm — exempt'
+    ],
+    nyc: 'Unfinished basements: GFCI required. Finished basements: AFCI also required.',
+    color: 'dual'
+  },
+  crawlspace: {
+    gfci: true, afci: false,
+    gfciRef: 'NEC 210.8(A)(4)',
+    afciRef: null,
+    gfciNote: 'ALL 125V, 15A and 20A receptacles in crawl spaces at or below grade level.',
+    afciNote: null,
+    exceptions: [],
+    nyc: 'GFCI required for all crawl space receptacles.',
+    color: 'gfci'
+  },
+  bedroom: {
+    gfci: false, afci: true,
+    gfciRef: null,
+    afciRef: 'NEC 210.12(A)',
+    gfciNote: null,
+    afciNote: 'ALL 120V, 15A and 20A branch circuits supplying outlets in bedrooms. This was the original AFCI requirement (NEC 1999).',
+    exceptions: [
+      'GFCI NOT required in bedrooms unless near water source (bathroom attached, wet bar)',
+    ],
+    nyc: 'AFCI required for all bedroom circuits. This has been NYC code since 2008.',
+    color: 'afci'
+  },
+  living: {
+    gfci: false, afci: true,
+    gfciRef: null,
+    afciRef: 'NEC 210.12(A)',
+    gfciNote: null,
+    afciNote: 'All 120V, 15A and 20A branch circuits supplying outlets in living rooms, family rooms, parlors, libraries, dens, sunrooms, recreation rooms, closets, hallways, and similar rooms.',
+    exceptions: [
+      'GFCI NOT required unless near water source'
+    ],
+    nyc: 'AFCI required. NEC 2020 expanded AFCI to virtually all living spaces.',
+    color: 'afci'
+  },
+  dining: {
+    gfci: false, afci: true,
+    gfciRef: null,
+    afciRef: 'NEC 210.12(A)',
+    gfciNote: null,
+    afciNote: 'All 120V, 15A and 20A branch circuits supplying outlets in dining rooms.',
+    exceptions: [],
+    nyc: 'AFCI required per NEC 2020.',
+    color: 'afci'
+  },
+  hallway: {
+    gfci: false, afci: true,
+    gfciRef: null,
+    afciRef: 'NEC 210.12(A)',
+    gfciNote: null,
+    afciNote: 'All 120V, 15A and 20A branch circuits supplying outlets in hallways and corridors.',
+    exceptions: [],
+    nyc: 'AFCI required.',
+    color: 'afci'
+  },
+  laundry: {
+    gfci: true, afci: true,
+    gfciRef: 'NEC 210.8(A)(10)',
+    afciRef: 'NEC 210.12(A)',
+    gfciNote: 'ALL 125V, 15A and 20A receptacles in laundry areas. Added in NEC 2023.',
+    afciNote: 'All 120V, 15A and 20A branch circuits in laundry areas.',
+    exceptions: [
+      'NEC 2020 did NOT require GFCI in laundry — verify which code edition applies in your jurisdiction',
+      'NYC currently on NEC 2020 — check local amendment for laundry GFCI'
+    ],
+    nyc: '⚠ NYC uses NEC 2020 — laundry GFCI was added in NEC 2023. Verify with local AHJ.',
+    color: 'dual'
+  },
+  boiler: {
+    gfci: true, afci: false,
+    gfciRef: 'NEC 210.8(A)(5) / 210.8(A)(7)',
+    afciRef: null,
+    gfciNote: 'Receptacles in utility/mechanical rooms, boiler rooms. If below grade or considered unfinished space — GFCI required.',
+    afciNote: null,
+    exceptions: [
+      'Receptacles for permanently installed equipment in dedicated spaces may be exempt',
+      'Check if space is classified as unfinished or finished'
+    ],
+    nyc: 'GFCI generally required. Consult NYCEC for specific mechanical room rules.',
+    color: 'gfci'
+  },
+  pool: {
+    gfci: true, afci: false,
+    gfciRef: 'NEC 680.22(A) / 680.74',
+    afciRef: null,
+    gfciNote: 'ALL receptacles within 20 ft of pool edge. All lighting within 10 ft of pool. Pump motors. All outlets in pool equipment area.',
+    afciNote: null,
+    exceptions: [
+      'Receptacles more than 20 ft from pool edge — no GFCI required (but weatherproof cover may be)',
+      'Fixed lighting more than 10 ft from water — no GFCI required'
+    ],
+    nyc: 'GFCI required for all pool circuits per NEC 680. Bonding and grounding requirements are extensive — see NEC 680.26.',
+    color: 'gfci',
+    extra: '⚠ Pool work requires Article 680 compliance — equipotential bonding, specific wire types, conduit fill restrictions, and clearance distances. Highly regulated.'
+  },
+  rooftop: {
+    gfci: true, afci: false,
+    gfciRef: 'NEC 210.8(A)(3) / 210.63',
+    afciRef: null,
+    gfciNote: 'Outdoor receptacles on rooftops require GFCI. NEC 210.63 requires at least one 125V, 20A receptacle outlet accessible from the rooftop for HVAC equipment.',
+    afciNote: null,
+    exceptions: [
+      'HVAC servicing receptacle per 210.63 — GFCI required if outdoors',
+    ],
+    nyc: 'NYC requires GFCI for all rooftop receptacles. HVAC servicing outlet required within 25 ft of equipment.',
+    color: 'gfci'
+  },
+  commercial: {
+    gfci: true, afci: false,
+    gfciRef: 'NEC 210.8(B)',
+    afciRef: null,
+    gfciNote: 'Commercial kitchens: GFCI required for all 125V, 15A and 20A receptacles. NEC 210.8(B)(2) covers commercial occupancies.',
+    afciNote: null,
+    exceptions: [
+      'Receptacles not readily accessible — may be exempt',
+      'Dedicated equipment circuits — check specific equipment requirements'
+    ],
+    nyc: 'Commercial kitchens require GFCI for all accessible receptacles. Health code may impose additional requirements.',
+    color: 'gfci'
+  }
+};
+
+var GFCI_COLORS = {
+  gfci: { bg: 'rgba(245,166,35,0.12)', border: 'rgba(245,166,35,0.4)', text: '#f5a623', label: 'GFCI REQUIRED' },
+  afci: { bg: 'rgba(232,194,58,0.12)', border: 'rgba(232,194,58,0.4)', text: '#e8c23a', label: 'AFCI REQUIRED' },
+  dual: { bg: 'rgba(82,192,122,0.12)', border: 'rgba(82,192,122,0.4)', text: '#52c07a', label: 'GFCI + AFCI REQUIRED' },
+  none: { bg: 'rgba(136,136,136,0.08)', border: 'rgba(136,136,136,0.2)', text: '#888', label: 'NOT REQUIRED' }
+};
+
+var gfciSelectedRoom = null;
+
+function gfciInitRooms() {
+  var container = document.getElementById('gfciRoomList');
+  container.innerHTML = '';
+  GFCI_ROOMS.forEach(function(room) {
+    var btn = document.createElement('div');
+    btn.id = 'gfci-btn-' + room.id;
+    btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim)';
+    btn.innerHTML = '<span style="font-size:16px">' + room.icon + '</span>' + room.label;
+    btn.onclick = function() { gfciSelectRoom(room.id); };
+    btn.onmouseover = function() { if(gfciSelectedRoom !== room.id) this.style.background = 'rgba(245,166,35,0.05)'; };
+    btn.onmouseout = function() { if(gfciSelectedRoom !== room.id) this.style.background = ''; };
+    container.appendChild(btn);
+  });
+}
+
+function gfciSelectRoom(id) {
+  gfciSelectedRoom = id;
+  // Update button styles
+  GFCI_ROOMS.forEach(function(room) {
+    var btn = document.getElementById('gfci-btn-' + room.id);
+    if (!btn) return;
+    if (room.id === id) {
+      btn.style.background = 'rgba(245,166,35,0.1)';
+      btn.style.borderColor = 'var(--accent)';
+      btn.style.color = 'var(--accent)';
+    } else {
+      btn.style.background = '';
+      btn.style.borderColor = 'transparent';
+      btn.style.color = 'var(--text-dim)';
+    }
+  });
+  gfciUpdate();
+}
+
+function gfciUpdate() {
+  if (!gfciSelectedRoom) return;
+  var data = GFCI_DATA[gfciSelectedRoom];
+  var room = GFCI_ROOMS.find(function(r){ return r.id === gfciSelectedRoom; });
+  if (!data || !room) return;
+
+  var colorData = GFCI_COLORS[data.color];
+  var content = document.getElementById('gfciContent');
+
+  // Build status badge
+  var statusBadge = '<div style="display:inline-flex;align-items:center;gap:8px;background:'+colorData.bg+';border:1px solid '+colorData.border+';border-radius:4px;padding:8px 16px;margin-bottom:20px">' +
+    '<span style="font-size:20px">' + (data.color==='dual'?'✓✓':data.color==='gfci'?'⚡':data.color==='afci'?'🔥':'✗') + '</span>' +
+    '<span style="font-family:Bebas Neue,monospace;font-size:18px;letter-spacing:2px;color:'+colorData.text+'">'+colorData.label+'</span>' +
+    '</div>';
+
+  // Build GFCI card
+  var gfciCard = '';
+  if (data.gfci) {
+    gfciCard = '<div style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.25);border-left:4px solid var(--accent);border-radius:4px;padding:16px;margin-bottom:14px">' +
+      '<div style="font-family:Bebas Neue,monospace;font-size:16px;letter-spacing:2px;color:var(--accent);margin-bottom:8px">⚡ GFCI REQUIRED — ' + data.gfciRef + '</div>' +
+      '<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text);line-height:1.7">' + data.gfciNote + '</div>' +
+      '</div>';
+  } else {
+    gfciCard = '<div style="background:rgba(136,136,136,0.05);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">' +
+      '<div style="font-family:Bebas Neue,monospace;font-size:14px;letter-spacing:2px;color:var(--text-dimmer)">⚡ GFCI — NOT REQUIRED</div>' +
+      '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin-top:6px;line-height:1.6">GFCI protection is not specifically required in this location unless near water.</div>' +
+      '</div>';
+  }
+
+  // Build AFCI card
+  var afciCard = '';
+  if (data.afci) {
+    afciCard = '<div style="background:rgba(232,194,58,0.06);border:1px solid rgba(232,194,58,0.25);border-left:4px solid var(--warn);border-radius:4px;padding:16px;margin-bottom:14px">' +
+      '<div style="font-family:Bebas Neue,monospace;font-size:16px;letter-spacing:2px;color:var(--warn);margin-bottom:8px">🔥 AFCI REQUIRED — ' + data.afciRef + '</div>' +
+      '<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text);line-height:1.7">' + data.afciNote + '</div>' +
+      '</div>';
+  } else {
+    afciCard = '<div style="background:rgba(136,136,136,0.05);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">' +
+      '<div style="font-family:Bebas Neue,monospace;font-size:14px;letter-spacing:2px;color:var(--text-dimmer)">🔥 AFCI — NOT REQUIRED</div>' +
+      '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin-top:6px;line-height:1.6">AFCI protection is not required in this location per NEC 2023.</div>' +
+      '</div>';
+  }
+
+  // Exceptions
+  var exceptionsHtml = '';
+  if (data.exceptions && data.exceptions.length > 0) {
+    exceptionsHtml = '<div style="background:rgba(136,136,136,0.05);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">' +
+      '<div style="font-family:Bebas Neue,monospace;font-size:14px;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px">⚠ EXCEPTIONS</div>';
+    data.exceptions.forEach(function(ex) {
+      exceptionsHtml += '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.7;padding:4px 0;border-bottom:1px solid var(--border)">• ' + ex + '</div>';
+    });
+    exceptionsHtml += '</div>';
+  }
+
+  // NYC note
+  var nycHtml = '<div style="background:rgba(82,192,122,0.06);border:1px solid rgba(82,192,122,0.2);border-radius:4px;padding:12px;margin-bottom:14px">' +
+    '<div style="font-family:Bebas Neue,monospace;font-size:13px;letter-spacing:2px;color:var(--success);margin-bottom:6px">🗽 NYC NOTE</div>' +
+    '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.7">' + data.nyc + '</div>' +
+    '</div>';
+
+  // Extra warning if any
+  var extraHtml = data.extra ?
+    '<div style="background:rgba(224,82,82,0.08);border:1px solid rgba(224,82,82,0.3);border-radius:4px;padding:12px;margin-bottom:14px">' +
+    '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#e08080;line-height:1.7">' + data.extra + '</div>' +
+    '</div>' : '';
+
+  content.innerHTML =
+    '<div style="font-family:Bebas Neue,monospace;font-size:28px;letter-spacing:3px;color:var(--accent);margin-bottom:6px">' + room.icon + ' ' + room.label + '</div>' +
+    statusBadge +
+    gfciCard +
+    afciCard +
+    exceptionsHtml +
+    nycHtml +
+    extraHtml +
+    '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.8;padding:10px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">' +
+    '★ Based on NEC 2023. NYC currently enforces NEC 2020 with local amendments (NYCEC).<br>' +
+    'Always verify requirements with the local Authority Having Jurisdiction (AHJ).<br>' +
+    'AFCI breakers must be listed and installed at the panel. GFCI can be breaker or receptacle type.' +
+    '</div>';
+}
+
+gfciInitRooms();
+
 </script>
 </body>
 </html>
