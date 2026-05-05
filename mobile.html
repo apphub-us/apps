@@ -6,17 +6,17 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SparkyPro">
-<meta name="theme-color" content="#0f0f0f">
+<meta name="theme-color" content="#0A0A0A">
 <title>SparkyPro Mobile</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f0f0f;
+    --bg: #0A0A0A;
     --surface: #1a1a1a;
     --surface2: #222;
     --border: #2e2e2e;
-    --accent: #f5a623;
-    --accent2: #e8830a;
+    --accent: #FFC700;
+    --accent2: #e6b400;
     --text: #e8e8e8;
     --dim: #888;
     --dimmer: #555;
@@ -34,7 +34,7 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -174,7 +174,7 @@
     background: var(--surface2);
     border: 1px solid var(--border);
     color: var(--text);
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 16px; /* prevent iOS zoom */
     padding: 12px 14px;
     border-radius: 8px;
@@ -549,7 +549,18 @@
 
 <!-- TOP BAR -->
 <div class="topbar">
-  <div class="logo">⚡ SPARKYPRO <span>Electrician Field Assistant</span></div>
+  <div class="logo" style="display:flex;align-items:center;gap:10px">
+    <svg width="30" height="30" viewBox="0 0 100 100" fill="none">
+      <rect width="100" height="100" rx="18" fill="#FFC700"/>
+      <path d="M62 12L30 52H50L38 88L70 48H50L62 12Z" fill="#0A0A0A"/>
+    </svg>
+    <div>
+      <div style="font-family:Inter,sans-serif;font-size:18px;font-weight:700;line-height:1">
+        <span style="color:#fff">Sparky</span><span style="color:#FFC700">Pro</span>
+      </div>
+      <span style="font-family:Inter,sans-serif;font-size:9px;color:#666;letter-spacing:1px;text-transform:uppercase">Field Assistant</span>
+    </div>
+  </div>
   <div class="online-dot" id="onlineDot"></div>
 </div>
 
