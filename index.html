@@ -413,6 +413,26 @@
     }
   }
 
+
+  /* ── NEC CLICKABLE LINKS ── */
+  .nec-link {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--accent);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.15s;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 1px 3px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .nec-link:hover {
+    background: rgba(245,166,35,0.15);
+    border-bottom-style: solid;
+  }
+
 </style>
 </head>
 <body>
@@ -753,7 +773,7 @@
       </div>
     </div>
     <div class="cf-note">
-      ★ NEC 314.16(B) counting rules: (1) Each conductor entering box = 1 count. Conductors passing through = 1. Pigtails originating in box = 0.
+      <span class="nec-link" onclick="necLink('NEC 314.16(B)')">NEC 314.16(B)</span> counting rules: (1) Each conductor entering box = 1 count. Conductors passing through = 1. Pigtails originating in box = 0.
       (2) Each device/strap = 2× largest conductor. (3) Internal cable clamps = 1× largest (regardless of count). 
       (4) All EGCs = 1× largest EGC. (5) Fixture studs/hickeys = 1× largest conductor each.
     </div>
@@ -919,10 +939,10 @@
       </div>
     </div>
     <div class="cf-note">
-      ★ NEC 310.16 — conductors in raceway, cable, or earth. Based on 60Hz, 3 or fewer current-carrying conductors, 30°C (86°F) ambient.
+      <span class="nec-link" onclick="necLink('NEC 310.16')">NEC 310.16</span> — conductors in raceway, cable, or earth. Based on 60Hz, 3 or fewer current-carrying conductors, 30°C (86°F) ambient.
       Terminal temp rating: use 60°C column for equipment rated 60°C; use 75°C column for equipment rated 75°C (most panels/breakers).
       THHN/THWN-2 90°C rating used ONLY for derating calculations — terminals limit final ampacity to 60°C or 75°C column.
-      Rooftop adder per NEC 310.15(B)(3)(c): add temp adder to ambient before applying correction factor.
+      Rooftop adder per <span class="nec-link" onclick="necLink('NEC 310.15(B)(3)(c)')">NEC 310.15(B)(3)(c)</span>: add temp adder to ambient before applying correction factor.
       NYC follows NEC 2020 with NYCEC amendments.
     </div>
   </div>
@@ -1013,8 +1033,8 @@
       ★ Formula: VD = (2 × K × I × L) / CM for single phase. VD = (1.732 × K × I × L) / CM for three phase.
       K = resistivity constant: Copper = 12.9, Aluminum = 21.2.
       CM = circular mils of conductor. L = one-way length in feet.
-      NEC 210.19(A) Informational Note: voltage drop should not exceed 3% for branch circuits.
-      NEC 215.2(A) Informational Note: combined feeder + branch circuit drop should not exceed 5%.
+      <span class="nec-link" onclick="necLink('NEC 210.19(A)')">NEC 210.19(A)</span> Informational Note: voltage drop should not exceed 3% for branch circuits.
+      <span class="nec-link" onclick="necLink('NEC 215.2(A)')">NEC 215.2(A)</span> Informational Note: combined feeder + branch circuit drop should not exceed 5%.
       These are recommendations, not code requirements — but good engineering practice.
     </div>
   </div>
@@ -1082,8 +1102,8 @@
       <div id="pbResult" style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:4px;padding:12px;font-family:IBM Plex Mono,monospace;font-size:12px;line-height:1.8"></div>
 
       <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.6;padding:8px;background:var(--surface);border-radius:3px;border:1px solid var(--border)">
-        ★ NEC 314.28(A)(1): Straight pull — box length ≥ 8× largest raceway.<br>
-        ★ NEC 314.28(A)(2): Angle/U pull — distance from raceway entry to opposite wall ≥ 6× largest + sum of others in same row on same wall.
+        ★ <span class="nec-link" onclick="necLink('NEC 314.28(A)(1)')">NEC 314.28(A)(1)</span>: Straight pull — box length ≥ 8× largest raceway.<br>
+        ★ <span class="nec-link" onclick="necLink('NEC 314.28(A)(2)')">NEC 314.28(A)(2)</span>: Angle/U pull — distance from raceway entry to opposite wall ≥ 6× largest + sum of others in same row on same wall.
       </div>
     </div>
 
@@ -2461,8 +2481,8 @@ function gfciUpdate() {
   var gfciCard = '';
   if (data.gfci) {
     gfciCard = '<div style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.25);border-left:4px solid var(--accent);border-radius:4px;padding:16px;margin-bottom:14px">' +
-      '<div style="font-family:Bebas Neue,monospace;font-size:16px;letter-spacing:2px;color:var(--accent);margin-bottom:8px">⚡ GFCI REQUIRED — ' + data.gfciRef + '</div>' +
-      '<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text);line-height:1.7">' + data.gfciNote + '</div>' +
+      '<div style="font-family:Bebas Neue,monospace;font-size:16px;letter-spacing:2px;color:var(--accent);margin-bottom:8px">⚡ GFCI REQUIRED — <span class="nec-link" onclick="necLink(\'' + data.gfciRef + '\')" title="Learn about ' + data.gfciRef + '">' + data.gfciRef + '</span></div>' +
+      '<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text);line-height:1.7">' + necify(data.gfciNote) + '</div>' +
       '</div>';
   } else {
     gfciCard = '<div style="background:rgba(136,136,136,0.05);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">' +
@@ -2475,8 +2495,8 @@ function gfciUpdate() {
   var afciCard = '';
   if (data.afci) {
     afciCard = '<div style="background:rgba(232,194,58,0.06);border:1px solid rgba(232,194,58,0.25);border-left:4px solid var(--warn);border-radius:4px;padding:16px;margin-bottom:14px">' +
-      '<div style="font-family:Bebas Neue,monospace;font-size:16px;letter-spacing:2px;color:var(--warn);margin-bottom:8px">🔥 AFCI REQUIRED — ' + data.afciRef + '</div>' +
-      '<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text);line-height:1.7">' + data.afciNote + '</div>' +
+      '<div style="font-family:Bebas Neue,monospace;font-size:16px;letter-spacing:2px;color:var(--warn);margin-bottom:8px">🔥 AFCI REQUIRED — <span class="nec-link" onclick="necLink(\'' + data.afciRef + '\')" title="Learn about ' + data.afciRef + '">' + data.afciRef + '</span></div>' +
+      '<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text);line-height:1.7">' + necify(data.afciNote) + '</div>' +
       '</div>';
   } else {
     afciCard = '<div style="background:rgba(136,136,136,0.05);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">' +
@@ -2524,6 +2544,37 @@ function gfciUpdate() {
 }
 
 gfciInitRooms();
+
+
+// ── NEC LINK SYSTEM ──────────────────────────────────────
+// Call this to navigate to AI chat and ask about a NEC article
+function necLink(ref) {
+  // Switch to chat tab
+  var chatTab = document.querySelector('.tab[onclick*="chat"]');
+  if (chatTab) {
+    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+    chatTab.classList.add('active');
+    document.getElementById('panel-chat').classList.add('active');
+  }
+  // Ask about the NEC article
+  var question = 'Explain ' + ref + ' in detail. What does it require, where does it apply, and are there any exceptions?';
+  document.getElementById('userInput').value = question;
+  setTimeout(function() { sendMessage(); }, 100);
+}
+
+// Convert NEC references in text to clickable links
+// Usage: necify('text with NEC 210.8(A)(1) inside')
+function necify(text) {
+  // Match patterns like NEC 210.8, NEC 210.8(A), NEC 210.8(A)(1), NEC 314.16(B)(2), Article 680 etc.
+  return text.replace(/NEC\s+([\d]+\.[\d]+[\w\(\)\.]*)/g, function(match, ref) {
+    var fullRef = 'NEC ' + ref;
+    return '<span class="nec-link" onclick="necLink(\'' + fullRef + '\')" title="Click to learn about ' + fullRef + '">' + fullRef + '</span>';
+  }).replace(/Article\s+(\d+)/g, function(match, num) {
+    var fullRef = 'NEC Article ' + num;
+    return '<span class="nec-link" onclick="necLink(\'' + fullRef + '\')" title="Click to learn about ' + fullRef + '">Article ' + num + '</span>';
+  });
+}
 
 </script>
 </body>
