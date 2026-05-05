@@ -1,13 +1,19 @@
 {
-  "name": "SparkyPro — Electrician Field Assistant",
+  "name": "SparkyPro \u2014 Electrician Field Assistant",
   "short_name": "SparkyPro",
-  "description": "AI-powered NEC code assistant for electricians. Box fill, conduit fill, ampacity, voltage drop, pull box calculations.",
+  "description": "AI-powered NEC code assistant for electricians. Box fill, conduit fill, ampacity, voltage drop, pull box, GFCI/AFCI, load calculations.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f0f0f",
-  "theme_color": "#f5a623",
+  "background_color": "#0A0A0A",
+  "theme_color": "#FFC700",
   "orientation": "portrait-primary",
   "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
     {
       "src": "icon-192.png",
       "sizes": "192x192",
@@ -21,6 +27,9 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["utilities", "productivity"],
+  "categories": [
+    "utilities",
+    "productivity"
+  ],
   "lang": "en-US"
 }
