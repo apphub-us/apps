@@ -460,6 +460,69 @@
   }
 
 
+
+  /* ══════════════════════════════════════
+     GLOBAL SYSTEM FONT OVERRIDES
+     SF Pro on iPhone, Roboto on Android
+  ══════════════════════════════════════ */
+
+  /* UI labels, ctrl groups, buttons — system font */
+  .ctrl-label,
+  .ctrl-group label,
+  select,
+  input[type=number],
+  input[type=password],
+  textarea,
+  .calc-btn,
+  .modal-btn,
+  .tab,
+  .result-item-label,
+  .fill-rule,
+  .welcome p,
+  .welcome-ex,
+  .note-box,
+  .warn-box,
+  .modal p,
+  .input-hint,
+  .trend-btn,
+  .trending-label,
+  .cf-note,
+  .trending-loading,
+  .msg-bubble,
+  .error-bubble { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important; }
+
+  /* Keep Mono for: values, NEC refs, code, tables, timestamps */
+  .result-value,
+  .result-item-value,
+  .msg-time,
+  .msg-name,
+  .nec-link,
+  .cf-table,
+  .cf-table th,
+  .cf-table td,
+  .msg.ai .msg-bubble table,
+  .msg.ai .msg-bubble th,
+  .msg.ai .msg-bubble td,
+  code,
+  pre { font-family: 'IBM Plex Mono', monospace !important; }
+
+  /* Keep Bebas for headings/logo */
+  .logo-title,
+  .result-header,
+  .result-title,
+  .table-title,
+  .welcome h2,
+  .modal h2 { font-family: 'Bebas Neue', sans-serif !important; }
+
+  /* Labels inside result cards — system font, smaller */
+  .result-item-label { font-size: 11px; letter-spacing: 0.3px; }
+
+  /* Select and input — larger, system font */
+  select, input[type=number] { font-size: 15px; letter-spacing: 0; }
+
+  /* Ctrl label — system font */
+  .ctrl-label { font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; }
+
   /* ── NEC CLICKABLE LINKS ── */
   .nec-link {
     color: var(--accent);
