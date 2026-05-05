@@ -8,18 +8,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SparkyPro">
-<meta name="theme-color" content="#f5a623">
+<meta name="theme-color" content="#FFC700">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f0f0f;
+    --bg: #0A0A0A;
     --surface: #1a1a1a;
     --surface2: #222222;
     --border: #2e2e2e;
-    --accent: #f5a623;
-    --accent2: #e8830a;
+    --accent: #FFC700;
+    --accent2: #e6b400;
     --text: #e8e8e8;
     --text-dim: #888;
     --text-dimmer: #555;
@@ -35,7 +35,7 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     height: 100vh;
     height: 100dvh;
     display: flex;
@@ -147,7 +147,7 @@
     display:flex; align-items:center; justify-content:center;
     font-size:13px; flex-shrink:0; margin-bottom:2px; font-weight:bold;
   }
-  .msg.user .msg-avatar { background:linear-gradient(135deg,#f5a623,#e8830a); color:#000; font-family:'Bebas Neue',sans-serif; letter-spacing:1px; }
+  .msg.user .msg-avatar { background:linear-gradient(135deg,#FFC700,#e6b400); color:#000; font-family:'Bebas Neue',sans-serif; letter-spacing:1px; }
   .msg.ai  .msg-avatar { background:linear-gradient(135deg,#1e3a2e,#2a5240); color:var(--accent); font-size:18px; }
 
   .msg-wrap { display:flex; flex-direction:column; gap:3px; }
@@ -205,7 +205,7 @@
   .input-area { background: var(--surface); border-top: 1px solid var(--border); padding: 12px 20px; flex-shrink: 0; }
   .input-row { display: flex; gap: 10px; align-items: flex-end; max-width: 900px; margin: 0 auto; }
 
-  textarea { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; padding: 12px 14px; border-radius: 4px; resize: none; outline: none; min-height: 46px; max-height: 140px; line-height: 1.5; transition: border-color 0.15s; }
+  textarea { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; padding: 12px 14px; border-radius: 4px; resize: none; outline: none; min-height: 46px; max-height: 140px; line-height: 1.5; transition: border-color 0.15s; }
   textarea:focus { border-color: var(--accent); }
   textarea::placeholder { color: var(--text-dimmer); }
 
@@ -489,7 +489,7 @@
   .cf-note,
   .trending-loading,
   .msg-bubble,
-  .error-bubble { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important; }
+  .error-bubble { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important; }
 
   /* Keep Mono for: values, NEC refs, code, tables, timestamps */
   .result-value,
@@ -549,7 +549,7 @@
 <!-- MODAL -->
 <div class="modal-overlay" id="apiModal">
   <div class="modal">
-    <h2>⚡ SparkyPro Setup</h2>
+    <h2 style="font-family:Inter,sans-serif;font-weight:700"><span style="color:#fff">Sparky</span><span style="color:#FFC700">Pro</span> Setup</h2>
     <p>Enter your Anthropic API key. Stored in your browser — won't ask again.</p>
     <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." />
     <button class="modal-btn" onclick="saveKey()">ACTIVATE ASSISTANT</button>
@@ -621,7 +621,7 @@
 
   <div class="chat-area" id="chatArea">
     <div class="welcome" id="welcome">
-      <div class="welcome-icon">⚡</div>
+      <div style="margin-bottom:12px"><svg width="52" height="52" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="18" fill="#FFC700"/><path d="M62 12L30 52H50L38 88L70 48H50L62 12Z" fill="#0A0A0A"/></svg></div>
       <h2>Ask SparkyPro</h2>
       <p>Your AI field assistant for National Electrical Code questions. Box fill, conduit fill, ampacity, GFCI, AFCI, grounding, load calculations and more.</p>
       <div class="welcome-examples">
@@ -2257,7 +2257,7 @@ vdUpdateCalc();
 var pbLeftList  = [3, 3];
 var pbRightList = [3];
 var RACEWAY_SIZES = [0.5,0.75,1,1.25,1.5,2,2.5,3,3.5,4,5,6];
-var WIRE_COLORS_PB = ['#e05252','#4a90d9','#f5a623','#52c07a','#b06ae8','#e87a30'];
+var WIRE_COLORS_PB = ['#e05252','#4a90d9','#FFC700','#52c07a','#b06ae8','#e87a30'];
 
 function pbSizeSelect(val, side, idx) {
   var sel = '<select style="background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:12px;padding:4px 8px;border-radius:3px;outline:none;flex:1" onchange="pbOnChange(\''+side+'\','+idx+',this.value)">';
@@ -2327,7 +2327,7 @@ var SV={
   wall:'#8a9bb0', wallDark:'#5a6b7a',
   dim:'#52c07a', dimC:'#e8c23a',
   label:'#e8e8e8', sub:'#8ab0c8',
-  title:'#f5a623', note:'#556070',
+  title:'#FFC700', note:'#556070',
   font:'IBM Plex Mono, monospace', fontB:'Bebas Neue, monospace'
 };
 
@@ -2779,7 +2779,7 @@ var GFCI_DATA = {
 };
 
 var GFCI_COLORS = {
-  gfci: { bg: 'rgba(245,166,35,0.12)', border: 'rgba(245,166,35,0.4)', text: '#f5a623', label: 'GFCI REQUIRED' },
+  gfci: { bg: 'rgba(245,166,35,0.12)', border: 'rgba(245,166,35,0.4)', text: '#FFC700', label: 'GFCI REQUIRED' },
   afci: { bg: 'rgba(232,194,58,0.12)', border: 'rgba(232,194,58,0.4)', text: '#e8c23a', label: 'AFCI REQUIRED' },
   dual: { bg: 'rgba(82,192,122,0.12)', border: 'rgba(82,192,122,0.4)', text: '#52c07a', label: 'GFCI + AFCI REQUIRED' },
   none: { bg: 'rgba(136,136,136,0.08)', border: 'rgba(136,136,136,0.2)', text: '#888', label: 'NOT REQUIRED' }
