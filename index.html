@@ -290,163 +290,173 @@
   .modal-btn:hover { background: var(--accent2); }
   .modal-note { margin-top: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dimmer); text-align: center; letter-spacing: 1px; }
 
-  @media (max-width: 600px) {
-    .logo-title { font-size: 20px; }
-    .tab { padding: 10px 14px; font-size: 11px; }
-    .chat-area { padding: 14px; }
-    .cf-controls { padding: 10px 12px; }
-  }
 
   /* ══════════════════════════════════════
-     MOBILE RESPONSIVE
+     MOBILE — bottom nav + scroll fix
   ══════════════════════════════════════ */
-  @media (max-width: 768px) {
 
-    /* Header compact */
+  /* Bottom nav — hidden on desktop */
+  .mobile-bottom-nav { display: none; }
+
+  @media (max-width: 768px) {
+    /* Lock viewport */
+    html { height: 100%; height: 100dvh; }
+    body { position: fixed; width: 100%; height: 100%; height: 100dvh; overflow: hidden; }
+
+    /* Header */
     header { height: 48px; padding: 0 12px; }
     .logo-title { font-size: 20px; letter-spacing: 2px; }
     .logo-sub { display: none; }
     .status-bar span { display: none; }
 
-    /* Tabs */
-    .tab { font-size: 11px; padding: 10px 12px; letter-spacing: 0; }
+    /* Hide desktop tab bar, show mobile bottom nav */
+    .tab-bar { display: none; }
+    .mobile-bottom-nav {
+      display: flex;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding-bottom: env(safe-area-inset-bottom, 0);
+      z-index: 100;
+      flex-shrink: 0;
+    }
 
-    /* Fill rules bar — wrap */
-    .fill-rules-bar { padding: 6px 12px; gap: 8px; flex-wrap: wrap; }
-    .fill-rule { font-size: 10px; }
+    .mob-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 2px 6px;
+      cursor: pointer;
+      color: var(--text-dimmer);
+      transition: color 0.15s;
+      min-height: 54px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mob-nav-item.active { color: var(--accent); }
+    .mob-nav-icon {
+      font-size: 18px;
+      width: 32px; height: 26px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 8px;
+      transition: background 0.15s;
+      margin-bottom: 2px;
+    }
+    .mob-nav-item.active .mob-nav-icon { background: rgba(245,166,35,0.15); }
+    .mob-nav-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 8px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
 
-    /* Controls — stack vertically */
-    .cf-controls { padding: 10px 12px; gap: 8px; }
+    /* Panels — full height minus header and bottom nav */
+    .panel { display: none; flex-direction: column; overflow: hidden; }
+    .panel.active {
+      display: flex;
+      position: fixed;
+      top: 48px;
+      left: 0; right: 0;
+      bottom: 54px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Chat panel specifics */
+    #panel-chat {
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #panel-chat.active {
+      display: flex;
+      position: fixed;
+      top: 48px; left: 0; right: 0; bottom: 54px;
+      overflow: hidden;
+    }
+    .chat-area {
+      flex: 1 !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      min-height: 0;
+      padding: 12px 12px 10px;
+    }
+    .trending-bar { flex-shrink: 0; }
+    .input-area { flex-shrink: 0; padding: 8px 12px; }
+    .input-hint { display: none; }
+    textarea { font-size: 16px; }
+    .send-btn { width: 44px; height: 44px; }
+
+    /* Chat bubbles on mobile */
+    .msg { max-width: 90% !important; }
+    .msg-bubble { font-size: 13px; padding: 9px 12px; }
+
+    /* Controls */
+    .fill-rules-bar { padding: 6px 12px; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+    .fill-rule { font-size: 9px; }
+    .cf-controls { padding: 10px 12px; gap: 8px; flex-shrink: 0; }
     .ctrl-group { width: 100%; }
     .ctrl-group select,
     .ctrl-group input[type=number] { width: 100%; font-size: 16px; padding: 10px 12px; }
     .ctrl-label { font-size: 9px; }
 
-    /* Result grid — 2 columns */
+    /* Results */
     .result-grid { grid-template-columns: 1fr 1fr; }
-    .result-item-value { font-size: 18px; }
+    .result-item-value { font-size: 17px; }
+    .result-box { flex-shrink: 0; }
 
-    /* Chat area */
-    .chat-area { padding: 12px; }
-    .msg-bubble { font-size: 14px; padding: 12px 14px; }
-    .msg { max-width: 100%; }
-
-    /* Input area */
-    .input-area { padding: 10px 12px; }
-    textarea { font-size: 16px; } /* prevent zoom on iOS */
-    .send-btn { width: 44px; height: 44px; font-size: 16px; }
-    .input-hint { display: none; }
-
-    /* Trending bar */
-    .trending-bar { padding: 6px 12px; min-height: 36px; }
-    .trending-label { font-size: 8px; }
-    .trend-btn { font-size: 10px; padding: 4px 8px; }
-
-    /* Tables — horizontal scroll */
+    /* Tables */
+    .fill-panel { overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 200px; }
     .table-wrap { padding: 0 12px 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .cf-table { font-size: 11px; }
-    .cf-table th, .cf-table td { padding: 6px 8px; }
+    .cf-table { font-size: 11px; min-width: 500px; }
+    .cf-table th, .cf-table td { padding: 5px 7px; }
+    .conduit-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+    .conduit-tab { flex-shrink: 0; }
+    .cf-note { font-size: 10px; margin: 0 12px 12px; padding: 8px 10px; flex-shrink: 0; }
 
-    /* Fill panel scroll */
-    .fill-panel { overflow-y: auto; -webkit-overflow-scrolling: touch; }
-
-    /* Pull box panel */
+    /* Pull box */
     #panel-pullbox > div { flex-direction: column !important; }
-    #panel-pullbox > div > div:first-child { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--border); max-height: 300px; overflow-y: auto; }
+    #panel-pullbox > div > div:first-child { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--border); max-height: 280px; overflow-y: auto; }
     #pbDiagram svg { width: 100% !important; }
 
-    /* Box fill controls */
-    #bfBoxType { font-size: 14px; }
+    /* GFCI panel */
+    #panel-gfci > div { flex-direction: column !important; }
+    #panel-gfci > div > div:first-child { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--border); max-height: 200px; overflow-y: auto; }
 
-    /* Welcome screen */
+    /* Load calc panel */
+    #panel-loadcalc > div { flex-direction: column !important; }
+    #panel-loadcalc > div > div:first-child { width: 100% !important; border-right: none !important; border-bottom: 1px solid var(--border); max-height: 50vh; overflow-y: auto; }
+
+    /* Modal — slide up from bottom */
+    .modal-overlay { align-items: flex-end; }
+    .modal { border-radius: 20px 20px 0 0; padding: 24px 20px calc(24px + env(safe-area-inset-bottom,0)); }
+    .modal input { font-size: 16px; }
+
+    /* Welcome */
     .welcome { padding: 24px 16px; }
     .welcome-icon { font-size: 36px; }
     .welcome h2 { font-size: 24px; }
     .welcome p { font-size: 13px; }
     .welcome-ex { font-size: 11px; padding: 8px 10px; }
 
-    /* Modal */
-    .modal { padding: 24px 20px; }
-    .modal input { font-size: 16px; } /* prevent zoom */
+    /* Trending */
+    .trending-label { font-size: 8px; }
+    .trend-btn { font-size: 10px; padding: 3px 8px; }
 
-    /* Conduit tabs — scrollable */
-    .conduit-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
-    .conduit-tab { flex-shrink: 0; }
-
-    /* Ampacity result */
+    /* Ampacity */
     #ampResultGrid { grid-template-columns: 1fr 1fr; }
 
-    /* Note text */
-    .cf-note { font-size: 10px; margin: 0 12px 12px; padding: 8px 10px; }
+    /* Box fill */
+    #bfBoxType { font-size: 14px; }
   }
 
   @media (max-width: 380px) {
-    .logo-title { font-size: 18px; }
-    .tab { font-size: 10px; padding: 10px 10px; }
+    .mob-nav-label { font-size: 7px; }
     .result-grid { grid-template-columns: 1fr; }
-  }
-
-
-  @media (max-width: 768px) {
-    html, body {
-      height: 100%;
-      height: 100dvh;
-      overflow: hidden;
-      position: fixed;
-      width: 100%;
-    }
-
-    body {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .panel.active {
-      flex: 1;
-      overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch !important;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .fill-panel {
-      overflow-y: visible !important;
-    }
-
-    .table-wrap {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    /* Make conduit/box/amp controls not shrink */
-    .cf-controls {
-      flex-shrink: 0;
-    }
-
-    .fill-rules-bar {
-      flex-shrink: 0;
-    }
-
-    /* Result box */
-    .result-box {
-      flex-shrink: 0;
-    }
-
-    /* Chat specific */
-    .chat-area {
-      flex: 1;
-      overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch !important;
-      min-height: 0;
-    }
-
-    .input-area {
-      flex-shrink: 0;
-    }
-
-    .trending-bar {
-      flex-shrink: 0;
-    }
   }
 
 
@@ -506,6 +516,34 @@
   <div class="tab" onclick="switchTab('pullbox', this)">🗃️ Pull Box</div>
   <div class="tab" onclick="switchTab('gfci', this)">🔌 GFCI/AFCI</div>
   <div class="tab" onclick="switchTab('loadcalc', this)">🏠 Load Calc</div>
+</div>
+
+<!-- MOBILE BOTTOM NAV -->
+<div class="mobile-bottom-nav" id="mobileNav">
+  <div class="mob-nav-item active" id="mnav-chat" onclick="switchTab('chat',document.querySelector('.tab[onclick*=\'chat\']'))">
+    <div class="mob-nav-icon">💬</div><div class="mob-nav-label">Chat</div>
+  </div>
+  <div class="mob-nav-item" id="mnav-conduit" onclick="switchTab('conduit',document.querySelector('.tab[onclick*=\'conduit\']'))">
+    <div class="mob-nav-icon">🔧</div><div class="mob-nav-label">Conduit</div>
+  </div>
+  <div class="mob-nav-item" id="mnav-boxfill" onclick="switchTab('boxfill',document.querySelector('.tab[onclick*=\'boxfill\']'))">
+    <div class="mob-nav-icon">📦</div><div class="mob-nav-label">Box</div>
+  </div>
+  <div class="mob-nav-item" id="mnav-ampacity" onclick="switchTab('ampacity',document.querySelector('.tab[onclick*=\'ampacity\']'))">
+    <div class="mob-nav-icon">⚡</div><div class="mob-nav-label">Amp</div>
+  </div>
+  <div class="mob-nav-item" id="mnav-vdrop" onclick="switchTab('vdrop',document.querySelector('.tab[onclick*=\'vdrop\']'))">
+    <div class="mob-nav-icon">📏</div><div class="mob-nav-label">V-Drop</div>
+  </div>
+  <div class="mob-nav-item" id="mnav-pullbox" onclick="switchTab('pullbox',document.querySelector('.tab[onclick*=\'pullbox\']'))">
+    <div class="mob-nav-icon">🗃️</div><div class="mob-nav-label">Pull</div>
+  </div>
+  <div class="mob-nav-item" id="mnav-gfci" onclick="switchTab('gfci',document.querySelector('.tab[onclick*=\'gfci\']'))">
+    <div class="mob-nav-icon">🔌</div><div class="mob-nav-label">GFCI</div>
+  </div>
+  <div class="mob-nav-item" id="mnav-loadcalc" onclick="switchTab('loadcalc',document.querySelector('.tab[onclick*=\'loadcalc\']'))">
+    <div class="mob-nav-icon">🏠</div><div class="mob-nav-label">Load</div>
+  </div>
 </div>
 
 <!-- ══ CHAT PANEL ══ -->
@@ -1348,8 +1386,12 @@ window.loadTrending();
 function switchTab(name, el) {
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
-  el.classList.add('active');
+  if (el) el.classList.add('active');
   document.getElementById('panel-' + name).classList.add('active');
+  // Sync mobile bottom nav
+  document.querySelectorAll('.mob-nav-item').forEach(function(n){n.classList.remove('active');});
+  var mItem = document.getElementById('mnav-' + name);
+  if (mItem) mItem.classList.add('active');
 }
 
 // ── CHAT ─────────────────────────────────────────────────
