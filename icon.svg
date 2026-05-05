@@ -1,6 +1,8 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="512" height="512" rx="90" fill="#0A0A0A"/>
-  <!-- Lightning bolt S shape in yellow -->
-  <path d="M316 60L148 268H256L192 452L364 244H256L316 60Z" fill="#FFC700"/>
+  <!-- Black rounded background -->
+  <rect width="512" height="512" rx="110" fill="#0A0A0A"/>
+  <!-- Left lightning bolt -->
+  <path d="M210 80L100 270H190L130 432L270 242H180L210 80Z" fill="#FFC700"/>
+  <!-- Right lightning bolt -->
+  <path d="M302 80L192 270H282L222 432L362 242H272L302 80Z" fill="#FFC700"/>
 </svg>
