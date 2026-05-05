@@ -5,15 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="SparkyPro">
-<meta name="theme-color" content="#0f0f0f">
+<meta name="theme-color" content="#0A0A0A">
 <title>SparkyPro — Electrician Field Assistant</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f0f0f;
+    --bg: #0A0A0A;
     --surface: #1a1a1a;
     --border: #2e2e2e;
-    --accent: #f5a623;
+    --accent: #FFC700;
     --text: #e8e8e8;
     --dim: #888;
   }
@@ -23,7 +23,7 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: Inter, -apple-system, sans-serif;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -138,7 +138,7 @@
     width: 100%;
     transition: background 0.15s;
   }
-  .card-btn:hover { background: #e8830a; }
+  .card-btn:hover { background: #e6b400; }
 
   .features {
     margin-top: 40px;
@@ -186,8 +186,13 @@
 </head>
 <body>
 
-<span class="logo-icon">⚡</span>
-<div class="logo">SparkyPro</div>
+<svg width="80" height="80" viewBox="0 0 100 100" fill="none" style="margin-bottom:12px">
+  <rect width="100" height="100" rx="18" fill="#FFC700"/>
+  <path d="M62 12L30 52H50L38 88L70 48H50L62 12Z" fill="#0A0A0A"/>
+</svg>
+<div class="logo" style="font-family:Inter,sans-serif;font-weight:700;font-size:48px;letter-spacing:-1px">
+  <span style="color:#fff">Sparky</span><span style="color:#FFC700">Pro</span>
+</div>
 <div class="tagline">Electrician Field Assistant · NEC 2023</div>
 
 <div class="detected-banner" id="detectedBanner"></div>
