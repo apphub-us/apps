@@ -176,7 +176,6 @@
     color:var(--text);
     box-shadow:0 2px 8px rgba(0,0,0,0.35);
     border:1px solid rgba(245,166,35,0.1);
-    white-space:pre-wrap;
   }
   .msg.ai .msg-bubble::after {
     content:''; position:absolute; bottom:0; left:-7px;
@@ -1334,19 +1333,78 @@ function addMessage(role, content, isError) {
 }
 
 function formatResponse(text) {
-  var lines = text.split('\n'), result = [], inTable = false, tableRows = [];
+  var lines = text.split('\n'), result = [], inTable = false, tableRows = [], inCode = false;
+
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
+
+    // Code block
+    if (line.trim().startsWith('```')) {
+      inCode = !inCode;
+      if (inCode) result.push('<pre style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;padding:10px;overflow-x:auto;font-family:IBM Plex Mono,monospace;font-size:12px;margin:8px 0">');
+      else result.push('</pre>');
+      continue;
+    }
+
+    if (inCode) { result.push(escapeHtml(line)); continue; }
+
+    // Table
     if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
       if (!inTable) { inTable = true; tableRows = []; }
       if (!line.includes('---')) tableRows.push(line);
-    } else {
-      if (inTable) { result.push(buildTable(tableRows)); tableRows = []; inTable = false; }
-      result.push(escapeHtml(line));
+      continue;
+    } else if (inTable) {
+      result.push(buildTable(tableRows)); tableRows = []; inTable = false;
     }
+
+    // Headings
+    if (line.startsWith('### ')) { result.push('<div style="font-family:Bebas Neue,monospace;font-size:16px;letter-spacing:1px;color:var(--accent);margin:10px 0 4px">' + escapeHtml(line.slice(4)) + '</div>'); continue; }
+    if (line.startsWith('## '))  { result.push('<div style="font-family:Bebas Neue,monospace;font-size:18px;letter-spacing:1px;color:var(--accent);margin:12px 0 4px">' + escapeHtml(line.slice(3)) + '</div>'); continue; }
+    if (line.startsWith('# '))   { result.push('<div style="font-family:Bebas Neue,monospace;font-size:20px;letter-spacing:2px;color:var(--accent);margin:14px 0 6px">' + escapeHtml(line.slice(2)) + '</div>'); continue; }
+
+    // Bullet list
+    if (line.match(/^[\-\*] /)) {
+      result.push('<div style="display:flex;gap:8px;margin:3px 0;padding-left:4px"><span style="color:var(--accent);flex-shrink:0;margin-top:1px">•</span><span>' + inlineFormat(line.slice(2)) + '</span></div>');
+      continue;
+    }
+
+    // Numbered list
+    var numMatch = line.match(/^(\d+)\. /);
+    if (numMatch) {
+      result.push('<div style="display:flex;gap:8px;margin:3px 0;padding-left:4px"><span style="color:var(--accent);flex-shrink:0;font-family:IBM Plex Mono,monospace;font-size:12px;min-width:18px">' + numMatch[1] + '.</span><span>' + inlineFormat(line.slice(numMatch[0].length)) + '</span></div>');
+      continue;
+    }
+
+    // Horizontal rule
+    if (line.match(/^---+$/) || line.match(/^\*\*\*+$/)) {
+      result.push('<hr style="border:none;border-top:1px solid var(--border);margin:10px 0">');
+      continue;
+    }
+
+    // Empty line
+    if (line.trim() === '') { result.push('<div style="height:6px"></div>'); continue; }
+
+    // Normal line with inline formatting
+    result.push('<div>' + inlineFormat(line) + '</div>');
   }
+
   if (inTable && tableRows.length) result.push(buildTable(tableRows));
-  return result.join('\n');
+  return result.join('');
+}
+
+function inlineFormat(text) {
+  text = escapeHtml(text);
+  // Bold **text**
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#e8e8e8;font-weight:600">$1</strong>');
+  // Italic *text*
+  text = text.replace(/\*(.+?)\*/g, '<em style="color:#c8c8c8">$1</em>');
+  // Inline code `code`
+  text = text.replace(/`(.+?)`/g, '<code style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--accent)">$1</code>');
+  // NEC references auto-link
+  text = text.replace(/NEC\s+([\d]+\.[\d]+[\w\(\)\.]*)/g, function(match, ref) {
+    return '<span class="nec-link" onclick="necLink(\'NEC '+ref+'\')" title="Learn about NEC '+ref+'">NEC '+ref+'</span>';
+  });
+  return text;
 }
 
 function buildTable(rows) {
