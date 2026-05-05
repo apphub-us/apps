@@ -505,6 +505,7 @@
   <div class="tab" onclick="switchTab('vdrop', this)">📏 Voltage Drop</div>
   <div class="tab" onclick="switchTab('pullbox', this)">🗃️ Pull Box</div>
   <div class="tab" onclick="switchTab('gfci', this)">🔌 GFCI/AFCI</div>
+  <div class="tab" onclick="switchTab('loadcalc', this)">🏠 Load Calc</div>
 </div>
 
 <!-- ══ CHAT PANEL ══ -->
@@ -1185,6 +1186,134 @@
           <div style="font-size:48px;margin-bottom:16px">🔌</div>
           <div style="font-family:Bebas Neue,monospace;font-size:24px;letter-spacing:2px;color:var(--accent);margin-bottom:8px">Select a Location</div>
           <div style="font-family:IBM Plex Mono,monospace;font-size:12px;line-height:1.6">Choose a room or location from the left panel<br>to see GFCI and AFCI requirements</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ LOAD CALCULATION PANEL ══ -->
+<div class="panel" id="panel-loadcalc">
+
+  <div class="fill-rules-bar">
+    <div class="fill-rule"><span class="fill-pill pill-orange">220.82</span> Optional Method — Dwelling Units</div>
+    <div class="fill-rule"><span class="fill-pill pill-yellow">220.83</span> Optional Method — Existing Dwelling</div>
+    <div class="fill-rule"><span class="fill-pill pill-green">220.42</span> General Lighting Load</div>
+    <div class="fill-rule" style="margin-left:auto;color:var(--text-dimmer)">NEC 220</div>
+  </div>
+
+  <div style="display:flex;flex:1;overflow:hidden">
+
+    <!-- LEFT: Inputs -->
+    <div style="width:320px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px">
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Calculation Method</span>
+        <select id="lcMethod" onchange="lcUpdate()">
+          <option value="optional">Optional Method — NEC 220.82 (New Dwelling)</option>
+          <option value="existing">Optional Method — NEC 220.83 (Existing Dwelling)</option>
+          <option value="standard">Standard Method — NEC 220.42</option>
+        </select>
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Service Voltage</span>
+        <select id="lcVoltage" onchange="lcUpdate()">
+          <option value="240">240V (Single Phase — Residential)</option>
+          <option value="208">208V (Single Phase — Multifamily)</option>
+          <option value="120">120V</option>
+        </select>
+      </div>
+
+      <div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:6px">General Loads</div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Floor Area (sq ft) — living space only</span>
+        <input type="number" id="lcSqFt" value="1500" min="0" oninput="lcUpdate()">
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Small Appliance Circuits (min 2)</span>
+        <input type="number" id="lcSmallAppl" value="2" min="2" max="10" oninput="lcUpdate()">
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Laundry Circuits (min 1)</span>
+        <input type="number" id="lcLaundry" value="1" min="1" max="5" oninput="lcUpdate()">
+      </div>
+
+      <div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:6px">Fixed Appliances (Nameplate VA)</div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Range / Oven (VA)</span>
+        <input type="number" id="lcRange" value="12000" min="0" oninput="lcUpdate()">
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Dryer (VA)</span>
+        <input type="number" id="lcDryer" value="5000" min="0" oninput="lcUpdate()">
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Dishwasher (VA)</span>
+        <input type="number" id="lcDishwasher" value="1500" min="0" oninput="lcUpdate()">
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Microwave (VA)</span>
+        <input type="number" id="lcMicrowave" value="1500" min="0" oninput="lcUpdate()">
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Disposal (VA)</span>
+        <input type="number" id="lcDisposal" value="900" min="0" oninput="lcUpdate()">
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Water Heater (VA)</span>
+        <input type="number" id="lcWaterHtr" value="4500" min="0" oninput="lcUpdate()">
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Other Fixed Appliance (VA)</span>
+        <input type="number" id="lcOther" value="0" min="0" oninput="lcUpdate()">
+      </div>
+
+      <div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:6px">Heating & Cooling (use LARGER)</div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">A/C (VA — nameplate)</span>
+        <input type="number" id="lcAC" value="5000" min="0" oninput="lcUpdate()">
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Electric Heat (VA — nameplate)</span>
+        <input type="number" id="lcHeat" value="0" min="0" oninput="lcUpdate()">
+      </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Heat Pump (VA — use 100%)</span>
+        <input type="number" id="lcHeatPump" value="0" min="0" oninput="lcUpdate()">
+      </div>
+
+      <div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:6px">EV Charger (if applicable)</div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">EV Charger (VA)</span>
+        <input type="number" id="lcEV" value="0" min="0" oninput="lcUpdate()">
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div style="flex:1;overflow-y:auto;padding:20px">
+      <div id="lcResult">
+        <div style="text-align:center;padding:40px 20px;color:var(--text-dimmer)">
+          <div style="font-size:48px;margin-bottom:12px">🏠</div>
+          <div style="font-family:Bebas Neue,monospace;font-size:22px;color:var(--accent)">Load Calculation</div>
+          <div style="font-family:IBM Plex Mono,monospace;font-size:12px;margin-top:8px">Adjust values on the left</div>
         </div>
       </div>
     </div>
@@ -2700,6 +2829,248 @@ function necify(text) {
     return '<span class="nec-link" onclick="necLink(\'' + fullRef + '\')" title="Click to learn about ' + fullRef + '">Article ' + num + '</span>';
   });
 }
+
+
+// ── LOAD CALCULATION ─────────────────────────────────────
+
+function lcRow(label, va, note, highlight) {
+  var style = highlight ? 'background:rgba(245,166,35,0.08);' : '';
+  return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid rgba(46,46,46,0.5);'+style+'">' +
+    '<div>' +
+      '<span style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text)">' + label + '</span>' +
+      (note ? '<span style="display:block;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:2px">' + note + '</span>' : '') +
+    '</div>' +
+    '<span style="font-family:Bebas Neue,monospace;font-size:18px;letter-spacing:1px;color:var(--text-dim)">' + va.toLocaleString() + ' VA</span>' +
+  '</div>';
+}
+
+function lcSection(title) {
+  return '<div style="background:rgba(245,166,35,0.08);border-left:3px solid var(--accent);padding:8px 14px;font-family:Bebas Neue,monospace;font-size:13px;letter-spacing:2px;color:var(--accent)">' + title + '</div>';
+}
+
+function lcUpdate() {
+  var method  = document.getElementById('lcMethod').value;
+  var voltage = parseFloat(document.getElementById('lcVoltage').value);
+  var sqFt    = parseFloat(document.getElementById('lcSqFt').value) || 0;
+  var smallAppl = parseInt(document.getElementById('lcSmallAppl').value) || 2;
+  var laundry   = parseInt(document.getElementById('lcLaundry').value) || 1;
+  var range     = parseFloat(document.getElementById('lcRange').value) || 0;
+  var dryer     = parseFloat(document.getElementById('lcDryer').value) || 0;
+  var dishwasher= parseFloat(document.getElementById('lcDishwasher').value) || 0;
+  var microwave = parseFloat(document.getElementById('lcMicrowave').value) || 0;
+  var disposal  = parseFloat(document.getElementById('lcDisposal').value) || 0;
+  var waterHtr  = parseFloat(document.getElementById('lcWaterHtr').value) || 0;
+  var other     = parseFloat(document.getElementById('lcOther').value) || 0;
+  var ac        = parseFloat(document.getElementById('lcAC').value) || 0;
+  var heat      = parseFloat(document.getElementById('lcHeat').value) || 0;
+  var heatPump  = parseFloat(document.getElementById('lcHeatPump').value) || 0;
+  var ev        = parseFloat(document.getElementById('lcEV').value) || 0;
+
+  var html = '';
+  var totalVA = 0;
+
+  if (method === 'optional') {
+    // ── NEC 220.82 Optional Method ────────────────────────
+    // Step 1: General loads
+    var lightingVA    = sqFt * 3;                    // 3 VA/sq ft — 220.82(B)(1)
+    var smallApplVA   = smallAppl * 1500;             // 1500 VA each — 220.82(B)(2)
+    var laundryVA     = laundry * 1500;               // 1500 VA each — 220.82(B)(2)
+    var generalTotal  = lightingVA + smallApplVA + laundryVA;
+
+    // Step 2: Apply demand factor to general loads
+    // First 10,000 VA at 100%, remainder at 40%
+    var generalDemand = generalTotal <= 10000
+      ? generalTotal
+      : 10000 + (generalTotal - 10000) * 0.40;
+
+    // Step 3: Fixed appliances at 100%
+    var appliancesVA  = range + dryer + dishwasher + microwave + disposal + waterHtr + other;
+
+    // Step 4: Heating/Cooling — use LARGEST at 100%
+    var hvacVA = Math.max(ac, heat, heatPump);
+
+    // Step 5: EV at 100%
+    var evVA = ev;
+
+    totalVA = generalDemand + appliancesVA + hvacVA + evVA;
+    var totalAmps = totalVA / voltage;
+
+    html += '<div style="font-family:Bebas Neue,monospace;font-size:22px;letter-spacing:2px;color:var(--accent);margin-bottom:16px">NEC 220.82 — OPTIONAL METHOD</div>';
+
+    // General loads section
+    html += lcSection('STEP 1 — GENERAL LOADS (220.82(B))');
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    html += lcRow('General Lighting ('+sqFt.toLocaleString()+' sq ft × 3 VA)', lightingVA, 'NEC 220.82(B)(1) — 3 VA/sq ft');
+    html += lcRow('Small Appliance Circuits ('+smallAppl+' × 1,500 VA)', smallApplVA, 'NEC 220.82(B)(2) — min 2 circuits');
+    html += lcRow('Laundry Circuit(s) ('+laundry+' × 1,500 VA)', laundryVA, 'NEC 220.82(B)(2)');
+    html += lcRow('General Load Subtotal', generalTotal, '', false);
+    html += '</div>';
+
+    // Demand factor
+    var demandNote = generalTotal <= 10000
+      ? 'All at 100% (total ≤ 10,000 VA)'
+      : 'First 10,000 VA @ 100% + ' + (generalTotal-10000).toLocaleString() + ' VA @ 40%';
+    html += lcSection('STEP 2 — DEMAND FACTOR (220.82(B))');
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    html += lcRow('General Load After Demand Factor', Math.round(generalDemand), demandNote, true);
+    html += '</div>';
+
+    // Appliances
+    html += lcSection('STEP 3 — FIXED APPLIANCES @ 100% (220.82(C)(1))');
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    if (range)      html += lcRow('Range / Oven', range);
+    if (dryer)      html += lcRow('Dryer', dryer);
+    if (dishwasher) html += lcRow('Dishwasher', dishwasher);
+    if (microwave)  html += lcRow('Microwave', microwave);
+    if (disposal)   html += lcRow('Disposal', disposal);
+    if (waterHtr)   html += lcRow('Water Heater', waterHtr);
+    if (other)      html += lcRow('Other Appliance', other);
+    html += lcRow('Appliances Subtotal', appliancesVA, '@ 100%', true);
+    html += '</div>';
+
+    // HVAC
+    html += lcSection('STEP 4 — HEATING/COOLING — USE LARGEST (220.82(C)(2))');
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    html += lcRow('A/C', ac, ac >= heat && ac >= heatPump ? '← LARGEST — used' : 'not used');
+    if (heat > 0) html += lcRow('Electric Heat', heat, heat >= ac && heat >= heatPump ? '← LARGEST — used' : 'not used');
+    if (heatPump > 0) html += lcRow('Heat Pump', heatPump, heatPump >= ac && heatPump >= heat ? '← LARGEST — used' : 'not used');
+    html += lcRow('HVAC Load Used', hvacVA, '@ 100%', true);
+    html += '</div>';
+
+    // EV
+    if (ev > 0) {
+      html += lcSection('EV CHARGER @ 100%');
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+      html += lcRow('EV Charger', ev, '@ 100%');
+      html += '</div>';
+    }
+
+  } else if (method === 'existing') {
+    // ── NEC 220.83 Optional Method — Existing Dwelling ───
+    var lightingVA  = sqFt * 3;
+    var smallApplVA = smallAppl * 1500;
+    var laundryVA   = laundry * 1500;
+    var appliancesVA= range + dryer + dishwasher + microwave + disposal + waterHtr + other + ev;
+    var hvacVA      = Math.max(ac, heat, heatPump);
+    var allLoads    = lightingVA + smallApplVA + laundryVA + appliancesVA + hvacVA;
+
+    // 220.83: First 8,000 VA @ 100%, remainder @ 40%
+    var demand = allLoads <= 8000
+      ? allLoads
+      : 8000 + (allLoads - 8000) * 0.40;
+
+    totalVA = demand;
+    var totalAmps = totalVA / voltage;
+
+    html += '<div style="font-family:Bebas Neue,monospace;font-size:22px;letter-spacing:2px;color:var(--accent);margin-bottom:16px">NEC 220.83 — EXISTING DWELLING</div>';
+
+    html += lcSection('ALL LOADS COMBINED FIRST');
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    html += lcRow('General Lighting ('+sqFt+' sq ft × 3 VA)', lightingVA, 'NEC 220.83');
+    html += lcRow('Small Appliance Circuits', smallApplVA);
+    html += lcRow('Laundry', laundryVA);
+    html += lcRow('All Appliances', appliancesVA);
+    html += lcRow('HVAC (largest)', hvacVA);
+    html += lcRow('Total Before Demand', Math.round(allLoads), '', false);
+    html += '</div>';
+
+    var demandNote83 = allLoads <= 8000
+      ? 'All at 100% (≤ 8,000 VA)'
+      : 'First 8,000 VA @ 100% + ' + (allLoads-8000).toLocaleString() + ' VA @ 40%';
+
+    html += lcSection('DEMAND FACTOR — NEC 220.83');
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    html += lcRow('Total After Demand Factor', Math.round(demand), demandNote83, true);
+    html += '</div>';
+
+  } else {
+    // ── Standard Method NEC 220.42 ──────────────────────
+    var lightingVA  = sqFt * 3;
+    var smallApplVA = smallAppl * 1500;
+    var laundryVA   = laundry * 1500;
+    var generalTotal= lightingVA + smallApplVA + laundryVA;
+
+    // 220.42 demand factors: first 3000 VA @ 35%, next 117,000 @ 35%, remainder @ 25%
+    // Simplified: first 3000 @ 100% after applying 35% = 3000*0.35? 
+    // Actually NEC 220.42: first 3000 VA @ 35%, 3001-120,000 @ 35%, >120,000 @ 25%
+    // Wait — correct: first 3000 @ 100% then apply 35% to general lighting only
+    // Standard method: lighting+small appl+laundry then demand table 220.42
+    var lightingDemand;
+    if (generalTotal <= 3000) lightingDemand = generalTotal;
+    else if (generalTotal <= 120000) lightingDemand = 3000 + (generalTotal - 3000) * 0.35;
+    else lightingDemand = 3000 + 117000 * 0.35 + (generalTotal - 120000) * 0.25;
+
+    // Appliances: 4+ fixed appliances get 75% demand
+    var appliances = [range, dryer, dishwasher, microwave, disposal, waterHtr, other].filter(function(v){return v>0;});
+    var appliancesTotal = appliances.reduce(function(a,b){return a+b;},0);
+    var appliancesDemand = appliances.length >= 4 ? appliancesTotal * 0.75 : appliancesTotal;
+
+    var hvacVA = Math.max(ac, heat, heatPump);
+    var evVA = ev;
+
+    totalVA = lightingDemand + appliancesDemand + hvacVA + evVA;
+    var totalAmps = totalVA / voltage;
+
+    html += '<div style="font-family:Bebas Neue,monospace;font-size:22px;letter-spacing:2px;color:var(--accent);margin-bottom:16px">NEC 220.42 — STANDARD METHOD</div>';
+
+    html += lcSection('GENERAL LIGHTING LOAD — NEC 220.42');
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    html += lcRow('Lighting ('+sqFt+' sq ft × 3 VA)', lightingVA);
+    html += lcRow('Small Appliance Circuits', smallApplVA);
+    html += lcRow('Laundry', laundryVA);
+    html += lcRow('Subtotal', generalTotal);
+    html += lcRow('After Demand Factor (Table 220.42)', Math.round(lightingDemand), 'First 3000 VA @ 100%, remainder @ 35%', true);
+    html += '</div>';
+
+    html += lcSection('FIXED APPLIANCES');
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    html += lcRow('Appliances Total', appliancesTotal);
+    html += lcRow('After Demand ('+appliances.length+'+ = 75%)', Math.round(appliancesDemand), appliances.length >= 4 ? '4+ appliances @ 75%' : 'Fewer than 4 @ 100%', true);
+    html += '</div>';
+  }
+
+  // ── FINAL RESULT (all methods) ────────────────────────
+  var totalAmps = totalVA / voltage;
+
+  // Recommend service size
+  var serviceSize = 100;
+  if (totalAmps <= 100) serviceSize = 100;
+  else if (totalAmps <= 150) serviceSize = 150;
+  else if (totalAmps <= 200) serviceSize = 200;
+  else if (totalAmps <= 300) serviceSize = 300;
+  else if (totalAmps <= 400) serviceSize = 400;
+  else serviceSize = 600;
+
+  html += '<div style="background:rgba(82,192,122,0.08);border:2px solid rgba(82,192,122,0.3);border-radius:8px;overflow:hidden;margin-bottom:16px">';
+  html += '<div style="background:rgba(82,192,122,0.12);padding:10px 16px;font-family:Bebas Neue,monospace;font-size:14px;letter-spacing:2px;color:var(--success)">FINAL RESULT</div>';
+
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border)">';
+  html += '<div style="background:var(--surface);padding:16px;text-align:center"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);text-transform:uppercase;margin-bottom:6px">Total Load</div><div style="font-family:Bebas Neue,monospace;font-size:28px;color:var(--success)">' + Math.round(totalVA).toLocaleString() + '</div><div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">VA</div></div>';
+  html += '<div style="background:var(--surface);padding:16px;text-align:center"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);text-transform:uppercase;margin-bottom:6px">Total Amps</div><div style="font-family:Bebas Neue,monospace;font-size:28px;color:var(--success)">' + totalAmps.toFixed(1) + '</div><div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">A @ '+voltage+'V</div></div>';
+  html += '<div style="background:var(--surface);padding:16px;text-align:center"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);text-transform:uppercase;margin-bottom:6px">Min Service</div><div style="font-family:Bebas Neue,monospace;font-size:28px;color:var(--accent)">' + serviceSize + 'A</div><div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">recommended</div></div>';
+  html += '</div>';
+
+  // Amp per leg (for 240V)
+  if (voltage === 240) {
+    var perLeg = totalVA / 2 / 120;
+    html += '<div style="padding:10px 16px;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Per leg @ 120V: ' + perLeg.toFixed(1) + 'A &nbsp;|&nbsp; Recommended service: <strong style="color:var(--accent)">' + serviceSize + 'A, 240V, 2-pole</strong></div>';
+  }
+  html += '</div>';
+
+  // NEC reference footer
+  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.8;padding:12px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">';
+  html += '★ <span class="nec-link" onclick="necLink(\'NEC 220.82\')">NEC 220.82</span> Optional Method — new dwelling units. ';
+  html += '<span class="nec-link" onclick="necLink(\'NEC 220.83\')">NEC 220.83</span> — existing dwellings. ';
+  html += '<span class="nec-link" onclick="necLink(\'NEC 220.42\')">NEC 220.42</span> — Standard Method lighting demand factors.<br>';
+  html += 'Service conductors must be sized per <span class="nec-link" onclick="necLink(\'NEC 310.16\')">NEC 310.16</span>. Neutral load calculated per <span class="nec-link" onclick="necLink(\'NEC 220.61\')">NEC 220.61</span>.<br>';
+  html += 'NYC: Verify with NYCEC local amendments. All calculations should be reviewed by licensed engineer for permits.';
+  html += '</div>';
+
+  document.getElementById('lcResult').innerHTML = html;
+}
+
+// Auto-run on load
+lcUpdate();
 
 </script>
 </body>
