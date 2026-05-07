@@ -591,6 +591,8 @@
   <div class="tab" onclick="switchTab('gfci', this)">🔌 GFCI/AFCI</div>
   <div class="tab" onclick="switchTab('loadcalc', this)">🏠 Load Calc</div>
   <div class="tab" onclick="switchTab('converter', this)">🔄 Converter</div>
+  <div class="tab" onclick="switchTab('grounding', this)">🌍 Grounding</div>
+  <div class="tab" onclick="switchTab('nycamend', this)">🗽 NYC Code</div>
 </div>
 
 <!-- MOBILE BOTTOM NAV -->
@@ -615,6 +617,12 @@
   </div>
   <div class="mob-nav-item" id="mnav-gfci" onclick="switchTab('gfci',document.querySelector('.tab[onclick*=\'gfci\']'))">
     <div class="mob-nav-icon">🔌</div><div class="mob-nav-label">GFCI</div>
+  </div>
+  <div class="mob-nav-item" id="mnav-grounding" onclick="switchTab('grounding',document.querySelector('.tab[onclick*=\'grounding\']'))">
+    <div class="mob-nav-icon">🌍</div><div class="mob-nav-label">Ground</div>
+  </div>
+  <div class="mob-nav-item" id="mnav-nycamend" onclick="switchTab('nycamend',document.querySelector('.tab[onclick*=\'nycamend\']'))">
+    <div class="mob-nav-icon">🗽</div><div class="mob-nav-label">NYC</div>
   </div>
   <div class="mob-nav-item" id="mnav-converter" onclick="switchTab('converter',document.querySelector('.tab[onclick*=\'converter\']'))">
     <div class="mob-nav-icon">🔄</div><div class="mob-nav-label">Convert</div>
@@ -1586,6 +1594,65 @@
     </div>
 
     <div class="cf-note">★ Power Factor (PF): resistive loads (heaters, incandescent) = 1.0. Motors and inductive loads typically 0.80–0.95. Always check nameplate. For 3-phase multiply by √3 (1.732).</div>
+  </div>
+</div>
+
+
+<!-- ══ GROUNDING/BONDING PANEL ══ -->
+<div class="panel" id="panel-grounding">
+  <div class="fill-rules-bar">
+    <div class="fill-rule"><span class="fill-pill pill-orange">NEC 250</span> Grounding and Bonding</div>
+    <div class="fill-rule"><span class="fill-pill pill-yellow">EGC</span> Equipment Grounding Conductor</div>
+    <div class="fill-rule"><span class="fill-pill pill-green">GEC</span> Grounding Electrode Conductor</div>
+    <div class="fill-rule" style="margin-left:auto;color:var(--text-dimmer)">NEC 2023 Art. 250</div>
+  </div>
+
+  <div style="display:flex;flex:1;overflow:hidden">
+    <!-- LEFT: Topics -->
+    <div style="width:220px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);overflow-y:auto;padding:12px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:10px">SELECT TOPIC</div>
+      <div style="display:flex;flex-direction:column;gap:3px" id="groundingTopicList"></div>
+    </div>
+
+    <!-- RIGHT: Content -->
+    <div style="flex:1;overflow-y:auto;padding:20px">
+      <div id="groundingContent">
+        <div style="text-align:center;padding:60px 20px;color:var(--text-dimmer)">
+          <div style="font-size:48px;margin-bottom:12px">🌍</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">Grounding & Bonding</div>
+          <div style="font-size:13px;margin-top:8px;line-height:1.6">Select a topic from the left panel</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ NYC AMENDMENTS PANEL ══ -->
+<div class="panel" id="panel-nycamend">
+  <div class="fill-rules-bar">
+    <div class="fill-rule"><span class="fill-pill pill-orange">NYCEC</span> NYC Electrical Code (NEC 2020 base)</div>
+    <div class="fill-rule"><span class="fill-pill pill-yellow">Local Law</span> NYC-specific amendments</div>
+    <div class="fill-rule"><span class="fill-pill pill-green">DOB</span> Dept of Buildings requirements</div>
+    <div class="fill-rule" style="margin-left:auto;color:var(--text-dimmer)">NYC 2024</div>
+  </div>
+
+  <div style="display:flex;flex:1;overflow:hidden">
+    <!-- LEFT: Categories -->
+    <div style="width:220px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);overflow-y:auto;padding:12px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:10px">CATEGORY</div>
+      <div style="display:flex;flex-direction:column;gap:3px" id="nycTopicList"></div>
+    </div>
+
+    <!-- RIGHT: Content -->
+    <div style="flex:1;overflow-y:auto;padding:20px">
+      <div id="nycContent">
+        <div style="text-align:center;padding:60px 20px;color:var(--text-dimmer)">
+          <div style="font-size:48px;margin-bottom:12px">🗽</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">NYC Electrical Code</div>
+          <div style="font-size:13px;margin-top:8px;line-height:1.6">Select a category from the left panel</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3478,6 +3545,472 @@ function cvRow(label, value, note) {
 function cvClear() {
   document.getElementById('cv-result').style.display = 'none';
 }
+
+
+// ── GROUNDING/BONDING DATA ────────────────────────────────
+var GROUNDING_TOPICS = [
+  {id:'basics',     icon:'📚', label:'Basics — Why Ground?'},
+  {id:'types',      icon:'🔌', label:'Types of Grounding'},
+  {id:'egc',        icon:'🟢', label:'EGC Sizing — Table 250.122'},
+  {id:'gec',        icon:'🔵', label:'GEC Sizing — Table 250.66'},
+  {id:'electrodes', icon:'⚡', label:'Grounding Electrodes'},
+  {id:'bonding',    icon:'🔗', label:'Bonding Requirements'},
+  {id:'panel',      icon:'🗄', label:'Panel / Service Grounding'},
+  {id:'water_pipe', icon:'💧', label:'Water Pipe Bonding'},
+  {id:'gas_pipe',   icon:'🔥', label:'Gas Pipe Bonding'},
+  {id:'pool',       icon:'🏊', label:'Pool Bonding — Art. 680'},
+  {id:'struct_steel',icon:'🏗', label:'Structural Steel'},
+  {id:'separate',   icon:'🏠', label:'Separate Buildings'},
+];
+
+var GROUNDING_DATA = {
+  basics: {
+    title: 'Why Grounding and Bonding?',
+    sections: [
+      {
+        heading: 'Purpose — NEC 250.4',
+        color: 'accent',
+        content: 'Grounding and bonding serve TWO separate purposes that are often confused:\n\n**GROUNDING** — Connects the electrical system to the earth. Stabilizes voltage, limits voltage surges from lightning, and provides a path for fault current to trip overcurrent devices.\n\n**BONDING** — Connects conductive parts together to ensure they are at the same potential. Prevents dangerous voltage differences between metal parts you can touch simultaneously.',
+        ref: 'NEC 250.4'
+      },
+      {
+        heading: 'Key Distinction',
+        color: 'warn',
+        content: '**Grounding** = connection to earth (ground rod, water pipe, etc.)\n**Bonding** = connection between metal parts\n\nThese are different requirements. A metal water pipe must be BONDED to the electrical system even if there are no ground rods. A ground rod must be installed even if the water pipe is already bonded.',
+        ref: 'NEC 250.4(A) and 250.4(B)'
+      }
+    ]
+  },
+  types: {
+    title: 'Types of Grounding',
+    sections: [
+      {
+        heading: 'System Grounding — NEC 250.20',
+        color: 'accent',
+        content: 'Connects one conductor of the electrical system to ground. In 120/240V single-phase: the neutral (white) wire is grounded at the service. In 3-phase wye: the neutral point is grounded.\n\n**Required for:** 120V, 120/240V, 120/208V, 277/480V wye systems.\n**Not grounded:** Some 240V delta systems (corner-grounded delta is an exception).',
+        ref: 'NEC 250.20'
+      },
+      {
+        heading: 'Equipment Grounding — NEC 250.110',
+        color: 'success',
+        content: 'Connects non-current-carrying metal parts to ground. This is the GREEN wire or bare copper wire in cables and conduit.\n\nPurpose: If insulation fails and metal becomes energized, the EGC provides a low-impedance path to trip the breaker — protecting people from shock.',
+        ref: 'NEC 250.110'
+      },
+      {
+        heading: 'GEC vs EGC',
+        color: 'warn',
+        content: '**GEC (Grounding Electrode Conductor)** — Connects the service neutral/panel to the grounding electrode system (ground rods, water pipe). Sized per Table 250.66.\n\n**EGC (Equipment Grounding Conductor)** — Runs with branch circuits and feeders. Connects equipment enclosures to the panel. Sized per Table 250.122.',
+        ref: 'NEC 250.28, 250.118'
+      }
+    ]
+  },
+  egc: {
+    title: 'EGC Sizing — NEC Table 250.122',
+    sections: [
+      {
+        heading: 'Equipment Grounding Conductor Size',
+        color: 'accent',
+        content: 'Size EGC based on the OVERCURRENT DEVICE rating protecting the circuit:\n\n| OCD Rating | Copper EGC | Aluminum EGC |\n|---|---|---|\n| 15A | 14 AWG | 12 AWG |\n| 20A | 12 AWG | 10 AWG |\n| 30A | 10 AWG | 8 AWG |\n| 40A | 10 AWG | 8 AWG |\n| 60A | 10 AWG | 8 AWG |\n| 100A | 8 AWG | 6 AWG |\n| 200A | 6 AWG | 4 AWG |\n| 300A | 4 AWG | 2 AWG |\n| 400A | 3 AWG | 1 AWG |\n| 600A | 1 AWG | 2/0 AWG |\n| 800A | 1/0 AWG | 3/0 AWG |\n| 1000A | 2/0 AWG | 4/0 AWG |',
+        ref: 'NEC Table 250.122'
+      },
+      {
+        heading: 'Important Rules',
+        color: 'warn',
+        content: '• EGC cannot be smaller than specified in Table 250.122\n• EGC can be larger — never smaller\n• If circuit conductors are increased in size, EGC must be increased proportionally\n• In conduit: bare, green, or green with yellow stripes\n• In cable assemblies: bare or green insulated',
+        ref: 'NEC 250.122(B)'
+      }
+    ]
+  },
+  gec: {
+    title: 'GEC Sizing — NEC Table 250.66',
+    sections: [
+      {
+        heading: 'Grounding Electrode Conductor Size',
+        color: 'accent',
+        content: 'Size GEC based on the LARGEST SERVICE ENTRANCE CONDUCTOR:\n\n| Largest Service Conductor (Cu) | GEC (Cu) | GEC (Al) |\n|---|---|---|\n| 2 AWG or smaller | 8 AWG | 6 AWG |\n| 1 AWG to 1/0 | 6 AWG | 4 AWG |\n| 2/0 to 3/0 | 4 AWG | 2 AWG |\n| Over 3/0 to 350 kcmil | 2 AWG | 1/0 AWG |\n| Over 350 to 600 kcmil | 1/0 AWG | 3/0 AWG |\n| Over 600 to 1100 kcmil | 2/0 AWG | 4/0 AWG |\n| Over 1100 kcmil | 3/0 AWG | 250 kcmil |',
+        ref: 'NEC Table 250.66'
+      },
+      {
+        heading: 'GEC to Ground Rod — Max Size',
+        color: 'success',
+        content: 'The GEC to a GROUND ROD or concrete-encased electrode does NOT need to be larger than:\n• **6 AWG copper**\n• **4 AWG aluminum**\n\nEven if Table 250.66 requires a larger conductor for the water pipe connection, the portion going to the ground rod can be reduced to 6 AWG Cu.',
+        ref: 'NEC 250.66(A)'
+      }
+    ]
+  },
+  electrodes: {
+    title: 'Grounding Electrodes — NEC 250.50',
+    sections: [
+      {
+        heading: 'Grounding Electrode System',
+        color: 'accent',
+        content: 'ALL of the following electrodes present at a building MUST be bonded together to form the Grounding Electrode System:\n\n• Metal underground water pipe (first 10 ft inside)\n• Metal building frame (effectively grounded)\n• Concrete-encased electrode (Ufer ground)\n• Ground ring\n• Rod and pipe electrodes\n• Plate electrodes\n• Other listed electrodes',
+        ref: 'NEC 250.50'
+      },
+      {
+        heading: 'Ground Rods — NEC 250.52(A)(5)',
+        color: 'success',
+        content: '• Minimum 8 ft long, 5/8" diameter copper-clad steel\n• Must be driven to full 8 ft depth (or buried at 30° angle)\n• If rock prevents full depth: ok to bury horizontally 30" deep\n• Single rod resistance > 25 ohms: add second rod minimum 6 ft apart\n• Two rods always acceptable without testing resistance',
+        ref: 'NEC 250.52(A)(5), 250.56'
+      },
+      {
+        heading: 'Concrete-Encased (Ufer) — NEC 250.52(A)(3)',
+        color: 'warn',
+        content: '• Min 20 ft of #4 AWG bare copper OR 20 ft of ½" rebar in concrete footer\n• Must be in contact with earth (not vapor barrier)\n• Excellent low-resistance ground — preferred by many inspectors\n• NYC: required for new construction where footer is accessible',
+        ref: 'NEC 250.52(A)(3)'
+      }
+    ]
+  },
+  bonding: {
+    title: 'Bonding Requirements — NEC 250.90',
+    sections: [
+      {
+        heading: 'What Must Be Bonded',
+        color: 'accent',
+        content: 'All the following metal parts must be bonded to ensure electrical continuity:\n• Service equipment enclosures\n• Metal raceways (EMT, IMC, RMC)\n• Cable armor and sheaths\n• Metal enclosures — panels, junction boxes\n• Equipment connected by wiring methods\n• Structural metal frames\n• Metal water and gas piping',
+        ref: 'NEC 250.96'
+      },
+      {
+        heading: 'Main Bonding Jumper — NEC 250.28',
+        color: 'warn',
+        content: 'Connects the neutral (grounded conductor) to the equipment grounding conductor and grounding electrode at the SERVICE ONLY.\n\n**Sizing:** Per Table 250.102(C)(1) — same as GEC based on service conductor size.\n\n⚠ MBJ is installed ONLY at the service disconnect. NEVER at a subpanel — this creates dangerous parallel neutral paths.',
+        ref: 'NEC 250.28, 250.142'
+      },
+      {
+        heading: 'System Bonding Jumper — Subpanels',
+        color: 'success',
+        content: 'At a SUBPANEL (separate building or separately derived system):\n• Neutral must be ISOLATED from the enclosure\n• No main bonding jumper installed\n• EGC runs back to main panel\n• Exception: Separate buildings with no EGC path — see NEC 250.32',
+        ref: 'NEC 250.142(B)'
+      }
+    ]
+  },
+  panel: {
+    title: 'Panel / Service Grounding',
+    sections: [
+      {
+        heading: 'Service Panel Requirements',
+        color: 'accent',
+        content: '• Main bonding jumper connects neutral bar to enclosure\n• GEC connects neutral bar to grounding electrode system\n• Neutral and ground bars are BONDED together at main panel\n• All EGCs terminate at ground bar\n• Neutral conductors terminate at neutral bar only',
+        ref: 'NEC 230.95, 250.24'
+      },
+      {
+        heading: 'Subpanel — Critical Differences',
+        color: 'danger',
+        content: '⚠ Most common wiring mistake in inspections!\n\n**Subpanel MUST have:**\n• Neutral bar ISOLATED from enclosure (floating neutral)\n• Separate ground bar bonded to enclosure\n• 4-wire feed: Hot, Hot, Neutral, EGC\n• NO main bonding jumper\n\n**Never bond neutral to ground in subpanel** — creates shock hazard and code violation.',
+        ref: 'NEC 250.142(B), 408.40'
+      },
+      {
+        heading: 'Neutral-Ground Bond — NYC Rule',
+        color: 'warn',
+        content: 'NYC inspectors are strict about neutral-ground separation in subpanels. Common violation: contractor installs green bonding screw connecting neutral bar to enclosure in subpanel.\n\nRemove bonding screw at all subpanels. Only the main service disconnect gets the MBJ.',
+        ref: 'NYCEC 250.142'
+      }
+    ]
+  },
+  water_pipe: {
+    title: 'Water Pipe Bonding — NEC 250.104',
+    sections: [
+      {
+        heading: 'Interior Metal Water Piping',
+        color: 'accent',
+        content: 'Interior metal water piping that may become energized MUST be bonded to:\n• Service equipment enclosure\n• Grounded conductor at service\n• Grounding electrode conductor\n• Grounding electrode\n\n**Bonding jumper size:** Table 250.102(D) — based on service conductor size.',
+        ref: 'NEC 250.104(A)'
+      },
+      {
+        heading: 'Bonding Jumper Connection Points',
+        color: 'success',
+        content: '• Connect within 5 ft of where water pipe enters building (before first fitting)\n• If plastic pipe at meter: bond at first metal fitting inside\n• Water meter must be jumpered around (meter bonding jumper)\n• NYC: DOB requires accessible bonding connection point',
+        ref: 'NEC 250.104(A)(1)'
+      }
+    ]
+  },
+  gas_pipe: {
+    title: 'Gas Pipe Bonding — NEC 250.104(B)',
+    sections: [
+      {
+        heading: 'Metal Gas Piping',
+        color: 'accent',
+        content: 'Metal gas piping that is likely to become energized must be bonded.\n\n**Bonding conductor size:** Not smaller than 10 AWG copper.\n\n**Connection:** To the grounded service conductor, the grounding electrode conductor, or the grounding electrode.',
+        ref: 'NEC 250.104(B)'
+      },
+      {
+        heading: 'NYC Gas Bonding',
+        color: 'warn',
+        content: 'NYC requires gas piping to be bonded. Gas company (Con Edison) has specific requirements for bonding at the meter.\n\n⚠ Do NOT bond gas pipe to the neutral conductor — bond to EGC or GEC only. Gas company may have additional requirements beyond NEC.',
+        ref: 'NYCEC 250.104(B), Con Ed requirements'
+      }
+    ]
+  },
+  pool: {
+    title: 'Pool Equipotential Bonding — NEC 680.26',
+    sections: [
+      {
+        heading: 'Equipotential Bonding Grid',
+        color: 'accent',
+        content: 'ALL metal parts associated with the pool must be bonded together:\n• Pool shell (if reinforced concrete — #8 AWG solid Cu grid)\n• Metal fittings (ladders, handrails, drains)\n• Pump motors\n• Light fixture housings\n• Metal conduit within 5 ft of pool\n• Diving boards, slides\n\n**Bonding conductor:** Solid copper, minimum #8 AWG.',
+        ref: 'NEC 680.26'
+      },
+      {
+        heading: 'Perimeter Surface Bonding',
+        color: 'warn',
+        content: 'Concrete deck within 3 ft of pool and 3 ft above must have:\n• #8 AWG solid copper grid at max 12" spacing\n• OR listed equipotential plane conductors\n• Must be bonded to the pool bonding system\n\nThis prevents step-potential shock hazard — voltage gradient in wet concrete.',
+        ref: 'NEC 680.26(B)(2)'
+      }
+    ]
+  },
+  struct_steel: {
+    title: 'Structural Steel Bonding — NEC 250.104(C)',
+    sections: [
+      {
+        heading: 'Metal Structural Frame',
+        color: 'accent',
+        content: 'The structural metal frame of a building that is connected to earth must be bonded to:\n• Service equipment enclosure\n• Grounded service conductor\n• GEC or grounding electrode\n\n**Size:** Per Table 250.102(C)(1) based on service conductor.',
+        ref: 'NEC 250.104(C)'
+      },
+      {
+        heading: 'NYC High-Rise Requirements',
+        color: 'warn',
+        content: 'NYC buildings with structural steel frames have specific bonding requirements per NYCEC. Steel columns typically serve as grounding electrodes if they are in contact with earth for 10 ft or more.\n\nConsult structural drawings and MEP engineer for high-rise projects.',
+        ref: 'NYCEC 250.52(A)(2)'
+      }
+    ]
+  },
+  separate: {
+    title: 'Separate Buildings — NEC 250.32',
+    sections: [
+      {
+        heading: 'Feeder to Separate Structure',
+        color: 'accent',
+        content: 'When feeding a separate building/structure:\n\n**Option 1 (Preferred):** 4-wire feeder (2 hots + neutral + EGC)\n• Subpanel: floating neutral, EGC bonded to enclosure\n• Install grounding electrode at separate structure\n• Bond GEC to EGC at separate structure\n\n**Option 2:** 3-wire feeder (no EGC) — only if:\n• No continuous metallic path between buildings\n• No equipment requiring grounding in separate structure\n• Not a new installation (existing only)',
+        ref: 'NEC 250.32'
+      },
+      {
+        heading: 'Grounding Electrode at Separate Building',
+        color: 'success',
+        content: 'A grounding electrode MUST be installed at the separate building and connected to the grounding system there.\n\nIf using 4-wire: connect GEC to the EGC and enclosure — do NOT connect to neutral.\n\nIf using 3-wire (existing only): neutral bonded to ground at separate building, install GEC to electrode.',
+        ref: 'NEC 250.32(B)'
+      }
+    ]
+  }
+};
+
+var selectedGroundingTopic = null;
+
+function groundingInitTopics() {
+  var container = document.getElementById('groundingTopicList');
+  if (!container) return;
+  container.innerHTML = '';
+  GROUNDING_TOPICS.forEach(function(t) {
+    var btn = document.createElement('div');
+    btn.id = 'gtopic-' + t.id;
+    btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;font-size:12px;color:var(--text-dim)';
+    btn.innerHTML = '<span style="font-size:14px">' + t.icon + '</span>' + t.label;
+    btn.onclick = function() { groundingSelectTopic(t.id); };
+    container.appendChild(btn);
+  });
+}
+
+function groundingSelectTopic(id) {
+  selectedGroundingTopic = id;
+  GROUNDING_TOPICS.forEach(function(t) {
+    var btn = document.getElementById('gtopic-' + t.id);
+    if (!btn) return;
+    if (t.id === id) { btn.style.background='rgba(255,199,0,0.1)'; btn.style.borderColor='var(--accent)'; btn.style.color='var(--accent)'; }
+    else { btn.style.background=''; btn.style.borderColor='transparent'; btn.style.color='var(--text-dim)'; }
+  });
+
+  var data = GROUNDING_DATA[id];
+  if (!data) return;
+
+  var colorMap = {accent:'rgba(255,199,0,0.08)|rgba(255,199,0,0.3)|#FFC700', warn:'rgba(232,194,58,0.08)|rgba(232,194,58,0.3)|#e8c23a', success:'rgba(82,192,122,0.08)|rgba(82,192,122,0.3)|#52c07a', danger:'rgba(224,82,82,0.08)|rgba(224,82,82,0.3)|#e05252'};
+
+  var html = '<div style="font-family:Bebas Neue,sans-serif;font-size:26px;letter-spacing:2px;color:var(--accent);margin-bottom:16px">' + data.title + '</div>';
+
+  data.sections.forEach(function(sec) {
+    var cols = (colorMap[sec.color]||colorMap.accent).split('|');
+    html += '<div style="background:'+cols[0]+';border:1px solid '+cols[1]+';border-left:4px solid '+cols[2]+';border-radius:6px;padding:16px;margin-bottom:14px">';
+    html += '<div style="font-family:Bebas Neue,sans-serif;font-size:15px;letter-spacing:1px;color:'+cols[2]+';margin-bottom:10px">';
+    html += sec.heading + ' <span class="nec-link" onclick="necLink(\''+sec.ref+'\')" style="font-size:11px">'+sec.ref+'</span></div>';
+    // Render content with basic markdown
+    var rendered = sec.content
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#e8e8e8">$1</strong>')
+      .replace(/\n\n/g, '</p><p style="margin-top:8px">')
+      .replace(/\n•/g, '<br>•')
+      .replace(/\n/g, '<br>');
+    html += '<div style="font-size:13px;line-height:1.7;color:var(--text)"><p>' + rendered + '</p></div>';
+    html += '</div>';
+  });
+
+  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.8;padding:10px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);margin-top:8px">★ Based on NEC 2023. NYC uses NEC 2020 with NYCEC amendments. Always verify with local AHJ and NYC DOB.</div>';
+
+  document.getElementById('groundingContent').innerHTML = html;
+}
+
+groundingInitTopics();
+
+// ── NYC AMENDMENTS DATA ───────────────────────────────────
+var NYC_TOPICS = [
+  {id:'overview',   icon:'📋', label:'Overview — NYCEC'},
+  {id:'wiring',     icon:'🔌', label:'Wiring Methods'},
+  {id:'gfci_afci',  icon:'⚡', label:'GFCI/AFCI Rules'},
+  {id:'service',    icon:'🗄', label:'Service & Metering'},
+  {id:'conduit',    icon:'🔧', label:'Conduit Requirements'},
+  {id:'permits',    icon:'📄', label:'Permits & Inspections'},
+  {id:'solar',      icon:'☀️', label:'Solar / Photovoltaic'},
+  {id:'ev',         icon:'🚗', label:'EV Charging'},
+  {id:'emergency',  icon:'🚨', label:'Emergency Systems'},
+  {id:'highrise',   icon:'🏢', label:'High-Rise Buildings'},
+  {id:'violations', icon:'⚠️', label:'Common Violations'},
+];
+
+var NYC_DATA = {
+  overview: {
+    title: 'NYC Electrical Code Overview',
+    items: [
+      {label:'Base Code', color:'accent', content:'NYC uses NEC 2020 as the base code with significant local amendments. The NYC Electrical Code (NYCEC) is administered by the NYC Department of Buildings (DOB).\n\nLast major update: Local Law 2024. Always verify current edition with NYC DOB at nyc.gov/buildings.'},
+      {label:'Jurisdiction', color:'success', content:'All electrical work in NYC requires:\n• Licensed Master Electrician (ME) or Special Electrician (SE)\n• NYC DOB permits for most work\n• Inspection by NYC DOB or approved special inspection agency\n• Certificates of Inspection (C of I) for completed work'},
+      {label:'Licenses Required', color:'warn', content:'**Master Electrician (ME):** Can pull permits, supervise all electrical work, certify completed installations.\n\n**Special Electrician (SE):** Licensed for specific locations/equipment (elevators, signs, etc.)\n\n**Journeyman:** Can work under ME supervision. No permit authority.\n\n⚠ Unlicensed electrical work in NYC = Class A misdemeanor + fines.'},
+    ]
+  },
+  wiring: {
+    title: 'Wiring Methods — NYC Amendments',
+    items: [
+      {label:'EMT Required — Major Difference', color:'danger', content:'**NYC requires EMT (or rigid conduit) in most commercial and multifamily occupancies.**\n\nRomex (NM cable) is generally NOT permitted in:\n• Commercial buildings\n• Multifamily buildings (3+ units)\n• Any building over 3 stories\n\nRomex IS permitted in:\n• 1 and 2 family dwellings\n• Townhouses (with restrictions)'},
+      {label:'MC Cable', color:'warn', content:'MC Cable (Metal Clad) is permitted in NYC under specific conditions:\n• Healthcare facilities\n• Concealed in walls of certain occupancies\n• Check NYCEC Chapter 3 for specific applications\n\n⚠ Always verify with NYC DOB — inspectors are strict about wiring methods.'},
+      {label:'Conduit Fill', color:'success', content:'Same as NEC Chapter 9 — no NYC amendment to conduit fill rules. However:\n• Splices in conduit are generally not permitted (NEC 300.13 applies)\n• All conductors in a conduit must be same voltage system\n• Verify conduit material per occupancy type'},
+    ]
+  },
+  gfci_afci: {
+    title: 'GFCI/AFCI — NYC Rules',
+    items: [
+      {label:'GFCI Requirements', color:'accent', content:'NYC follows NEC 2020 GFCI requirements:\n• Bathrooms — all receptacles\n• Garages — all receptacles\n• Outdoors — all receptacles\n• Kitchens — countertop receptacles within 6 ft of sink\n• Basements — all receptacles\n• Crawl spaces — all receptacles\n• Boat hoisting areas, pools, hot tubs\n• Rooftop — all receptacles'},
+      {label:'AFCI Requirements', color:'warn', content:'NYC adopted AFCI requirements per NEC 2020:\n• All 120V, 15A and 20A branch circuits in dwelling units\n• Bedrooms, living rooms, dining rooms, hallways, closets\n• All rooms in dwelling units (NEC 2020 expanded scope)\n\n⚠ AFCI breakers must be listed for the panel manufacturer.'},
+      {label:'Combination AFCI/GFCI', color:'success', content:'Combination AFCI/GFCI devices are acceptable in NYC and satisfy both requirements where both apply (e.g., kitchen, bathroom in dwelling unit).\n\nMost manufacturers now offer dual-function breakers. Verify listing with panel manufacturer.'},
+    ]
+  },
+  service: {
+    title: 'Service & Metering — NYC',
+    items: [
+      {label:'Con Edison Requirements', color:'accent', content:'All electrical service in NYC must meet Con Edison (utility) requirements IN ADDITION to NYCEC:\n• Service entrance conductors per Con Ed specs\n• Meter socket type and location\n• Clearances from windows, doors, gas meters\n• Underground vs overhead service\n• Transformer requirements for large services'},
+      {label:'Service Size — Residential', color:'success', content:'**Minimum service sizes in NYC:**\n• Studio/1BR: 60A (minimum, 100A recommended)\n• 2BR+: 100A minimum\n• Renovations: often require service upgrade\n• New construction: 200A typically required\n\nAll services must be reviewed by Con Edison and NYC DOB.'},
+      {label:'Metering', color:'warn', content:'**NYC metering requirements:**\n• Individual meters for each dwelling unit (Local Law)\n• CT metering for services above 200A\n• Sub-metering permitted for commercial tenants\n• Solar net metering: Con Ed approval required\n• All meters installed by Con Edison'},
+    ]
+  },
+  conduit: {
+    title: 'Conduit Requirements — NYC',
+    items: [
+      {label:'EMT — Most Common in NYC', color:'accent', content:'EMT (Electrical Metallic Tubing) is the standard wiring method in NYC commercial and multifamily work.\n\n• All fittings must be steel — no plastic EMT connectors allowed\n• Compression fittings preferred for wet locations\n• Set-screw fittings acceptable in dry, concealed locations\n• Minimum 1/2" trade size'},
+      {label:'RMC in Specific Locations', color:'warn', content:'Rigid Metal Conduit (RMC) required:\n• Below grade (underground)\n• Where subject to physical damage\n• Service entrance conduit (often required)\n• Locations specified by NYC DOB\n• Exposed in some commercial occupancies'},
+      {label:'PVC — Restricted Use', color:'danger', content:'PVC conduit has LIMITED use in NYC:\n• Underground only in most cases\n• NOT permitted exposed in buildings\n• NOT permitted in concrete slabs that are a floor/ceiling assembly\n• Verify with AHJ for each application\n\n⚠ NYC inspectors often reject PVC where RMC or EMT is required.'},
+    ]
+  },
+  permits: {
+    title: 'Permits & Inspections — NYC DOB',
+    items: [
+      {label:'When Permits Are Required', color:'accent', content:'**Permit REQUIRED for:**\n• New electrical installations\n• Panel replacements or upgrades\n• Adding circuits\n• Service changes\n• Any work in commercial buildings\n• Multifamily building work\n\n**Permit NOT required (generally):**\n• Like-for-like device replacement (outlets, switches)\n• Fixture replacement (same circuit, same location)\n• Minor repairs\n\n⚠ When in doubt — pull a permit.'},
+      {label:'Filing Process', color:'success', content:'1. Master Electrician files drawings/plans via NYC DOB NOW portal\n2. DOB reviews and approves (or requests revisions)\n3. Work permit issued\n4. Work performed\n5. Final inspection requested\n6. DOB inspects and issues Certificate of Inspection\n\nRush/expedited filing available for additional fee.'},
+      {label:'Inspection Process', color:'warn', content:'**NYC DOB Electrical Inspections:**\n• Rough inspection: before walls closed\n• Final inspection: all work complete\n• Inspector checks NEC 2020 + NYCEC compliance\n• Common rejections: neutral-ground bond in subpanel, wrong wiring method, missing GFCI/AFCI, improper grounding\n\nAlways have permit and plans on site during inspection.'},
+    ]
+  },
+  solar: {
+    title: 'Solar / PV Systems — NYC',
+    items: [
+      {label:'NYC Solar Requirements', color:'accent', content:'Solar PV systems in NYC require:\n• NYC DOB electrical permit\n• NYC DOB structural review (roof loading)\n• Con Edison interconnection agreement\n• Fire department review (for some systems)\n• NYC LL97 may require solar on new large buildings'},
+      {label:'Local Law 97 — Climate Mobilization Act', color:'warn', content:'NYC Local Law 97 (2019) sets carbon emission limits for large buildings (>25,000 sq ft).\n\nBuildings exceeding limits face significant fines starting 2024. Many buildings are installing solar, heat pumps, and energy storage to comply.\n\nElectricians: large opportunity for upgrades and new installations.'},
+      {label:'Interconnection', color:'success', content:'Net metering through Con Edison:\n• Apply through Con Ed website\n• System size limit: 25 kW for residential\n• Larger systems: VDER (Value of Distributed Energy Resources) tariff\n• Timeline: 3-6 months for approval and interconnection'},
+    ]
+  },
+  ev: {
+    title: 'EV Charging — NYC Requirements',
+    items: [
+      {label:'NYC Local Law 55 (2022)', color:'accent', content:'**New parking garages and lots** must provide:\n• EV-capable spaces: wiring and conduit for future charging\n• Required percentage varies by facility size\n• Level 2 charging (240V, 32A-80A) most common\n\n**Existing buildings** — LL97 incentivizes EV infrastructure upgrades.'},
+      {label:'EV Charger Wiring', color:'success', content:'**Level 1 (120V, 12-16A):** Standard outlet — no special wiring\n**Level 2 (240V, 32-80A):** Dedicated circuit, 6 AWG to 2 AWG Cu typically\n**DC Fast Charge (480V 3Ø):** Commercial only, 100A+ service\n\nEV charger load must be included in load calculations per NEC 220.57.'},
+      {label:'Panel Capacity', color:'warn', content:'Major challenge in NYC: existing panels often at capacity.\n\nSolutions:\n• Load management / smart charging\n• Panel upgrade (requires Con Ed coordination)\n• Energy storage to offset demand\n• Time-of-use charging (off-peak)\n\nEV charger permit required from NYC DOB.'},
+    ]
+  },
+  emergency: {
+    title: 'Emergency Systems — NYC',
+    items: [
+      {label:'Required Emergency Systems', color:'accent', content:'NYC requires emergency electrical systems in:\n• Buildings over 75 ft tall\n• Assembly occupancies over 1,000 persons\n• Hospitals and healthcare\n• High-hazard occupancies\n• Any occupancy with emergency egress lighting requirements\n\nNEC Article 700, 701, 702 + NYCEC amendments.'},
+      {label:'Standby Generator Requirements', color:'warn', content:'NYC has specific generator requirements:\n• Fuel storage: NYC Fire Code compliance\n• Exhaust: NYC DEP air quality permits\n• Testing: monthly + annual load testing required\n• Location: accessible for maintenance\n• Transfer switch: automatic (ATS) for emergency systems\n• Con Ed coordination for large generators'},
+      {label:'Essential Electrical Systems', color:'success', content:'Healthcare facilities: NEC Article 517 + NYCEC\n• Life Safety Branch: automatic, 10 seconds\n• Critical Branch: automatic, 10 seconds  \n• Equipment Branch: automatic or manual\n\nStrict separation of emergency and normal wiring required — separate conduits, separate panels.'},
+    ]
+  },
+  highrise: {
+    title: 'High-Rise Buildings — NYC',
+    items: [
+      {label:'Definition and Requirements', color:'accent', content:'NYC defines high-rise as buildings over 75 ft in height.\n\n**Special requirements:**\n• Emergency power systems (NEC 700)\n• Fire pump power (dedicated service or generator)\n• Elevator recall wiring (Phase I and II)\n• Smoke control systems\n• Communication systems backup power\n• Structural steel bonding'},
+      {label:'Wiring Methods', color:'warn', content:'High-rise buildings in NYC typically require:\n• EMT or rigid conduit throughout\n• No NM cable (Romex)\n• Fire-rated wiring for emergency systems\n• Mineral-insulated (MI) cable for critical circuits\n• Separate raceways for different systems'},
+      {label:'Fire Alarm Integration', color:'success', content:'NYC Local Law 26/2004 requires high-rise office buildings to have:\n• Coordinated fire safety plans\n• Emergency voice/alarm communication\n• Fire alarm systems per NFPA 72\n\nElectrical work must coordinate with fire alarm contractor. All wiring per NYCEC and NYC Fire Code.'},
+    ]
+  },
+  violations: {
+    title: 'Common NYC Violations',
+    items: [
+      {label:'Top Inspection Failures', color:'danger', content:'**Most common NYC electrical violations:**\n\n1. Neutral bonded to ground in subpanel\n2. Wrong wiring method (Romex in commercial)\n3. Missing GFCI protection\n4. Missing AFCI protection\n5. Improper panel directory/labeling\n6. Open knockouts in panels\n7. Conductors not properly supported\n8. Missing cover plates\n9. Improper grounding/bonding\n10. Work done without permit'},
+      {label:'Penalties', color:'warn', content:'**NYC DOB violations:**\n• Class 1 (Immediately hazardous): $1,000-$25,000\n• Class 2 (Major): $500-$10,000\n• Class 3 (Lesser): $250-$500\n\n**Working without a license:**\n• Criminal charges possible\n• Fines up to $25,000\n• Stop work orders\n• Removal of unlicensed work at owner expense'},
+      {label:'How to Avoid Violations', color:'success', content:'• Always pull permits before starting work\n• Know NYCEC — not just NEC\n• When in doubt, call NYC DOB 311\n• Use licensed Master Electrician\n• Keep all wiring in conduit (commercial)\n• Test GFCI/AFCI before closing walls\n• Label all panels clearly\n• Keep copies of permits and approved plans on site'},
+    ]
+  }
+};
+
+var selectedNycTopic = null;
+
+function nycInitTopics() {
+  var container = document.getElementById('nycTopicList');
+  if (!container) return;
+  container.innerHTML = '';
+  NYC_TOPICS.forEach(function(t) {
+    var btn = document.createElement('div');
+    btn.id = 'nyctopic-' + t.id;
+    btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;font-size:12px;color:var(--text-dim)';
+    btn.innerHTML = '<span style="font-size:14px">' + t.icon + '</span>' + t.label;
+    btn.onclick = function() { nycSelectTopic(t.id); };
+    container.appendChild(btn);
+  });
+}
+
+function nycSelectTopic(id) {
+  selectedNycTopic = id;
+  NYC_TOPICS.forEach(function(t) {
+    var btn = document.getElementById('nyctopic-' + t.id);
+    if (!btn) return;
+    if (t.id === id) { btn.style.background='rgba(255,199,0,0.1)'; btn.style.borderColor='var(--accent)'; btn.style.color='var(--accent)'; }
+    else { btn.style.background=''; btn.style.borderColor='transparent'; btn.style.color='var(--text-dim)'; }
+  });
+
+  var data = NYC_DATA[id];
+  if (!data) return;
+
+  var colorMap = {
+    accent:  'rgba(255,199,0,0.08)|rgba(255,199,0,0.3)|#FFC700',
+    warn:    'rgba(232,194,58,0.08)|rgba(232,194,58,0.3)|#e8c23a',
+    success: 'rgba(82,192,122,0.08)|rgba(82,192,122,0.3)|#52c07a',
+    danger:  'rgba(224,82,82,0.08)|rgba(224,82,82,0.3)|#e05252'
+  };
+
+  var html = '<div style="font-family:Bebas Neue,sans-serif;font-size:26px;letter-spacing:2px;color:var(--accent);margin-bottom:16px">🗽 ' + data.title + '</div>';
+
+  data.items.forEach(function(item) {
+    var cols = (colorMap[item.color]||colorMap.accent).split('|');
+    html += '<div style="background:'+cols[0]+';border:1px solid '+cols[1]+';border-left:4px solid '+cols[2]+';border-radius:6px;padding:16px;margin-bottom:14px">';
+    html += '<div style="font-family:Bebas Neue,sans-serif;font-size:15px;letter-spacing:1px;color:'+cols[2]+';margin-bottom:10px">' + item.label + '</div>';
+    var rendered = item.content
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#e8e8e8">$1</strong>')
+      .replace(/\n\n/g, '</p><p style="margin-top:8px">')
+      .replace(/\n•/g, '<br>•')
+      .replace(/\n\d+\./g, function(m){ return '<br>' + m.trim(); })
+      .replace(/\n/g, '<br>');
+    html += '<div style="font-size:13px;line-height:1.7;color:var(--text)"><p>' + rendered + '</p></div>';
+    html += '</div>';
+  });
+
+  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.8;padding:10px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);margin-top:8px">★ NYC Electrical Code (NYCEC) based on NEC 2020 with local amendments. Always verify current requirements with NYC DOB (nyc.gov/buildings) and Con Edison. Requirements change frequently.</div>';
+
+  document.getElementById('nycContent').innerHTML = html;
+}
+
+nycInitTopics();
 
 </script>
 </body>
