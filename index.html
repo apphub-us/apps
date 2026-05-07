@@ -593,6 +593,7 @@
   <div class="tab" onclick="switchTab('converter', this)">🔄 Converter</div>
   <div class="tab" onclick="switchTab('grounding', this)">🌍 Grounding</div>
   <div class="tab" onclick="switchTab('nycamend', this)">🗽 NYC Code</div>
+  <div class="tab" onclick="switchTab('outlets', this)">🔌 Outlets</div>
 </div>
 
 <!-- MOBILE BOTTOM NAV -->
@@ -617,6 +618,9 @@
   </div>
   <div class="mob-nav-item" id="mnav-gfci" onclick="switchTab('gfci',document.querySelector('.tab[onclick*=\'gfci\']'))">
     <div class="mob-nav-icon">🔌</div><div class="mob-nav-label">GFCI</div>
+  </div>
+  <div class="mob-nav-item" id="mnav-outlets" onclick="switchTab('outlets',document.querySelector('.tab[onclick*=\'outlets\']'))">
+    <div class="mob-nav-icon">🔌</div><div class="mob-nav-label">Outlets</div>
   </div>
   <div class="mob-nav-item" id="mnav-grounding" onclick="switchTab('grounding',document.querySelector('.tab[onclick*=\'grounding\']'))">
     <div class="mob-nav-icon">🌍</div><div class="mob-nav-label">Ground</div>
@@ -1653,6 +1657,35 @@
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+
+<!-- ══ OUTLETS/RECEPTACLES PANEL ══ -->
+<div class="panel" id="panel-outlets">
+  <div class="fill-rules-bar">
+    <div class="fill-rule"><span class="fill-pill pill-orange">NEMA</span> National Electrical Manufacturers Association</div>
+    <div class="fill-rule"><span class="fill-pill pill-yellow">-R</span> Receptacle (female)</div>
+    <div class="fill-rule"><span class="fill-pill pill-green">-P</span> Plug (male)</div>
+    <div class="fill-rule" style="margin-left:auto;color:var(--text-dimmer)">NEMA Standards</div>
+  </div>
+
+  <div style="flex:1;overflow-y:auto;padding:16px 20px">
+
+    <!-- Filter buttons -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button onclick="filterOutlets('all')" id="of-all" class="conduit-tab active">All</button>
+      <button onclick="filterOutlets('120')" id="of-120" class="conduit-tab">120V</button>
+      <button onclick="filterOutlets('240')" id="of-240" class="conduit-tab">240V</button>
+      <button onclick="filterOutlets('120/240')" id="of-120240" class="conduit-tab">120/240V</button>
+      <button onclick="filterOutlets('locking')" id="of-locking" class="conduit-tab">Locking</button>
+      <button onclick="filterOutlets('3phase')" id="of-3phase" class="conduit-tab">3-Phase</button>
+    </div>
+
+    <!-- Grid of outlet cards -->
+    <div id="outletsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px"></div>
+
+    <div class="cf-note" style="margin-top:16px">★ NEMA standard receptacle configurations. Suffix -R = Receptacle, -P = Plug. Locking types (L prefix) require twist to lock. Always verify voltage and amperage before connecting equipment. NEC 406 covers receptacle requirements.</div>
   </div>
 </div>
 
@@ -4011,6 +4044,220 @@ function nycSelectTopic(id) {
 }
 
 nycInitTopics();
+
+
+// ── OUTLETS / RECEPTACLES ─────────────────────────────────
+
+// SVG drawings for each outlet type
+// Each SVG is a front-view of the receptacle face
+function svgOutlet(type) {
+  var W = 80, H = 80;
+  var bg = '#1e2428', fg = '#e8e8e8', hole = '#0A0A0A', acc = '#FFC700';
+
+  // Helper: circle hole
+  function ch(cx,cy,r){ return '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+hole+'" stroke="#555" stroke-width="1"/>'; }
+  // Helper: D-shaped slot (vertical)
+  function slotV(cx,cy,w,h){ return '<rect x="'+(cx-w/2)+'" y="'+(cy-h/2)+'" width="'+w+'" height="'+h+'" rx="'+(w/2)+'" fill="'+hole+'" stroke="#555" stroke-width="1"/>'; }
+  // Helper: D-shaped slot (horizontal/angled)
+  function slotH(cx,cy,w,h){ return '<rect x="'+(cx-h/2)+'" y="'+(cy-w/2)+'" width="'+h+'" height="'+w+'" rx="'+(w/2)+'" fill="'+hole+'" stroke="#555" stroke-width="1"/>'; }
+  // Helper: T-slot (neutral with horizontal bar)
+  function slotT(cx,cy){ 
+    return '<rect x="'+(cx-4)+'" y="'+(cy-7)+'" width="8" height="14" rx="4" fill="'+hole+'" stroke="#555" stroke-width="1"/>'+
+           '<rect x="'+(cx-8)+'" y="'+(cy-7)+'" width="16" height="6" rx="3" fill="'+hole+'" stroke="#555" stroke-width="1"/>';
+  }
+  // Helper: U-ground hole
+  function gnd(cx,cy){ 
+    // U shaped
+    return '<path d="M'+(cx-5)+','+(cy-4)+' L'+(cx-5)+','+(cy+2)+' Q'+(cx-5)+','+(cy+6)+' '+cx+','+(cy+6)+' Q'+(cx+5)+','+(cy+6)+' '+(cx+5)+','+(cy+2)+' L'+(cx+5)+','+(cy-4)+'" fill="none" stroke="#555" stroke-width="2"/>'+
+           '<rect x="'+(cx-5)+'" y="'+(cy-5)+'" width="10" height="6" rx="1" fill="'+hole+'" stroke="none"/>';
+  }
+  // Helper: angled slot
+  function slotAngle(cx,cy,angleDeg){
+    var r = angleDeg * Math.PI / 180;
+    var dx = 5*Math.cos(r), dy = 5*Math.sin(r);
+    return '<line x1="'+(cx-dx)+'" y1="'+(cy-dy)+'" x2="'+(cx+dx)+'" y2="'+(cy+dy)+'" stroke="#555" stroke-width="2"/>'+
+           '<ellipse cx="'+cx+'" cy="'+cy+'" rx="3" ry="7" fill="'+hole+'" stroke="#555" stroke-width="1" transform="rotate('+angleDeg+','+cx+','+cy+')"/>';
+  }
+
+  var face = '';
+  var outline = '<rect x="4" y="4" width="72" height="72" rx="8" fill="'+bg+'" stroke="#444" stroke-width="2"/>';
+
+  switch(type) {
+    case '5-15R': // 120V 15A — standard
+      face = slotV(32,30,6,14) + slotV(48,30,6,14) + gnd(40,55);
+      break;
+    case '5-20R': // 120V 20A — T-slot neutral
+      face = slotT(32,30) + slotV(48,30,6,14) + gnd(40,55);
+      break;
+    case '6-15R': // 240V 15A
+      face = slotAngle(30,35,-30) + slotAngle(50,35,30) + gnd(40,55);
+      break;
+    case '6-20R': // 240V 20A
+      face = slotAngle(28,35,-30) + slotT(52,35) + gnd(40,57);
+      break;
+    case '6-30R': // 240V 30A
+      face = slotAngle(28,34,-45) + slotAngle(52,34,45) + gnd(40,57);
+      break;
+    case '6-50R': // 240V 50A welder
+      face = slotH(28,32,6,14) + slotH(52,32,6,14) + gnd(40,56);
+      break;
+    case '10-30R': // 240V 30A old dryer (no ground)
+      face = slotAngle(25,35,-45) + slotV(40,25,6,14) + slotAngle(55,35,45);
+      break;
+    case '10-50R': // 240V 50A old range (no ground)
+      face = slotAngle(24,36,-45) + slotV(40,24,8,16) + slotAngle(56,36,45);
+      break;
+    case '14-30R': // 120/240V 30A dryer
+      face = slotAngle(26,34,-45) + slotAngle(54,34,45) + slotV(40,24,6,14) + gnd(40,57);
+      break;
+    case '14-50R': // 120/240V 50A range/EV
+      face = slotH(26,33,6,16) + slotH(54,33,6,16) + slotV(40,23,8,14) + gnd(40,58);
+      break;
+    case 'L5-15R': // Locking 120V 15A
+      outline = '<circle cx="40" cy="40" r="35" fill="'+bg+'" stroke="#444" stroke-width="2"/>';
+      face = slotV(32,32,5,12) + slotV(48,32,5,12) + gnd(40,54);
+      break;
+    case 'L5-20R': // Locking 120V 20A
+      outline = '<circle cx="40" cy="40" r="35" fill="'+bg+'" stroke="#444" stroke-width="2"/>';
+      face = slotT(32,32) + slotV(48,32,5,12) + gnd(40,54);
+      break;
+    case 'L5-30R': // Locking 120V 30A
+      outline = '<circle cx="40" cy="40" r="35" fill="'+bg+'" stroke="#444" stroke-width="2"/>';
+      face = slotV(30,32,6,14) + slotV(50,32,6,14) + gnd(40,55);
+      break;
+    case 'L6-20R': // Locking 240V 20A
+      outline = '<circle cx="40" cy="40" r="35" fill="'+bg+'" stroke="#444" stroke-width="2"/>';
+      face = slotAngle(30,33,-30) + slotT(50,33) + gnd(40,55);
+      break;
+    case 'L6-30R': // Locking 240V 30A
+      outline = '<circle cx="40" cy="40" r="35" fill="'+bg+'" stroke="#444" stroke-width="2"/>';
+      face = slotAngle(28,32,-45) + slotAngle(52,32,45) + gnd(40,55);
+      break;
+    case 'L14-20R': // Locking 120/240V 20A
+      outline = '<circle cx="40" cy="40" r="35" fill="'+bg+'" stroke="#444" stroke-width="2"/>';
+      face = slotAngle(26,36,-45) + slotAngle(54,36,45) + slotV(40,24,5,12) + gnd(40,56);
+      break;
+    case 'L14-30R': // Locking 120/240V 30A generator
+      outline = '<circle cx="40" cy="40" r="35" fill="'+bg+'" stroke="#444" stroke-width="2"/>';
+      face = slotAngle(26,36,-45) + slotAngle(54,36,45) + slotV(40,23,6,14) + gnd(40,57);
+      break;
+    case 'L21-20R': // Locking 3-phase 120/208V 20A
+      outline = '<circle cx="40" cy="40" r="35" fill="'+bg+'" stroke="#444" stroke-width="2"/>';
+      face = ch(40,25,4) + ch(27,47,4) + ch(53,47,4) + slotV(40,60,5,10) + ch(40,40,3);
+      break;
+    case 'L21-30R': // Locking 3-phase 120/208V 30A
+      outline = '<circle cx="40" cy="40" r="35" fill="'+bg+'" stroke="#444" stroke-width="2"/>';
+      face = ch(40,23,5) + ch(25,48,5) + ch(55,48,5) + gnd(40,60);
+      break;
+    case 'TT-30R': // RV 120V 30A
+      face = slotV(32,28,5,14) + slotAngle(48,32,30) + gnd(40,55);
+      break;
+    case 'SS2-50': // Shore power 50A
+      face = slotH(27,30,5,14) + slotH(53,30,5,14) + slotV(40,22,5,12) + gnd(40,56);
+      break;
+    default:
+      face = ch(40,40,15);
+  }
+
+  return '<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">'+outline+face+'</svg>';
+}
+
+var OUTLETS = [
+  // NEMA straight-blade
+  {id:'5-15R',   volts:'120V',     amps:'15A',  tag:'120',     label:'NEMA 5-15R',   use:'Standard household outlets, lamps, electronics',             nec:'NEC 210.21(B)'},
+  {id:'5-20R',   volts:'120V',     amps:'20A',  tag:'120',     label:'NEMA 5-20R',   use:'Kitchen countertops, bathrooms, garage circuits',             nec:'NEC 210.52(B)'},
+  {id:'6-15R',   volts:'240V',     amps:'15A',  tag:'240',     label:'NEMA 6-15R',   use:'Window A/C units, small 240V equipment',                     nec:'NEC 406'},
+  {id:'6-20R',   volts:'240V',     amps:'20A',  tag:'240',     label:'NEMA 6-20R',   use:'240V shop equipment, air compressors',                        nec:'NEC 406'},
+  {id:'6-30R',   volts:'240V',     amps:'30A',  tag:'240',     label:'NEMA 6-30R',   use:'240V equipment, some EV chargers',                            nec:'NEC 406'},
+  {id:'6-50R',   volts:'240V',     amps:'50A',  tag:'240',     label:'NEMA 6-50R',   use:'Welders, plasma cutters, 240V 50A equipment',                 nec:'NEC 630.11'},
+  {id:'10-30R',  volts:'240V',     amps:'30A',  tag:'240',     label:'NEMA 10-30R',  use:'OLD dryers (no ground) — not for new installs',               nec:'NEC 250.140'},
+  {id:'10-50R',  volts:'240V',     amps:'50A',  tag:'240',     label:'NEMA 10-50R',  use:'OLD electric ranges (no ground) — not for new installs',      nec:'NEC 250.140'},
+  {id:'14-30R',  volts:'120/240V', amps:'30A',  tag:'120/240', label:'NEMA 14-30R',  use:'Electric dryers — standard modern dryer outlet',              nec:'NEC 422.16(B)'},
+  {id:'14-50R',  volts:'120/240V', amps:'50A',  tag:'120/240', label:'NEMA 14-50R',  use:'Electric ranges, Tesla EV charger, RV parks',                 nec:'NEC 422.10'},
+  {id:'TT-30R',  volts:'120V',     amps:'30A',  tag:'120',     label:'TT-30R',       use:'RV parks, travel trailer hookups',                            nec:'NEC 551.71'},
+  {id:'SS2-50',  volts:'120/240V', amps:'50A',  tag:'120/240', label:'SS2-50',       use:'Marine shore power — 50A boat slip',                          nec:'NEC 553.4'},
+  // NEMA locking
+  {id:'L5-15R',  volts:'120V',     amps:'15A',  tag:'locking', label:'NEMA L5-15R',  use:'Twist-lock 120V 15A — general purpose locking',               nec:'NEC 406'},
+  {id:'L5-20R',  volts:'120V',     amps:'20A',  tag:'locking', label:'NEMA L5-20R',  use:'Twist-lock 120V 20A — UPS, server rooms',                     nec:'NEC 406'},
+  {id:'L5-30R',  volts:'120V',     amps:'30A',  tag:'locking', label:'NEMA L5-30R',  use:'Twist-lock 120V 30A — generators, large UPS',                 nec:'NEC 406'},
+  {id:'L6-20R',  volts:'240V',     amps:'20A',  tag:'locking', label:'NEMA L6-20R',  use:'Twist-lock 240V 20A — commercial equipment',                  nec:'NEC 406'},
+  {id:'L6-30R',  volts:'240V',     amps:'30A',  tag:'locking', label:'NEMA L6-30R',  use:'Twist-lock 240V 30A — A/C units, generators',                 nec:'NEC 406'},
+  {id:'L14-20R', volts:'120/240V', amps:'20A',  tag:'locking', label:'NEMA L14-20R', use:'Twist-lock 120/240V 20A — transfer switches',                 nec:'NEC 406'},
+  {id:'L14-30R', volts:'120/240V', amps:'30A',  tag:'locking', label:'NEMA L14-30R', use:'Twist-lock 120/240V 30A — portable generators, transfer sw.', nec:'NEC 702.6'},
+  {id:'L21-20R', volts:'120/208V', amps:'20A',  tag:'3phase',  label:'NEMA L21-20R', use:'3-phase twist-lock 120/208V 20A — commercial PDU',            nec:'NEC 406'},
+  {id:'L21-30R', volts:'120/208V', amps:'30A',  tag:'3phase',  label:'NEMA L21-30R', use:'3-phase twist-lock 120/208V 30A — data centers, commercial',  nec:'NEC 406'},
+];
+
+var currentOutletFilter = 'all';
+
+function filterOutlets(tag) {
+  currentOutletFilter = tag;
+  document.querySelectorAll('#panel-outlets .conduit-tab').forEach(function(b){ b.classList.remove('active'); });
+  var btn = document.getElementById('of-' + tag.replace('/',''));
+  if (btn) btn.classList.add('active');
+  renderOutlets();
+}
+
+function renderOutlets() {
+  var grid = document.getElementById('outletsGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  var filtered = OUTLETS.filter(function(o) {
+    if (currentOutletFilter === 'all') return true;
+    if (currentOutletFilter === 'locking') return o.tag === 'locking';
+    if (currentOutletFilter === '3phase') return o.tag === '3phase';
+    if (currentOutletFilter === '120') return o.tag === '120';
+    if (currentOutletFilter === '240') return o.tag === '240';
+    if (currentOutletFilter === '120/240') return o.tag === '120/240';
+    return true;
+  });
+
+  filtered.forEach(function(o) {
+    var isLocking = o.tag === 'locking' || o.tag === '3phase';
+    var voltColor = o.tag === '120' ? '#52c07a' : o.tag === '240' ? '#e05252' : o.tag === '120/240' ? '#FFC700' : o.tag === '3phase' ? '#b06ae8' : '#4a90d9';
+
+    var card = document.createElement('div');
+    card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color 0.15s;cursor:pointer';
+    card.onmouseover = function(){ this.style.borderColor='var(--accent)'; };
+    card.onmouseout  = function(){ this.style.borderColor='var(--border)'; };
+    card.onclick = function() { showOutletDetail(o.id); };
+
+    card.innerHTML =
+      // SVG drawing
+      '<div style="background:#111;display:flex;align-items:center;justify-content:center;padding:16px;border-bottom:1px solid var(--border)">' +
+        svgOutlet(o.id) +
+      '</div>' +
+      // Info
+      '<div style="padding:12px">' +
+        '<div style="font-family:Bebas Neue,sans-serif;font-size:15px;letter-spacing:1px;color:var(--accent);margin-bottom:6px">' + o.label + '</div>' +
+        '<div style="display:flex;gap:6px;margin-bottom:8px">' +
+          '<span style="background:rgba(255,199,0,0.12);color:'+voltColor+';font-family:IBM Plex Mono,monospace;font-size:10px;padding:2px 7px;border-radius:3px;font-weight:600">' + o.volts + '</span>' +
+          '<span style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-family:IBM Plex Mono,monospace;font-size:10px;padding:2px 7px;border-radius:3px">' + o.amps + '</span>' +
+          (isLocking ? '<span style="background:rgba(176,106,232,0.12);color:#b06ae8;font-family:IBM Plex Mono,monospace;font-size:10px;padding:2px 7px;border-radius:3px">LOCK</span>' : '') +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--text-dim);line-height:1.5">' + o.use + '</div>' +
+        '<div style="margin-top:8px"><span class="nec-link" onclick="event.stopPropagation();necLink(\'' + o.nec + '\')">' + o.nec + '</span></div>' +
+      '</div>';
+
+    grid.appendChild(card);
+  });
+}
+
+function showOutletDetail(id) {
+  var o = OUTLETS.find(function(x){ return x.id === id; });
+  if (!o) return;
+  // Ask AI about this outlet
+  var q = 'Tell me about the NEMA ' + o.id + ' receptacle: voltage, amperage, wiring requirements, common applications, and NEC requirements.';
+  necLink(q.replace('necLink(',''));
+  // Actually use quickAsk
+  document.getElementById('userInput').value = q;
+  switchTab('chat', document.querySelector('.tab[onclick*="chat"]'));
+  setTimeout(function(){ sendMessage(); }, 100);
+}
+
+// Init
+renderOutlets();
 
 </script>
 </body>
