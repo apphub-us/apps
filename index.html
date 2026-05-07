@@ -4359,12 +4359,12 @@ var ofFilters = { type:'all', amps:'all', volt:'all', awg:'all' };
 
 function ofSetFilter(key, val) {
   ofFilters[key] = val;
-  // Update button active state
   var prefix = {type:'oft', amps:'ofa', volt:'ofv', awg:'ofw'}[key];
   document.querySelectorAll('[id^="'+prefix+'-"]').forEach(function(b){ b.classList.remove('active'); });
   var btnId = prefix+'-'+(String(val).replace('/',''));
   var btn = document.getElementById(btnId);
   if (btn) btn.classList.add('active');
+  outletsInitialized = true;
   renderOutlets();
 }
 
@@ -4427,10 +4427,8 @@ function renderOutlets() {
 // Init outlets when tab is first opened
 var outletsInitialized = false;
 function initOutletsIfNeeded() {
-  if (!outletsInitialized) {
-    outletsInitialized = true;
-    renderOutlets();
-  }
+  outletsInitialized = true;
+  renderOutlets();
 }
 }
 
