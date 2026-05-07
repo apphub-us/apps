@@ -2819,6 +2819,9 @@ var origSwitch = window.switchTab;
 window.switchTab = function(name,el){
   origSwitch(name,el);
   if(name==='pullbox'){setTimeout(pbUpdate,50);}
+  if(name==='outlets'){setTimeout(initOutletsIfNeeded,50);}
+  if(name==='grounding'){setTimeout(groundingInitTopics,50);}
+  if(name==='nycamend'){setTimeout(nycInitTopics,50);}
 }
 
 
@@ -3879,7 +3882,7 @@ function groundingSelectTopic(id) {
   document.getElementById('groundingContent').innerHTML = html;
 }
 
-groundingInitTopics();
+// Grounding topics initialized on tab open
 
 // ── NYC AMENDMENTS DATA ───────────────────────────────────
 var NYC_TOPICS = [
@@ -4043,7 +4046,7 @@ function nycSelectTopic(id) {
   document.getElementById('nycContent').innerHTML = html;
 }
 
-nycInitTopics();
+// NYC topics initialized on tab open
 
 
 // ── OUTLETS / RECEPTACLES ─────────────────────────────────
@@ -4256,8 +4259,16 @@ function showOutletDetail(id) {
   setTimeout(function(){ sendMessage(); }, 100);
 }
 
-// Init
-renderOutlets();
+// Init outlets when tab is first opened
+var outletsInitialized = false;
+function initOutletsIfNeeded() {
+  if (!outletsInitialized) {
+    outletsInitialized = true;
+    renderOutlets();
+  }
+}
+
+// Tab switching handled by origSwitch above
 
 </script>
 </body>
