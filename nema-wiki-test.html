@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { background:#111; color:#eee; font-family:monospace; padding:16px; }
+  h2 { color:#FFC700; margin-bottom:4px; }
+  p { color:#888; font-size:11px; margin-bottom:16px; }
+  .grid { display:grid; grid-template-columns:repeat(8,1fr); gap:10px; }
+  .card { background:#1a2028; border:1px solid #333; border-radius:6px; padding:8px; text-align:center; }
+  .card img { width:72px; height:72px; object-fit:contain; display:block; margin:0 auto 6px;
+              filter: invert(1) sepia(1) saturate(2) hue-rotate(180deg); }
+  .label { font-size:10px; color:#FFC700; font-weight:bold; }
+  .ok { border-color:#52c07a; }
+  .err { border-color:#e05252; }
+  .err-txt { font-size:9px; color:#e05252; margin-top:4px; }
+  #status { color:#888; font-size:12px; margin-bottom:12px; }
+</style>
+</head>
+<body>
+<h2>NEMA SVG — Wikimedia Commons</h2>
+<p>Loading via Wikimedia API... Images credit: Comrade Mmirg, CC BY-SA 4.0</p>
+<div id="status">Loading...</div>
+<div class="grid" id="grid"></div>
+<script>
+var CODES = [
+  '1-15R','1-15P','1-20P',
+  '2-15P','2-20R','2-20P','2-30R','2-30P',
+  '5-15R','5-15P','5-20R','5-20P','5-30R','5-30P','5-50R','5-50P',
+  '6-15R','6-15P','6-20R','6-20P','6-30R','6-30P','6-50R','6-50P',
+  '7-15R','7-15P','7-20R','7-20P','7-30R','7-30P','7-50R','7-50P',
+  '10-20R','10-20P','10-30R','10-30P','10-50R','10-50P',
+  '11-15R','11-15P','11-20R','11-20P','11-30R','11-30P','11-50R','11-50P',
+  '14-15R','14-15P','14-20R','14-20P','14-30R','14-30P','14-50R','14-50P','14-60R','14-60P',
+  '15-15R','15-15P','15-20R','15-20P','15-30R','15-30P','15-50R','15-50P','15-60R','15-60P',
+  '18-15R','18-15P','18-20R','18-20P','18-30R','18-30P','18-50R','18-50P','18-60R','18-60P',
+  'TT-30R','TT-30P'
+];
+
+var grid = document.getElementById('grid');
+var loaded = 0, errors = 0;
+
+function updateStatus() {
+  document.getElementById('status').textContent =
+    'Loaded: ' + loaded + ' / Errors: ' + errors + ' / Total: ' + CODES.length;
+}
+
+CODES.forEach(function(code) {
+  var card = document.createElement('div');
+  card.className = 'card';
+  card.id = 'card-' + code;
+
+  var img = document.createElement('img');
+  // Use Wikimedia API endpoint - this is the correct format
+  img.src = 'https://commons.wikimedia.org/w/index.php?title=Special:FilePath&file=NEMA_' + code + '.svg&width=100';
+  img.alt = code;
+
+  img.onload = function() {
+    loaded++;
+    card.classList.add('ok');
+    updateStatus();
+  };
+  img.onerror = function() {
+    errors++;
+    card.classList.add('err');
+    this.style.display = 'none';
+    card.innerHTML += '<div class="err-txt">✗</div>';
+    updateStatus();
+  };
+
+  var label = document.createElement('div');
+  label.className = 'label';
+  label.textContent = code;
+
+  card.appendChild(img);
+  card.appendChild(label);
+  grid.appendChild(card);
+});
+
+updateStatus();
+</script>
+</body>
+</html>
