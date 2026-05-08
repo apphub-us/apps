@@ -1581,21 +1581,6 @@
           <option value="3">Three Phase (3Ø)</option>
         </select>
       </div>
-      <div class="ctrl-group">
-        <span class="ctrl-label">Power Factor (PF)</span>
-        <select id="cv-pf" onchange="cvCalc('watts')">
-          <option value="1.0">1.00 (resistive — heaters)</option>
-          <option value="0.95">0.95 (LED lighting)</option>
-          <option value="0.90" selected>0.90 (typical motors)</option>
-          <option value="0.85">0.85 (inductive loads)</option>
-          <option value="0.80">0.80 (older motors)</option>
-          <option value="custom">Custom...</option>
-        </select>
-      </div>
-      <div class="ctrl-group" id="cv-pf-custom-group" style="display:none">
-        <span class="ctrl-label">Custom PF (0.1–1.0)</span>
-        <input type="number" id="cv-pf-custom" value="0.90" min="0.1" max="1.0" step="0.01" oninput="cvCalc('watts')">
-      </div>
 
       <div style="border-top:1px solid var(--border);padding-top:12px;font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--accent)">ENTER ANY VALUE</div>
 
@@ -1672,14 +1657,13 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
         <div style="background:rgba(255,199,0,0.08);padding:8px 14px;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--accent)">FORMULAS</div>
         <div style="padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:2.1;color:var(--text-dim)">
-          <div><span style="color:var(--accent)">1Ø W</span> = V × A × PF</div>
-          <div><span style="color:var(--accent)">3Ø W</span> = V × A × PF × 1.732</div>
+          <div><span style="color:var(--accent)">1Ø W</span> = V × A</div>
+          <div><span style="color:var(--accent)">3Ø W</span> = V × A × 1.732</div>
           <div><span style="color:var(--accent)">1Ø VA</span> = V × A</div>
           <div><span style="color:var(--accent)">3Ø VA</span> = V × A × 1.732</div>
           <div><span style="color:var(--accent)">kW</span> = W ÷ 1,000</div>
           <div><span style="color:var(--accent)">HP</span> = W ÷ 746</div>
           <div><span style="color:var(--accent)">1 HP</span> = 746 W = 0.746 kW</div>
-          <div><span style="color:var(--accent)">PF</span> = W ÷ VA (0–1)</div>
         </div>
       </div>
 
@@ -3756,9 +3740,7 @@ function lcReset() {
 function cvReset() {
   document.getElementById('cv-voltage').value = '240';
   document.getElementById('cv-phase').value = '1';
-  document.getElementById('cv-pf').value = '0.90';
   document.getElementById('cv-voltage-custom-group').style.display = 'none';
-  document.getElementById('cv-pf-custom-group').style.display = 'none';
   ['cv-amps','cv-watts','cv-kw','cv-hp','cv-va','cv-kva'].forEach(function(id){
     document.getElementById(id).value = '';
   });
@@ -3778,9 +3760,7 @@ function cvGetVoltage() {
 }
 
 function cvGetPF() {
-  var sel = document.getElementById('cv-pf').value;
-  if (sel === 'custom') return parseFloat(document.getElementById('cv-pf-custom').value) || 0.9;
-  return parseFloat(sel);
+  return 1.0; // PF removed — W = V × A (resistive assumption)
 }
 
 function cvGetPhase() {
@@ -3791,12 +3771,6 @@ document.getElementById('cv-voltage').addEventListener('change', function() {
   var isCustom = this.value === 'custom';
   document.getElementById('cv-voltage-custom-group').style.display = isCustom ? '' : 'none';
   cvCalc('voltage');
-});
-
-document.getElementById('cv-pf').addEventListener('change', function() {
-  var isCustom = this.value === 'custom';
-  document.getElementById('cv-pf-custom-group').style.display = isCustom ? '' : 'none';
-  cvCalc('watts');
 });
 
 function cvCalc(from) {
