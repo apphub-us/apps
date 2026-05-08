@@ -1399,11 +1399,24 @@
       <div class="ctrl-group">
         <span class="ctrl-label">Service Voltage</span>
         <select id="lcVoltage" onchange="lcUpdate()">
-          <option value="240">240V (Single Phase — Residential)</option>
-          <option value="208">208V (Single Phase — Multifamily)</option>
-          <option value="120">120V</option>
+          <option value="240">240V — Single Phase (residential)</option>
+          <option value="208">208V — Single Phase (multifamily)</option>
+          <option value="208_3">208V — Three Phase (commercial)</option>
+          <option value="240_3">240V — Three Phase (commercial)</option>
+          <option value="480">480V — Three Phase (commercial)</option>
         </select>
       </div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label">Occupancy Type</span>
+        <select id="lcOccupancy" onchange="lcUpdate()">
+          <option value="sf">Single Family — 1-4 units, 240V/1Ø</option>
+          <option value="mf">Multifamily — apartment building, 208V/1Ø per unit</option>
+          <option value="comm">Commercial — retail, office, restaurant</option>
+          <option value="mixed">Mixed Use — residential over commercial</option>
+        </select>
+      </div>
+      <div id="lcOccupancyNote" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.6;padding:6px 10px;border-radius:3px;border-left:3px solid var(--border);background:rgba(255,255,255,0.02)"></div>
 
       <div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:6px">General Loads</div>
 
@@ -3394,7 +3407,31 @@ function lcSection(title) {
 
 function lcUpdate() {
   var method  = document.getElementById('lcMethod').value;
-  var voltage = parseFloat(document.getElementById('lcVoltage').value);
+  var voltageRaw = document.getElementById('lcVoltage').value;
+  var voltage = parseFloat(voltageRaw);
+  var is3phase = voltageRaw.indexOf('_3') !== -1;
+  if (voltageRaw === '208_3') voltage = 208;
+  if (voltageRaw === '240_3') voltage = 240;
+  var voltageLabel = voltage + 'V ' + (is3phase ? '3Ø' : '1Ø');
+
+  var occupancy = document.getElementById('lcOccupancy').value;
+  var occNotes = {
+    sf:    'Single Family — Optional Method allowed. 240V/1Ø. NYCEC: each bedroom/living room needs AC outlet.',
+    mf:    'Multifamily — Optional Method per unit. 208V/1Ø from building 3Ø system. NYCEC: AFCI not required in kitchen/laundry (3+ floors). Each unit needs AC outlet.',
+    comm:  'Commercial — Standard Method 220.42 ONLY. Optional Method not permitted. 208V or 480V/3Ø. NYCEC: EMT required.',
+    mixed: 'Mixed Use — residential units use Optional Method, commercial space uses Standard Method 220.42. Calculate separately.'
+  };
+  var occEl = document.getElementById('lcOccupancyNote');
+  occEl.textContent = occNotes[occupancy];
+  occEl.style.borderColor = (occupancy === 'comm' || occupancy === 'mixed') ? 'var(--nec)' : 'var(--nycec)';
+  occEl.style.color = 'var(--text-dim)';
+
+  // Warn if Commercial with non-standard method
+  if (occupancy === 'comm' && (method === 'optional' || method === 'existing')) {
+    occEl.textContent = '⚠ Commercial requires Standard Method 220.42. Optional Method not permitted for non-dwelling occupancies.';
+    occEl.style.borderColor = 'var(--danger)';
+    occEl.style.color = 'var(--danger)';
+  }
   var sqFt    = parseFloat(document.getElementById('lcSqFt').value) || 0;
   var smallAppl = parseInt(document.getElementById('lcSmallAppl').value) || 2;
   var laundry   = parseInt(document.getElementById('lcLaundry').value) || 1;
@@ -3641,7 +3678,7 @@ function lcUpdate() {
   }
 
   // ── FINAL RESULT (all methods) ────────────────────────
-  var totalAmps = totalVA / voltage;
+  var totalAmps = is3phase ? totalVA / (voltage * 1.732) : totalVA / voltage;
 
   // Recommend service size
   var serviceSize = 100;
@@ -3657,14 +3694,15 @@ function lcUpdate() {
 
   html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border)">';
   html += '<div style="background:var(--surface);padding:16px;text-align:center"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);text-transform:uppercase;margin-bottom:6px">Total Load</div><div style="font-family:Bebas Neue,monospace;font-size:28px;color:var(--success)">' + Math.round(totalVA).toLocaleString() + '</div><div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">VA</div></div>';
-  html += '<div style="background:var(--surface);padding:16px;text-align:center"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);text-transform:uppercase;margin-bottom:6px">Total Amps</div><div style="font-family:Bebas Neue,monospace;font-size:28px;color:var(--success)">' + totalAmps.toFixed(1) + '</div><div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">A @ '+voltage+'V</div></div>';
+  html += '<div style="background:var(--surface);padding:16px;text-align:center"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);text-transform:uppercase;margin-bottom:6px">Total Amps</div><div style="font-family:Bebas Neue,monospace;font-size:28px;color:var(--success)">' + totalAmps.toFixed(1) + '</div><div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">A @ ' + voltageLabel + '</div></div>';
   html += '<div style="background:var(--surface);padding:16px;text-align:center"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);text-transform:uppercase;margin-bottom:6px">Min Service</div><div style="font-family:Bebas Neue,monospace;font-size:28px;color:var(--accent)">' + serviceSize + 'A</div><div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">recommended</div></div>';
   html += '</div>';
 
-  // Amp per leg (for 240V)
-  if (voltage === 240) {
+  if (!is3phase && voltage === 240) {
     var perLeg = totalVA / 2 / 120;
     html += '<div style="padding:10px 16px;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Per leg @ 120V: ' + perLeg.toFixed(1) + 'A &nbsp;|&nbsp; Recommended service: <strong style="color:var(--accent)">' + serviceSize + 'A, 240V, 2-pole</strong></div>';
+  } else if (is3phase) {
+    html += '<div style="padding:10px 16px;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">3-Phase: ' + totalAmps.toFixed(1) + 'A per phase &nbsp;|&nbsp; Recommended service: <strong style="color:var(--accent)">' + serviceSize + 'A, ' + voltage + 'V, 3Ø</strong></div>';
   }
   html += '</div>';
 
