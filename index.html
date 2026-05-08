@@ -239,7 +239,16 @@
   .nycec-row { padding-top: 3px; border-top: 1px solid var(--border); }
   .fill-rule { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); }
   .fill-pill { padding: 3px 10px; border-radius: 3px; font-size: 12px; font-weight: 700; letter-spacing: 0.3px; }
-  .fill-pill[onclick] { cursor: pointer !important; transition: opacity 0.15s, transform 0.1s; }
+  .reset-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: 1px solid var(--border);
+    color: var(--text-dimmer); font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 5px 10px; border-radius: 3px; cursor: pointer;
+    transition: all 0.15s; margin-top: 4px; width: 100%;
+    justify-content: center;
+  }
+  .reset-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(224,82,82,0.07); }
   .fill-pill[onclick]:hover { opacity: 0.8; transform: scale(1.05); }
   .pill-green { background: rgba(82,192,122,0.2); color: var(--success); }
   .pill-yellow { background: rgba(232,194,58,0.2); color: var(--warn); }
@@ -775,6 +784,7 @@
       <span class="ctrl-label"># of Wires</span>
       <input type="number" id="cfNumWires" value="3" min="1" max="40" onchange="cfUpdateCalc()" oninput="cfUpdateCalc()">
     </div>
+    <button class="reset-btn" onclick="cfReset()">↺ Reset</button>
   </div>
 
   <div class="result-box" id="cfResultBox">
@@ -936,10 +946,10 @@
         </optgroup>
       </select>
     </div>
+    <button class="reset-btn" onclick="bfReset()">↺ Reset</button>
   </div>
 
   <!-- RESULT -->
-  <div class="result-box show" id="bfResultBox" style="margin:12px 20px">
     <div class="result-title">BOX FILL CALCULATION — NEC 314.16</div>
     <div class="result-grid" id="bfResultGrid"></div>
   </div>
@@ -1074,6 +1084,7 @@
         <option value="33">Yes — conduit above roof (+33°F adder)</option>
       </select>
     </div>
+    <button class="reset-btn" onclick="ampReset()">↺ Reset</button>
   </div>
 
   <!-- RESULT -->
@@ -1205,6 +1216,7 @@
         <option value="5">5% (NEC total · NYCEC max all occupancies)</option>
       </select>
     </div>
+    <button class="reset-btn" onclick="vdReset()">↺ Reset</button>
   </div>
 
   <!-- RESULT -->
@@ -1223,7 +1235,7 @@
         <thead>
           <tr>
             <th class="wire-col">Wire Size</th>
-            <th>CM Area</th>
+            <th>Ampacity 75°C</th>
             <th>Voltage Drop</th>
             <th>Drop %</th>
             <th>Voltage at Load</th>
@@ -1510,6 +1522,8 @@
       </div>
       <div id="lcMeterNote" style="display:none;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.5;padding:4px 0">Use highest 15-min demand reading from 12 months of meter data (min 30 days). Add 25% for new loads per NYCEC 220.87.</div>
 
+      <button class="reset-btn" onclick="lcReset()">↺ Reset</button>
+
     </div>
 
     <!-- RIGHT: Results -->
@@ -1615,6 +1629,8 @@
         <div style="background:rgba(255,199,0,0.08);padding:7px 12px;font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--accent)">RESULT</div>
         <div id="cv-result-rows"></div>
       </div>
+
+      <button class="reset-btn" onclick="cvReset()">↺ Reset</button>
 
     </div>
 
@@ -2607,6 +2623,20 @@ var VD_SIZES = [
 // K constants
 var VD_K = { cu: 12.9, al: 21.2 };
 
+// NEC 310.16 ampacity @ 75°C (most panels/breakers) — copper and aluminum
+var AMP_75_CU = {
+  '14':20,'12':25,'10':35,'8':50,'6':65,'4':85,'3':100,'2':115,
+  '1':130,'1/0':150,'2/0':175,'3/0':200,'4/0':230,
+  '250':255,'300':285,'350':310,'400':335,'500':380,
+  '600':420,'700':460,'750':475
+};
+var AMP_75_AL = {
+  '12':20,'10':30,'8':40,'6':50,'4':65,'3':75,'2':90,
+  '1':100,'1/0':120,'2/0':135,'3/0':155,'4/0':180,
+  '250':205,'300':230,'350':250,'400':270,'500':310,
+  '600':340,'700':375,'750':385
+};
+
 function vdCalcDrop(amps, feet, voltage, phase, material, cm) {
   var K = VD_K[material];
   var multiplier = phase === '3' ? 1.732 : 2;
@@ -2628,61 +2658,81 @@ function vdUpdateCalc() {
   var K = VD_K[mat];
   var multiplier = phase === '3' ? 1.732 : 2;
   var maxVDrop = voltage * (maxPct / 100);
+  var ampTable = mat === 'cu' ? AMP_75_CU : AMP_75_AL;
 
-  // Find minimum size that meets voltage drop requirement
-  var minSize = null;
+  // Find min size for VD only
   var minCM = (multiplier * K * amps * feet) / maxVDrop;
-
+  var minVDSize = null;
   for (var i = 0; i < VD_SIZES.length; i++) {
-    var cm = VD_CM[VD_SIZES[i].k];
-    if (cm >= minCM) {
-      minSize = VD_SIZES[i];
-      break;
-    }
+    if (VD_CM[VD_SIZES[i].k] >= minCM) { minVDSize = VD_SIZES[i]; break; }
   }
 
-  // Calculate for recommended size
-  var recResult = minSize ? vdCalcDrop(amps, feet, voltage, phase, mat, VD_CM[minSize.k]) : null;
+  // Find min size for ampacity only
+  var minAmpSize = null;
+  for (var i = 0; i < VD_SIZES.length; i++) {
+    var ampRating = ampTable[VD_SIZES[i].k] || 0;
+    if (ampRating >= amps) { minAmpSize = VD_SIZES[i]; break; }
+  }
 
-  var sc = minSize ? 'result-ok' : 'result-over';
-  var sizeLabel = minSize ? minSize.l : 'NONE — run parallel';
+  // Recommended = larger of the two
+  var vdIdx = minVDSize ? VD_SIZES.indexOf(minVDSize) : 999;
+  var ampIdx = minAmpSize ? VD_SIZES.indexOf(minAmpSize) : 999;
+  var recIdx = Math.max(vdIdx, ampIdx);
+  var recSize = recIdx < VD_SIZES.length ? VD_SIZES[recIdx] : null;
+  var limitedBy = vdIdx > ampIdx ? 'Voltage Drop' : vdIdx < ampIdx ? 'Ampacity' : 'Both equal';
+
+  var recResult = recSize ? vdCalcDrop(amps, feet, voltage, phase, mat, VD_CM[recSize.k]) : null;
+  var recAmp = recSize ? (ampTable[recSize.k] || '—') : '—';
+
+  var sc = recSize ? 'result-ok' : 'result-over';
+  var sizeLabel = recSize ? recSize.l : 'NONE — run parallel';
   var dropLabel = recResult ? recResult.vDrop.toFixed(2)+'V ('+recResult.pct.toFixed(2)+'%)' : '—';
   var voltAtLoad = recResult ? (voltage - recResult.vDrop).toFixed(1)+'V' : '—';
 
   document.getElementById('vdResultGrid').innerHTML =
-    '<div class="result-item"><div class="result-item-label">Min Wire Size</div><div class="result-item-value '+sc+'" style="font-size:22px">'+sizeLabel+'</div></div>'+
+    '<div class="result-item"><div class="result-item-label">�★ Recommended AWG</div><div class="result-item-value '+sc+'" style="font-size:22px">'+sizeLabel+'</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Limited By</div><div class="result-item-value" style="color:var(--accent)">'+limitedBy+'</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Ampacity (75°C)</div><div class="result-item-value result-ok">'+recAmp+'A rated</div></div>'+
     '<div class="result-item"><div class="result-item-label">Voltage Drop</div><div class="result-item-value result-ok">'+dropLabel+'</div></div>'+
     '<div class="result-item"><div class="result-item-label">Voltage at Load</div><div class="result-item-value result-ok">'+voltAtLoad+'</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Min CM Required</div><div class="result-item-value">'+Math.ceil(minCM).toLocaleString()+' CM</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Load</div><div class="result-item-value">'+amps+'A @ '+voltage+'V</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Distance</div><div class="result-item-value">'+feet+' ft ('+Math.round(feet*2)+' ft total)</div></div>';
+    '<div class="result-item"><div class="result-item-label">Load / Distance</div><div class="result-item-value">'+amps+'A · '+feet+'ft</div></div>';
 
   // Build comparison table
   document.getElementById('vdTableTitle').textContent =
-    'WIRE SIZE COMPARISON — ' + amps + 'A @ ' + voltage + 'V, ' + feet + 'ft, ' + (mat==='cu'?'Copper':'Aluminum');
+    'WIRE SIZING — ' + amps + 'A @ ' + voltage + 'V, ' + feet + 'ft, ' + (mat==='cu'?'Copper':'Aluminum') + ' — NEC 310.16 @ 75°C';
 
   var tbody = '';
   for (var j = 0; j < VD_SIZES.length; j++) {
     var sz = VD_SIZES[j];
     var cm = VD_CM[sz.k];
+    var ampRating = ampTable[sz.k] || 0;
     var res = vdCalcDrop(amps, feet, voltage, phase, mat, cm);
     var vd = res.vDrop;
     var pct = res.pct;
     var vAtLoad = voltage - vd;
-    var isRec = minSize && sz.k === minSize.k;
-    var passes = pct <= maxPct;
-    var statusColor = passes ? 'var(--success)' : 'var(--danger)';
-    var statusText = passes ? '✓ OK' : '✗ OVER';
+    var passesVD = pct <= maxPct;
+    var passesAmp = ampRating >= amps;
+    var isRec = recSize && sz.k === recSize.k;
+    var passesAll = passesVD && passesAmp;
+
+    var statusText, statusColor;
+    if (isRec) { statusText = '★ USE THIS'; statusColor = 'var(--accent)'; }
+    else if (passesAll) { statusText = '✓ OK'; statusColor = 'var(--success)'; }
+    else if (!passesAmp && !passesVD) { statusText = '✗ AMP+VD'; statusColor = 'var(--danger)'; }
+    else if (!passesAmp) { statusText = '✗ AMP LOW'; statusColor = 'var(--danger)'; }
+    else { statusText = '✗ VD OVER'; statusColor = 'var(--warn)'; }
+
     var pctColor = pct <= 2 ? 'var(--success)' : pct <= 3 ? 'var(--success)' : pct <= 5 ? 'var(--warn)' : 'var(--danger)';
-    var rowStyle = isRec ? ' style="background:rgba(245,166,35,0.08);border-left:3px solid var(--accent)"' : '';
+    var ampColor = passesAmp ? 'var(--success)' : 'var(--danger)';
+    var rowStyle = isRec ? ' style="background:rgba(255,107,26,0.1);border-left:3px solid var(--nec)"' : '';
 
     tbody += '<tr'+rowStyle+'>'+
-      '<td class="wire-col">'+(isRec?'★ ':'')+sz.l+(isRec?' ← RECOMMENDED':'')+'</td>'+
-      '<td>'+cm.toLocaleString()+' CM</td>'+
+      '<td class="wire-col" style="font-weight:'+(isRec?'700':'400')+'">'+sz.l+'</td>'+
+      '<td style="color:'+ampColor+';font-weight:600">'+(ampRating||'—')+'A</td>'+
       '<td>'+vd.toFixed(2)+'V</td>'+
-      '<td style="color:'+pctColor+';font-weight:'+(pct<=maxPct?'600':'400')+'">'+pct.toFixed(2)+'%</td>'+
+      '<td style="color:'+pctColor+';font-weight:600">'+pct.toFixed(2)+'%</td>'+
       '<td>'+vAtLoad.toFixed(1)+'V</td>'+
-      '<td style="color:'+statusColor+';font-weight:600">'+statusText+'</td>'+
+      '<td style="color:'+statusColor+';font-weight:700">'+statusText+'</td>'+
     '</tr>';
   }
   document.getElementById('vdCompTable').innerHTML = tbody;
@@ -3722,8 +3772,83 @@ function lcUpdate() {
 // Auto-run on load
 lcUpdate();
 
+// ── RESET FUNCTIONS ───────────────────────────────────────
+function cfReset() {
+  document.getElementById('cfConduitType').value = 'emt';
+  document.getElementById('cfConduitSize').value = '1';
+  document.getElementById('cfWireType').value = 'thhn';
+  document.getElementById('cfWireSize').value = '12';
+  document.getElementById('cfNumWires').value = '3';
+  cfUpdateCalc();
+}
 
-// ── UNIT CONVERTER ────────────────────────────────────────
+function bfReset() {
+  document.getElementById('bfBoxType').selectedIndex = 0;
+  document.getElementById('bfWireSize').value = '12';
+  document.getElementById('bfConductors').value = '3';
+  document.getElementById('bfDevices').value = '1';
+  document.getElementById('bfClamps').value = '0';
+  document.getElementById('bfEgc').value = '0';
+  document.getElementById('bfExtension').value = '0';
+  bfUpdateCalc();
+}
+
+function ampReset() {
+  document.getElementById('ampWire').selectedIndex = 0;
+  document.getElementById('ampInsulation').value = 'thhn';
+  document.getElementById('ampConduit').value = 'raceway';
+  document.getElementById('ampAmbient').value = '86';
+  document.getElementById('ampBundle').value = '1.00';
+  document.getElementById('ampSun').value = '0';
+  ampUpdateCalc();
+}
+
+function vdReset() {
+  document.getElementById('vdAmps').value = '100';
+  document.getElementById('vdFeet').value = '150';
+  document.getElementById('vdVoltage').value = '240';
+  document.getElementById('vdPhase').value = '1';
+  document.getElementById('vdMaterial').value = 'cu';
+  document.getElementById('vdMaxPct').value = '3';
+  vdUpdateCalc();
+}
+
+function lcReset() {
+  document.getElementById('lcMethod').value = 'optional';
+  document.getElementById('lcVoltage').value = '208';
+  document.getElementById('lcOccupancy').value = 'mf';
+  document.getElementById('lcSqFt').value = '1500';
+  document.getElementById('lcSmallAppl').value = '2';
+  document.getElementById('lcLaundry').value = '1';
+  document.getElementById('lcRange').value = '12000';
+  document.getElementById('lcDryer').value = '5000';
+  document.getElementById('lcDishwasher').value = '1500';
+  document.getElementById('lcMicrowave').value = '1500';
+  document.getElementById('lcDisposal').value = '900';
+  document.getElementById('lcWaterHtr').value = '4500';
+  document.getElementById('lcOther').value = '0';
+  document.getElementById('lcAC').value = '5000';
+  document.getElementById('lcHeat').value = '0';
+  document.getElementById('lcHeatPump').value = '0';
+  document.getElementById('lcEV').value = '0';
+  document.getElementById('lcNycAC').value = '0';
+  document.getElementById('lcMeterVA').value = '0';
+  lcUpdate();
+}
+
+function cvReset() {
+  document.getElementById('cv-voltage').value = '240';
+  document.getElementById('cv-phase').value = '1';
+  document.getElementById('cv-pf').value = '0.90';
+  document.getElementById('cv-voltage-custom-group').style.display = 'none';
+  document.getElementById('cv-pf-custom-group').style.display = 'none';
+  ['cv-amps','cv-watts','cv-kw','cv-hp','cv-va','cv-kva'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('cv-result').style.display = 'none';
+}
+
+
 var cvUpdating = false;
 
 function cvGetVoltage() {
