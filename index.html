@@ -1377,7 +1377,7 @@
     <span class="fill-pill pill-blue" style="cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 220.14(N) — AC circuits load shall not be less than 1500VA for each required branch circuit')">NYCEC 220.14(N)</span>
     <span class="fill-pill pill-blue" style="cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 210.11(C)(5) — Individual branch circuit for each air conditioning receptacle outlet')">NYCEC 210.11(C)(5)</span>
     <span class="fill-pill pill-blue" style="cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 220.87 — Determining existing loads using maximum demand data')">NYCEC 220.87</span>
-    <span style="color:var(--text-dim);font-size:12px">AC outlet = min 1500VA · individual branch circuit per AC</span>
+    <span id="lcMethodNote" style="color:var(--text-dim);font-size:12px">AC outlet = min 1500VA · individual branch circuit per AC</span>
     </div>
   </div>
 
@@ -1395,7 +1395,6 @@
           <option value="nycec87">NYCEC 220.87 — Existing Load · Meter Data (NYC only)</option>
         </select>
       </div>
-      <div id="lcMethodNote" style="font-family:IBM Plex Mono,monospace;font-size:10px;line-height:1.6;padding:8px 10px;border-radius:4px;border-left:3px solid var(--border)"></div>
 
       <div class="ctrl-group">
         <span class="ctrl-label">Service Voltage</span>
@@ -3421,18 +3420,16 @@ function lcUpdate() {
   // NYC AC load (NYCEC 220.14(N)) — 1,500 VA per outlet
   var nycACVA = nycAC * 1500;
 
-  // Method note
+  // Method note in bar
   var noteEl = document.getElementById('lcMethodNote');
   var notes = {
-    optional: '<span style="color:var(--nec)">NEC 220.82</span> — Residential only. Dwelling units 100A+. Simplest method — recommended for new single/multi-family.',
-    existing: '<span style="color:var(--nec)">NEC 220.83</span> — Residential only. Use for service upgrades or panel replacements in existing dwellings.',
-    standard: '<span style="color:var(--nec)">NEC 220.42</span> — Required for commercial. Also valid for residential. More conservative — calculates each load individually.',
-    nycec87: '<span style="color:var(--nycec)">NYCEC 220.87</span> — NYC only. Use actual peak demand from utility meter data (12 months preferred, min 30 days). Add 25% for new loads.'
+    optional:  'New dwelling · 220.82 · residential only',
+    existing:  'Existing dwelling · 220.83 · residential only',
+    standard:  'Required for commercial · valid for residential',
+    nycec87:   'NYC only · use peak demand from meter data · new loads × 125%'
   };
-  noteEl.innerHTML = notes[method];
-  noteEl.style.borderColor = is87 ? 'var(--nycec)' : 'var(--nec)';
-  noteEl.style.background = is87 ? 'rgba(74,158,255,0.05)' : 'rgba(255,107,26,0.05)';
-  noteEl.style.color = 'var(--text-dim)';
+  noteEl.textContent = notes[method];
+  noteEl.style.color = is87 ? 'var(--nycec)' : 'var(--text-dim)';
 
   var html = '';
   var totalVA = 0;
