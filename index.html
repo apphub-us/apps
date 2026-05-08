@@ -259,7 +259,7 @@
 
   select, input[type=number] { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 13px; padding: 8px 12px; border-radius: 3px; outline: none; cursor: pointer; transition: border-color 0.15s; }
   select:focus, input[type=number]:focus { border-color: var(--accent); }
-  input[type=number] { width: 80px; }
+  input[type=number] { width: 100%; }
 
   .result-box { margin: 14px 20px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 4px; display: none; flex-shrink: 0; }
   .result-box.show { display: block; }
@@ -621,13 +621,13 @@
   <div class="tab" onclick="switchTab('boxfill', this)">📦 Box Fill</div>
   <div class="tab" onclick="switchTab('ampacity', this)">⚡ Ampacity</div>
   <div class="tab" onclick="switchTab('vdrop', this)">📏 Voltage Drop</div>
-  <div class="tab" onclick="switchTab('pullbox', this)">🗃️ Pull Box</div>
-  <div class="tab" onclick="switchTab('gfci', this)">🔌 GFCI/AFCI</div>
   <div class="tab" onclick="switchTab('loadcalc', this)">🏠 Load Calc</div>
   <div class="tab" onclick="switchTab('converter', this)">🔄 Converter</div>
-  <div class="tab" onclick="switchTab('grounding', this)">🌍 Grounding</div>
   <div class="tab" onclick="switchTab('nycamend', this)">🗽 NYC Code</div>
+  <div class="tab" onclick="switchTab('gfci', this)">🔌 GFCI/AFCI</div>
+  <div class="tab" onclick="switchTab('grounding', this)">🌍 Grounding</div>
   <div class="tab" onclick="switchTab('outlets', this)">🔌 Outlets</div>
+  <div class="tab" onclick="switchTab('pullbox', this)">🗃️ Pull Box</div>
 </div>
 
 <!-- MOBILE BOTTOM NAV -->
@@ -684,7 +684,7 @@
     <div class="welcome" id="welcome">
       <div style="margin-bottom:12px"><svg width="52" height="52" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="18" fill="#FFC700"/><path d="M62 12L30 52H50L38 88L70 48H50L62 12Z" fill="#0A0A0A"/></svg></div>
       <h2>Ask SparkyPro</h2>
-      <p>Expert AI assistant for <strong>NEC 2023</strong> and <strong>NYCEC 2025</strong> code questions.<br>Calculations, amendments, field questions — all in one place.</p>
+      <p>Expert AI assistant for <strong>NEC 2020</strong> and <strong>NYCEC 2025</strong> code questions.<br>Calculations, amendments, field questions — all in one place.</p>
       <div class="welcome-examples">
         <div class="welcome-ex" onclick="quickAsk(this.textContent)">"How many 12 AWG THHN in 3/4 EMT?"</div>
         <div class="welcome-ex" onclick="quickAsk(this.textContent)">"Is AFCI required in NYC multifamily kitchen?"</div>
@@ -700,7 +700,7 @@
         onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
       <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
     </div>
-    <div class="input-hint">ENTER TO SEND · SHIFT+ENTER FOR NEW LINE · NEC 2023</div>
+    <div class="input-hint">ENTER TO SEND · SHIFT+ENTER FOR NEW LINE · NEC 2020</div>
   </div>
 
 </div>
@@ -1389,11 +1389,13 @@
       <div class="ctrl-group">
         <span class="ctrl-label">Calculation Method</span>
         <select id="lcMethod" onchange="lcUpdate()">
-          <option value="optional">Optional Method — NEC 220.82 (New Dwelling)</option>
-          <option value="existing">Optional Method — NEC 220.83 (Existing Dwelling)</option>
-          <option value="standard">Standard Method — NEC 220.42</option>
+          <option value="optional">220.82 — Optional · New Dwelling (residential)</option>
+          <option value="existing">220.83 — Optional · Existing Dwelling (residential)</option>
+          <option value="standard">220.42 — Standard Method (residential or commercial)</option>
+          <option value="nycec87">NYCEC 220.87 — Existing Load · Meter Data (NYC only)</option>
         </select>
       </div>
+      <div id="lcMethodNote" style="font-family:IBM Plex Mono,monospace;font-size:10px;line-height:1.6;padding:8px 10px;border-radius:4px;border-left:3px solid var(--border)"></div>
 
       <div class="ctrl-group">
         <span class="ctrl-label">Service Voltage</span>
@@ -1481,6 +1483,20 @@
         <span class="ctrl-label">EV Charger (VA)</span>
         <input type="number" id="lcEV" value="0" min="0" oninput="lcUpdate()">
       </div>
+
+      <div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:2px;color:var(--nycec);text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:6px">NYC Only — NYCEC Additions</div>
+
+      <div class="ctrl-group">
+        <span class="ctrl-label" style="color:var(--nycec)">AC Outlets (NYCEC 220.14(N) — 1,500 VA each)</span>
+        <input type="number" id="lcNycAC" value="0" min="0" max="20" oninput="lcUpdate()">
+      </div>
+      <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.5;padding:4px 0">Each required AC outlet = min 1,500 VA per NYCEC 220.14(N). Enter number of AC outlets (living room, bedroom, dining room).</div>
+
+      <div class="ctrl-group" id="lcMeterDataGroup" style="display:none">
+        <span class="ctrl-label" style="color:var(--nycec)">Peak Demand from Meter (VA) — NYCEC 220.87</span>
+        <input type="number" id="lcMeterVA" value="0" min="0" oninput="lcUpdate()">
+      </div>
+      <div id="lcMeterNote" style="display:none;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.5;padding:4px 0">Use highest 15-min demand reading from 12 months of meter data (min 30 days). Add 25% for new loads per NYCEC 220.87.</div>
 
     </div>
 
@@ -3394,6 +3410,29 @@ function lcUpdate() {
   var heat      = parseFloat(document.getElementById('lcHeat').value) || 0;
   var heatPump  = parseFloat(document.getElementById('lcHeatPump').value) || 0;
   var ev        = parseFloat(document.getElementById('lcEV').value) || 0;
+  var nycAC     = parseInt(document.getElementById('lcNycAC').value) || 0;
+  var meterVA   = parseFloat(document.getElementById('lcMeterVA').value) || 0;
+
+  // Show/hide NYCEC 220.87 meter field
+  var is87 = method === 'nycec87';
+  document.getElementById('lcMeterDataGroup').style.display = is87 ? '' : 'none';
+  document.getElementById('lcMeterNote').style.display = is87 ? '' : 'none';
+
+  // NYC AC load (NYCEC 220.14(N)) — 1,500 VA per outlet
+  var nycACVA = nycAC * 1500;
+
+  // Method note
+  var noteEl = document.getElementById('lcMethodNote');
+  var notes = {
+    optional: '<span style="color:var(--nec)">NEC 220.82</span> — Residential only. Dwelling units 100A+. Simplest method — recommended for new single/multi-family.',
+    existing: '<span style="color:var(--nec)">NEC 220.83</span> — Residential only. Use for service upgrades or panel replacements in existing dwellings.',
+    standard: '<span style="color:var(--nec)">NEC 220.42</span> — Required for commercial. Also valid for residential. More conservative — calculates each load individually.',
+    nycec87: '<span style="color:var(--nycec)">NYCEC 220.87</span> — NYC only. Use actual peak demand from utility meter data (12 months preferred, min 30 days). Add 25% for new loads.'
+  };
+  noteEl.innerHTML = notes[method];
+  noteEl.style.borderColor = is87 ? 'var(--nycec)' : 'var(--nec)';
+  noteEl.style.background = is87 ? 'rgba(74,158,255,0.05)' : 'rgba(255,107,26,0.05)';
+  noteEl.style.color = 'var(--text-dim)';
 
   var html = '';
   var totalVA = 0;
@@ -3421,7 +3460,8 @@ function lcUpdate() {
     // Step 5: EV at 100%
     var evVA = ev;
 
-    totalVA = generalDemand + appliancesVA + hvacVA + evVA;
+    // Step 6: NYC AC outlets (NYCEC 220.14(N))
+    totalVA = generalDemand + appliancesVA + hvacVA + evVA + nycACVA;
     var totalAmps = totalVA / voltage;
 
     html += '<div style="font-family:Bebas Neue,monospace;font-size:22px;letter-spacing:2px;color:var(--accent);margin-bottom:16px">NEC 220.82 — OPTIONAL METHOD</div>';
@@ -3474,6 +3514,14 @@ function lcUpdate() {
       html += '</div>';
     }
 
+    // NYC AC outlets
+    if (nycACVA > 0) {
+      html += lcSection('NYC — AC OUTLETS (NYCEC 220.14(N))');
+      html += '<div style="background:rgba(74,158,255,0.06);border:1px solid rgba(74,158,255,0.3);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+      html += lcRow('AC Outlets ('+nycAC+' × 1,500 VA)', nycACVA, 'NYCEC 220.14(N) — required in NYC');
+      html += '</div>';
+    }
+
   } else if (method === 'existing') {
     // ── NEC 220.83 Optional Method — Existing Dwelling ───
     var lightingVA  = sqFt * 3;
@@ -3488,7 +3536,7 @@ function lcUpdate() {
       ? allLoads
       : 8000 + (allLoads - 8000) * 0.40;
 
-    totalVA = demand;
+    totalVA = demand + nycACVA;
     var totalAmps = totalVA / voltage;
 
     html += '<div style="font-family:Bebas Neue,monospace;font-size:22px;letter-spacing:2px;color:var(--accent);margin-bottom:16px">NEC 220.83 — EXISTING DWELLING</div>';
@@ -3512,6 +3560,41 @@ function lcUpdate() {
     html += lcRow('Total After Demand Factor', Math.round(demand), demandNote83, true);
     html += '</div>';
 
+    if (nycACVA > 0) {
+      html += lcSection('NYC — AC OUTLETS (NYCEC 220.14(N))');
+      html += '<div style="background:rgba(74,158,255,0.06);border:1px solid rgba(74,158,255,0.3);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+      html += lcRow('AC Outlets ('+nycAC+' × 1,500 VA)', nycACVA, 'NYCEC 220.14(N) — added after demand factor');
+      html += '</div>';
+    }
+
+  } else if (method === 'nycec87') {
+    // ── NYCEC 220.87 — Existing Load from Meter Data ─────
+    var newLoadsVA = range + dryer + dishwasher + microwave + disposal + waterHtr + other + ev + nycACVA;
+    var newLoads25 = newLoadsVA * 1.25;
+    totalVA = meterVA + newLoads25;
+
+    html += '<div style="font-family:Bebas Neue,monospace;font-size:22px;letter-spacing:2px;color:var(--nycec);margin-bottom:16px">NYCEC 220.87 — EXISTING LOAD (METER DATA)</div>';
+
+    html += lcSection('STEP 1 — EXISTING LOAD FROM METER');
+    html += '<div style="background:rgba(74,158,255,0.06);border:1px solid rgba(74,158,255,0.3);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    html += lcRow('Peak Demand (from meter data)', meterVA, 'Use highest 15-min reading — 12 months preferred, min 30 days');
+    html += '</div>';
+
+    html += lcSection('STEP 2 — NEW LOADS @ 125%');
+    html += '<div style="background:rgba(74,158,255,0.06);border:1px solid rgba(74,158,255,0.3);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    if (range)      html += lcRow('Range / Oven', range);
+    if (dryer)      html += lcRow('Dryer', dryer);
+    if (dishwasher) html += lcRow('Dishwasher', dishwasher);
+    if (microwave)  html += lcRow('Microwave', microwave);
+    if (disposal)   html += lcRow('Disposal', disposal);
+    if (waterHtr)   html += lcRow('Water Heater', waterHtr);
+    if (other)      html += lcRow('Other', other);
+    if (ev)         html += lcRow('EV Charger', ev);
+    if (nycACVA)    html += lcRow('NYC AC Outlets ('+nycAC+' × 1,500 VA)', nycACVA, 'NYCEC 220.14(N)');
+    html += lcRow('New Loads Subtotal', newLoadsVA, '');
+    html += lcRow('New Loads × 125%', Math.round(newLoads25), 'NYCEC 220.87 — 25% added for new loads', true);
+    html += '</div>';
+
   } else {
     // ── Standard Method NEC 220.42 ──────────────────────
     var lightingVA  = sqFt * 3;
@@ -3519,11 +3602,6 @@ function lcUpdate() {
     var laundryVA   = laundry * 1500;
     var generalTotal= lightingVA + smallApplVA + laundryVA;
 
-    // 220.42 demand factors: first 3000 VA @ 35%, next 117,000 @ 35%, remainder @ 25%
-    // Simplified: first 3000 @ 100% after applying 35% = 3000*0.35? 
-    // Actually NEC 220.42: first 3000 VA @ 35%, 3001-120,000 @ 35%, >120,000 @ 25%
-    // Wait — correct: first 3000 @ 100% then apply 35% to general lighting only
-    // Standard method: lighting+small appl+laundry then demand table 220.42
     var lightingDemand;
     if (generalTotal <= 3000) lightingDemand = generalTotal;
     else if (generalTotal <= 120000) lightingDemand = 3000 + (generalTotal - 3000) * 0.35;
@@ -3537,7 +3615,7 @@ function lcUpdate() {
     var hvacVA = Math.max(ac, heat, heatPump);
     var evVA = ev;
 
-    totalVA = lightingDemand + appliancesDemand + hvacVA + evVA;
+    totalVA = lightingDemand + appliancesDemand + hvacVA + evVA + nycACVA;
     var totalAmps = totalVA / voltage;
 
     html += '<div style="font-family:Bebas Neue,monospace;font-size:22px;letter-spacing:2px;color:var(--accent);margin-bottom:16px">NEC 220.42 — STANDARD METHOD</div>';
@@ -3556,6 +3634,13 @@ function lcUpdate() {
     html += lcRow('Appliances Total', appliancesTotal);
     html += lcRow('After Demand ('+appliances.length+'+ = 75%)', Math.round(appliancesDemand), appliances.length >= 4 ? '4+ appliances @ 75%' : 'Fewer than 4 @ 100%', true);
     html += '</div>';
+
+    if (nycACVA > 0) {
+      html += lcSection('NYC — AC OUTLETS (NYCEC 220.14(N))');
+      html += '<div style="background:rgba(74,158,255,0.06);border:1px solid rgba(74,158,255,0.3);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+      html += lcRow('AC Outlets ('+nycAC+' × 1,500 VA)', nycACVA, 'NYCEC 220.14(N)');
+      html += '</div>';
+    }
   }
 
   // ── FINAL RESULT (all methods) ────────────────────────
@@ -3588,11 +3673,12 @@ function lcUpdate() {
 
   // NEC reference footer
   html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.8;padding:12px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">';
-  html += '★ <span class="nec-link" onclick="necLink(\'NEC 220.82\')">NEC 220.82</span> Optional Method — new dwelling units. ';
+  html += '★ <span class="nec-link" onclick="necLink(\'NEC 220.82\')">NEC 220.82</span> Optional — new dwellings. ';
   html += '<span class="nec-link" onclick="necLink(\'NEC 220.83\')">NEC 220.83</span> — existing dwellings. ';
-  html += '<span class="nec-link" onclick="necLink(\'NEC 220.42\')">NEC 220.42</span> — Standard Method lighting demand factors.<br>';
-  html += 'Service conductors must be sized per <span class="nec-link" onclick="necLink(\'NEC 310.16\')">NEC 310.16</span>. Neutral load calculated per <span class="nec-link" onclick="necLink(\'NEC 220.61\')">NEC 220.61</span>.<br>';
-  html += 'NYC: Verify with NYCEC local amendments. All calculations should be reviewed by licensed engineer for permits.';
+  html += '<span class="nec-link" onclick="necLink(\'NEC 220.42\')">NEC 220.42</span> — Standard Method.<br>';
+  html += '<span style="color:var(--nycec)">NYCEC 220.87</span> — NYC existing load via meter data. ';
+  html += '<span style="color:var(--nycec)">NYCEC 220.14(N)</span> — AC outlet = min 1,500 VA each.<br>';
+  html += 'Service conductors per <span class="nec-link" onclick="necLink(\'NEC 310.16\')">NEC 310.16</span>. All calculations should be reviewed by licensed engineer for permits.';
   html += '</div>';
 
   document.getElementById('lcResult').innerHTML = html;
