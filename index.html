@@ -580,6 +580,28 @@
   }
   .reset-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(224,82,82,0.07); }
 
+  .fav-bar { display: flex; gap: 6px; margin-top: 4px; }
+  .save-btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+    background: none; border: 1px solid var(--border);
+    color: var(--text-dimmer); font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 5px 10px; border-radius: 3px; cursor: pointer; transition: all 0.15s;
+  }
+  .save-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(255,199,0,0.07); }
+  .fav-list { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .fav-item {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 3px; padding: 5px 8px; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dim);
+    transition: all 0.15s;
+  }
+  .fav-item:hover { border-color: var(--accent); color: var(--text); }
+  .fav-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fav-delete { color: var(--text-dimmer); padding: 0 3px; font-size: 13px; line-height: 1; flex-shrink: 0; }
+  .fav-delete:hover { color: var(--danger); }
+
   .nec-row, .nycec-row {
     display: flex; gap: 14px; align-items: center; flex-wrap: nowrap; overflow: hidden;
   }
@@ -785,6 +807,10 @@
       <input type="number" id="cfNumWires" value="3" min="1" max="40" onchange="cfUpdateCalc()" oninput="cfUpdateCalc()">
     </div>
     <button class="reset-btn" onclick="cfReset()">↺ Reset</button>
+    <div class="fav-bar">
+      <button class="save-btn" onclick="favSave('cf')">⭐ Save</button>
+    </div>
+    <div class="fav-list" id="cf-fav-list"></div>
   </div>
 
   <div class="result-box" id="cfResultBox">
@@ -1086,6 +1112,10 @@
       </select>
     </div>
     <button class="reset-btn" onclick="ampReset()">↺ Reset</button>
+    <div class="fav-bar">
+      <button class="save-btn" onclick="favSave('amp')">⭐ Save</button>
+    </div>
+    <div class="fav-list" id="amp-fav-list"></div>
   </div>
 
   <!-- RESULT -->
@@ -1218,6 +1248,10 @@
       </select>
     </div>
     <button class="reset-btn" onclick="vdReset()">↺ Reset</button>
+    <div class="fav-bar">
+      <button class="save-btn" onclick="favSave('vd')">⭐ Save</button>
+    </div>
+    <div class="fav-list" id="vd-fav-list"></div>
   </div>
 
   <!-- RESULT -->
@@ -1522,6 +1556,10 @@
       </div>
 
       <button class="reset-btn" onclick="lcReset()">↺ Reset</button>
+      <div class="fav-bar">
+        <button class="save-btn" onclick="favSave('lc')">⭐ Save</button>
+      </div>
+      <div class="fav-list" id="lc-fav-list"></div>
 
     </div>
 
@@ -3678,7 +3716,147 @@ function lcUpdate() {
 // Auto-run on load
 lcUpdate();
 
-// ── RESET FUNCTIONS ───────────────────────────────────────
+// ── FAVORITES SYSTEM ─────────────────────────────────────
+
+var FAV_KEY = 'sparky_favorites';
+
+function favGetAll() {
+  try { return JSON.parse(localStorage.getItem(FAV_KEY) || '{}'); } catch(e) { return {}; }
+}
+
+function favSaveAll(data) {
+  localStorage.setItem(FAV_KEY, JSON.stringify(data));
+}
+
+function favGetValues(type) {
+  if (type === 'vd') return {
+    amps: document.getElementById('vdAmps').value,
+    feet: document.getElementById('vdFeet').value,
+    voltage: document.getElementById('vdVoltage').value,
+    phase: document.getElementById('vdPhase').value,
+    material: document.getElementById('vdMaterial').value,
+    maxPct: document.getElementById('vdMaxPct').value
+  };
+  if (type === 'amp') return {
+    wire: document.getElementById('ampWireSize').value,
+    insulation: document.getElementById('ampInsulation').value,
+    conduit: document.getElementById('ampConduit').value,
+    ambient: document.getElementById('ampAmbient').value,
+    bundle: document.getElementById('ampBundle').value,
+    sun: document.getElementById('ampSun').value
+  };
+  if (type === 'cf') return {
+    conduitType: document.getElementById('cfConduitType').value,
+    conduitSize: document.getElementById('cfConduitSize').value,
+    wireType: document.getElementById('cfWireType').value,
+    wireSize: document.getElementById('cfWireSize').value,
+    numWires: document.getElementById('cfNumWires').value
+  };
+  if (type === 'lc') return {
+    method: document.getElementById('lcMethod').value,
+    voltage: document.getElementById('lcVoltage').value,
+    occupancy: document.getElementById('lcOccupancy') ? document.getElementById('lcOccupancy').value : 'sf',
+    sqFt: document.getElementById('lcSqFt').value,
+    smallAppl: document.getElementById('lcSmallAppl').value,
+    laundry: document.getElementById('lcLaundry').value,
+    range: document.getElementById('lcRange').value,
+    dryer: document.getElementById('lcDryer').value,
+    ac: document.getElementById('lcAC').value,
+    ev: document.getElementById('lcEV').value
+  };
+  return {};
+}
+
+function favSetValues(type, vals) {
+  if (type === 'vd') {
+    document.getElementById('vdAmps').value = vals.amps || '';
+    document.getElementById('vdFeet').value = vals.feet || '';
+    document.getElementById('vdVoltage').value = vals.voltage || '240';
+    document.getElementById('vdPhase').value = vals.phase || '1';
+    document.getElementById('vdMaterial').value = vals.material || 'cu';
+    document.getElementById('vdMaxPct').value = vals.maxPct || '3';
+    vdUpdateCalc();
+  } else if (type === 'amp') {
+    document.getElementById('ampWireSize').value = vals.wire || '12';
+    if (vals.insulation) document.getElementById('ampInsulation').value = vals.insulation;
+    if (vals.conduit) document.getElementById('ampConduit').value = vals.conduit;
+    document.getElementById('ampAmbient').value = vals.ambient || '86';
+    document.getElementById('ampBundle').value = vals.bundle || '1.00';
+    document.getElementById('ampSun').value = vals.sun || '0';
+    ampUpdateCalc();
+  } else if (type === 'cf') {
+    document.getElementById('cfConduitType').value = vals.conduitType || 'emt';
+    document.getElementById('cfConduitSize').value = vals.conduitSize || '1';
+    document.getElementById('cfWireType').value = vals.wireType || 'thhn';
+    document.getElementById('cfWireSize').value = vals.wireSize || '12';
+    document.getElementById('cfNumWires').value = vals.numWires || '3';
+    cfUpdateCalc();
+  } else if (type === 'lc') {
+    document.getElementById('lcMethod').value = vals.method || 'optional';
+    document.getElementById('lcVoltage').value = vals.voltage || '208';
+    if (document.getElementById('lcOccupancy') && vals.occupancy) document.getElementById('lcOccupancy').value = vals.occupancy;
+    document.getElementById('lcSqFt').value = vals.sqFt || '1500';
+    document.getElementById('lcSmallAppl').value = vals.smallAppl || '2';
+    document.getElementById('lcLaundry').value = vals.laundry || '1';
+    document.getElementById('lcRange').value = vals.range || '0';
+    document.getElementById('lcDryer').value = vals.dryer || '0';
+    document.getElementById('lcAC').value = vals.ac || '0';
+    document.getElementById('lcEV').value = vals.ev || '0';
+    lcUpdate();
+  }
+}
+
+function favGetLabel(type, vals) {
+  if (type === 'vd') return vals.amps + 'A · ' + vals.feet + 'ft · ' + vals.voltage + 'V · ' + (vals.material === 'cu' ? 'Cu' : 'Al');
+  if (type === 'amp') return vals.wire + ' AWG · ' + (vals.ambient || '86') + '°F';
+  if (type === 'cf') return vals.conduitType.toUpperCase() + ' ' + vals.conduitSize + '" · ' + vals.wireSize + ' AWG · ' + vals.numWires + 'w';
+  if (type === 'lc') return vals.sqFt + ' sqft · ' + vals.voltage + 'V · ' + vals.method;
+  return 'Saved';
+}
+
+function favSave(type) {
+  var vals = favGetValues(type);
+  var label = prompt('Name this preset:', favGetLabel(type, vals));
+  if (!label) return;
+  var all = favGetAll();
+  if (!all[type]) all[type] = [];
+  all[type].push({ name: label, vals: vals, id: Date.now() });
+  favSaveAll(all);
+  favRender(type);
+}
+
+function favLoad(type, id) {
+  var all = favGetAll();
+  var item = (all[type] || []).find(function(f){ return f.id === id; });
+  if (item) favSetValues(type, item.vals);
+}
+
+function favDelete(type, id) {
+  var all = favGetAll();
+  if (all[type]) all[type] = all[type].filter(function(f){ return f.id !== id; });
+  favSaveAll(all);
+  favRender(type);
+}
+
+function favRender(type) {
+  var el = document.getElementById(type + '-fav-list');
+  if (!el) return;
+  var all = favGetAll();
+  var items = all[type] || [];
+  if (items.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = items.map(function(f) {
+    return '<div class="fav-item" onclick="favLoad(\'' + type + '\',' + f.id + ')">' +
+      '<span style="color:var(--accent)">⭐</span>' +
+      '<span class="fav-item-name">' + f.name + '</span>' +
+      '<span class="fav-delete" onclick="event.stopPropagation();favDelete(\'' + type + '\',' + f.id + ')" title="Delete">×</span>' +
+    '</div>';
+  }).join('');
+}
+
+// Init all fav lists on load
+['vd','amp','cf','lc'].forEach(favRender);
+
+
 function cfReset() {
   document.getElementById('cfConduitType').value = 'emt';
   document.getElementById('cfConduitSize').value = '1';
