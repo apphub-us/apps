@@ -1145,7 +1145,7 @@
     <div class="fill-rule"><span class="fill-pill pill-green" onclick="necLink('Voltage drop formula: VD = (2 × K × I × L) / CM — explain K constant, circular mils CM, and how to apply this in the field')">VD Formula</span> VD = (2 × K × I × L) / CM</div>
     <div style="width:1px;background:var(--border);margin:0 8px;flex-shrink:0"></div>
     <span class="fill-pill" style="background:rgba(74,158,255,0.2);color:var(--nycec);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 210.19 and 215.2 — In NYC the 5% total voltage drop is a LEGAL REQUIREMENT, not just a recommendation as in NEC')">NYCEC 210.19 / 215.2</span>
-    <span style="color:var(--nycec);font-size:12px;flex-shrink:0">5% total = <strong>wymagane prawnie</strong> · NEC = tylko rekomendacja</span>
+    <span style="color:var(--nycec);font-size:12px;flex-shrink:0">5% total = <strong>legal requirement in NYC</strong></span>
   </div>
 
   <div class="cf-controls">
@@ -1186,7 +1186,7 @@
       <select id="vdMaxPct" onchange="vdUpdateCalc()">
         <option value="2">2% (conservative)</option>
         <option value="3" selected>3% (NEC branch circuit)</option>
-        <option value="5">5% (NEC total feeder+branch)</option>
+        <option value="5">5% (NEC total feeder+branch · NYCEC max)</option>
       </select>
     </div>
   </div>
