@@ -30,6 +30,7 @@
     --danger: #e05252;
     --success: #52c07a;
     --warn: #e8c23a;
+    --nycec: #4a9eff;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -62,7 +63,8 @@
   .logo-sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; }
 
   .status-bar { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); }
-  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--nycec); animation: pulse 2s infinite; }
+  .status-dot-nyc { width: 7px; height: 7px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; display:inline-block; margin-right:4px; }
 
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
@@ -228,7 +230,7 @@
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     padding: 8px 20px;
-    display: flex; gap: 20px; flex-wrap: wrap; flex-shrink: 0;
+    display: flex; gap: 16px; flex-wrap: nowrap; flex-shrink: 0; overflow: hidden; align-items: center;
   }
   .fill-rule { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); }
   .fill-pill { padding: 2px 8px; border-radius: 2px; font-size: 11px; font-weight: 600; }
@@ -237,6 +239,7 @@
   .pill-green { background: rgba(82,192,122,0.2); color: var(--success); }
   .pill-yellow { background: rgba(232,194,58,0.2); color: var(--warn); }
   .pill-orange { background: rgba(245,166,35,0.2); color: var(--accent); }
+  .pill-blue { background: rgba(74,158,255,0.2); color: var(--nycec); }
 
   .cf-controls {
     background: var(--surface2);
@@ -599,7 +602,10 @@
   </div>
   <div class="status-bar">
     <div class="status-dot"></div>
-    <span>NYCEC 2025 · NEC 2020</span>
+    <span style="color:var(--nycec)">NYCEC 2025</span>
+    <span style="color:var(--text-dimmer)">·</span>
+    <div class="status-dot-nyc"></div>
+    <span style="color:var(--success)">NEC 2020</span>
   </div>
 </header>
 
@@ -699,12 +705,12 @@
 
 
   <div class="fill-rules-bar">
-    <span class="fill-pill pill-orange" style="cursor:pointer" onclick="necLink('NEC Chapter 9 Tables 1,4,5 — Conduit Fill rules')">NEC Ch.9</span>
+    <span class="fill-pill pill-green" style="cursor:pointer" onclick="necLink('NEC Chapter 9 Tables 1,4,5 — Conduit Fill rules')">NEC Ch.9</span>
     <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC Chapter 9 Table 1 — Conduit fill 53% maximum for 1 conductor')">53%</span> 1 conductor</div>
     <div class="fill-rule"><span class="fill-pill pill-yellow" onclick="necLink('NEC Chapter 9 Table 1 — Conduit fill 31% maximum for 2 conductors')">31%</span> 2 conductors</div>
-    <div class="fill-rule"><span class="fill-pill pill-green" onclick="necLink('NEC Chapter 9 Table 1 — Conduit fill 40% maximum for 3 or more conductors')">40%</span> 3+ conductors</div>
+    <div class="fill-rule"><span class="fill-pill pill-yellow" onclick="necLink('NEC Chapter 9 Table 1 — Conduit fill 40% maximum for 3 or more conductors')">40%</span> 3+ conductors</div>
     <div style="width:1px;background:var(--border);margin:0 8px;flex-shrink:0"></div>
-    <span class="fill-pill" style="background:rgba(82,192,122,0.15);color:var(--success);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 334.12 — NM Cable not permitted in buildings exceeding 3 floors above grade')">NYCEC 334.12</span>
+    <span class="fill-pill" style="background:rgba(74,158,255,0.2);color:var(--nycec);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 334.12 — NM Cable not permitted in buildings exceeding 3 floors above grade')">NYCEC 334.12</span>
     <span style="color:var(--text-dim);font-size:12px">EMT required · No Romex in commercial/multifamily</span>
   </div>
 
@@ -797,10 +803,10 @@
 
   <!-- NEC RULES BAR -->
   <div class="fill-rules-bar">
-    <span class="fill-pill pill-yellow" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 314.16 — Box Fill Calculations — allowable conductor fill for outlet, device, pull, and junction boxes')">NEC 314.16</span>
+    <span class="fill-pill pill-green" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 314.16 — Box Fill Calculations — allowable conductor fill for outlet, device, pull, and junction boxes')">NEC 314.16</span>
     <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 314.16(B)(1) — Box fill calculation: conductor volume based on AWG size')">Volume</span> Each conductor = volume based on AWG</div>
     <div class="fill-rule"><span class="fill-pill pill-yellow" onclick="necLink('NEC 314.16(B)(4) — Box fill calculation: each device or equipment counts as 2x the largest conductor volume')">Devices</span> Each device/switch = 2× largest wire</div>
-    <div class="fill-rule"><span class="fill-pill pill-green" onclick="necLink('NEC 314.16(B)(2) — Box fill calculation: internal cable clamps count as 1x the largest conductor volume')">Clamps</span> Internal clamps = 1× largest wire</div>
+    <div class="fill-rule"><span class="fill-pill pill-yellow" onclick="necLink('NEC 314.16(B)(2) — Box fill calculation: internal cable clamps count as 1x the largest conductor volume')">Clamps</span> Internal clamps = 1× largest wire</div>
   </div>
 
   <!-- CALCULATOR -->
@@ -971,7 +977,7 @@
 <div class="panel" id="panel-ampacity">
 
   <div class="fill-rules-bar">
-    <span class="fill-pill pill-yellow" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 310.15 and 310.16 — Ampacity Calculations and Allowable Ampacities Table')">NEC 310.15 / 310.16</span>
+    <span class="fill-pill pill-green" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 310.15 and 310.16 — Ampacity Calculations and Allowable Ampacities Table')">NEC 310.15 / 310.16</span>
     <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 310.16 — Allowable Ampacities Table')">310.16</span> Base ampacity from NEC Table 310.16</div>
     <div class="fill-rule"><span class="fill-pill pill-yellow" onclick="necLink('NEC 310.15(B) — Ambient Temperature Correction Factors')">310.15(B)</span> Temp correction factor</div>
     <div class="fill-rule"><span class="fill-pill pill-green" onclick="necLink('NEC 310.15(C) — Adjustment Factors for More Than 3 Current-Carrying Conductors')">310.15(C)</span> Bundling adjustment factor</div>
@@ -1133,7 +1139,7 @@
 <div class="panel" id="panel-vdrop">
 
   <div class="fill-rules-bar">
-    <span class="fill-pill pill-yellow" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 210.19 and NEC 215.2 — Voltage drop recommendations for branch circuits and feeders')">NEC 210.19 / 215.2</span>
+    <span class="fill-pill pill-green" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 210.19 and NEC 215.2 — Voltage drop recommendations for branch circuits and feeders')">NEC 210.19 / 215.2</span>
     <div class="fill-rule"><span class="fill-pill pill-green" onclick="necLink('NEC 210.19 FPN — Voltage drop: recommended maximum 3% for branch circuits')">3%</span> NEC recommended max — branch circuits</div>
     <div class="fill-rule"><span class="fill-pill pill-yellow" onclick="necLink('NEC 215.2 FPN — Voltage drop: recommended maximum 5% total for feeder and branch circuit combined')">5%</span> NEC recommended max — feeder + branch combined</div>
     <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('Voltage drop formula: VD = (2 × K × I × L) / CM — explain K constant, circular mils CM, and how to apply this in the field')">VD Formula</span> VD = (2 × K × I × L) / CM</div>
@@ -1218,7 +1224,7 @@
 <div class="panel" id="panel-pullbox">
 
   <div class="fill-rules-bar">
-    <span class="fill-pill pill-yellow" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 314.28 — Pull and Junction Boxes sizing for conductors 4 AWG and larger')">NEC 314.28</span>
+    <span class="fill-pill pill-green" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 314.28 — Pull and Junction Boxes sizing for conductors 4 AWG and larger')">NEC 314.28</span>
     <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 314.28(A)(1) — Pull box straight pull: minimum length must be 8 times the trade size of the largest raceway')">Straight</span> Length = 8× largest raceway</div>
     <div class="fill-rule"><span class="fill-pill pill-yellow" onclick="necLink('NEC 314.28(A)(2) — Pull box angle or U pull: distance from raceway entry to opposite wall must be 6 times largest raceway plus sum of others in same row')">Angle/U</span> Distance = 6× largest + sum of others in row</div>
   </div>
@@ -1292,13 +1298,13 @@
 <div class="panel" id="panel-gfci">
 
   <div class="fill-rules-bar">
-    <span class="fill-pill pill-yellow" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 210.8 and 210.12 — GFCI and AFCI requirements')">NEC 210.8 / 210.12</span>
+    <span class="fill-pill pill-green" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 210.8 and 210.12 — GFCI and AFCI requirements')">NEC 210.8 / 210.12</span>
     <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 210.8 — GFCI Ground Fault Circuit Interrupter requirements')">GFCI</span> Ground Fault Circuit Interrupter</div>
     <div class="fill-rule"><span class="fill-pill pill-yellow" onclick="necLink('NEC 210.12 — AFCI Arc Fault Circuit Interrupter requirements')">AFCI</span> Arc Fault Circuit Interrupter</div>
     <div class="fill-rule"><span class="fill-pill" style="background:rgba(82,192,122,0.2);color:var(--success)" onclick="necLink('NEC 210.8 and NEC 210.12 — DUAL protection: both GFCI and AFCI required')">DUAL</span> Both GFCI + AFCI required</div>
     <div style="width:1px;background:var(--border);margin:0 8px;flex-shrink:0"></div>
-    <span class="fill-pill" style="background:rgba(82,192,122,0.15);color:var(--success);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 210.12(A) Exception — AFCI not required in kitchens and laundry in multifamily over 3 stories')">NYCEC 210.12(A)</span>
-    <span class="fill-pill" style="background:rgba(82,192,122,0.15);color:var(--success);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 210.52(J) — Receptacle outlet required for air conditioners in living rooms and bedrooms')">NYCEC 210.52(J)</span>
+    <span class="fill-pill" style="background:rgba(74,158,255,0.2);color:var(--nycec);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 210.12(A) Exception — AFCI not required in kitchens and laundry in multifamily over 3 stories')">NYCEC 210.12(A)</span>
+    <span class="fill-pill" style="background:rgba(74,158,255,0.2);color:var(--nycec);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 210.52(J) — Receptacle outlet required for air conditioners in living rooms and bedrooms')">NYCEC 210.52(J)</span>
     <span style="color:var(--text-dim);font-size:12px">AFCI exempt kitchens/laundry (multifamily 3+ floors) · AC outlet required in bedroom/living room</span>
   </div>
 
@@ -1337,14 +1343,14 @@
 <div class="panel" id="panel-loadcalc">
 
   <div class="fill-rules-bar">
-    <span class="fill-pill pill-yellow" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC Article 220 — Branch Circuit, Feeder, and Service Load Calculations')">NEC 220</span>
+    <span class="fill-pill pill-green" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC Article 220 — Branch Circuit, Feeder, and Service Load Calculations')">NEC 220</span>
     <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 220.82 — Optional Calculation Method for Dwelling Units')">220.82</span> Optional Method — Dwelling Units</div>
     <div class="fill-rule"><span class="fill-pill pill-yellow" onclick="necLink('NEC 220.83 — Optional Calculation Method for Existing Dwelling Units')">220.83</span> Optional Method — Existing Dwelling</div>
     <div class="fill-rule"><span class="fill-pill pill-green" onclick="necLink('NEC 220.42 — General Lighting Demand Factors for Dwelling Units')">220.42</span> General Lighting Load</div>
     <div style="width:1px;background:var(--border);margin:0 8px;flex-shrink:0"></div>
-    <span class="fill-pill" style="background:rgba(82,192,122,0.15);color:var(--success);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 220.14(N) — AC circuits load shall not be less than 1500VA for each required branch circuit')">NYCEC 220.14(N)</span>
-    <span class="fill-pill" style="background:rgba(82,192,122,0.15);color:var(--success);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 210.11(C)(5) — Individual branch circuit for each air conditioning receptacle outlet')">NYCEC 210.11(C)(5)</span>
-    <span class="fill-pill" style="background:rgba(82,192,122,0.15);color:var(--success);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 220.87 — Determining existing loads using maximum demand data')">NYCEC 220.87</span>
+    <span class="fill-pill" style="background:rgba(74,158,255,0.2);color:var(--nycec);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 220.14(N) — AC circuits load shall not be less than 1500VA for each required branch circuit')">NYCEC 220.14(N)</span>
+    <span class="fill-pill" style="background:rgba(74,158,255,0.2);color:var(--nycec);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 210.11(C)(5) — Individual branch circuit for each air conditioning receptacle outlet')">NYCEC 210.11(C)(5)</span>
+    <span class="fill-pill" style="background:rgba(74,158,255,0.2);color:var(--nycec);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 220.87 — Determining existing loads using maximum demand data')">NYCEC 220.87</span>
     <span style="color:var(--text-dim);font-size:12px">AC outlet = min 1500VA · individual branch circuit per AC</span>
   </div>
 
@@ -1613,7 +1619,7 @@
 <!-- ══ GROUNDING/BONDING PANEL ══ -->
 <div class="panel" id="panel-grounding">
   <div class="fill-rules-bar">
-    <span class="fill-pill pill-yellow" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC Article 250 — Complete Grounding and Bonding requirements overview')">NEC Art. 250</span>
+    <span class="fill-pill pill-green" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC Article 250 — Complete Grounding and Bonding requirements overview')">NEC Art. 250</span>
     <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC Article 250 — Grounding and Bonding requirements')">NEC 250</span> Grounding and Bonding</div>
     <div class="fill-rule"><span class="fill-pill pill-yellow" onclick="necLink('NEC 250.118 — Equipment Grounding Conductor EGC types and sizing')">EGC</span> Equipment Grounding Conductor</div>
     <div class="fill-rule"><span class="fill-pill pill-green" onclick="necLink('NEC 250.66 — Grounding Electrode Conductor GEC sizing')">GEC</span> Grounding Electrode Conductor</div>
@@ -1642,7 +1648,7 @@
 <!-- ══ NYC AMENDMENTS PANEL ══ -->
 <div class="panel" id="panel-nycamend">
   <div class="fill-rules-bar">
-    <span class="fill-pill" style="background:rgba(82,192,122,0.15);color:var(--success);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 2024 — New York City Electrical Code current edition amendments and local requirements')">NYCEC 2024</span>
+    <span class="fill-pill" style="background:rgba(74,158,255,0.2);color:var(--nycec);cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 2024 — New York City Electrical Code current edition amendments and local requirements')">NYCEC 2024</span>
     <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NYCEC — New York City Electrical Code based on NEC 2020 with local amendments')">NYCEC</span> NYC Electrical Code (NEC 2020 base)</div>
     <div class="fill-rule"><span class="fill-pill pill-yellow" onclick="necLink('NYC Local Laws — electrical code amendments specific to New York City buildings')">Local Law</span> NYC-specific amendments</div>
     <div class="fill-rule"><span class="fill-pill pill-green" onclick="necLink('NYC DOB — Department of Buildings electrical permit and inspection requirements')">DOB</span> Dept of Buildings requirements</div>
@@ -1672,7 +1678,7 @@
 <!-- ══ OUTLETS/RECEPTACLES PANEL ══ -->
 <div class="panel" id="panel-outlets">
   <div class="fill-rules-bar">
-    <span class="fill-pill pill-yellow" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 406 — Receptacle, Cord Connectors, and Attachment Plugs — NEMA configuration requirements')">NEC 406</span>
+    <span class="fill-pill pill-green" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 406 — Receptacle, Cord Connectors, and Attachment Plugs — NEMA configuration requirements')">NEC 406</span>
     <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEMA outlet configuration standards — National Electrical Manufacturers Association receptacle and plug designation system')">NEMA</span> National Electrical Manufacturers Association</div>
     <div class="fill-rule"><span class="fill-pill pill-yellow" onclick="necLink('NEMA receptacle designation -R: female connector, receptacle outlet installation requirements per NEC 406')">-R</span> Receptacle (female)</div>
     <div class="fill-rule"><span class="fill-pill pill-green" onclick="necLink('NEMA plug designation -P: male connector, cord cap, NEMA configuration numbering for volts and amps')">-P</span> Plug (male)</div>
