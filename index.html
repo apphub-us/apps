@@ -525,6 +525,22 @@
   /* Ctrl label — system font */
   .ctrl-label { font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; }
 
+
+  /* NYC Amendment bar */
+  .nyc-note-bar {
+    width: 100%;
+    background: rgba(82,192,122,0.06);
+    border-top: 1px solid var(--border);
+    padding: 6px 16px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    flex-wrap: wrap;
+  }
+  .nyc-note-bar:hover { background: rgba(82,192,122,0.1); }
+
   /* ── NEC CLICKABLE LINKS ── */
   .nec-link {
     color: var(--accent);
@@ -679,6 +695,10 @@
     <div class="fill-rule"><span class="fill-pill pill-yellow">31%</span> 2 conductors</div>
     <div class="fill-rule"><span class="fill-pill pill-green">40%</span> 3+ conductors</div>
     <div class="fill-rule" style="margin-left:auto;color:var(--text-dimmer)">NEC Ch.9 Table 1</div>
+    <div class="fill-rule nyc-note-bar" onclick="necLink('NYC NYCEC 230.43 — Wiring Methods for Service Entrance')">
+      <span style="color:#52c07a;font-weight:600">🗽 NYC</span>
+      <span style="color:var(--text-dim)">EMT required in most buildings · No Romex in commercial/multifamily · <span class="nec-link" onclick="event.stopPropagation();necLink('NYCEC 334.12 — NM Cable not permitted in buildings exceeding 3 floors above grade')">NYCEC 334.12</span></span>
+    </div>
   </div>
 
   <div class="cf-controls">
@@ -711,7 +731,7 @@
     <div class="ctrl-group">
       <span class="ctrl-label">Wire Type</span>
       <select id="cfWireType" onchange="cfUpdateCalc();cfRenderTable(currentCfConduit)">
-        <option value="thhn">THHN/THWN-2</option>
+        <option value="thhn" selected>THHN/THWN-2 ★ NYC Standard</option>
         <option value="thw">THW/THHW</option>
         <option value="xhhw">XHHW-2</option>
       </select>
@@ -1289,6 +1309,10 @@
     <div class="fill-rule"><span class="fill-pill pill-yellow">AFCI</span> Arc Fault Circuit Interrupter — NEC 210.12</div>
     <div class="fill-rule"><span class="fill-pill" style="background:rgba(82,192,122,0.2);color:var(--success)">DUAL</span> Both GFCI + AFCI required</div>
     <div class="fill-rule" style="margin-left:auto;color:var(--text-dimmer)">NEC 2023</div>
+    <div class="fill-rule nyc-note-bar">
+      <span style="color:#52c07a;font-weight:600">🗽 NYC</span>
+      <span style="color:var(--text-dim)">NYC uses NEC 2020 base · AFCI NOT required in kitchens/laundry of multifamily buildings over 3 stories · <span class="nec-link" onclick="event.stopPropagation();necLink('NYCEC 210.12(A) Exception No.2 — AFCI not required in kitchens and laundry areas in multifamily dwellings greater than 3 stories')">NYCEC 210.12(A)</span> · AC outlet required in each bedroom/living room · <span class="nec-link" onclick="event.stopPropagation();necLink('NYCEC 210.52(J) — Receptacle outlet required for air conditioners in living rooms and bedrooms')">NYCEC 210.52(J)</span></span>
+    </div>
   </div>
 
   <div style="display:flex;flex:1;overflow:hidden">
@@ -1330,6 +1354,10 @@
     <div class="fill-rule"><span class="fill-pill pill-yellow">220.83</span> Optional Method — Existing Dwelling</div>
     <div class="fill-rule"><span class="fill-pill pill-green">220.42</span> General Lighting Load</div>
     <div class="fill-rule" style="margin-left:auto;color:var(--text-dimmer)">NEC 220</div>
+    <div class="fill-rule nyc-note-bar">
+      <span style="color:#52c07a;font-weight:600">🗽 NYC</span>
+      <span style="color:var(--text-dim)">Each AC outlet = min 1500VA load · <span class="nec-link" onclick="event.stopPropagation();necLink('NYCEC 220.14(N) — Air conditioning circuits load shall not be less than 1500VA for each required branch circuit')">NYCEC 220.14(N)</span> · Individual branch circuit required for each AC outlet · <span class="nec-link" onclick="event.stopPropagation();necLink('NYCEC 210.11(C)(5) — Individual branch circuit for each air conditioning receptacle outlet')">NYCEC 210.11(C)(5)</span> · Existing load calc: <span class="nec-link" onclick="event.stopPropagation();necLink('NYCEC 220.87 — Determining existing loads using maximum demand data')">NYCEC 220.87</span></span>
+    </div>
   </div>
 
   <div style="display:flex;flex:1;overflow:hidden">
