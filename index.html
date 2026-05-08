@@ -4129,7 +4129,7 @@ async function getNEMAImageURL(code) {
 }
 
 function buildNEMACard(code) {
-  return '<div data-nema-code="'+code+'" style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;margin:0 auto;font-family:IBM Plex Mono,monospace;font-size:9px;color:#444">⏳</div>';
+  return '<div data-nema-code="'+code+'" style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;margin:0 auto;font-family:IBM Plex Mono,monospace;font-size:9px;color:#aaa">⏳</div>';
 }
 
 function loadNEMAImages() {
@@ -4138,9 +4138,9 @@ function loadNEMAImages() {
     var code = el.getAttribute('data-nema-code');
     getNEMAImageURL(code).then(function(url) {
       if (url) {
-        el.innerHTML = '<img src="'+url+'" style="width:80px;height:80px;object-fit:contain;display:block;margin:0 auto" alt="'+code+'">';
+        el.innerHTML = '<img src="'+url+'" style="width:100px;height:100px;object-fit:contain;display:block;margin:0 auto" alt="'+code+'">';
       } else {
-        el.innerHTML = '<span style="font-size:9px;color:#555">'+code+'</span>';
+        el.innerHTML = '<span style="font-size:9px;color:#888">'+code+'</span>';
       }
     });
   });
@@ -4277,7 +4277,7 @@ function renderOutlets() {
     };
 
     card.innerHTML =
-      '<div style="background:#0d1318;display:flex;align-items:center;justify-content:center;padding:14px;border-bottom:1px solid var(--border)">' +
+      '<div style="background:#ffffff;display:flex;align-items:center;justify-content:center;padding:10px;border-bottom:1px solid var(--border);border-radius:8px 8px 0 0">' +
         buildNEMACard(o.id) +
       '</div>'+
       '<div style="padding:10px 12px">'+
