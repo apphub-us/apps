@@ -594,7 +594,7 @@
   </div>
   <div class="status-bar">
     <div class="status-dot"></div>
-    <span>NEC 2023</span>
+    <span>NYCEC 2025 · NEC 2020</span>
   </div>
 </header>
 
@@ -668,19 +668,19 @@
     <div class="welcome" id="welcome">
       <div style="margin-bottom:12px"><svg width="52" height="52" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="18" fill="#FFC700"/><path d="M62 12L30 52H50L38 88L70 48H50L62 12Z" fill="#0A0A0A"/></svg></div>
       <h2>Ask SparkyPro</h2>
-      <p>Your AI field assistant for National Electrical Code questions. Box fill, conduit fill, ampacity, GFCI, AFCI, grounding, load calculations and more.</p>
+      <p>Expert AI assistant for <strong>NEC 2023</strong> and <strong>NYCEC 2025</strong> code questions.<br>Calculations, amendments, field questions — all in one place.</p>
       <div class="welcome-examples">
-        <div class="welcome-ex" onclick="quickAsk(this.textContent)">"How many 12 AWG wires in a 4x4 box?"</div>
-        <div class="welcome-ex" onclick="quickAsk(this.textContent)">"What's the max voltage drop allowed by NEC?"</div>
-        <div class="welcome-ex" onclick="quickAsk(this.textContent)">"Where is GFCI required in a garage?"</div>
-        <div class="welcome-ex" onclick="quickAsk(this.textContent)">"How to calculate box fill for a switch box?"</div>
+        <div class="welcome-ex" onclick="quickAsk(this.textContent)">"How many 12 AWG THHN in 3/4 EMT?"</div>
+        <div class="welcome-ex" onclick="quickAsk(this.textContent)">"Is AFCI required in NYC multifamily kitchen?"</div>
+        <div class="welcome-ex" onclick="quickAsk(this.textContent)">"What is the NYC voltage drop requirement NYCEC 210.19?"</div>
+        <div class="welcome-ex" onclick="quickAsk(this.textContent)">"Where is GFCI required in a garage per NEC 210.8?"</div>
       </div>
     </div>
   </div>
 
   <div class="input-area">
     <div class="input-row">
-      <textarea id="userInput" placeholder="Ask any NEC code question..." rows="1"
+      <textarea id="userInput" placeholder="Ask any NEC / NYCEC code or amendments question..." rows="1"
         onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
       <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
     </div>
@@ -1789,12 +1789,66 @@ var chatHistory = [];
 
 if (API_KEY) document.getElementById('apiModal').style.display = 'none';
 
-var SYSTEM_PROMPT = `You are an expert NEC (National Electrical Code) field assistant for licensed electricians. Deep knowledge of NEC 2023, electrical calculations, and NYC amendments.
-- Be direct and practical. Always cite NEC Article/Section.
-- Show math step by step for calculations.
-- Use markdown tables for comparing values.
-- No fluff. NYC uses NEC 2020 with local amendments.
-- Use plain text. Tables use | separators. Lead with the direct answer.`;
+var SYSTEM_PROMPT = `You are SparkyPro — an expert electrical code assistant built specifically for licensed electricians working in New York City.
+
+PRIMARY CODE: NYCEC 2025 (NYC Electrical Code)
+- Effective December 21, 2025
+- Based on NEC 2020 with extensive NYC-specific amendments (Local Law 128 of 2024)
+- This is the code NYC DOB enforces RIGHT NOW
+
+SECONDARY: NEC 2023
+- Used as reference for general electrical knowledge
+- NYS (outside NYC) adopted NEC 2023 via 2025 Uniform Code (effective Dec 31, 2025)
+
+CRITICAL RULE — ALWAYS MENTION NYC AMENDMENT:
+For EVERY answer, you MUST end with a "🗽 NYC:" section that states:
+- The relevant NYCEC amendment if one exists
+- OR "No NYC amendment — NEC applies as written" if none exists
+This is mandatory. Never skip it.
+
+KEY NYCEC 2025 AMENDMENTS YOU KNOW:
+Wiring Methods:
+- NYCEC 334.12: Romex (NM cable) PROHIBITED in buildings over 3 floors and all non-residential buildings
+- NYCEC 230.43: Service entrance — only EMT, IMC, RMC, MI cable, busways (no Romex, no PVC mast except coastal)
+- NYCEC 352.10: PVC conduit only in buildings ≤3 stories OR concealed in 1-hr fire rated assembly
+- NYCEC 350.12: LFMC max 6 ft length
+- NYCEC 330.12(4): MC cable with PVC jacket prohibited in buildings over 3 floors unless concealed in 1-hr assembly
+- NYCEC 362.12: ENT prohibited as risers in buildings over 3 floors
+
+Branch Circuits & Feeders:
+- NYCEC 210.12(A) Exception 2: AFCI NOT required in kitchens or laundry of multifamily buildings over 3 stories
+- NYCEC 210.52(J): Dedicated AC outlet required in every living room, bedroom, dining room
+- NYCEC 210.11(C)(5): Individual branch circuit required for each AC outlet
+- NYCEC 215.2: Min feeder size = 8 AWG copper or 6 AWG aluminum for any dwelling unit
+
+Voltage Drop (MANDATORY in NYC — not just recommended):
+- NYCEC 210.19 & 215.2: Max 5% total voltage drop (service to farthest outlet) is REQUIRED BY LAW in NYC
+
+Load Calculations:
+- NYCEC 220.14(N): Each AC outlet = min 1500VA in load calculation
+- NYCEC 220.87: Existing loads — max demand data acceptable (12 months or min 30 days)
+
+Services & Equipment:
+- NYCEC 230.64: Services ≥1000 kVA — 2-hr fire rated room, 5 ft working space, 2 egress paths
+- NYCEC 230.71: Prefer single service disconnect; 2-6 only under specific conditions
+- NYCEC 110.11(B): All panels, meters, service equipment must be AT OR ABOVE design flood elevation
+- NYCEC 110.3(D): Electrical equipment rooms — dedicated to electrical only, NO storage
+- NYCEC 408.10: All switchboards, switchgear, panelboards must be LISTED
+
+Conductors:
+- NYCEC 310.16: Type XHWN deleted from 90°C columns (copper and aluminum)
+
+Grounding:
+- NYCEC 250.68(C)(1) Exception: DELETED — stricter grounding electrode requirements
+
+RESPONSE FORMAT:
+1. Lead with direct answer + NYCEC/NEC citation
+2. Show math step by step for calculations
+3. Use tables for comparisons
+4. End EVERY response with:
+   🗽 NYC: [NYCEC section + what it changes vs NEC] or [No NYC amendment]
+
+TONE: Direct, practical, field-ready. You are talking to a working NYC electrician.`;
 
 var CATEGORIZE_PROMPT = `Categorize this NEC question. Return ONLY JSON:
 {"category":"snake_case_max_40_chars","label":"Button Label Max 28 Chars"}
@@ -3236,18 +3290,13 @@ gfciInitRooms();
 // ── NEC LINK SYSTEM ──────────────────────────────────────
 // Call this to navigate to AI chat and ask about a NEC article
 function necLink(ref) {
-  // Switch to chat tab
-  var chatTab = document.querySelector('.tab[onclick*="chat"]');
-  if (chatTab) {
-    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
-    document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
-    chatTab.classList.add('active');
-    document.getElementById('panel-chat').classList.add('active');
-  }
+  // Switch to chat tab using switchTab
+  var chatTab = document.querySelector('.tab[onclick*="\'chat\'"]') || document.querySelector('.tab[onclick*="chat"]');
+  switchTab('chat', chatTab);
   // Ask about the NEC article
   var question = 'Explain ' + ref + ' in detail. What does it require, where does it apply, and are there any exceptions?';
   document.getElementById('userInput').value = question;
-  setTimeout(function() { sendMessage(); }, 100);
+  setTimeout(function() { sendMessage(); }, 200);
 }
 
 // Convert NEC references in text to clickable links
