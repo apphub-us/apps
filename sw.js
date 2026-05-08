@@ -1,7 +1,7 @@
 // SparkyPro Service Worker v1.0
 // Caches the app for offline use — AI chat requires internet, all tables work offline
 
-var CACHE_NAME = 'sparkypro-v1';
+var CACHE_NAME = 'sparkypro-v2';
 var OFFLINE_URLS = [
   '/',
   '/index.html',

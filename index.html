@@ -4094,23 +4094,37 @@ function nycSelectTopic(id) {
 
 
 // ── OUTLETS / RECEPTACLES ─────────────────────────────────
-// Images from Wikimedia Commons, credit: Comrade Mmirg, CC BY-SA 4.0
+// Images: local nema/ folder first (offline), Wikimedia fallback
+// Local files: nema/NEMA_X-XXX.svg
+// Credit: Comrade Mmirg, CC BY-SA 4.0
 
 var nemaURLCache = {};
 
 async function getNEMAImageURL(code) {
   if (nemaURLCache[code]) return nemaURLCache[code];
-  var filename = 'NEMA_' + code + '.svg';
+  
+  // Try local file first (offline capable)
+  var localUrl = 'nema/NEMA_' + code + '.svg';
   try {
-    var url = 'https://commons.wikimedia.org/w/api.php?action=query&titles=File:' +
+    var resp = await fetch(localUrl, {method:'HEAD'});
+    if (resp.ok) {
+      nemaURLCache[code] = localUrl;
+      return localUrl;
+    }
+  } catch(e) {}
+  
+  // Fallback: Wikimedia Commons API
+  try {
+    var filename = 'NEMA_' + code + '.svg';
+    var apiUrl = 'https://commons.wikimedia.org/w/api.php?action=query&titles=File:' +
       encodeURIComponent(filename) + '&prop=imageinfo&iiprop=url&format=json&origin=*';
-    var resp = await fetch(url);
-    var data = await resp.json();
+    var r = await fetch(apiUrl);
+    var data = await r.json();
     var pages = data.query.pages;
-    var pageId = Object.keys(pages)[0];
-    var imgUrl = pages[pageId].imageinfo && pages[pageId].imageinfo[0].url;
+    var imgUrl = Object.values(pages)[0].imageinfo && Object.values(pages)[0].imageinfo[0].url;
     if (imgUrl) { nemaURLCache[code] = imgUrl; return imgUrl; }
   } catch(e) {}
+  
   return null;
 }
 
