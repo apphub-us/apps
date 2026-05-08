@@ -696,7 +696,7 @@
     <div class="fill-rule"><span class="fill-pill pill-orange">53%</span> 1 conductor</div>
     <div class="fill-rule"><span class="fill-pill pill-yellow">31%</span> 2 conductors</div>
     <div class="fill-rule"><span class="fill-pill pill-green">40%</span> 3+ conductors</div>
-    <div class="fill-rule" style="margin-left:auto;color:var(--text-dimmer)">NEC Ch.9 Table 1</div>
+    <div class="fill-rule" style="margin-left:auto"><span class="nec-link" onclick="necLink('NEC Chapter 9 Tables 1 4 5 — Conduit Fill')">NEC Ch.9 T.1,4,5</span></div>
     <div class="fill-rule nyc-note-bar" onclick="necLink('NYC NYCEC 230.43 — Wiring Methods for Service Entrance')">
       <span style="color:#52c07a;font-weight:600">🗽 NYC</span>
       <span style="color:var(--text-dim)">EMT required in most buildings · No Romex in commercial/multifamily · <span class="nec-link" onclick="event.stopPropagation();necLink('NYCEC 334.12 — NM Cable not permitted in buildings exceeding 3 floors above grade')">NYCEC 334.12</span></span>
@@ -733,7 +733,7 @@
     <div class="ctrl-group">
       <span class="ctrl-label">Wire Type</span>
       <select id="cfWireType" onchange="cfUpdateCalc();cfRenderTable(currentCfConduit)">
-        <option value="thhn" selected>THHN/THWN-2 ★ NYC Standard</option>
+        <option value="thhn" selected>THHN/THWN-2 ★ Standard</option>
         <option value="thw">THW/THHW</option>
         <option value="xhhw">XHHW-2</option>
       </select>
@@ -781,10 +781,7 @@
         <tbody id="cfTableBody"></tbody>
       </table>
     </div>
-    <div class="cf-note">
-      ★ NEC Chapter 9, Tables 1, 4, 5. Values shown for 3+ conductors (40% fill). For 1 wire: 53% fill. For 2 wires: 31% fill.
-      NYC follows NEC 2020 with NYCEC local amendments. Always verify with local AHJ.
-    </div>
+
   </div>
 
 </div>
@@ -959,11 +956,7 @@
         </table>
       </div>
     </div>
-    <div class="cf-note">
-      <span class="nec-link" onclick="necLink('NEC 314.16(B)')">NEC 314.16(B)</span> counting rules: (1) Each conductor entering box = 1 count. Conductors passing through = 1. Pigtails originating in box = 0.
-      (2) Each device/strap = 2× largest conductor. (3) Internal cable clamps = 1× largest (regardless of count). 
-      (4) All EGCs = 1× largest EGC. (5) Fixture studs/hickeys = 1× largest conductor each.
-    </div>
+
   </div>
 
 </div>
@@ -976,7 +969,7 @@
     <div class="fill-rule"><span class="fill-pill pill-orange">310.16</span> Base ampacity from NEC Table 310.16</div>
     <div class="fill-rule"><span class="fill-pill pill-yellow">310.15(B)</span> Temp correction factor</div>
     <div class="fill-rule"><span class="fill-pill pill-green">310.15(C)</span> Bundling adjustment factor</div>
-    <div class="fill-rule" style="margin-left:auto;color:var(--text-dimmer)">NEC 310.15</div>
+    <div class="fill-rule" style="margin-left:auto"><span class="nec-link" onclick="necLink('NEC 310.15 — Ampacity Calculations')">NEC 310.15</span> · <span class="nec-link" onclick="necLink('NEC 310.16 — Allowable Ampacities Table')">NEC 310.16</span></div>
   </div>
 
   <!-- CALCULATOR -->
@@ -1216,14 +1209,7 @@
         <tbody id="vdCompTable"></tbody>
       </table>
     </div>
-    <div class="cf-note">
-      ★ Formula: VD = (2 × K × I × L) / CM for single phase. VD = (1.732 × K × I × L) / CM for three phase.
-      K = resistivity constant: Copper = 12.9, Aluminum = 21.2.
-      CM = circular mils of conductor. L = one-way length in feet.
-      <span class="nec-link" onclick="necLink('NEC 210.19(A)')">NEC 210.19(A)</span> Informational Note: voltage drop should not exceed 3% for branch circuits.
-      <span class="nec-link" onclick="necLink('NEC 215.2(A)')">NEC 215.2(A)</span> Informational Note: combined feeder + branch circuit drop should not exceed 5%.
-      These are recommendations, not code requirements — but good engineering practice.
-    </div>
+
   </div>
 
 </div>
@@ -1627,7 +1613,7 @@
 
     </div>
 
-    <div class="cf-note">★ Power Factor (PF): resistive loads (heaters, incandescent) = 1.0. Motors and inductive loads typically 0.80–0.95. Always check nameplate. For 3-phase multiply by √3 (1.732).</div>
+
   </div>
 </div>
 
@@ -1757,7 +1743,7 @@
     <!-- Grid -->
     <div id="outletsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px"></div>
 
-    <div class="cf-note" style="margin-top:16px">★ Source: NEMA Standard WD-6. -R = Receptacle (female/wall), -P = Plug (male/cord). Wire sizes per NEC 310.15 at 60°C/75°C terminal rating. Always verify with nameplate and local AHJ. NEC 406 covers receptacle installation requirements.</div>
+    <div style="padding:6px 16px;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer)">NEMA WD-6 · <span class="nec-link" onclick="necLink('NEC 406 — Receptacle Installation Requirements')">NEC 406</span> · CC BY-SA 4.0 Comrade Mmirg</div>
   </div>
 </div>
 
