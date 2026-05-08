@@ -4095,21 +4095,41 @@ function nycSelectTopic(id) {
 
 // ── OUTLETS / RECEPTACLES ─────────────────────────────────
 // Images from Wikimedia Commons, credit: Comrade Mmirg, CC BY-SA 4.0
-// https://commons.wikimedia.org/wiki/Category:National_Electrical_Manufacturers_Association
 
-function getNEMAImageURL(code) {
-  // Wikimedia Commons API - works from HTTPS domains
-  return 'https://commons.wikimedia.org/w/index.php?title=Special:FilePath&file=NEMA_' + code + '.svg&width=120';
+var nemaURLCache = {};
+
+async function getNEMAImageURL(code) {
+  if (nemaURLCache[code]) return nemaURLCache[code];
+  var filename = 'NEMA_' + code + '.svg';
+  try {
+    var url = 'https://commons.wikimedia.org/w/api.php?action=query&titles=File:' +
+      encodeURIComponent(filename) + '&prop=imageinfo&iiprop=url&format=json&origin=*';
+    var resp = await fetch(url);
+    var data = await resp.json();
+    var pages = data.query.pages;
+    var pageId = Object.keys(pages)[0];
+    var imgUrl = pages[pageId].imageinfo && pages[pageId].imageinfo[0].url;
+    if (imgUrl) { nemaURLCache[code] = imgUrl; return imgUrl; }
+  } catch(e) {}
+  return null;
 }
 
 function buildNEMACard(code) {
-  var img = '<img src="' + getNEMAImageURL(code) + '" alt="NEMA ' + code + '" ' +
-    'style="width:80px;height:80px;object-fit:contain;display:block;margin:0 auto;filter:invert(0.85) sepia(0.2)" ' +
-    'onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'">' +
-    '<div style="display:none;width:80px;height:80px;align-items:center;justify-content:center;' +
-    'font-family:IBM Plex Mono,monospace;font-size:10px;color:#555;text-align:center">' +
-    code + '<br>no img</div>';
-  return img;
+  return '<div data-nema-code="'+code+'" style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;margin:0 auto;font-family:IBM Plex Mono,monospace;font-size:9px;color:#444">⏳</div>';
+}
+
+function loadNEMAImages() {
+  var cards = document.querySelectorAll('[data-nema-code]');
+  cards.forEach(function(el) {
+    var code = el.getAttribute('data-nema-code');
+    getNEMAImageURL(code).then(function(url) {
+      if (url) {
+        el.innerHTML = '<img src="'+url+'" style="width:80px;height:80px;object-fit:contain;display:block;margin:0 auto" alt="'+code+'">';
+      } else {
+        el.innerHTML = '<span style="font-size:9px;color:#555">'+code+'</span>';
+      }
+    });
+  });
 }
 
 // Filter state
@@ -4181,6 +4201,9 @@ function renderOutlets() {
 
     grid.appendChild(card);
   });
+
+  // Load images async from Wikimedia API
+  setTimeout(loadNEMAImages, 100);
 }
 
 // Init outlets when tab is first opened
