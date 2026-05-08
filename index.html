@@ -529,15 +529,17 @@
   /* NYC Amendment bar */
   .nyc-note-bar {
     width: 100%;
+    flex-basis: 100%;
     background: rgba(82,192,122,0.06);
-    border-top: 1px solid var(--border);
-    padding: 6px 16px;
+    border-top: 1px solid rgba(82,192,122,0.2);
+    padding: 6px 0;
     font-size: 11px;
     display: flex;
     align-items: center;
     gap: 8px;
-    cursor: pointer;
+    cursor: default;
     flex-wrap: wrap;
+    margin-top: 4px;
   }
   .nyc-note-bar:hover { background: rgba(82,192,122,0.1); }
 
