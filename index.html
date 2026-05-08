@@ -548,7 +548,7 @@
     color: var(--accent);
     text-decoration: none;
     border-bottom: 1px dashed var(--accent);
-    cursor: pointer;
+    cursor: pointer !important;
     font-weight: 600;
     transition: all 0.15s;
     font-family: 'IBM Plex Mono', monospace;
@@ -556,9 +556,13 @@
     padding: 1px 3px;
     border-radius: 2px;
     white-space: nowrap;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 10;
+    display: inline-block;
   }
   .nec-link:hover {
-    background: rgba(245,166,35,0.15);
+    background: rgba(255,199,0,0.15);
     border-bottom-style: solid;
   }
 
@@ -3290,13 +3294,27 @@ gfciInitRooms();
 // ── NEC LINK SYSTEM ──────────────────────────────────────
 // Call this to navigate to AI chat and ask about a NEC article
 function necLink(ref) {
-  // Switch to chat tab using switchTab
-  var chatTab = document.querySelector('.tab[onclick*="\'chat\'"]') || document.querySelector('.tab[onclick*="chat"]');
-  switchTab('chat', chatTab);
-  // Ask about the NEC article
-  var question = 'Explain ' + ref + ' in detail. What does it require, where does it apply, and are there any exceptions?';
-  document.getElementById('userInput').value = question;
-  setTimeout(function() { sendMessage(); }, 200);
+  // Directly switch to chat panel
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.mob-nav-item').forEach(function(n){ n.classList.remove('active'); });
+
+  var chatPanel = document.getElementById('panel-chat');
+  if (chatPanel) chatPanel.classList.add('active');
+
+  var chatTab = document.querySelector('.tab[onclick*="\'chat\'"]');
+  if (!chatTab) chatTab = document.querySelector('.tab[onclick*="chat"]');
+  if (chatTab) chatTab.classList.add('active');
+
+  var mnavChat = document.getElementById('mnav-chat');
+  if (mnavChat) mnavChat.classList.add('active');
+
+  // Set question and send
+  var input = document.getElementById('userInput');
+  if (input) {
+    input.value = 'Explain ' + ref + ' in detail. What does it require, where does it apply, and are there any exceptions? Include NYC amendment if applicable.';
+    setTimeout(function() { sendMessage(); }, 150);
+  }
 }
 
 // Convert NEC references in text to clickable links
