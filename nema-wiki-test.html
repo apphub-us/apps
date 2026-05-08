@@ -5,21 +5,19 @@
 <style>
   body { background:#111; color:#eee; font-family:monospace; padding:16px; }
   h2 { color:#FFC700; margin-bottom:4px; }
-  p { color:#888; font-size:11px; margin-bottom:16px; }
+  p { color:#888; font-size:11px; margin-bottom:12px; }
   .grid { display:grid; grid-template-columns:repeat(8,1fr); gap:10px; }
   .card { background:#1a2028; border:1px solid #333; border-radius:6px; padding:8px; text-align:center; }
-  .card img { width:72px; height:72px; object-fit:contain; display:block; margin:0 auto 6px;
-              filter: invert(1) sepia(1) saturate(2) hue-rotate(180deg); }
+  .card img { width:72px; height:72px; object-fit:contain; display:block; margin:0 auto 6px; }
   .label { font-size:10px; color:#FFC700; font-weight:bold; }
   .ok { border-color:#52c07a; }
   .err { border-color:#e05252; }
-  .err-txt { font-size:9px; color:#e05252; margin-top:4px; }
   #status { color:#888; font-size:12px; margin-bottom:12px; }
 </style>
 </head>
 <body>
 <h2>NEMA SVG — Wikimedia Commons</h2>
-<p>Loading via Wikimedia API... Images credit: Comrade Mmirg, CC BY-SA 4.0</p>
+<p>Credit: Comrade Mmirg, CC BY-SA 4.0</p>
 <div id="status">Loading...</div>
 <div class="grid" id="grid"></div>
 <script>
@@ -38,46 +36,74 @@ var CODES = [
 ];
 
 var grid = document.getElementById('grid');
-var loaded = 0, errors = 0;
+var loaded = 0, errors = 0, total = CODES.length;
 
 function updateStatus() {
   document.getElementById('status').textContent =
-    'Loaded: ' + loaded + ' / Errors: ' + errors + ' / Total: ' + CODES.length;
+    'Loaded: ' + loaded + ' / Errors: ' + errors + ' / Total: ' + total;
 }
 
-CODES.forEach(function(code) {
+// Use Wikimedia REST API to get image info including URL
+async function loadCard(code) {
+  var filename = 'NEMA_' + code + '.svg';
   var card = document.createElement('div');
   card.className = 'card';
   card.id = 'card-' + code;
+  grid.appendChild(card);
 
-  var img = document.createElement('img');
-  // Use Wikimedia API endpoint - this is the correct format
-  img.src = 'https://commons.wikimedia.org/w/index.php?title=Special:FilePath&file=NEMA_' + code + '.svg&width=100';
-  img.alt = code;
+  try {
+    // Wikimedia REST API
+    var apiUrl = 'https://en.wikipedia.org/w/api.php?action=query&titles=File:' +
+      encodeURIComponent(filename) + '&prop=imageinfo&iiprop=url&format=json&origin=*';
 
-  img.onload = function() {
-    loaded++;
-    card.classList.add('ok');
-    updateStatus();
-  };
-  img.onerror = function() {
+    var resp = await fetch(apiUrl);
+    var data = await resp.json();
+    var pages = data.query.pages;
+    var pageId = Object.keys(pages)[0];
+    var imgUrl = pages[pageId].imageinfo && pages[pageId].imageinfo[0].url;
+
+    if (!imgUrl) {
+      // Try commons API
+      var apiUrl2 = 'https://commons.wikimedia.org/w/api.php?action=query&titles=File:' +
+        encodeURIComponent(filename) + '&prop=imageinfo&iiprop=url&format=json&origin=*';
+      var resp2 = await fetch(apiUrl2);
+      var data2 = await resp2.json();
+      var pages2 = data2.query.pages;
+      var pageId2 = Object.keys(pages2)[0];
+      imgUrl = pages2[pageId2].imageinfo && pages2[pageId2].imageinfo[0].url;
+    }
+
+    if (imgUrl) {
+      var img = document.createElement('img');
+      img.src = imgUrl;
+      img.alt = code;
+      img.onload = function() { loaded++; card.classList.add('ok'); updateStatus(); };
+      img.onerror = function() { errors++; card.classList.add('err'); updateStatus(); };
+      card.appendChild(img);
+    } else {
+      errors++;
+      card.classList.add('err');
+      updateStatus();
+    }
+  } catch(e) {
     errors++;
     card.classList.add('err');
-    this.style.display = 'none';
-    card.innerHTML += '<div class="err-txt">✗</div>';
     updateStatus();
-  };
+  }
 
   var label = document.createElement('div');
   label.className = 'label';
   label.textContent = code;
-
-  card.appendChild(img);
   card.appendChild(label);
-  grid.appendChild(card);
-});
+}
 
-updateStatus();
+// Load all cards
+(async function() {
+  for (var i = 0; i < CODES.length; i++) {
+    await loadCard(CODES[i]);
+  }
+  updateStatus();
+})();
 </script>
 </body>
 </html>
