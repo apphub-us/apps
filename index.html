@@ -247,10 +247,13 @@
   .cf-controls {
     background: var(--surface2);
     border-bottom: 1px solid var(--border);
-    padding: 12px 20px;
-    display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
+    padding: 10px 20px;
+    display: flex; flex-direction: column; gap: 8px;
     flex-shrink: 0;
   }
+  .cf-controls-row { display: flex; gap: 10px; align-items: flex-end; }
+  .cf-controls-row .ctrl-group { flex: 1; }
+  .cf-controls-row input[type=number] { width: 100%; }
 
   .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
   .ctrl-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
@@ -580,7 +583,8 @@
   }
   .reset-btn:hover { background: rgba(224,82,82,0.2); border-color: var(--danger); }
 
-  .fav-bar { display: flex; gap: 6px; margin-top: 8px; }
+  .fav-bar { display: flex; gap: 8px; }
+  .save-btn, .reset-btn { height: 33px; }
   .save-btn {
     flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
     background: rgba(255,199,0,0.1); border: 1px solid rgba(255,199,0,0.4);
@@ -754,57 +758,59 @@
   </div>
 
   <div class="cf-controls">
-    <div class="ctrl-group">
-      <span class="ctrl-label">Conduit Type</span>
-      <select id="cfConduitType" onchange="cfUpdateCalc()">
-        <option value="emt">EMT</option>
-        <option value="imc">IMC</option>
-        <option value="rmc">RMC (Rigid)</option>
-        <option value="ent">ENT (Smurf)</option>
-        <option value="pvc40">PVC Sch 40</option>
-        <option value="pvc80">PVC Sch 80</option>
-      </select>
-    </div>
-    <div class="ctrl-group">
-      <span class="ctrl-label">Conduit Size</span>
-      <select id="cfConduitSize" onchange="cfUpdateCalc()">
-        <option value="0.5">1/2"</option>
-        <option value="0.75">3/4"</option>
-        <option value="1" selected>1"</option>
-        <option value="1.25">1-1/4"</option>
-        <option value="1.5">1-1/2"</option>
-        <option value="2">2"</option>
-        <option value="2.5">2-1/2"</option>
-        <option value="3">3"</option>
-        <option value="3.5">3-1/2"</option>
-        <option value="4">4"</option>
-      </select>
-    </div>
-    <div class="ctrl-group">
-      <span class="ctrl-label">Wire Type</span>
-      <select id="cfWireType" onchange="cfUpdateCalc();cfRenderTable(currentCfConduit)">
-        <option value="thhn" selected>THHN/THWN-2 ★ Standard</option>
-        <option value="thw">THW/THHW</option>
-        <option value="xhhw">XHHW-2</option>
-      </select>
-    </div>
-    <div class="ctrl-group">
-      <span class="ctrl-label">Wire Size</span>
-      <select id="cfWireSize" onchange="cfUpdateCalc()">
-        <option value="14">14 AWG</option><option value="12">12 AWG</option>
-        <option value="10">10 AWG</option><option value="8">8 AWG</option>
-        <option value="6">6 AWG</option><option value="4">4 AWG</option>
-        <option value="3">3 AWG</option><option value="2">2 AWG</option>
-        <option value="1">1 AWG</option><option value="1/0">1/0 AWG</option>
-        <option value="2/0">2/0 AWG</option><option value="3/0">3/0 AWG</option>
-        <option value="4/0">4/0 AWG</option><option value="250">250 kcmil</option>
-        <option value="300">300 kcmil</option><option value="350">350 kcmil</option>
-        <option value="400">400 kcmil</option><option value="500">500 kcmil</option>
-      </select>
-    </div>
-    <div class="ctrl-group">
-      <span class="ctrl-label"># of Wires</span>
-      <input type="number" id="cfNumWires" value="3" min="1" max="40" onchange="cfUpdateCalc()" oninput="cfUpdateCalc()">
+    <div class="cf-controls-row">
+      <div class="ctrl-group">
+        <span class="ctrl-label">Conduit Type</span>
+        <select id="cfConduitType" onchange="cfUpdateCalc()">
+          <option value="emt">EMT</option>
+          <option value="imc">IMC</option>
+          <option value="rmc">RMC (Rigid)</option>
+          <option value="ent">ENT (Smurf)</option>
+          <option value="pvc40">PVC Sch 40</option>
+          <option value="pvc80">PVC Sch 80</option>
+        </select>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">Conduit Size</span>
+        <select id="cfConduitSize" onchange="cfUpdateCalc()">
+          <option value="0.5">1/2"</option>
+          <option value="0.75">3/4"</option>
+          <option value="1" selected>1"</option>
+          <option value="1.25">1-1/4"</option>
+          <option value="1.5">1-1/2"</option>
+          <option value="2">2"</option>
+          <option value="2.5">2-1/2"</option>
+          <option value="3">3"</option>
+          <option value="3.5">3-1/2"</option>
+          <option value="4">4"</option>
+        </select>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">Wire Type</span>
+        <select id="cfWireType" onchange="cfUpdateCalc();cfRenderTable(currentCfConduit)">
+          <option value="thhn" selected>THHN/THWN-2 ★ Standard</option>
+          <option value="thw">THW/THHW</option>
+          <option value="xhhw">XHHW-2</option>
+        </select>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">Wire Size</span>
+        <select id="cfWireSize" onchange="cfUpdateCalc()">
+          <option value="14">14 AWG</option><option value="12">12 AWG</option>
+          <option value="10">10 AWG</option><option value="8">8 AWG</option>
+          <option value="6">6 AWG</option><option value="4">4 AWG</option>
+          <option value="3">3 AWG</option><option value="2">2 AWG</option>
+          <option value="1">1 AWG</option><option value="1/0">1/0 AWG</option>
+          <option value="2/0">2/0 AWG</option><option value="3/0">3/0 AWG</option>
+          <option value="4/0">4/0 AWG</option><option value="250">250 kcmil</option>
+          <option value="300">300 kcmil</option><option value="350">350 kcmil</option>
+          <option value="400">400 kcmil</option><option value="500">500 kcmil</option>
+        </select>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label"># of Wires</span>
+        <input type="number" id="cfNumWires" value="3" min="1" max="40" onchange="cfUpdateCalc()" oninput="cfUpdateCalc()">
+      </div>
     </div>
     <div class="fav-bar">
       <button class="reset-btn" onclick="cfReset()">↺ Reset</button>
