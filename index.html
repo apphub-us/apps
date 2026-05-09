@@ -83,16 +83,18 @@
 
   .tab {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.5px;
+    font-size: 10px;
+    letter-spacing: 0.3px;
     text-transform: uppercase;
-    padding: 9px 12px;
+    padding: 8px 10px;
     cursor: pointer;
     color: var(--text-dim);
     border-bottom: 2px solid transparent;
     transition: all 0.15s;
     white-space: nowrap;
-    flex-shrink: 0;
+    flex: 1;
+    text-align: center;
+    min-width: 0;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -649,14 +651,14 @@
 <!-- TABS -->
 <div class="tab-bar">
   <div class="tab active" onclick="switchTab('chat', this)">AI Chat</div>
-  <div class="tab" onclick="switchTab('conduit', this)">Conduit Fill</div>
+  <div class="tab" onclick="switchTab('conduit', this)">Conduit</div>
   <div class="tab" onclick="switchTab('boxfill', this)">Box Fill</div>
   <div class="tab" onclick="switchTab('ampacity', this)">Ampacity</div>
-  <div class="tab" onclick="switchTab('vdrop', this)">Voltage Drop</div>
+  <div class="tab" onclick="switchTab('vdrop', this)">V-Drop</div>
   <div class="tab" onclick="switchTab('loadcalc', this)">Load Calc</div>
   <div class="tab" onclick="switchTab('converter', this)">Converter</div>
   <div class="tab" onclick="switchTab('nycamend', this)">NYC Code</div>
-  <div class="tab" onclick="switchTab('gfci', this)">GFCI / AFCI</div>
+  <div class="tab" onclick="switchTab('gfci', this)">GFCI/AFCI</div>
   <div class="tab" onclick="switchTab('grounding', this)">Grounding</div>
   <div class="tab" onclick="switchTab('outlets', this)">Outlets</div>
   <div class="tab" onclick="switchTab('pullbox', this)">Pull Box</div>
