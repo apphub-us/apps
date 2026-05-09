@@ -2761,11 +2761,11 @@ window.switchTab = function(name,el){
   if(name==='grounding'){setTimeout(groundingInitTopics,50);}
   if(name==='nycamend'){setTimeout(nycInitTopics,50);}
   if(name==='coderef'){setTimeout(function(){
-    groundingInitTopics();
-    nycInitTopics();
-    // Also init GFCI if needed
-    var gfciEl = document.getElementById('csr-gfci');
-    if(gfciEl && typeof gfciInitIfNeeded === 'function') gfciInitIfNeeded();
+    // Pre-init all sections by temporarily making them visible
+    var gr = document.getElementById('csr-grounding');
+    var ny = document.getElementById('csr-nyc');
+    if(gr){ gr.style.display='flex'; groundingInitTopics(); gr.style.display='none'; }
+    if(ny){ ny.style.display='flex'; nycInitTopics(); ny.style.display='none'; }
   },100);}
 }
 
@@ -3597,11 +3597,9 @@ function codeSubTab(name, el) {
     if (sec) sec.style.display = n === name ? 'flex' : 'none';
     if (btn) btn.classList.toggle('active', n === name);
   });
-  // Init after display is set
-  setTimeout(function() {
-    if (name === 'grounding') groundingInitTopics();
-    if (name === 'nyc') nycInitTopics();
-  }, 10);
+  // Init after section is visible
+  if (name === 'grounding') { groundingInitTopics(); }
+  if (name === 'nyc') { nycInitTopics(); }
 }
 
 function cfReset() {
