@@ -2760,6 +2760,10 @@ window.switchTab = function(name,el){
   if(name==='outlets'){setTimeout(initOutletsIfNeeded,50);}
   if(name==='grounding'){setTimeout(groundingInitTopics,50);}
   if(name==='nycamend'){setTimeout(nycInitTopics,50);}
+  if(name==='coderef'){setTimeout(function(){
+    groundingInitTopics();
+    nycInitTopics();
+  },50);}
 }
 
 
@@ -3590,6 +3594,8 @@ function codeSubTab(name, el) {
     if (sec) sec.style.display = n === name ? 'flex' : 'none';
     if (btn) btn.classList.toggle('active', n === name);
   });
+  if (name === 'grounding') setTimeout(groundingInitTopics, 50);
+  if (name === 'nyc') setTimeout(nycInitTopics, 50);
 }
 
 function cfReset() {
