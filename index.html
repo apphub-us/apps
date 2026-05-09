@@ -2763,7 +2763,10 @@ window.switchTab = function(name,el){
   if(name==='coderef'){setTimeout(function(){
     groundingInitTopics();
     nycInitTopics();
-  },50);}
+    // Also init GFCI if needed
+    var gfciEl = document.getElementById('csr-gfci');
+    if(gfciEl && typeof gfciInitIfNeeded === 'function') gfciInitIfNeeded();
+  },100);}
 }
 
 
@@ -3594,8 +3597,11 @@ function codeSubTab(name, el) {
     if (sec) sec.style.display = n === name ? 'flex' : 'none';
     if (btn) btn.classList.toggle('active', n === name);
   });
-  if (name === 'grounding') setTimeout(groundingInitTopics, 50);
-  if (name === 'nyc') setTimeout(nycInitTopics, 50);
+  // Init after display is set
+  setTimeout(function() {
+    if (name === 'grounding') groundingInitTopics();
+    if (name === 'nyc') nycInitTopics();
+  }, 10);
 }
 
 function cfReset() {
