@@ -572,25 +572,23 @@
   .nec-link:hover { background: rgba(255,107,26,0.15); }
 
   .reset-btn {
-    display: flex; align-items: center; gap: 6px;
-    background: none; border: 1px solid var(--border);
-    color: var(--text-dimmer); font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
-    padding: 5px 10px; border-radius: 3px; cursor: pointer;
-    transition: all 0.15s; margin-top: 4px; width: 100%;
-    justify-content: center;
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+    background: rgba(224,82,82,0.1); border: 1px solid rgba(224,82,82,0.4);
+    color: var(--danger); font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+    padding: 8px 10px; border-radius: 3px; cursor: pointer; transition: all 0.15s;
   }
-  .reset-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(224,82,82,0.07); }
+  .reset-btn:hover { background: rgba(224,82,82,0.2); border-color: var(--danger); }
 
-  .fav-bar { display: flex; gap: 6px; margin-top: 4px; }
+  .fav-bar { display: flex; gap: 6px; margin-top: 8px; }
   .save-btn {
     flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
-    background: none; border: 1px solid var(--border);
-    color: var(--text-dimmer); font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
-    padding: 5px 10px; border-radius: 3px; cursor: pointer; transition: all 0.15s;
+    background: rgba(255,199,0,0.1); border: 1px solid rgba(255,199,0,0.4);
+    color: var(--accent); font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+    padding: 8px 10px; border-radius: 3px; cursor: pointer; transition: all 0.15s;
   }
-  .save-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(255,199,0,0.07); }
+  .save-btn:hover { background: rgba(255,199,0,0.2); border-color: var(--accent); }
   .fav-list { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
   .fav-item {
     display: flex; align-items: center; gap: 6px;
@@ -808,8 +806,8 @@
       <span class="ctrl-label"># of Wires</span>
       <input type="number" id="cfNumWires" value="3" min="1" max="40" onchange="cfUpdateCalc()" oninput="cfUpdateCalc()">
     </div>
-    <button class="reset-btn" onclick="cfReset()">↺ Reset</button>
     <div class="fav-bar">
+      <button class="reset-btn" onclick="cfReset()">↺ Reset</button>
       <button class="save-btn" onclick="favSave('cf')">⭐ Save</button>
     </div>
     <div class="fav-list" id="cf-fav-list"></div>
@@ -974,7 +972,9 @@
         </optgroup>
       </select>
     </div>
-    <button class="reset-btn" onclick="bfReset()">↺ Reset</button>
+    <div class="fav-bar">
+      <button class="reset-btn" onclick="bfReset()">↺ Reset</button>
+    </div>
   </div>
 
   <!-- RESULT -->
@@ -1113,8 +1113,8 @@
         <option value="33">Yes — conduit above roof (+33°F adder)</option>
       </select>
     </div>
-    <button class="reset-btn" onclick="ampReset()">↺ Reset</button>
     <div class="fav-bar">
+      <button class="reset-btn" onclick="ampReset()">↺ Reset</button>
       <button class="save-btn" onclick="favSave('amp')">⭐ Save</button>
     </div>
     <div class="fav-list" id="amp-fav-list"></div>
@@ -1249,8 +1249,8 @@
         <option value="5">5% (NEC total · NYCEC max all occupancies)</option>
       </select>
     </div>
-    <button class="reset-btn" onclick="vdReset()">↺ Reset</button>
     <div class="fav-bar">
+      <button class="reset-btn" onclick="vdReset()">↺ Reset</button>
       <button class="save-btn" onclick="favSave('vd')">⭐ Save</button>
     </div>
     <div class="fav-list" id="vd-fav-list"></div>
@@ -1557,8 +1557,8 @@
         <input type="number" id="lcMeterVA" value="0" min="0" oninput="lcUpdate()">
       </div>
 
-      <button class="reset-btn" onclick="lcReset()">↺ Reset</button>
       <div class="fav-bar">
+        <button class="reset-btn" onclick="lcReset()">↺ Reset</button>
         <button class="save-btn" onclick="favSave('lc')">⭐ Save</button>
       </div>
       <div class="fav-list" id="lc-fav-list"></div>
@@ -1654,7 +1654,9 @@
         <div id="cv-result-rows"></div>
       </div>
 
-      <button class="reset-btn" onclick="cvReset()">↺ Reset</button>
+      <div class="fav-bar">
+        <button class="reset-btn" onclick="cvReset()">↺ Reset</button>
+      </div>
 
     </div>
 
