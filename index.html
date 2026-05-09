@@ -252,13 +252,12 @@
     flex-shrink: 0;
   }
   .cf-controls-row { display: flex; gap: 10px; align-items: flex-end; }
-  .cf-controls-row .ctrl-group { flex: 1; }
-  .cf-controls-row input[type=number] { width: 100%; }
+  .cf-controls-row .ctrl-group { flex: 1; min-width: 0; }
 
   .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
   .ctrl-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
 
-  select, input[type=number] { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.5px; padding: 7px 10px; border-radius: 3px; outline: none; cursor: pointer; transition: border-color 0.15s; }
+  select, input[type=number] { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.5px; padding: 7px 10px; border-radius: 3px; outline: none; cursor: pointer; transition: border-color 0.15s; height: 33px; box-sizing: border-box; }
   select:focus, input[type=number]:focus { border-color: var(--accent); }
   input[type=number] { width: 100%; }
 
@@ -807,9 +806,9 @@
           <option value="400">400 kcmil</option><option value="500">500 kcmil</option>
         </select>
       </div>
-      <div class="ctrl-group">
+      <div class="ctrl-group" style="max-width:80px">
         <span class="ctrl-label"># of Wires</span>
-        <input type="number" id="cfNumWires" value="3" min="1" max="40" onchange="cfUpdateCalc()" oninput="cfUpdateCalc()">
+        <input type="number" id="cfNumWires" value="3" min="1" max="40" onchange="cfUpdateCalc()" oninput="cfUpdateCalc()" style="width:100%">
       </div>
     </div>
     <div class="fav-bar">
