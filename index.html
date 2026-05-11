@@ -1417,6 +1417,71 @@
 
   </div>
 
+
+  <div id="csr-grounding" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+  <div class="fill-rules-bar">
+    <div class="nec-row">
+      <span class="fill-pill pill-orange" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC Article 250 — Complete Grounding and Bonding requirements overview')">NEC Art. 250</span>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC Article 250 — Grounding and Bonding requirements')">NEC 250</span> Grounding and Bonding</div>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 250.118 — Equipment Grounding Conductor EGC types and sizing')">EGC</span> Equipment Grounding Conductor</div>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 250.66 — Grounding Electrode Conductor GEC sizing')">GEC</span> Grounding Electrode Conductor</div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex:1;overflow:hidden">
+    <!-- LEFT: Topics -->
+    <div style="width:220px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);overflow-y:auto;padding:12px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:10px">SELECT TOPIC</div>
+      <div style="display:flex;flex-direction:column;gap:3px" id="groundingTopicList"></div>
+    </div>
+
+    <!-- RIGHT: Content -->
+    <div style="flex:1;overflow-y:auto;padding:20px">
+      <div id="groundingContent">
+        <div style="text-align:center;padding:60px 20px;color:var(--text-dimmer)">
+          <div style="font-size:48px;margin-bottom:12px">🌍</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">Grounding & Bonding</div>
+          <div style="font-size:13px;margin-top:8px;line-height:1.6">Select a topic from the left panel</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div>
+
+
+  <div id="csr-nyc" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+  <div class="fill-rules-bar">
+    <div class="nec-row">
+      <span class="fill-pill pill-blue" style="cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 2025 — New York City Electrical Code current edition amendments and local requirements')">NYCEC 2025</span>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NYCEC — New York City Electrical Code based on NEC 2020 with local amendments')">NYCEC</span> NYC Electrical Code (NEC 2020 base)</div>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NYC Local Laws — electrical code amendments specific to New York City buildings')">Local Law</span> NYC-specific amendments</div>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NYC DOB — Department of Buildings electrical permit and inspection requirements')">DOB</span> Dept of Buildings requirements</div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex:1;overflow:hidden">
+    <!-- LEFT: Categories -->
+    <div style="width:220px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);overflow-y:auto;padding:12px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:10px">CATEGORY</div>
+      <div style="display:flex;flex-direction:column;gap:3px" id="nycTopicList"></div>
+    </div>
+
+    <!-- RIGHT: Content -->
+    <div style="flex:1;overflow-y:auto;padding:20px">
+      <div id="nycContent">
+        <div style="text-align:center;padding:60px 20px;color:var(--text-dimmer)">
+          <div style="font-size:48px;margin-bottom:12px">🗽</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">NYC Electrical Code</div>
+          <div style="font-size:13px;margin-top:8px;line-height:1.6">Select a category from the left panel</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+</div>
+
 </div>
 </div>
 
@@ -1721,68 +1786,6 @@
 
   </div>
 
-  <div id="csr-grounding" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-  <div class="fill-rules-bar">
-    <div class="nec-row">
-      <span class="fill-pill pill-orange" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC Article 250 — Complete Grounding and Bonding requirements overview')">NEC Art. 250</span>
-      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC Article 250 — Grounding and Bonding requirements')">NEC 250</span> Grounding and Bonding</div>
-      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 250.118 — Equipment Grounding Conductor EGC types and sizing')">EGC</span> Equipment Grounding Conductor</div>
-      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 250.66 — Grounding Electrode Conductor GEC sizing')">GEC</span> Grounding Electrode Conductor</div>
-    </div>
-  </div>
-
-  <div style="display:flex;flex:1;overflow:hidden">
-    <!-- LEFT: Topics -->
-    <div style="width:220px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);overflow-y:auto;padding:12px">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:10px">SELECT TOPIC</div>
-      <div style="display:flex;flex-direction:column;gap:3px" id="groundingTopicList"></div>
-    </div>
-
-    <!-- RIGHT: Content -->
-    <div style="flex:1;overflow-y:auto;padding:20px">
-      <div id="groundingContent">
-        <div style="text-align:center;padding:60px 20px;color:var(--text-dimmer)">
-          <div style="font-size:48px;margin-bottom:12px">🌍</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">Grounding & Bonding</div>
-          <div style="font-size:13px;margin-top:8px;line-height:1.6">Select a topic from the left panel</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  </div>
-
-  <div id="csr-nyc" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-  <div class="fill-rules-bar">
-    <div class="nec-row">
-      <span class="fill-pill pill-blue" style="cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 2025 — New York City Electrical Code current edition amendments and local requirements')">NYCEC 2025</span>
-      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NYCEC — New York City Electrical Code based on NEC 2020 with local amendments')">NYCEC</span> NYC Electrical Code (NEC 2020 base)</div>
-      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NYC Local Laws — electrical code amendments specific to New York City buildings')">Local Law</span> NYC-specific amendments</div>
-      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NYC DOB — Department of Buildings electrical permit and inspection requirements')">DOB</span> Dept of Buildings requirements</div>
-    </div>
-  </div>
-
-  <div style="display:flex;flex:1;overflow:hidden">
-    <!-- LEFT: Categories -->
-    <div style="width:220px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);overflow-y:auto;padding:12px">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:10px">CATEGORY</div>
-      <div style="display:flex;flex-direction:column;gap:3px" id="nycTopicList"></div>
-    </div>
-
-    <!-- RIGHT: Content -->
-    <div style="flex:1;overflow-y:auto;padding:20px">
-      <div id="nycContent">
-        <div style="text-align:center;padding:60px 20px;color:var(--text-dimmer)">
-          <div style="font-size:48px;margin-bottom:12px">🗽</div>
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)">NYC Electrical Code</div>
-          <div style="font-size:13px;margin-top:8px;line-height:1.6">Select a category from the left panel</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-
-</div>
 
 <!-- ══ OUTLETS/RECEPTACLES PANEL ══ -->
 <div class="panel" id="panel-outlets">
