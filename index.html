@@ -653,7 +653,7 @@
 <!-- TABS -->
 <div class="tab-bar">
   <div class="tab active" onclick="switchTab('chat', this)">AI Chat</div>
-  <div class="tab" onclick="switchTab('conduit', this)">Conduit</div>
+  <div class="tab" onclick="switchTab('conduit', this)">Fill Calc</div>
   <div class="tab" onclick="switchTab('boxfill', this)">Box Fill</div>
   <div class="tab" onclick="switchTab('ampacity', this)">Ampacity</div>
   <div class="tab" onclick="switchTab('vdrop', this)">V-Drop</div>
@@ -742,6 +742,15 @@
 <!-- ══ CONDUIT FILL PANEL ══ -->
 <div class="panel" id="panel-conduit">
 
+  <!-- MODE TOGGLE -->
+  <div style="display:flex;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0">
+    <button class="code-subtab active" id="mode-conduit" onclick="fillCalcMode('conduit',this)">Conduit Fill</button>
+    <button class="code-subtab" id="mode-wireway" onclick="fillCalcMode('wireway',this)">Wireway</button>
+  </div>
+
+  <!-- CONDUIT FILL SECTION -->
+  <div id="fillmode-conduit" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+
   <div class="fill-rules-bar">
     <div class="nec-row">
       <span class="fill-pill pill-orange" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC Chapter 9 Tables 1,4,5 — Conduit Fill rules')">NEC Ch.9</span>
@@ -824,6 +833,80 @@
       </button>
     </div>
   </div>
+
+  </div><!-- end fillmode-conduit -->
+
+  <!-- WIREWAY SECTION -->
+  <div id="fillmode-wireway" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+
+  <div class="fill-rules-bar">
+    <div class="nec-row">
+      <span class="fill-pill pill-orange" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 376.22 — Wireways: maximum fill 20% of cross-sectional area')">NEC 376.22</span>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 376.22 — Sheet metal wireways maximum fill 20%')">20%</span> Max fill — sheet metal wireway</div>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 378.22 — Non-metallic wireways maximum fill 20%')">378.22</span> Non-metallic wireway</div>
+    </div>
+  </div>
+
+  <div class="cf-controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Wireway Width (in)</span>
+      <select id="wwWidth" onchange="wwCalc()">
+        <option value="2">2"</option>
+        <option value="3">3"</option>
+        <option value="4" selected>4"</option>
+        <option value="6">6"</option>
+        <option value="8">8"</option>
+        <option value="10">10"</option>
+        <option value="12">12"</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Wireway Height (in)</span>
+      <select id="wwHeight" onchange="wwCalc()">
+        <option value="2">2"</option>
+        <option value="3">3"</option>
+        <option value="4" selected>4"</option>
+        <option value="6">6"</option>
+        <option value="8">8"</option>
+        <option value="10">10"</option>
+        <option value="12">12"</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Wire Size</span>
+      <select id="wwWireSize" onchange="wwCalc()">
+        <option value="14">14 AWG</option><option value="12">12 AWG</option>
+        <option value="10">10 AWG</option><option value="8">8 AWG</option>
+        <option value="6">6 AWG</option><option value="4">4 AWG</option>
+        <option value="3">3 AWG</option><option value="2">2 AWG</option>
+        <option value="1">1 AWG</option><option value="1/0">1/0 AWG</option>
+        <option value="2/0">2/0 AWG</option><option value="3/0">3/0 AWG</option>
+        <option value="4/0">4/0 AWG</option><option value="250">250 kcmil</option>
+        <option value="300">300 kcmil</option><option value="350">350 kcmil</option>
+        <option value="500">500 kcmil</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Wire Type</span>
+      <select id="wwWireType" onchange="wwCalc()">
+        <option value="thhn">THHN/THWN-2</option>
+        <option value="thw">THW/THHW</option>
+        <option value="xhhw">XHHW-2</option>
+      </select>
+    </div>
+    <div class="ctrl-group" style="max-width:80px">
+      <span class="ctrl-label"># of Wires</span>
+      <input type="number" id="wwNumWires" value="6" min="1" max="100" oninput="wwCalc()">
+    </div>
+    <button class="reset-btn" onclick="wwReset()">↺ Reset</button>
+  </div>
+
+  <div class="result-box show" id="wwResultBox" style="margin:12px 20px">
+    <div class="result-title">WIREWAY FILL CALCULATION — NEC 376.22</div>
+    <div class="result-grid" id="wwResultGrid"></div>
+  </div>
+
+  </div><!-- end fillmode-wireway -->
 
   <div class="fill-panel">
     <div class="table-wrap">
@@ -4265,6 +4348,57 @@ function favRender(type) {
 // Init all fav lists on load
 ['vd','amp','cf','lc'].forEach(favRender);
 
+
+function fillCalcMode(mode) {
+  document.getElementById('fillmode-conduit').style.display = mode === 'conduit' ? 'flex' : 'none';
+  document.getElementById('fillmode-wireway').style.display = mode === 'wireway' ? 'flex' : 'none';
+  document.getElementById('mode-conduit').classList.toggle('active', mode === 'conduit');
+  document.getElementById('mode-wireway').classList.toggle('active', mode === 'wireway');
+  if (mode === 'wireway') wwCalc();
+}
+
+// Wireway wire areas (in²) — same as conduit fill THHN
+var WW_AREAS = {
+  thhn: {'14':0.0097,'12':0.0133,'10':0.0211,'8':0.0366,'6':0.0507,'4':0.0824,'3':0.0973,'2':0.1158,'1':0.1562,'1/0':0.1855,'2/0':0.2223,'3/0':0.2660,'4/0':0.3237,'250':0.3970,'300':0.4608,'350':0.5242,'500':0.7073},
+  thw:  {'14':0.0097,'12':0.0133,'10':0.0211,'8':0.0437,'6':0.0590,'4':0.0814,'3':0.0962,'2':0.1146,'1':0.1534,'1/0':0.1825,'2/0':0.2190,'3/0':0.2642,'4/0':0.3197,'250':0.3904,'300':0.4536,'350':0.5166,'500':0.6939},
+  xhhw: {'14':0.0097,'12':0.0133,'10':0.0211,'8':0.0366,'6':0.0507,'4':0.0824,'3':0.0973,'2':0.1158,'1':0.1562,'1/0':0.1855,'2/0':0.2223,'3/0':0.2660,'4/0':0.3237,'250':0.3970,'300':0.4608,'350':0.5242,'500':0.7073}
+};
+
+function wwCalc() {
+  var w = parseFloat(document.getElementById('wwWidth').value);
+  var h = parseFloat(document.getElementById('wwHeight').value);
+  var wireSize = document.getElementById('wwWireSize').value;
+  var wireType = document.getElementById('wwWireType').value;
+  var numWires = parseInt(document.getElementById('wwNumWires').value) || 1;
+
+  var totalArea = w * h;
+  var maxFill = totalArea * 0.20;
+  var wireArea = (WW_AREAS[wireType] || WW_AREAS.thhn)[wireSize] || 0.0133;
+  var usedArea = wireArea * numWires;
+  var pct = (usedArea / totalArea) * 100;
+  var maxWires = Math.floor(maxFill / wireArea);
+  var passes = usedArea <= maxFill;
+
+  var statusColor = passes ? 'var(--success)' : 'var(--danger)';
+  var statusText = passes ? '✓ PASS' : '✗ OVER FILL';
+
+  document.getElementById('wwResultGrid').innerHTML =
+    '<div class="result-item"><div class="result-item-label">Status</div><div class="result-item-value" style="color:'+statusColor+';font-size:22px">'+statusText+'</div></div>' +
+    '<div class="result-item"><div class="result-item-label">Fill Used</div><div class="result-item-value" style="color:'+statusColor+'">'+pct.toFixed(1)+'%</div></div>' +
+    '<div class="result-item"><div class="result-item-label">Max 20% Fill</div><div class="result-item-value">'+maxFill.toFixed(3)+' in²</div></div>' +
+    '<div class="result-item"><div class="result-item-label">Used Area</div><div class="result-item-value">'+usedArea.toFixed(3)+' in²</div></div>' +
+    '<div class="result-item"><div class="result-item-label">Wireway Area</div><div class="result-item-value">'+totalArea.toFixed(2)+' in² ('+w+'"×'+h+'")</div></div>' +
+    '<div class="result-item"><div class="result-item-label">Max Conductors</div><div class="result-item-value result-ok">'+maxWires+' max @ 20%</div></div>';
+}
+
+function wwReset() {
+  document.getElementById('wwWidth').value = '4';
+  document.getElementById('wwHeight').value = '4';
+  document.getElementById('wwWireSize').value = '12';
+  document.getElementById('wwWireType').value = 'thhn';
+  document.getElementById('wwNumWires').value = '6';
+  wwCalc();
+}
 
 function cfGoToAmpacity() {
   var numWires = parseInt(document.getElementById('cfNumWires').value) || 3;
