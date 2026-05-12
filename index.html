@@ -818,6 +818,11 @@
   <div class="result-box" id="cfResultBox">
     <div class="result-title">CALCULATION RESULT</div>
     <div class="result-grid" id="cfResultGrid"></div>
+    <div style="padding:10px 16px;border-top:1px solid var(--border)">
+      <button onclick="cfGoToAmpacity()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s;width:100%" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        ⚡ Check Ampacity Derating for These Conductors →
+      </button>
+    </div>
   </div>
 
   <div class="fill-panel">
@@ -4260,6 +4265,35 @@ function favRender(type) {
 // Init all fav lists on load
 ['vd','amp','cf','lc'].forEach(favRender);
 
+
+function cfGoToAmpacity() {
+  var numWires = parseInt(document.getElementById('cfNumWires').value) || 3;
+  var wireSize = document.getElementById('cfWireSize').value;
+
+  // Switch to ampacity tab
+  var ampTab = document.querySelector('.tab[onclick*="ampacity"]');
+  if (ampTab) switchTab('ampacity', ampTab);
+
+  // Set wire size and bundle count
+  setTimeout(function() {
+    var wireSel = document.getElementById('ampWireSize');
+    var bundleSel = document.getElementById('ampBundle');
+    if (wireSel) wireSel.value = wireSize;
+    // Map num wires to bundle derating factor
+    var bundleMap = {
+      1:'1.00', 2:'1.00', 3:'1.00',
+      4:'0.80', 5:'0.80', 6:'0.80',
+      7:'0.70', 8:'0.70', 9:'0.70',
+      10:'0.50', 11:'0.50', 12:'0.50',
+      13:'0.45', 14:'0.45', 15:'0.45',
+      16:'0.40', 17:'0.40', 18:'0.40',
+      19:'0.35', 20:'0.35'
+    };
+    var factor = bundleMap[numWires] || (numWires > 20 ? '0.35' : '1.00');
+    if (bundleSel) bundleSel.value = factor;
+    if (typeof ampUpdateCalc === 'function') ampUpdateCalc();
+  }, 100);
+}
 
 function cfReset() {
   document.getElementById('cfConduitType').value = 'emt';
