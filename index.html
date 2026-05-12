@@ -1418,7 +1418,7 @@
   </div>
 
 
-  <div id="csr-grounding" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+  <div id="csr-grounding" style="display:none;flex-direction:column;flex:1;overflow:hidden;height:100%">
   <div class="fill-rules-bar">
     <div class="nec-row">
       <span class="fill-pill pill-orange" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC Article 250 — Complete Grounding and Bonding requirements overview')">NEC Art. 250</span>
@@ -1450,7 +1450,7 @@
   </div>
 
 
-  <div id="csr-nyc" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+  <div id="csr-nyc" style="display:none;flex-direction:column;flex:1;overflow:hidden;height:100%">
   <div class="fill-rules-bar">
     <div class="nec-row">
       <span class="fill-pill pill-blue" style="cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 2025 — New York City Electrical Code current edition amendments and local requirements')">NYCEC 2025</span>
@@ -3046,9 +3046,10 @@ function codeSubTab(name) {
     if (sec) sec.style.display = n === name ? 'flex' : 'none';
     if (btn) btn.classList.toggle('active', n === name);
   });
-  // Call init AFTER section is visible
-  if (name === 'grounding') groundingInitTopics();
-  if (name === 'nyc') nycInitTopics();
+  try {
+    if (name === 'grounding') { groundingInitTopics(); }
+    if (name === 'nyc') { nycInitTopics(); }
+  } catch(e) { console.error('codeSubTab init error:', e); }
 }
 
 var origSwitch = window.switchTab;
