@@ -105,7 +105,7 @@
 
   /* ── PANELS ── */
   .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
-  .panel.active { display: flex; flex-direction: column; overflow: hidden; }
+  .panel.active { display: flex; flex-direction: column; overflow: hidden; min-height: 0; flex: 1; }
 
   /* ══════════════════════════════════════
      CHAT PANEL
@@ -1364,7 +1364,7 @@
 
 
 <!-- ══ CODE REFERENCE PANEL ══ -->
-<div class="panel" id="panel-coderef">
+<div class="panel" id="panel-coderef" style="flex-direction:column">
 
   <div style="display:flex;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0">
     <button class="code-subtab active" id="cst-gfci" onclick="codeSubTab('gfci',this)">GFCI / AFCI</button>
@@ -1418,7 +1418,7 @@
   </div>
 
 
-  <div id="csr-grounding" style="display:none;flex-direction:column;flex:1;overflow:hidden;height:100%">
+  <div id="csr-grounding" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
   <div class="fill-rules-bar">
     <div class="nec-row">
       <span class="fill-pill pill-orange" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC Article 250 — Complete Grounding and Bonding requirements overview')">NEC Art. 250</span>
@@ -1450,7 +1450,7 @@
   </div>
 
 
-  <div id="csr-nyc" style="display:none;flex-direction:column;flex:1;overflow:hidden;height:100%">
+  <div id="csr-nyc" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
   <div class="fill-rules-bar">
     <div class="nec-row">
       <span class="fill-pill pill-blue" style="cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 2025 — New York City Electrical Code current edition amendments and local requirements')">NYCEC 2025</span>
@@ -3046,9 +3046,12 @@ function codeSubTab(name) {
     if (sec) sec.style.display = n === name ? 'flex' : 'none';
     if (btn) btn.classList.toggle('active', n === name);
   });
+  // Force reflow then init
+  var panel = document.getElementById('panel-coderef');
+  if (panel) void panel.offsetHeight;
   try {
-    if (name === 'grounding') { groundingInitTopics(); }
-    if (name === 'nyc') { nycInitTopics(); }
+    if (name === 'grounding') groundingInitTopics();
+    if (name === 'nyc') nycInitTopics();
   } catch(e) { console.error('codeSubTab init error:', e); }
 }
 
