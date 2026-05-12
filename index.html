@@ -747,6 +747,103 @@
     <button class="code-subtab" id="mode-wireway" onclick="fillCalcMode('wireway')">Wireway</button>
   </div>
 
+  <!-- WIREWAY SECTION -->
+  <div id="fillmode-wireway" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+
+  <div class="fill-rules-bar">
+    <div class="nec-row">
+      <span class="fill-pill pill-orange" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 376.22 — Wireways: maximum fill 20% of cross-sectional area')">NEC 376.22</span>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 376.22 — Sheet metal wireways maximum fill 20%')">20%</span> Max fill — sheet metal wireway</div>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 378.22 — Non-metallic wireways maximum fill 20%')">378.22</span> Non-metallic wireway</div>
+    </div>
+  </div>
+
+  <div class="cf-controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Wireway Width (in)</span>
+      <select id="wwWidth" onchange="wwCalc()">
+        <option value="2">2"</option>
+        <option value="3">3"</option>
+        <option value="4" selected>4"</option>
+        <option value="6">6"</option>
+        <option value="8">8"</option>
+        <option value="10">10"</option>
+        <option value="12">12"</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Wireway Height (in)</span>
+      <select id="wwHeight" onchange="wwCalc()">
+        <option value="2">2"</option>
+        <option value="3">3"</option>
+        <option value="4" selected>4"</option>
+        <option value="6">6"</option>
+        <option value="8">8"</option>
+        <option value="10">10"</option>
+        <option value="12">12"</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Wire Size</span>
+      <select id="wwWireSize" onchange="wwCalc()">
+        <option value="14">14 AWG</option><option value="12">12 AWG</option>
+        <option value="10">10 AWG</option><option value="8">8 AWG</option>
+        <option value="6">6 AWG</option><option value="4">4 AWG</option>
+        <option value="3">3 AWG</option><option value="2">2 AWG</option>
+        <option value="1">1 AWG</option><option value="1/0">1/0 AWG</option>
+        <option value="2/0">2/0 AWG</option><option value="3/0">3/0 AWG</option>
+        <option value="4/0">4/0 AWG</option><option value="250">250 kcmil</option>
+        <option value="300">300 kcmil</option><option value="350">350 kcmil</option>
+        <option value="500">500 kcmil</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Wire Type</span>
+      <select id="wwWireType" onchange="wwCalc()">
+        <option value="thhn">THHN/THWN-2</option>
+        <option value="thw">THW/THHW</option>
+        <option value="xhhw">XHHW-2</option>
+      </select>
+    </div>
+    <div class="ctrl-group" style="max-width:80px">
+      <span class="ctrl-label"># of Wires</span>
+      <input type="number" id="wwNumWires" value="6" min="1" max="100" oninput="wwCalc()">
+    </div>
+    <button class="reset-btn" onclick="wwReset()">↺ Reset</button>
+  </div>
+
+  <div class="result-box show" id="wwResultBox" style="margin:12px 20px">
+    <div class="result-title">WIREWAY FILL CALCULATION — NEC 376.22</div>
+    <div class="result-grid" id="wwResultGrid"></div>
+  </div>
+
+  <!-- WIREWAY REFERENCE TABLE — inside wireway mode -->
+  <div class="fill-panel" style="flex:1;overflow:hidden">
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">MAX CONDUCTORS @ 20% FILL — THHN/THWN-2</span>
+      </div>
+      <div style="overflow-x:auto;overflow-y:auto;flex:1">
+        <table class="cf-table" id="wwRefTable">
+          <thead>
+            <tr>
+              <th class="wire-col">Wire Size</th>
+              <th>Area (in²)</th>
+              <th>2"×2"</th>
+              <th>4"×4"</th>
+              <th>6"×6"</th>
+              <th>8"×8"</th>
+              <th>12"×12"</th>
+            </tr>
+          </thead>
+          <tbody id="wwRefTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- end fillmode-wireway -->
+
   <!-- CONDUIT FILL SECTION -->
   <div id="fillmode-conduit" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0">
 
@@ -859,103 +956,6 @@
 
 
   </div><!-- end fillmode-conduit -->
-
-  <!-- WIREWAY SECTION -->
-  <div id="fillmode-wireway" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
-
-  <div class="fill-rules-bar">
-    <div class="nec-row">
-      <span class="fill-pill pill-orange" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 376.22 — Wireways: maximum fill 20% of cross-sectional area')">NEC 376.22</span>
-      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 376.22 — Sheet metal wireways maximum fill 20%')">20%</span> Max fill — sheet metal wireway</div>
-      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 378.22 — Non-metallic wireways maximum fill 20%')">378.22</span> Non-metallic wireway</div>
-    </div>
-  </div>
-
-  <div class="cf-controls">
-    <div class="ctrl-group">
-      <span class="ctrl-label">Wireway Width (in)</span>
-      <select id="wwWidth" onchange="wwCalc()">
-        <option value="2">2"</option>
-        <option value="3">3"</option>
-        <option value="4" selected>4"</option>
-        <option value="6">6"</option>
-        <option value="8">8"</option>
-        <option value="10">10"</option>
-        <option value="12">12"</option>
-      </select>
-    </div>
-    <div class="ctrl-group">
-      <span class="ctrl-label">Wireway Height (in)</span>
-      <select id="wwHeight" onchange="wwCalc()">
-        <option value="2">2"</option>
-        <option value="3">3"</option>
-        <option value="4" selected>4"</option>
-        <option value="6">6"</option>
-        <option value="8">8"</option>
-        <option value="10">10"</option>
-        <option value="12">12"</option>
-      </select>
-    </div>
-    <div class="ctrl-group">
-      <span class="ctrl-label">Wire Size</span>
-      <select id="wwWireSize" onchange="wwCalc()">
-        <option value="14">14 AWG</option><option value="12">12 AWG</option>
-        <option value="10">10 AWG</option><option value="8">8 AWG</option>
-        <option value="6">6 AWG</option><option value="4">4 AWG</option>
-        <option value="3">3 AWG</option><option value="2">2 AWG</option>
-        <option value="1">1 AWG</option><option value="1/0">1/0 AWG</option>
-        <option value="2/0">2/0 AWG</option><option value="3/0">3/0 AWG</option>
-        <option value="4/0">4/0 AWG</option><option value="250">250 kcmil</option>
-        <option value="300">300 kcmil</option><option value="350">350 kcmil</option>
-        <option value="500">500 kcmil</option>
-      </select>
-    </div>
-    <div class="ctrl-group">
-      <span class="ctrl-label">Wire Type</span>
-      <select id="wwWireType" onchange="wwCalc()">
-        <option value="thhn">THHN/THWN-2</option>
-        <option value="thw">THW/THHW</option>
-        <option value="xhhw">XHHW-2</option>
-      </select>
-    </div>
-    <div class="ctrl-group" style="max-width:80px">
-      <span class="ctrl-label"># of Wires</span>
-      <input type="number" id="wwNumWires" value="6" min="1" max="100" oninput="wwCalc()">
-    </div>
-    <button class="reset-btn" onclick="wwReset()">↺ Reset</button>
-  </div>
-
-  <div class="result-box show" id="wwResultBox" style="margin:12px 20px">
-    <div class="result-title">WIREWAY FILL CALCULATION — NEC 376.22</div>
-    <div class="result-grid" id="wwResultGrid"></div>
-  </div>
-
-  <!-- WIREWAY REFERENCE TABLE — inside wireway mode -->
-  <div class="fill-panel" style="flex:1;overflow:hidden">
-    <div class="table-wrap">
-      <div class="table-header">
-        <span class="table-title">MAX CONDUCTORS @ 20% FILL — THHN/THWN-2</span>
-      </div>
-      <div style="overflow-x:auto;overflow-y:auto;flex:1">
-        <table class="cf-table" id="wwRefTable">
-          <thead>
-            <tr>
-              <th class="wire-col">Wire Size</th>
-              <th>Area (in²)</th>
-              <th>2"×2"</th>
-              <th>4"×4"</th>
-              <th>6"×6"</th>
-              <th>8"×8"</th>
-              <th>12"×12"</th>
-            </tr>
-          </thead>
-          <tbody id="wwRefTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  </div><!-- end fillmode-wireway -->
 
 <!-- ══ BOX FILL PANEL ══ -->
 <div class="panel" id="panel-boxfill">
