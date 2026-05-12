@@ -263,8 +263,8 @@
   .result-box { margin: 14px 20px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 4px; display: none; flex-shrink: 0; }
   .result-box.show { display: block; }
   .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 2px; color: var(--accent); margin-bottom: 10px; }
-  .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
-  .result-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 8px 12px; }
+  .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, auto)); gap: 8px; }
+  .result-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 8px 12px; min-width: 0; }
   .result-item-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
   .result-item-value { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1px; }
   .result-ok { color: var(--success); }
@@ -2537,10 +2537,13 @@ function ampUpdateCalc() {
     '<div class="result-item"><div class="result-item-label">Temp Factor'+sunStr+'</div><div class="result-item-value">'+(tempFactor < 1.0 ? '<span style="color:var(--warn)">':'<span style="color:var(--success)">')+tempFactorStr+'</span></div></div>'+
     '<div class="result-item"><div class="result-item-label">Bundle Factor</div><div class="result-item-value">'+(bundle < 1.0 ? '<span style="color:var(--warn)">':'<span style="color:var(--success)">')+bundle.toFixed(2)+'</span></div></div>'+
     '<div class="result-item"><div class="result-item-label">After Derating</div><div class="result-item-value result-ok">'+Math.floor(derated)+'A</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Terminal Limit (75°C)</div><div class="result-item-value">'+termLimit75+'A</div></div>'+
+    '<div class="result-item" title="NEC 110.14(C): Most equipment terminals are rated 75°C. Even if your conductor is rated 90°C, the final ampacity cannot exceed the 75°C column value. Use 90°C column only for derating calculations."><div class="result-item-label">Terminal Limit (75°C) <span style="font-size:10px;color:var(--text-dimmer)">NEC 110.14(C)</span></div><div class="result-item-value">'+termLimit75+'A</div></div>'+
     '<div class="result-item"><div class="result-item-label">Final Ampacity</div><div class="result-item-value result-ok" style="font-size:26px">'+finalAmp+'A</div></div>'+
     '<div class="result-item"><div class="result-item-label">Typical Breaker</div><div class="result-item-value hi">'+breakerStr+'</div></div>'+
-    '<div class="result-item"><div class="result-item-label">NEC Reference</div><div class="result-item-value" style="font-size:13px">310.16 + 310.15(B)</div></div>';
+    '<div style="grid-column:1/-1;padding:10px 12px;background:rgba(74,158,255,0.06);border:1px solid rgba(74,158,255,0.2);border-radius:4px;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.6">'+
+    '<span style="color:var(--nycec);font-weight:700">NEC 110.14(C)</span> — Terminal Limit: Most breakers/panels are rated 75°C. '+
+    'Use 90°C column <em>only</em> for derating math — final ampacity cannot exceed 75°C column value. '+
+    'Exception: equipment labeled for 90°C terminations.</div>';
 }
 
 function ampRenderRefTable(mat) {
