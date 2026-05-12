@@ -747,8 +747,11 @@
     <button class="code-subtab" id="mode-wireway" onclick="fillCalcMode('wireway',this)">Wireway</button>
   </div>
 
+  <!-- FILL MODES CONTAINER -->
+  <div style="flex:1;position:relative;overflow:hidden;min-height:0">
+
   <!-- CONDUIT FILL SECTION -->
-  <div id="fillmode-conduit" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+  <div id="fillmode-conduit" style="position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden">
 
   <div class="fill-rules-bar">
     <div class="nec-row">
@@ -861,7 +864,7 @@
   </div><!-- end fillmode-conduit -->
 
   <!-- WIREWAY SECTION -->
-  <div id="fillmode-wireway" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+  <div id="fillmode-wireway" style="position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden">
 
   <div class="fill-rules-bar">
     <div class="nec-row">
@@ -956,6 +959,8 @@
   </div>
 
   </div><!-- end fillmode-wireway -->
+
+  </div><!-- end fill modes container -->
 
 <!-- ══ BOX FILL PANEL ══ -->
 <div class="panel" id="panel-boxfill">
