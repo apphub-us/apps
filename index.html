@@ -4779,25 +4779,25 @@ var NYC_DATA = {
   overview: {
     title: 'NYC Electrical Code Overview',
     items: [
-      {label:'Base Code', color:'accent', content:'NYC uses NEC 2020 as the base code with significant local amendments. The NYC Electrical Code (NYCEC) is administered by the NYC Department of Buildings (DOB).\n\nLast major update: Local Law 2024. Always verify current edition with NYC DOB at nyc.gov/buildings.'},
-      {label:'Jurisdiction', color:'success', content:'All electrical work in NYC requires:\n• Licensed Master Electrician (ME) or Special Electrician (SE)\n• NYC DOB permits for most work\n• Inspection by NYC DOB or approved special inspection agency\n• Certificates of Inspection (C of I) for completed work'},
-      {label:'Licenses Required', color:'warn', content:'**Master Electrician (ME):** Can pull permits, supervise all electrical work, certify completed installations.\n\n**Special Electrician (SE):** Licensed for specific locations/equipment (elevators, signs, etc.)\n\n**Journeyman:** Can work under ME supervision. No permit authority.\n\n⚠ Unlicensed electrical work in NYC = Class A misdemeanor + fines.'},
+      {label:'Base Code', section:'Admin §101', color:'accent', content:'NYC uses NEC 2020 as the base code with significant local amendments. The NYC Electrical Code (NYCEC) is administered by the NYC Department of Buildings (DOB).\n\nLast major update: Local Law 2024. Always verify current edition with NYC DOB at nyc.gov/buildings.'},
+      {label:'Jurisdiction', section:'Admin §105', color:'success', content:'All electrical work in NYC requires:\n• Licensed Master Electrician (ME) or Special Electrician (SE)\n• NYC DOB permits for most work\n• Inspection by NYC DOB or approved special inspection agency\n• Certificates of Inspection (C of I) for completed work'},
+      {label:'Licenses Required', section:'Admin §107', color:'warn', content:'**Master Electrician (ME):** Can pull permits, supervise all electrical work, certify completed installations.\n\n**Special Electrician (SE):** Licensed for specific locations/equipment (elevators, signs, etc.)\n\n**Journeyman:** Can work under ME supervision. No permit authority.\n\n⚠ Unlicensed electrical work in NYC = Class A misdemeanor + fines.'},
     ]
   },
   wiring: {
     title: 'Wiring Methods — NYC Amendments',
     items: [
-      {label:'EMT Required — Major Difference', color:'danger', content:'**NYC requires EMT (or rigid conduit) in most commercial and multifamily occupancies.**\n\nRomex (NM cable) is generally NOT permitted in:\n• Commercial buildings\n• Multifamily buildings (3+ units)\n• Any building over 3 stories\n\nRomex IS permitted in:\n• 1 and 2 family dwellings\n• Townhouses (with restrictions)'},
-      {label:'MC Cable', color:'warn', content:'MC Cable (Metal Clad) is permitted in NYC under specific conditions:\n• Healthcare facilities\n• Concealed in walls of certain occupancies\n• Check NYCEC Chapter 3 for specific applications\n\n⚠ Always verify with NYC DOB — inspectors are strict about wiring methods.'},
-      {label:'Conduit Fill', color:'success', content:'Same as NEC Chapter 9 — no NYC amendment to conduit fill rules. However:\n• Splices in conduit are generally not permitted (NEC 300.13 applies)\n• All conductors in a conduit must be same voltage system\n• Verify conduit material per occupancy type'},
+      {label:'EMT Required — Major Difference', section:'334.12', color:'danger', content:'**NYC requires EMT (or rigid conduit) in most commercial and multifamily occupancies.**\n\nRomex (NM cable) is generally NOT permitted in:\n• Commercial buildings\n• Multifamily buildings (3+ units)\n• Any building over 3 stories\n\nRomex IS permitted in:\n• 1 and 2 family dwellings\n• Townhouses (with restrictions)'},
+      {label:'MC Cable', section:'330.10', color:'warn', content:'MC Cable (Metal Clad) is permitted in NYC under specific conditions:\n• Healthcare facilities\n• Concealed in walls of certain occupancies\n• Check NYCEC Chapter 3 for specific applications\n\n⚠ Always verify with NYC DOB — inspectors are strict about wiring methods.'},
+      {label:'Conduit Fill', section:'Ch.9 T.1', color:'success', content:'Same as NEC Chapter 9 — no NYC amendment to conduit fill rules. However:\n• Splices in conduit are generally not permitted (NEC 300.13 applies)\n• All conductors in a conduit must be same voltage system\n• Verify conduit material per occupancy type'},
     ]
   },
   gfci_afci: {
     title: 'GFCI/AFCI — NYC Rules',
     items: [
-      {label:'GFCI Requirements', color:'accent', content:'NYC follows NEC 2020 GFCI requirements:\n• Bathrooms — all receptacles\n• Garages — all receptacles\n• Outdoors — all receptacles\n• Kitchens — countertop receptacles within 6 ft of sink\n• Basements — all receptacles\n• Crawl spaces — all receptacles\n• Boat hoisting areas, pools, hot tubs\n• Rooftop — all receptacles'},
-      {label:'AFCI Requirements', color:'warn', content:'NYC adopted AFCI requirements per NEC 2020:\n• All 120V, 15A and 20A branch circuits in dwelling units\n• Bedrooms, living rooms, dining rooms, hallways, closets\n• All rooms in dwelling units (NEC 2020 expanded scope)\n\n⚠ AFCI breakers must be listed for the panel manufacturer.'},
-      {label:'Combination AFCI/GFCI', color:'success', content:'Combination AFCI/GFCI devices are acceptable in NYC and satisfy both requirements where both apply (e.g., kitchen, bathroom in dwelling unit).\n\nMost manufacturers now offer dual-function breakers. Verify listing with panel manufacturer.'},
+      {label:'GFCI Requirements', section:'210.8', color:'accent', content:'NYC follows NEC 2020 GFCI requirements:\n• Bathrooms — all receptacles\n• Garages — all receptacles\n• Outdoors — all receptacles\n• Kitchens — countertop receptacles within 6 ft of sink\n• Basements — all receptacles\n• Crawl spaces — all receptacles\n• Boat hoisting areas, pools, hot tubs\n• Rooftop — all receptacles'},
+      {label:'AFCI Requirements', section:'210.12', color:'warn', content:'NYC adopted AFCI requirements per NEC 2020:\n• All 120V, 15A and 20A branch circuits in dwelling units\n• Bedrooms, living rooms, dining rooms, hallways, closets\n• All rooms in dwelling units (NEC 2020 expanded scope)\n\n⚠ AFCI breakers must be listed for the panel manufacturer.'},
+      {label:'Combination AFCI/GFCI', section:'210.12(A)', color:'success', content:'Combination AFCI/GFCI devices are acceptable in NYC and satisfy both requirements where both apply (e.g., kitchen, bathroom in dwelling unit).\n\nMost manufacturers now offer dual-function breakers. Verify listing with panel manufacturer.'},
     ]
   },
   service: {
@@ -4805,7 +4805,7 @@ var NYC_DATA = {
     items: [
       {label:'Con Edison Requirements', color:'accent', content:'All electrical service in NYC must meet Con Edison (utility) requirements IN ADDITION to NYCEC:\n• Service entrance conductors per Con Ed specs\n• Meter socket type and location\n• Clearances from windows, doors, gas meters\n• Underground vs overhead service\n• Transformer requirements for large services'},
       {label:'Service Size — Residential', color:'success', content:'**Minimum service sizes in NYC:**\n• Studio/1BR: 60A (minimum, 100A recommended)\n• 2BR+: 100A minimum\n• Renovations: often require service upgrade\n• New construction: 200A typically required\n\nAll services must be reviewed by Con Edison and NYC DOB.'},
-      {label:'Metering', color:'warn', content:'**NYC metering requirements:**\n• Individual meters for each dwelling unit (Local Law)\n• CT metering for services above 200A\n• Sub-metering permitted for commercial tenants\n• Solar net metering: Con Ed approval required\n• All meters installed by Con Edison'},
+      {label:'Metering', section:'230.66', color:'warn', content:'**NYC metering requirements:**\n• Individual meters for each dwelling unit (Local Law)\n• CT metering for services above 200A\n• Sub-metering permitted for commercial tenants\n• Solar net metering: Con Ed approval required\n• All meters installed by Con Edison'},
     ]
   },
   conduit: {
@@ -4829,7 +4829,7 @@ var NYC_DATA = {
     items: [
       {label:'NYC Solar Requirements', color:'accent', content:'Solar PV systems in NYC require:\n• NYC DOB electrical permit\n• NYC DOB structural review (roof loading)\n• Con Edison interconnection agreement\n• Fire department review (for some systems)\n• NYC LL97 may require solar on new large buildings'},
       {label:'Local Law 97 — Climate Mobilization Act', color:'warn', content:'NYC Local Law 97 (2019) sets carbon emission limits for large buildings (>25,000 sq ft).\n\nBuildings exceeding limits face significant fines starting 2024. Many buildings are installing solar, heat pumps, and energy storage to comply.\n\nElectricians: large opportunity for upgrades and new installations.'},
-      {label:'Interconnection', color:'success', content:'Net metering through Con Edison:\n• Apply through Con Ed website\n• System size limit: 25 kW for residential\n• Larger systems: VDER (Value of Distributed Energy Resources) tariff\n• Timeline: 3-6 months for approval and interconnection'},
+      {label:'Interconnection', section:'705.12', color:'success', content:'Net metering through Con Edison:\n• Apply through Con Ed website\n• System size limit: 25 kW for residential\n• Larger systems: VDER (Value of Distributed Energy Resources) tariff\n• Timeline: 3-6 months for approval and interconnection'},
     ]
   },
   ev: {
@@ -4906,7 +4906,12 @@ function nycSelectTopic(id) {
   data.items.forEach(function(item) {
     var cols = (colorMap[item.color]||colorMap.accent).split('|');
     html += '<div style="background:'+cols[0]+';border:1px solid '+cols[1]+';border-left:4px solid '+cols[2]+';border-radius:6px;padding:16px;margin-bottom:14px">';
-    html += '<div style="font-family:Bebas Neue,sans-serif;font-size:15px;letter-spacing:1px;color:'+cols[2]+';margin-bottom:10px">' + item.label + '</div>';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+    html += '<div style="font-family:Bebas Neue,sans-serif;font-size:15px;letter-spacing:1px;color:'+cols[2]+'">' + item.label + '</div>';
+    if (item.section) {
+      html += '<span onclick="necLink(\'NYCEC ' + item.section + ' — ' + item.label + '\')" style="font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;background:rgba(74,158,255,0.2);color:var(--nycec);cursor:pointer;letter-spacing:0.5px" title="Ask AI about NYCEC ' + item.section + '">' + item.section + '</span>';
+    }
+    html += '</div>';
     var rendered = item.content
       .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#e8e8e8">$1</strong>')
       .replace(/\n\n/g, '</p><p style="margin-top:8px">')
