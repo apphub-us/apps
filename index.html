@@ -834,6 +834,31 @@
     </div>
   </div>
 
+
+  <div class="fill-panel">
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">MAX CONDUCTORS (3+ WIRE, 40% FILL)</span>
+        <div class="conduit-tabs">
+          <div class="conduit-tab active" onclick="cfSwitchConduit('emt',this)">EMT</div>
+          <div class="conduit-tab" onclick="cfSwitchConduit('imc',this)">IMC</div>
+          <div class="conduit-tab" onclick="cfSwitchConduit('rmc',this)">RMC</div>
+          <div class="conduit-tab" onclick="cfSwitchConduit('ent',this)">ENT</div>
+          <div class="conduit-tab" onclick="cfSwitchConduit('pvc40',this)">PVC Sch40</div>
+          <div class="conduit-tab" onclick="cfSwitchConduit('pvc80',this)">PVC Sch80</div>
+        </div>
+      </div>
+      <table class="cf-table">
+        <thead id="cfTableHead"></thead>
+        <tbody id="cfTableBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+
+
   </div><!-- end fillmode-conduit -->
 
   <!-- WIREWAY SECTION -->
@@ -906,16 +931,13 @@
     <div class="result-grid" id="wwResultGrid"></div>
   </div>
 
-  </div><!-- end fillmode-wireway -->
-
-  <!-- WIREWAY REFERENCE TABLE -->
-  <div id="ww-table-section" style="display:none;flex:1;overflow:hidden">
-  <div class="fill-panel">
+  <!-- WIREWAY REFERENCE TABLE — inside wireway mode -->
+  <div class="fill-panel" style="flex:1;overflow:hidden">
     <div class="table-wrap">
       <div class="table-header">
         <span class="table-title">MAX CONDUCTORS @ 20% FILL — THHN/THWN-2</span>
       </div>
-      <div style="overflow-x:auto;flex:1">
+      <div style="overflow-x:auto;overflow-y:auto;flex:1">
         <table class="cf-table" id="wwRefTable">
           <thead>
             <tr>
@@ -933,31 +955,8 @@
       </div>
     </div>
   </div>
-  </div>
 
-  <div class="fill-panel">
-    <div class="table-wrap">
-      <div class="table-header">
-        <span class="table-title">MAX CONDUCTORS (3+ WIRE, 40% FILL)</span>
-        <div class="conduit-tabs">
-          <div class="conduit-tab active" onclick="cfSwitchConduit('emt',this)">EMT</div>
-          <div class="conduit-tab" onclick="cfSwitchConduit('imc',this)">IMC</div>
-          <div class="conduit-tab" onclick="cfSwitchConduit('rmc',this)">RMC</div>
-          <div class="conduit-tab" onclick="cfSwitchConduit('ent',this)">ENT</div>
-          <div class="conduit-tab" onclick="cfSwitchConduit('pvc40',this)">PVC Sch40</div>
-          <div class="conduit-tab" onclick="cfSwitchConduit('pvc80',this)">PVC Sch80</div>
-        </div>
-      </div>
-      <table class="cf-table">
-        <thead id="cfTableHead"></thead>
-        <tbody id="cfTableBody"></tbody>
-      </table>
-    </div>
-
-  </div>
-
-</div>
-
+  </div><!-- end fillmode-wireway -->
 
 <!-- ══ BOX FILL PANEL ══ -->
 <div class="panel" id="panel-boxfill">
@@ -4379,7 +4378,6 @@ function favRender(type) {
 function fillCalcMode(mode) {
   document.getElementById('fillmode-conduit').style.display = mode === 'conduit' ? 'flex' : 'none';
   document.getElementById('fillmode-wireway').style.display = mode === 'wireway' ? 'flex' : 'none';
-  document.getElementById('ww-table-section').style.display = mode === 'wireway' ? 'flex' : 'none';
   document.getElementById('mode-conduit').classList.toggle('active', mode === 'conduit');
   document.getElementById('mode-wireway').classList.toggle('active', mode === 'wireway');
   if (mode === 'wireway') { wwCalc(); wwRenderTable(); }
