@@ -3000,6 +3000,7 @@ function codeSubTab(name) {
   var wrapper = document.getElementById('csr-content');
   if (!wrapper || !CSR_CONTENT[name]) return;
   wrapper.innerHTML = CSR_CONTENT[name];
+  if (name === 'gfci') gfciInitRooms();
   if (name === 'grounding') groundingInitTopics();
   if (name === 'nyc') nycInitTopics();
 }
@@ -3020,7 +3021,7 @@ window.switchTab = function(name,el){
   origSwitch(name,el);
   if(name==='pullbox'){setTimeout(pbUpdate,50);}
   if(name==='outlets'){setTimeout(initOutletsIfNeeded,50);}
-  if(name==='coderef'){setTimeout(function(){ codeSubTab('gfci'); },50);}
+  if(name==='coderef'){setTimeout(function(){ codeSubTab('gfci'); gfciInitRooms(); },50);}
   if(name==='conduit'){setTimeout(function(){ cfUpdateCalc(); },50);}
 }
 
