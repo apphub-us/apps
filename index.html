@@ -749,7 +749,7 @@
   </div>
 
   <!-- CONDUIT FILL SECTION -->
-  <div id="fillmode-conduit" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+  <div id="fillmode-conduit" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0">
 
   <div class="fill-rules-bar">
     <div class="nec-row">
@@ -862,7 +862,7 @@
   </div><!-- end fillmode-conduit -->
 
   <!-- WIREWAY SECTION -->
-  <div id="fillmode-wireway" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+  <div id="fillmode-wireway" style="display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0">
 
   <div class="fill-rules-bar">
     <div class="nec-row">
@@ -3542,16 +3542,17 @@ function codeSubTab(name) {
 
 var origSwitch = window.switchTab;
 window.switchTab = function(name,el){
+  // Hide any panels in csr-placeholder when leaving coderef
+  if (name !== 'coderef') {
+    ['panel-gfci','panel-grounding','panel-nycamend'].forEach(function(pid) {
+      var p = document.getElementById(pid);
+      if (p) p.style.display = 'none';
+    });
+  }
   origSwitch(name,el);
   if(name==='pullbox'){setTimeout(pbUpdate,50);}
   if(name==='outlets'){setTimeout(initOutletsIfNeeded,50);}
-  if(name==='grounding'){setTimeout(groundingInitTopics,50);}
-  if(name==='nycamend'){setTimeout(nycInitTopics,50);}
-  if(name==='coderef'){
-    setTimeout(function(){
-      codeSubTab('gfci');
-    }, 50);
-  }
+  if(name==='coderef'){setTimeout(function(){ codeSubTab('gfci'); },50);}
 }
 
 
@@ -4376,10 +4377,14 @@ function favRender(type) {
 
 
 function fillCalcMode(mode) {
-  document.getElementById('fillmode-conduit').style.display = mode === 'conduit' ? 'flex' : 'none';
-  document.getElementById('fillmode-wireway').style.display = mode === 'wireway' ? 'flex' : 'none';
-  document.getElementById('mode-conduit').classList.toggle('active', mode === 'conduit');
-  document.getElementById('mode-wireway').classList.toggle('active', mode === 'wireway');
+  var conduit = document.getElementById('fillmode-conduit');
+  var wireway = document.getElementById('fillmode-wireway');
+  var btnC = document.getElementById('mode-conduit');
+  var btnW = document.getElementById('mode-wireway');
+  if (conduit) conduit.style.display = mode === 'conduit' ? 'flex' : 'none';
+  if (wireway) wireway.style.display = mode === 'wireway' ? 'flex' : 'none';
+  if (btnC) btnC.classList.toggle('active', mode === 'conduit');
+  if (btnW) btnW.classList.toggle('active', mode === 'wireway');
   if (mode === 'wireway') { wwCalc(); wwRenderTable(); }
 }
 
