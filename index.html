@@ -1163,7 +1163,8 @@
             <th>60°C (TW/UF)</th>
             <th>75°C (THW/THHW)</th>
             <th>90°C (THHN/XHHW-2)</th>
-            <th>Typical Breaker</th>
+            <th>Typical Field Use</th>
+            <th>Max Breaker <span style="font-size:9px;font-weight:400">NEC 240.4(B)</span></th>
           </tr>
         </thead>
         <tbody id="ampRefTable"></tbody>
@@ -2541,13 +2542,61 @@ function ampUpdateCalc() {
     '<div class="result-item"><div class="result-item-label">Bundle Factor</div><div class="result-item-value">'+(bundle < 1.0 ? '<span style="color:var(--warn)">':'<span style="color:var(--success)">')+bundle.toFixed(2)+'</span></div></div>'+
     '<div class="result-item"><div class="result-item-label">After Derating</div><div class="result-item-value result-ok">'+Math.floor(derated)+'A</div></div>'+
     '<div class="result-item" title="NEC 110.14(C): Most equipment terminals are rated 75°C. Even if your conductor is rated 90°C, the final ampacity cannot exceed the 75°C column value. Use 90°C column only for derating calculations."><div class="result-item-label">Terminal Limit (75°C) <span style="font-size:10px;color:var(--text-dimmer)">NEC 110.14(C)</span></div><div class="result-item-value">'+termLimit75+'A</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Final Ampacity</div><div class="result-item-value result-ok" style="font-size:26px">'+finalAmp+'A</div></div>'+
+    '<div class="result-item" style="border-color:var(--accent);border-width:2px"><div class="result-item-label">Final Ampacity</div><div class="result-item-value" style="font-size:32px;color:var(--accent)">'+finalAmp+'A</div></div>'+
     '<div class="result-item"><div class="result-item-label">Typical Breaker</div><div class="result-item-value hi">'+breakerStr+'</div></div>';
 }
 
+// Typical field breaker — common real-world use (Cu)
+var AMP_TYPICAL_CU = {
+  '14':'15A',    // branch circuits
+  '12':'20A',    // branch circuits
+  '10':'30A',    // dryer, A/C, small subpanel
+  '8': '40A',    // range, A/C, subpanel
+  '6': '60A',    // subpanel, water heater
+  '4': '70-80A', // subpanel feeder
+  '3': '90-100A',// subpanel feeder
+  '2': '100A',   // 100A service/subpanel
+  '1': '125A',   // 125A service
+  '1/0':'150A',  // 150A service
+  '2/0':'175A',  // 175A service
+  '3/0':'200A',  // 200A service
+  '4/0':'200A',  // 200A service
+  '250':'225A',
+  '300':'250-300A',
+  '350':'300-350A',
+  '400':'350A',
+  '500':'400A',
+  '600':'450A',
+  '700':'500A',
+  '750':'500A'
+};
+var AMP_TYPICAL_AL = {
+  '12':'15A',
+  '10':'25A',
+  '8': '30A',
+  '6': '40A',
+  '4': '50-55A',
+  '3': '65A',
+  '2': '75-80A',
+  '1': '90-100A',
+  '1/0':'100A',  // 100A service Al
+  '2/0':'125A',
+  '3/0':'150A',
+  '4/0':'200A',  // 200A service Al (common)
+  '250':'175A',
+  '300':'200A',
+  '350':'225A',
+  '400':'250A',
+  '500':'350A',
+  '600':'400A',
+  '700':'450A',
+  '750':'500A'
+};
+
 function ampRenderRefTable(mat) {
   var table = mat === 'cu' ? AMP_CU : AMP_AL;
-  var breakers = mat === 'cu' ? AMP_BREAKER_CU : AMP_BREAKER_AL;
+  var maxBreakers = mat === 'cu' ? AMP_BREAKER_CU : AMP_BREAKER_AL;
+  var typicalBreakers = mat === 'cu' ? AMP_TYPICAL_CU : AMP_TYPICAL_AL;
   var sizes = mat === 'cu'
     ? ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0','250','300','350','400','500','600','700','750']
     : ['12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0','250','300','350','400','500','600','700','750'];
@@ -2562,7 +2611,8 @@ function ampRenderRefTable(mat) {
       '<td>'+r.t60+'A</td>'+
       '<td class="hi">'+r.t75+'A</td>'+
       '<td>'+r.t90+'A</td>'+
-      '<td class="hi">'+(breakers[s]||'—')+'</td>'+
+      '<td style="color:var(--success);font-weight:600">'+(typicalBreakers[s]||'—')+'</td>'+
+      '<td class="hi">'+(maxBreakers[s]||'—')+'</td>'+
     '</tr>';
   }
   document.getElementById('ampRefTable').innerHTML = tbody;
@@ -3732,9 +3782,9 @@ function favGetValues(type) {
   };
   if (type === 'amp') return {
     wire: document.getElementById('ampWireSize').value,
-    insulation: document.getElementById('ampInsulation').value,
-    conduit: document.getElementById('ampConduit').value,
-    ambient: document.getElementById('ampAmbient').value,
+    insul: document.getElementById('ampInsul').value,
+    material: document.getElementById('ampMaterial').value,
+    temp: document.getElementById('ampTemp').value,
     bundle: document.getElementById('ampBundle').value,
     sun: document.getElementById('ampSun').value
   };
@@ -3771,9 +3821,9 @@ function favSetValues(type, vals) {
     vdUpdateCalc();
   } else if (type === 'amp') {
     document.getElementById('ampWireSize').value = vals.wire || '12';
-    if (vals.insulation) document.getElementById('ampInsulation').value = vals.insulation;
-    if (vals.conduit) document.getElementById('ampConduit').value = vals.conduit;
-    document.getElementById('ampAmbient').value = vals.ambient || '86';
+    if (vals.insul) document.getElementById('ampInsul').value = vals.insul;
+    if (vals.material) document.getElementById('ampMaterial').value = vals.material;
+    if (vals.temp) document.getElementById('ampTemp').value = vals.temp;
     document.getElementById('ampBundle').value = vals.bundle || '1.00';
     document.getElementById('ampSun').value = vals.sun || '0';
     ampUpdateCalc();
@@ -3989,9 +4039,9 @@ function bfReset() {
 }
 function ampReset() {
   document.getElementById('ampWireSize').selectedIndex = 0;
-  document.getElementById('ampInsulation').value = 'thhn';
-  document.getElementById('ampConduit').value = 'raceway';
-  document.getElementById('ampAmbient').value = '86';
+  document.getElementById('ampInsul').value = 'thhn';
+  document.getElementById('ampMaterial').value = 'cu';
+  document.getElementById('ampTemp').value = '86';
   document.getElementById('ampBundle').value = '1.00';
   document.getElementById('ampSun').value = '0';
   ampUpdateCalc();
