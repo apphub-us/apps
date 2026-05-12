@@ -908,18 +908,18 @@
 
   </div><!-- end fillmode-wireway -->
 
-  <!-- WIREWAY REFERENCE TABLE (always visible in wireway mode) -->
+  <!-- WIREWAY REFERENCE TABLE -->
   <div id="ww-table-section" style="display:none;flex:1;overflow:hidden">
   <div class="fill-panel">
     <div class="table-wrap">
       <div class="table-header">
         <span class="table-title">MAX CONDUCTORS @ 20% FILL — THHN/THWN-2</span>
       </div>
-      <div style="overflow-x:auto">
-        <table class="fill-table" id="wwRefTable" style="min-width:600px">
+      <div style="overflow-x:auto;flex:1">
+        <table class="fill-table" id="wwRefTable">
           <thead>
             <tr>
-              <th>AWG / kcmil</th>
+              <th class="wire-col">Wire Size</th>
               <th>Area (in²)</th>
               <th>2"×2"</th>
               <th>4"×4"</th>
@@ -4393,15 +4393,15 @@ function wwRenderTable() {
   sizes.forEach(function(sz, idx) {
     var area = areas[sz] || 0;
     var label = parseFloat(sz) >= 250 ? sz + ' kcmil' : sz + ' AWG';
-    var bg = idx % 2 === 0 ? 'background:rgba(255,255,255,0.02)' : '';
-    tbody += '<tr style="' + bg + '">';
-    tbody += '<td style="font-weight:600;color:var(--text)">' + label + '</td>';
+    var isEven = idx % 2 === 0;
+    tbody += '<tr' + (isEven ? ' class="alt-row"' : '') + '>';
+    tbody += '<td class="wire-col"><strong>' + label + '</strong><div style="font-size:10px;color:var(--text-dimmer)">THHN/THWN-2</div></td>';
     tbody += '<td style="color:var(--text-dim)">' + area.toFixed(4) + '</td>';
     wireways.forEach(function(ww) {
       var maxFill = ww.w * ww.h * 0.20;
       var max = Math.floor(maxFill / area);
-      var color = max >= 10 ? 'var(--success)' : max >= 4 ? 'var(--text)' : 'var(--text-dimmer)';
-      tbody += '<td style="font-weight:600;color:' + color + '">' + max + '</td>';
+      var isBold = max >= 4;
+      tbody += '<td style="font-weight:' + (isBold ? '700' : '400') + ';color:' + (isBold ? 'var(--text)' : 'var(--text-dimmer)') + '">' + (max || '—') + '</td>';
     });
     tbody += '</tr>';
   });
