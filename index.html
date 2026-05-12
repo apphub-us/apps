@@ -2526,7 +2526,9 @@ function ampUpdateCalc() {
   var termLimit75 = row.t75;
   var finalAmp = Math.floor(Math.min(derated, insulType === 'tw' ? termLimit60 : termLimit75));
 
-  var breaker = material === 'cu' ? (AMP_BREAKER_CU[wireSize]||'—') : (AMP_BREAKER_AL[wireSize]||'—');
+  var standardBreakers = [15,20,25,30,35,40,45,50,60,70,80,90,100,110,125,150,175,200,225,250,300,350,400,450,500,600];
+  var breaker = standardBreakers.filter(function(b){ return b <= finalAmp; }).pop() || 15;
+  var breakerStr = breaker + 'A';
   var tempFactorStr = tempFactor.toFixed(2);
   var sunStr = sunAdder > 0 ? ' +'+sunAdder+'°F rooftop adder → '+effectiveAmbF+'°F effective' : '';
 
@@ -2537,7 +2539,7 @@ function ampUpdateCalc() {
     '<div class="result-item"><div class="result-item-label">After Derating</div><div class="result-item-value result-ok">'+Math.floor(derated)+'A</div></div>'+
     '<div class="result-item"><div class="result-item-label">Terminal Limit (75°C)</div><div class="result-item-value">'+termLimit75+'A</div></div>'+
     '<div class="result-item"><div class="result-item-label">Final Ampacity</div><div class="result-item-value result-ok" style="font-size:26px">'+finalAmp+'A</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Typical Breaker</div><div class="result-item-value hi">'+breaker+'</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Typical Breaker</div><div class="result-item-value hi">'+breakerStr+'</div></div>'+
     '<div class="result-item"><div class="result-item-label">NEC Reference</div><div class="result-item-value" style="font-size:13px">310.16 + 310.15(B)</div></div>';
 }
 
