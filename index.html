@@ -908,6 +908,33 @@
 
   </div><!-- end fillmode-wireway -->
 
+  <!-- WIREWAY REFERENCE TABLE (always visible in wireway mode) -->
+  <div id="ww-table-section" style="display:none;flex:1;overflow:hidden">
+  <div class="fill-panel">
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">MAX CONDUCTORS @ 20% FILL — THHN/THWN-2</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="fill-table" id="wwRefTable" style="min-width:600px">
+          <thead>
+            <tr>
+              <th>AWG / kcmil</th>
+              <th>Area (in²)</th>
+              <th>2"×2"</th>
+              <th>4"×4"</th>
+              <th>6"×6"</th>
+              <th>8"×8"</th>
+              <th>12"×12"</th>
+            </tr>
+          </thead>
+          <tbody id="wwRefTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div>
+
   <div class="fill-panel">
     <div class="table-wrap">
       <div class="table-header">
@@ -4352,9 +4379,33 @@ function favRender(type) {
 function fillCalcMode(mode) {
   document.getElementById('fillmode-conduit').style.display = mode === 'conduit' ? 'flex' : 'none';
   document.getElementById('fillmode-wireway').style.display = mode === 'wireway' ? 'flex' : 'none';
+  document.getElementById('ww-table-section').style.display = mode === 'wireway' ? 'flex' : 'none';
   document.getElementById('mode-conduit').classList.toggle('active', mode === 'conduit');
   document.getElementById('mode-wireway').classList.toggle('active', mode === 'wireway');
-  if (mode === 'wireway') wwCalc();
+  if (mode === 'wireway') { wwCalc(); wwRenderTable(); }
+}
+
+function wwRenderTable() {
+  var sizes = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0','250','350','500'];
+  var wireways = [{w:2,h:2},{w:4,h:4},{w:6,h:6},{w:8,h:8},{w:12,h:12}];
+  var areas = WW_AREAS.thhn;
+  var tbody = '';
+  sizes.forEach(function(sz, idx) {
+    var area = areas[sz] || 0;
+    var label = parseFloat(sz) >= 250 ? sz + ' kcmil' : sz + ' AWG';
+    var bg = idx % 2 === 0 ? 'background:rgba(255,255,255,0.02)' : '';
+    tbody += '<tr style="' + bg + '">';
+    tbody += '<td style="font-weight:600;color:var(--text)">' + label + '</td>';
+    tbody += '<td style="color:var(--text-dim)">' + area.toFixed(4) + '</td>';
+    wireways.forEach(function(ww) {
+      var maxFill = ww.w * ww.h * 0.20;
+      var max = Math.floor(maxFill / area);
+      var color = max >= 10 ? 'var(--success)' : max >= 4 ? 'var(--text)' : 'var(--text-dimmer)';
+      tbody += '<td style="font-weight:600;color:' + color + '">' + max + '</td>';
+    });
+    tbody += '</tr>';
+  });
+  document.getElementById('wwRefTableBody').innerHTML = tbody;
 }
 
 // Wireway wire areas (in²) — same as conduit fill THHN
