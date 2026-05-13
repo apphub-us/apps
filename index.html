@@ -2627,8 +2627,8 @@ function ampRenderRefTable(mat) {
   for (var i = 0; i < sizes.length; i++) {
     var s = sizes[i];
     var r = table[s]; if (!r) continue;
-    var label = parseInt(s) > 4 ? s+' AWG' : s+' kcmil';
-    if (s==='14'||s==='12'||s==='10'||s==='8'||s==='6'||s==='4'||s==='3'||s==='2'||s==='1') label = '#'+s+' AWG';
+    var kcmilSizes = {'250':1,'300':1,'350':1,'400':1,'500':1,'600':1,'700':1,'750':1,'800':1,'900':1,'1000':1};
+    var label = kcmilSizes[s] ? s+' kcmil' : (s.indexOf('/')>-1 ? s+' AWG' : '#'+s+' AWG');
     tbody += '<tr>'+
       '<td class="wire-col">'+label+'</td>'+
       '<td>'+r.t60+'A</td>'+
