@@ -1049,7 +1049,7 @@
       <span class="fill-pill pill-orange" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 310.15 and 310.16 — Ampacity Calculations and Allowable Ampacities Table')">NEC 310.15 / 310.16</span>
       <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 310.16 — Allowable Ampacities Table')">310.16</span> Base ampacity from NEC Table 310.16</div>
       <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 310.15(B) — Ambient Temperature Correction Factors')">310.15(B)</span> Temp correction factor</div>
-      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 310.15(C) — Adjustment Factors for More Than 3 Current-Carrying Conductors')">310.15(C)</span> Bundling adjustment factor</div>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 310.15(C) — Adjustment Factors for More Than 3 Current-Carrying Conductors — EGC never counts, neutral counts only if carrying unbalanced current')">310.15(C)</span> CCC adjustment factor</div>
       <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 110.14(C) — Terminal Temperature Limitations — most equipment rated 75C, use 90C column only for derating calculations')">110.14(C)</span> Terminal Limit</div>
     </div>
   </div>
@@ -1115,16 +1115,19 @@
       </select>
     </div>
     <div class="ctrl-group">
-      <span class="ctrl-label">Bundled Conductors (310.15(C))</span>
+      <span class="ctrl-label">Current-Carrying Conductors (CCC) <span style="color:var(--text-dimmer);font-size:9px;letter-spacing:0">NEC 310.15(C)</span></span>
       <select id="ampBundle" onchange="ampUpdateCalc()">
-        <option value="1.00">1-3 conductors (no derating)</option>
-        <option value="0.80">4-6 conductors (×0.80)</option>
-        <option value="0.70">7-9 conductors (×0.70)</option>
-        <option value="0.70">10-20 conductors (×0.70)</option>
-        <option value="0.60">21-30 conductors (×0.60)</option>
-        <option value="0.50">31-40 conductors (×0.50)</option>
-        <option value="0.45">41+ conductors (×0.45)</option>
+        <option value="1.00">1-3 CCC (no derating)</option>
+        <option value="0.80">4-6 CCC (×0.80)</option>
+        <option value="0.70">7-9 CCC (×0.70)</option>
+        <option value="0.50">10-20 CCC (×0.50)</option>
+        <option value="0.45">21-30 CCC (×0.45)</option>
+        <option value="0.40">31-40 CCC (×0.40)</option>
+        <option value="0.35">41+ CCC (×0.35)</option>
       </select>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-dimmer);line-height:1.5;margin-top:4px">
+        EGC (green/bare) = never counts · Neutral = counts only if carrying unbalanced current
+      </div>
     </div>
     <div class="ctrl-group">
       <span class="ctrl-label">Conduit in Sun (Rooftop)</span>
@@ -2610,8 +2613,8 @@ function ampUpdateCalc() {
     '<div class="result-item"><div class="result-item-label">Bundle Factor</div><div class="result-item-value">'+(bundle < 1.0 ? '<span style="color:var(--warn)">':'<span style="color:var(--success)">')+bundle.toFixed(2)+'</span></div></div>'+
     '<div class="result-item"><div class="result-item-label">After Derating</div><div class="result-item-value result-ok">'+Math.floor(derated)+'A</div></div>'+
     '<div class="result-item" title="NEC 110.14(C): Most equipment terminals are rated 75°C. Even if your conductor is rated 90°C, the final ampacity cannot exceed the 75°C column value. Use 90°C column only for derating calculations."><div class="result-item-label">Terminal Limit (75°C) <span style="font-size:10px;color:var(--text-dimmer)">NEC 110.14(C)</span></div><div class="result-item-value">'+termLimit75+'A</div></div>'+
-    '<div class="result-item" style="border-color:var(--accent);border-width:2px"><div class="result-item-label">Final Ampacity</div><div class="result-item-value" style="font-size:26px;color:var(--text)">'+finalAmp+'A</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Breaker Size<span style="font-size:9px;display:block;color:var(--text-dimmer)">'+breakerNote+'</span></div><div class="result-item-value" style="color:var(--accent)">'+breakerStr+'</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Final Ampacity</div><div class="result-item-value" style="color:var(--text)">'+finalAmp+'A</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Max Breaker<span style="font-size:9px;display:block;color:var(--text-dimmer)">'+breakerNote+'</span></div><div class="result-item-value" style="color:var(--accent)">'+breakerStr+'</div></div>'+
     (!isDerating ? '<div class="result-item" style="border-color:var(--success);border-width:1px"><div class="result-item-label" style="color:var(--success)">Typical Field Use</div><div class="result-item-value" style="color:var(--success)">'+(AMP_TYPICAL_CU[wireSize]||breakerStr)+'</div></div>' : '<div class="result-item" style="opacity:0.3;border-style:dashed"><div class="result-item-label">Typical Field Use</div><div class="result-item-value" style="font-size:13px;color:var(--text-dimmer)">n/a — derated</div></div>');
 }
 
