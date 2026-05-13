@@ -286,7 +286,8 @@
   .cf-table tbody td { padding: 7px 12px; border: 1px solid var(--border); text-align: center; color: var(--text-dim); white-space: nowrap; }
   .cf-table tbody td.wire-col { text-align: left; color: var(--text); font-weight: 500; }
   .cf-table tbody td.wire-col span { font-size: 10px; color: var(--text-dimmer); display: block; }
-  .cf-table td.hi { color: var(--accent) !important; font-weight: 600; }
+  .cf-table td.hi { color: var(--text) !important; font-weight: 600; }
+  .cf-table td.hi-accent { color: var(--accent) !important; font-weight: 600; }
 
   .cf-note { margin: 0 20px 16px; padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--text-dimmer); font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); line-height: 1.6; flex-shrink: 0; }
 
@@ -2634,7 +2635,7 @@ function ampRenderRefTable(mat) {
       '<td class="hi">'+r.t75+'A</td>'+
       '<td>'+r.t90+'A</td>'+
       '<td style="color:var(--success);font-weight:600">'+(typicalBreakers[s]||'—')+'</td>'+
-      '<td class="hi">'+(maxBreakers[s]||'—')+'</td>'+
+      '<td class="hi-accent">'+(maxBreakers[s]||'—')+'</td>'+
     '</tr>';
   }
   document.getElementById('ampRefTable').innerHTML = tbody;
