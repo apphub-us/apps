@@ -2492,6 +2492,53 @@ function ampGetBaseCol(insulType) {
   return 't90';
 }
 
+// Typical field breaker — common real-world use (Cu)
+var AMP_TYPICAL_CU = {
+  '14':'15A',    // branch circuits
+  '12':'20A',    // branch circuits
+  '10':'30A',    // dryer, A/C, small subpanel
+  '8': '40A',    // range, A/C, subpanel
+  '6': '60A',    // subpanel, water heater
+  '4': '70-80A', // subpanel feeder
+  '3': '90-100A',// subpanel feeder
+  '2': '100A',   // 100A service/subpanel
+  '1': '125A',   // 125A service
+  '1/0':'150A',  // 150A service
+  '2/0':'175A',  // 175A service
+  '3/0':'200A',  // 200A service
+  '4/0':'200A',  // 200A service
+  '250':'225A',
+  '300':'250-300A',
+  '350':'300-350A',
+  '400':'350A',
+  '500':'400A',
+  '600':'450A',
+  '700':'500A',
+  '750':'500A'
+};
+var AMP_TYPICAL_AL = {
+  '12':'15A',
+  '10':'25A',
+  '8': '30A',
+  '6': '40A',
+  '4': '50-55A',
+  '3': '65A',
+  '2': '75-80A',
+  '1': '90-100A',
+  '1/0':'100A',  // 100A service Al
+  '2/0':'125A',
+  '3/0':'150A',
+  '4/0':'200A',  // 200A service Al (common)
+  '250':'175A',
+  '300':'200A',
+  '350':'225A',
+  '400':'250A',
+  '500':'350A',
+  '600':'400A',
+  '700':'450A',
+  '750':'500A'
+};
+
 function ampUpdateCalc() {
   var wireSize  = document.getElementById('ampWireSize').value;
   var insulType = document.getElementById('ampInsul').value;
@@ -2563,56 +2610,10 @@ function ampUpdateCalc() {
     '<div class="result-item"><div class="result-item-label">Bundle Factor</div><div class="result-item-value">'+(bundle < 1.0 ? '<span style="color:var(--warn)">':'<span style="color:var(--success)">')+bundle.toFixed(2)+'</span></div></div>'+
     '<div class="result-item"><div class="result-item-label">After Derating</div><div class="result-item-value result-ok">'+Math.floor(derated)+'A</div></div>'+
     '<div class="result-item" title="NEC 110.14(C): Most equipment terminals are rated 75°C. Even if your conductor is rated 90°C, the final ampacity cannot exceed the 75°C column value. Use 90°C column only for derating calculations."><div class="result-item-label">Terminal Limit (75°C) <span style="font-size:10px;color:var(--text-dimmer)">NEC 110.14(C)</span></div><div class="result-item-value">'+termLimit75+'A</div></div>'+
-    '<div class="result-item" style="border-color:var(--accent);border-width:2px"><div class="result-item-label">Final Ampacity</div><div class="result-item-value" style="font-size:32px;color:var(--accent)">'+finalAmp+'A</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Breaker Size<span style="font-size:9px;display:block;color:var(--text-dimmer)">'+breakerNote+'</span></div><div class="result-item-value hi">'+breakerStr+'</div></div>';
+    '<div class="result-item" style="border-color:var(--accent);border-width:2px"><div class="result-item-label">Final Ampacity</div><div class="result-item-value" style="font-size:26px;color:var(--text)">'+finalAmp+'A</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Breaker Size<span style="font-size:9px;display:block;color:var(--text-dimmer)">'+breakerNote+'</span></div><div class="result-item-value" style="color:var(--accent)">'+breakerStr+'</div></div>'+
+    (!isDerating ? '<div class="result-item" style="border-color:var(--success);border-width:1px"><div class="result-item-label" style="color:var(--success)">Typical Field Use</div><div class="result-item-value" style="color:var(--success)">'+(AMP_TYPICAL_CU[wireSize]||breakerStr)+'</div></div>' : '<div class="result-item" style="opacity:0.3;border-style:dashed"><div class="result-item-label">Typical Field Use</div><div class="result-item-value" style="font-size:13px;color:var(--text-dimmer)">n/a — derated</div></div>');
 }
-
-// Typical field breaker — common real-world use (Cu)
-var AMP_TYPICAL_CU = {
-  '14':'15A',    // branch circuits
-  '12':'20A',    // branch circuits
-  '10':'30A',    // dryer, A/C, small subpanel
-  '8': '40A',    // range, A/C, subpanel
-  '6': '60A',    // subpanel, water heater
-  '4': '70-80A', // subpanel feeder
-  '3': '90-100A',// subpanel feeder
-  '2': '100A',   // 100A service/subpanel
-  '1': '125A',   // 125A service
-  '1/0':'150A',  // 150A service
-  '2/0':'175A',  // 175A service
-  '3/0':'200A',  // 200A service
-  '4/0':'200A',  // 200A service
-  '250':'225A',
-  '300':'250-300A',
-  '350':'300-350A',
-  '400':'350A',
-  '500':'400A',
-  '600':'450A',
-  '700':'500A',
-  '750':'500A'
-};
-var AMP_TYPICAL_AL = {
-  '12':'15A',
-  '10':'25A',
-  '8': '30A',
-  '6': '40A',
-  '4': '50-55A',
-  '3': '65A',
-  '2': '75-80A',
-  '1': '90-100A',
-  '1/0':'100A',  // 100A service Al
-  '2/0':'125A',
-  '3/0':'150A',
-  '4/0':'200A',  // 200A service Al (common)
-  '250':'175A',
-  '300':'200A',
-  '350':'225A',
-  '400':'250A',
-  '500':'350A',
-  '600':'400A',
-  '700':'450A',
-  '750':'500A'
-};
 
 function ampRenderRefTable(mat) {
   var table = mat === 'cu' ? AMP_CU : AMP_AL;
