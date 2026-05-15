@@ -2772,10 +2772,10 @@ function vdUpdateCalc() {
       statusText = '✗ VD OVER';
     }
     var pctColor = !ampOK ? 'var(--danger)' : pct <= 3 ? 'var(--success)' : pct <= 5 ? 'var(--warn)' : 'var(--danger)';
-    var rowStyle = isRec ? ' style="background:rgba(245,166,35,0.08);border-left:3px solid var(--accent)"' : (!ampOK ? ' style="opacity:0.4"' : '');
-
+    var isHighlight = !isRec && window.vdHighlightSize && sz.k === window.vdHighlightSize;
+    var rowStyle = isRec ? ' style="background:rgba(245,166,35,0.08);border-left:3px solid var(--accent)"' : (isHighlight ? ' style="background:rgba(74,158,255,0.08);border-left:3px solid var(--nycec)"' : (!ampOK ? ' style="opacity:0.4"' : ''));
     tbody += '<tr'+rowStyle+'>'+
-      '<td class="wire-col">'+(isRec?'★ ':'')+sz.l+(isRec?' ← RECOMMENDED':'')+'</td>'+
+      '<td class="wire-col">'+(isRec?'★ ':'')+(isHighlight?'→ ':'')+sz.l+(isRec?' ← RECOMMENDED':'')+(isHighlight?' ← FROM FILL CALC':'')+'</td>'+
       '<td>'+cm.toLocaleString()+' CM</td>'+
       '<td>'+vd.toFixed(2)+'V</td>'+
       '<td style="color:'+pctColor+';font-weight:'+(pct<=maxPct?'600':'400')+'">'+pct.toFixed(2)+'%</td>'+
@@ -4070,10 +4070,10 @@ function cfGoToVDrop() {
   var vdTab = document.querySelector('.tab[onclick*="vdrop"]');
   if (vdTab) switchTab('vdrop', vdTab);
 
-  // Set wire size in vdrop (vdAmps left as-is, user fills in)
+  // Store wire size to highlight in table
+  window.vdHighlightSize = wireSize;
   setTimeout(function() {
-    var vdWire = document.getElementById('vdWireSize');
-    if (vdWire) { vdWire.value = wireSize; vdUpdateCalc(); }
+    if (typeof vdUpdateCalc === 'function') vdUpdateCalc();
   }, 100);
 }
 
