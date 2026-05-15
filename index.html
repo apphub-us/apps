@@ -2601,6 +2601,12 @@ function ampUpdateCalc() {
   var termLimit75 = row.t75;
   var finalAmp = Math.floor(Math.min(derated, insulType === 'tw' ? termLimit60 : termLimit75));
   window.ampFinalAmp = finalAmp;
+  // Store typical field use as number for V-Drop
+  var material = document.getElementById('ampMaterial').value;
+  var typicalStr = (material === 'cu' ? AMP_TYPICAL_CU : AMP_TYPICAL_AL)[wireSize] || '';
+  // Extract first number from typical string (e.g. "70-80A" → 70, "200A" → 200)
+  var typicalMatch = typicalStr.match(/\d+/);
+  window.ampTypicalAmp = typicalMatch ? parseInt(typicalMatch[0]) : finalAmp;
 
   var standardBreakers = [15,20,25,30,35,40,45,50,60,70,80,90,100,110,125,150,175,200,225,250,300,350,400,450,500,600];
   var isDerating = (tempFactor < 1.0 || bundle < 1.0);
@@ -4115,7 +4121,7 @@ function ampGoToVDrop() {
   window.vdHighlightSize = wireSize;
   setTimeout(function() {
     var vdAmps = document.getElementById('vdAmps');
-    if (vdAmps && window.ampFinalAmp) vdAmps.value = window.ampFinalAmp;
+    if (vdAmps && window.ampTypicalAmp) vdAmps.value = window.ampTypicalAmp;
     if (typeof vdUpdateCalc === 'function') vdUpdateCalc();
   }, 100);
 }
