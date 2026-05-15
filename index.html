@@ -825,12 +825,9 @@
   <div class="result-box" id="cfResultBox">
     <div class="result-title">CALCULATION RESULT</div>
     <div class="result-grid" id="cfResultGrid"></div>
-    <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
-      <button onclick="cfGoToAmpacity()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
-        ⚡ Check Ampacity →
-      </button>
-      <button onclick="cfGoToVDrop()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nycec)';this.style.color='var(--nycec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
-        📏 Check V-Drop →
+    <div style="padding:10px 16px;border-top:1px solid var(--border)">
+      <button onclick="cfGoToAmpacity()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s;width:100%" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        ⚡ Check Ampacity Derating for These Conductors →
       </button>
     </div>
   </div>
@@ -855,10 +852,6 @@
       </table>
     </div>
 
-  </div>
-
-</div>
-  </div>
 
 
 
@@ -941,12 +934,9 @@
   <div class="result-box" id="cfResultBox">
     <div class="result-title">CALCULATION RESULT</div>
     <div class="result-grid" id="cfResultGrid"></div>
-    <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
-      <button onclick="cfGoToAmpacity()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
-        ⚡ Check Ampacity →
-      </button>
-      <button onclick="cfGoToVDrop()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nycec)';this.style.color='var(--nycec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
-        📏 Check V-Drop →
+    <div style="padding:10px 16px;border-top:1px solid var(--border)">
+      <button onclick="cfGoToAmpacity()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s;width:100%" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        ⚡ Check Ampacity Derating for These Conductors →
       </button>
     </div>
   </div>
@@ -977,6 +967,10 @@
 
 
 
+  </div>
+</div>
+
+</div>
 <!-- ══ BOX FILL PANEL ══ -->
 <div class="panel" id="panel-boxfill">
 
@@ -4038,21 +4032,6 @@ function wwCalc() {
     '<div class="result-item"><div class="result-item-label">Used Area</div><div class="result-item-value">'+usedArea.toFixed(3)+' in²</div></div>' +
     '<div class="result-item"><div class="result-item-label">Wireway Area</div><div class="result-item-value">'+totalArea.toFixed(2)+' in² ('+w+'"×'+h+'")</div></div>' +
     '<div class="result-item"><div class="result-item-label">Max Conductors</div><div class="result-item-value result-ok">'+maxWires+' max @ 20%</div></div>';
-
-  // Add action buttons below result
-  var btns = document.getElementById('wwActionBtns');
-  if (!btns) {
-    var box = document.getElementById('wwResultBox');
-    if (box) {
-      var div = document.createElement('div');
-      div.id = 'wwActionBtns';
-      div.style.cssText = 'padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px';
-      div.innerHTML =
-        '<button onclick="cfGoToAmpacity()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:\'IBM Plex Mono\',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--nec)\';this.style.color=\'var(--nec)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-dim)\'">⚡ Check Ampacity →</button>' +
-        '<button onclick="cfGoToVDrop()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:\'IBM Plex Mono\',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--nycec)\';this.style.color=\'var(--nycec)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-dim)\'">📏 Check V-Drop →</button>';
-      box.appendChild(div);
-    }
-  }
 }
 
 function wwReset() {
@@ -4062,23 +4041,6 @@ function wwReset() {
   document.getElementById('wwWireType').value = 'thhn';
   document.getElementById('wwNumWires').value = '6';
   wwCalc();
-}
-
-function cfGoToVDrop() {
-  var numWiresEl = document.getElementById('cfNumWires') || document.getElementById('wwNumWires');
-  var wireSizeEl = document.getElementById('cfWireSize') || document.getElementById('wwWireSize');
-  var wireSize = wireSizeEl ? wireSizeEl.value : '12';
-
-  // Switch to vdrop tab
-  var vdTab = document.querySelector('.tab[onclick*="vdrop"]');
-  if (vdTab) switchTab('vdrop', vdTab);
-
-  // Set wire material based on current conduit selection
-  setTimeout(function() {
-    var materialSel = document.getElementById('vdMaterial');
-    if (materialSel) materialSel.value = 'cu'; // default copper
-    if (typeof vdUpdateCalc === 'function') vdUpdateCalc();
-  }, 100);
 }
 
 function cfGoToAmpacity() {
