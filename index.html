@@ -263,8 +263,8 @@
   .result-box { margin: 14px 20px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 4px; display: none; flex-shrink: 0; }
   .result-box.show { display: block; }
   .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 2px; color: var(--accent); margin-bottom: 10px; }
-  .result-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-  .result-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 8px 12px; flex: 1; min-width: 120px; max-width: 150px; }
+  .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+  .result-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 8px 12px; }
   .result-item-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
   .result-item-value { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 1px; }
   .result-ok { color: var(--success); }
@@ -286,8 +286,7 @@
   .cf-table tbody td { padding: 7px 12px; border: 1px solid var(--border); text-align: center; color: var(--text-dim); white-space: nowrap; }
   .cf-table tbody td.wire-col { text-align: left; color: var(--text); font-weight: 500; }
   .cf-table tbody td.wire-col span { font-size: 10px; color: var(--text-dimmer); display: block; }
-  .cf-table td.hi { color: var(--text-dim) !important; font-weight: 400; }
-  .cf-table td.hi-accent { color: var(--accent) !important; font-weight: 600; }
+  .cf-table td.hi { color: var(--text) !important; font-weight: 600; }
 
   .cf-note { margin: 0 20px 16px; padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--text-dimmer); font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); line-height: 1.6; flex-shrink: 0; }
 
@@ -742,13 +741,129 @@
 <!-- ══ CONDUIT FILL PANEL ══ -->
 <div class="panel" id="panel-conduit">
 
+  <!-- MODE TOGGLE -->
   <div style="display:flex;background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0">
     <button class="code-subtab active" id="mode-conduit" onclick="fillCalcMode('conduit')">Conduit Fill</button>
     <button class="code-subtab" id="mode-wireway" onclick="fillCalcMode('wireway')">Wireway</button>
   </div>
 
-
+  <!-- FILL CONTENT WRAPPER -->
   <div id="fill-content" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+<div class="fill-rules-bar">
+    <div class="nec-row">
+      <span class="fill-pill pill-orange" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC Chapter 9 Tables 1,4,5 — Conduit Fill rules')">NEC Ch.9</span>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC Chapter 9 Table 1 — Conduit fill 53% maximum for 1 conductor')">53%</span> 1 conductor</div>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC Chapter 9 Table 1 — Conduit fill 31% maximum for 2 conductors')">31%</span> 2 conductors</div>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC Chapter 9 Table 1 — Conduit fill 40% maximum for 3 or more conductors')">40%</span> 3+ conductors</div>
+    </div>
+    <div class="nycec-row">
+      <span class="fill-pill pill-blue" style="cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 334.12 — NM Cable not permitted in buildings exceeding 3 floors above grade')">NYCEC 334.12</span>
+      <span style="color:var(--text-dim);font-size:12px">EMT required · No Romex in commercial/multifamily</span>
+    </div>
+  </div>
+
+  <div class="cf-controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Conduit Type</span>
+      <select id="cfConduitType" onchange="cfUpdateCalc()">
+        <option value="emt">EMT</option>
+        <option value="imc">IMC</option>
+        <option value="rmc">RMC (Rigid)</option>
+        <option value="ent">ENT (Smurf)</option>
+        <option value="pvc40">PVC Sch 40</option>
+        <option value="pvc80">PVC Sch 80</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Conduit Size</span>
+      <select id="cfConduitSize" onchange="cfUpdateCalc()">
+        <option value="0.5">1/2"</option>
+        <option value="0.75">3/4"</option>
+        <option value="1" selected>1"</option>
+        <option value="1.25">1-1/4"</option>
+        <option value="1.5">1-1/2"</option>
+        <option value="2">2"</option>
+        <option value="2.5">2-1/2"</option>
+        <option value="3">3"</option>
+        <option value="3.5">3-1/2"</option>
+        <option value="4">4"</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Wire Type</span>
+      <select id="cfWireType" onchange="cfUpdateCalc();cfRenderTable(currentCfConduit)">
+        <option value="thhn" selected>THHN/THWN-2 ★ Standard</option>
+        <option value="thw">THW/THHW</option>
+        <option value="xhhw">XHHW-2</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Wire Size</span>
+      <select id="cfWireSize" onchange="cfUpdateCalc()">
+        <option value="14">14 AWG</option><option value="12">12 AWG</option>
+        <option value="10">10 AWG</option><option value="8">8 AWG</option>
+        <option value="6">6 AWG</option><option value="4">4 AWG</option>
+        <option value="3">3 AWG</option><option value="2">2 AWG</option>
+        <option value="1">1 AWG</option><option value="1/0">1/0 AWG</option>
+        <option value="2/0">2/0 AWG</option><option value="3/0">3/0 AWG</option>
+        <option value="4/0">4/0 AWG</option><option value="250">250 kcmil</option>
+        <option value="300">300 kcmil</option><option value="350">350 kcmil</option>
+        <option value="400">400 kcmil</option><option value="500">500 kcmil</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label"># of Wires</span>
+      <input type="number" id="cfNumWires" value="3" min="1" max="40" onchange="cfUpdateCalc()" oninput="cfUpdateCalc()">
+    </div>
+    <button class="reset-btn" onclick="cfReset()">↺ Reset</button>
+    <div class="fav-bar">
+      <button class="save-btn" onclick="favSave('cf')">⭐ Save</button>
+    </div>
+    <div class="fav-list" id="cf-fav-list"></div>
+  </div>
+
+  <div class="result-box" id="cfResultBox">
+    <div class="result-title">CALCULATION RESULT</div>
+    <div class="result-grid" id="cfResultGrid"></div>
+    <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <button onclick="cfGoToAmpacity()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        ⚡ Check Ampacity →
+      </button>
+      <button onclick="cfGoToVDrop()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nycec)';this.style.color='var(--nycec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        📏 Check V-Drop →
+      </button>
+    </div>
+  </div>
+
+
+  <div class="fill-panel">
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">MAX CONDUCTORS (3+ WIRE, 40% FILL)</span>
+        <div class="conduit-tabs">
+          <div class="conduit-tab active" onclick="cfSwitchConduit('emt',this)">EMT</div>
+          <div class="conduit-tab" onclick="cfSwitchConduit('imc',this)">IMC</div>
+          <div class="conduit-tab" onclick="cfSwitchConduit('rmc',this)">RMC</div>
+          <div class="conduit-tab" onclick="cfSwitchConduit('ent',this)">ENT</div>
+          <div class="conduit-tab" onclick="cfSwitchConduit('pvc40',this)">PVC Sch40</div>
+          <div class="conduit-tab" onclick="cfSwitchConduit('pvc80',this)">PVC Sch80</div>
+        </div>
+      </div>
+      <table class="cf-table">
+        <thead id="cfTableHead"></thead>
+        <tbody id="cfTableBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+  </div>
+
+
+
+  <!-- CONDUIT FILL SECTION -->
+  <div id="fillmode-conduit" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0">
 
   <div class="fill-rules-bar">
     <div class="nec-row">
@@ -816,8 +931,8 @@
       <span class="ctrl-label"># of Wires</span>
       <input type="number" id="cfNumWires" value="3" min="1" max="40" onchange="cfUpdateCalc()" oninput="cfUpdateCalc()">
     </div>
+    <button class="reset-btn" onclick="cfReset()">↺ Reset</button>
     <div class="fav-bar">
-      <button class="reset-btn" onclick="cfReset()">↺ Reset</button>
       <button class="save-btn" onclick="favSave('cf')">⭐ Save</button>
     </div>
     <div class="fav-list" id="cf-fav-list"></div>
@@ -826,9 +941,12 @@
   <div class="result-box" id="cfResultBox">
     <div class="result-title">CALCULATION RESULT</div>
     <div class="result-grid" id="cfResultGrid"></div>
-    <div style="padding:10px 16px;border-top:1px solid var(--border)">
-      <button onclick="cfGoToAmpacity()" style="background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s;width:100%" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
-        ⚡ Check Ampacity Derating for These Conductors →
+    <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <button onclick="cfGoToAmpacity()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        ⚡ Check Ampacity →
+      </button>
+      <button onclick="cfGoToVDrop()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nycec)';this.style.color='var(--nycec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        📏 Check V-Drop →
       </button>
     </div>
   </div>
@@ -858,9 +976,6 @@
 </div>
 
 
-
-
-</div>
 
 <!-- ══ BOX FILL PANEL ══ -->
 <div class="panel" id="panel-boxfill">
@@ -992,9 +1107,7 @@
         </optgroup>
       </select>
     </div>
-    <div class="fav-bar">
-      <button class="reset-btn" onclick="bfReset()">↺ Reset</button>
-    </div>
+    <button class="reset-btn" onclick="bfReset()">↺ Reset</button>
   </div>
 
   <!-- RESULT -->
@@ -1050,8 +1163,7 @@
       <span class="fill-pill pill-orange" style="cursor:pointer;flex-shrink:0" onclick="necLink('NEC 310.15 and 310.16 — Ampacity Calculations and Allowable Ampacities Table')">NEC 310.15 / 310.16</span>
       <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 310.16 — Allowable Ampacities Table')">310.16</span> Base ampacity from NEC Table 310.16</div>
       <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 310.15(B) — Ambient Temperature Correction Factors')">310.15(B)</span> Temp correction factor</div>
-      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 310.15(C) — Adjustment Factors for More Than 3 Current-Carrying Conductors — EGC never counts, neutral counts only if carrying unbalanced current')">310.15(C)</span> CCC adjustment factor</div>
-      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 110.14(C) — Terminal Temperature Limitations — most equipment rated 75C, use 90C column only for derating calculations')">110.14(C)</span> Terminal Limit</div>
+      <div class="fill-rule"><span class="fill-pill pill-orange" onclick="necLink('NEC 310.15(C) — Adjustment Factors for More Than 3 Current-Carrying Conductors')">310.15(C)</span> Bundling adjustment factor</div>
     </div>
   </div>
 
@@ -1105,8 +1217,8 @@
         <option value="50">50°F / 10°C</option>
         <option value="60">60°F / 15°C</option>
         <option value="70">70°F / 21°C</option>
-        <option value="77">77°F / 25°C</option>
-        <option value="86" selected>86°F / 30°C (NEC 310.16 base)</option>
+        <option value="77" selected>77°F / 25°C (standard)</option>
+        <option value="86">86°F / 30°C</option>
         <option value="95">95°F / 35°C</option>
         <option value="104">104°F / 40°C</option>
         <option value="113">113°F / 45°C</option>
@@ -1116,15 +1228,15 @@
       </select>
     </div>
     <div class="ctrl-group">
-      <span class="ctrl-label">Current-Carrying Conductors (CCC) <span style="color:var(--text-dimmer);font-size:9px;letter-spacing:0">NEC 310.15(C)</span></span>
+      <span class="ctrl-label">Bundled Conductors (310.15(C))</span>
       <select id="ampBundle" onchange="ampUpdateCalc()">
-        <option value="1.00">1-3 CCC (no derating)</option>
-        <option value="0.80">4-6 CCC (×0.80)</option>
-        <option value="0.70">7-9 CCC (×0.70)</option>
-        <option value="0.50">10-20 CCC (×0.50)</option>
-        <option value="0.45">21-30 CCC (×0.45)</option>
-        <option value="0.40">31-40 CCC (×0.40)</option>
-        <option value="0.35">41+ CCC (×0.35)</option>
+        <option value="1.00">1-3 conductors (no derating)</option>
+        <option value="0.80">4-6 conductors (×0.80)</option>
+        <option value="0.70">7-9 conductors (×0.70)</option>
+        <option value="0.70">10-20 conductors (×0.70)</option>
+        <option value="0.60">21-30 conductors (×0.60)</option>
+        <option value="0.50">31-40 conductors (×0.50)</option>
+        <option value="0.45">41+ conductors (×0.45)</option>
       </select>
     </div>
     <div class="ctrl-group">
@@ -1134,8 +1246,8 @@
         <option value="33">Yes — conduit above roof (+33°F adder)</option>
       </select>
     </div>
+    <button class="reset-btn" onclick="ampReset()">↺ Reset</button>
     <div class="fav-bar">
-      <button class="reset-btn" onclick="ampReset()">↺ Reset</button>
       <button class="save-btn" onclick="favSave('amp')">⭐ Save</button>
     </div>
     <div class="fav-list" id="amp-fav-list"></div>
@@ -1164,8 +1276,7 @@
             <th>60°C (TW/UF)</th>
             <th>75°C (THW/THHW)</th>
             <th>90°C (THHN/XHHW-2)</th>
-            <th>Typical Field Use</th>
-            <th>Max Breaker <span style="font-size:9px;font-weight:400">NEC 240.4(B)</span></th>
+            <th>Typical Breaker</th>
           </tr>
         </thead>
         <tbody id="ampRefTable"></tbody>
@@ -2419,16 +2530,16 @@ var AMP_AL = {
 
 // Typical breaker sizes
 var AMP_BREAKER_CU = {
-  '14':'15A','12':'20A','10':'30A','8':'50A','6':'70A',
-  '4':'90A','3':'100A','2':'125A','1':'150A','1/0':'150A',
-  '2/0':'175A','3/0':'200A','4/0':'250A','250':'300A','300':'300A',
-  '350':'350A','400':'350A','500':'400A','600':'450A','700':'500A','750':'500A'
+  '14':'15A','12':'20A','10':'30A','8':'40-50A','6':'55-60A',
+  '4':'70A','3':'85A','2':'95A','1':'110A','1/0':'125A',
+  '2/0':'145A','3/0':'165A','4/0':'200A','250':'215A','300':'240A',
+  '350':'260A','400':'280A','500':'320A','600':'355A','700':'385A','750':'400A'
 };
 var AMP_BREAKER_AL = {
-  '12':'15A','10':'25A','8':'30A','6':'40A','4':'60A',
-  '3':'70A','2':'90A','1':'100A','1/0':'110A','2/0':'125A',
-  '3/0':'150A','4/0':'200A','250':'225A','300':'250A','350':'300A',
-  '400':'350A','500':'400A','600':'450A','700':'500A','750':'500A'
+  '12':'15A','10':'25A','8':'30A','6':'40A','4':'55A',
+  '3':'65A','2':'75A','1':'85A','1/0':'100A','2/0':'115A',
+  '3/0':'130A','4/0':'150A','250':'170A','300':'190A','350':'210A',
+  '400':'225A','500':'260A','600':'285A','700':'310A','750':'320A'
 };
 
 // Temp correction factors — NEC Table 310.15(B)(1)
@@ -2493,53 +2604,6 @@ function ampGetBaseCol(insulType) {
   return 't90';
 }
 
-// Typical field breaker — common real-world use (Cu)
-var AMP_TYPICAL_CU = {
-  '14':'15A',    // branch circuits
-  '12':'20A',    // branch circuits
-  '10':'30A',    // dryer, A/C, small subpanel
-  '8': '40A',    // range, A/C, subpanel
-  '6': '60A',    // subpanel, water heater
-  '4': '70-80A', // subpanel feeder
-  '3': '90-100A',// subpanel feeder
-  '2': '100A',   // 100A service/subpanel
-  '1': '125A',   // 125A service
-  '1/0':'150A',  // 150A service
-  '2/0':'175A',  // 175A service
-  '3/0':'200A',  // 200A service
-  '4/0':'200A',  // 200A service
-  '250':'225A',
-  '300':'250-300A',
-  '350':'300-350A',
-  '400':'350A',
-  '500':'400A',
-  '600':'450A',
-  '700':'500A',
-  '750':'500A'
-};
-var AMP_TYPICAL_AL = {
-  '12':'15A',
-  '10':'25A',
-  '8': '30A',
-  '6': '40A',
-  '4': '50-55A',
-  '3': '65A',
-  '2': '75-80A',
-  '1': '90-100A',
-  '1/0':'100A',  // 100A service Al
-  '2/0':'125A',
-  '3/0':'150A',
-  '4/0':'200A',  // 200A service Al (common)
-  '250':'175A',
-  '300':'200A',
-  '350':'225A',
-  '400':'250A',
-  '500':'350A',
-  '600':'400A',
-  '700':'450A',
-  '750':'500A'
-};
-
 function ampUpdateCalc() {
   var wireSize  = document.getElementById('ampWireSize').value;
   var insulType = document.getElementById('ampInsul').value;
@@ -2578,30 +2642,7 @@ function ampUpdateCalc() {
   var termLimit75 = row.t75;
   var finalAmp = Math.floor(Math.min(derated, insulType === 'tw' ? termLimit60 : termLimit75));
 
-  var standardBreakers = [15,20,25,30,35,40,45,50,60,70,80,90,100,110,125,150,175,200,225,250,300,350,400,450,500,600];
-  var isDerating = (tempFactor < 1.0 || bundle < 1.0);
-  var breaker, breakerStr;
-
-  if (isDerating) {
-    // With derating: must protect at or BELOW finalAmp — next size DOWN
-    breaker = standardBreakers.filter(function(b){ return b <= finalAmp; }).pop() || 15;
-    breakerStr = breaker + 'A';
-  } else {
-    // No derating: NEC 240.4(B) allows next size UP if conductor ampacity not standard
-    var exactMatch = standardBreakers.indexOf(finalAmp) !== -1;
-    if (exactMatch) {
-      breaker = finalAmp;
-    } else {
-      breaker = standardBreakers.filter(function(b){ return b >= finalAmp; })[0] || finalAmp;
-    }
-    // But still respect NEC 240.4(D) for small conductors
-    var maxSmall = {'14':15,'12':20,'10':30};
-    if (maxSmall[wireSize]) breaker = maxSmall[wireSize];
-    breakerStr = breaker + 'A';
-  }
-
-  // Add note about breaker selection
-  var breakerNote = isDerating ? ' (derated — protect at or below)' : ' (NEC 240.4(B))';
+  var breaker = material === 'cu' ? (AMP_BREAKER_CU[wireSize]||'—') : (AMP_BREAKER_AL[wireSize]||'—');
   var tempFactorStr = tempFactor.toFixed(2);
   var sunStr = sunAdder > 0 ? ' +'+sunAdder+'°F rooftop adder → '+effectiveAmbF+'°F effective' : '';
 
@@ -2610,16 +2651,15 @@ function ampUpdateCalc() {
     '<div class="result-item"><div class="result-item-label">Temp Factor'+sunStr+'</div><div class="result-item-value">'+(tempFactor < 1.0 ? '<span style="color:var(--warn)">':'<span style="color:var(--success)">')+tempFactorStr+'</span></div></div>'+
     '<div class="result-item"><div class="result-item-label">Bundle Factor</div><div class="result-item-value">'+(bundle < 1.0 ? '<span style="color:var(--warn)">':'<span style="color:var(--success)">')+bundle.toFixed(2)+'</span></div></div>'+
     '<div class="result-item"><div class="result-item-label">After Derating</div><div class="result-item-value result-ok">'+Math.floor(derated)+'A</div></div>'+
-    '<div class="result-item" title="NEC 110.14(C): Most equipment terminals are rated 75°C. Even if your conductor is rated 90°C, the final ampacity cannot exceed the 75°C column value. Use 90°C column only for derating calculations."><div class="result-item-label">Terminal Limit (75°C) <span style="font-size:10px;color:var(--text-dimmer)">NEC 110.14(C)</span></div><div class="result-item-value">'+termLimit75+'A</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Final Ampacity</div><div class="result-item-value" style="color:var(--text)">'+finalAmp+'A</div></div>'+
-    '<div class="result-item" style="border-color:var(--accent);background:rgba(255,199,0,0.06)"><div class="result-item-label" style="color:var(--accent)">Max Breaker<span style="font-size:9px;display:block;color:rgba(255,199,0,0.6)">'+breakerNote+'</span></div><div class="result-item-value" style="color:var(--accent)">'+breakerStr+'</div></div>'+
-    (!isDerating ? '<div class="result-item" style="border-color:var(--success);border-width:1px"><div class="result-item-label" style="color:var(--success)">Typical Field Use</div><div class="result-item-value" style="color:var(--success)">'+(AMP_TYPICAL_CU[wireSize]||breakerStr)+'</div></div>' : '<div class="result-item" style="opacity:0.3;border-style:dashed"><div class="result-item-label">Typical Field Use</div><div class="result-item-value" style="font-size:13px;color:var(--text-dimmer)">n/a — derated</div></div>');
+    '<div class="result-item"><div class="result-item-label">Terminal Limit (75°C)</div><div class="result-item-value">'+termLimit75+'A</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Final Ampacity</div><div class="result-item-value result-ok" style="font-size:26px">'+finalAmp+'A</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Typical Breaker</div><div class="result-item-value hi">'+breaker+'</div></div>'+
+    '<div class="result-item"><div class="result-item-label">NEC Reference</div><div class="result-item-value" style="font-size:13px">310.16 + 310.15(B)</div></div>';
 }
 
 function ampRenderRefTable(mat) {
   var table = mat === 'cu' ? AMP_CU : AMP_AL;
-  var maxBreakers = mat === 'cu' ? AMP_BREAKER_CU : AMP_BREAKER_AL;
-  var typicalBreakers = mat === 'cu' ? AMP_TYPICAL_CU : AMP_TYPICAL_AL;
+  var breakers = mat === 'cu' ? AMP_BREAKER_CU : AMP_BREAKER_AL;
   var sizes = mat === 'cu'
     ? ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0','250','300','350','400','500','600','700','750']
     : ['12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0','250','300','350','400','500','600','700','750'];
@@ -2627,15 +2667,14 @@ function ampRenderRefTable(mat) {
   for (var i = 0; i < sizes.length; i++) {
     var s = sizes[i];
     var r = table[s]; if (!r) continue;
-    var kcmilSizes = {'250':1,'300':1,'350':1,'400':1,'500':1,'600':1,'700':1,'750':1,'800':1,'900':1,'1000':1};
-    var label = kcmilSizes[s] ? s+' kcmil' : (s.indexOf('/')>-1 ? s+' AWG' : '#'+s+' AWG');
+    var label = parseInt(s) > 4 ? s+' AWG' : s+' kcmil';
+    if (s==='14'||s==='12'||s==='10'||s==='8'||s==='6'||s==='4'||s==='3'||s==='2'||s==='1') label = '#'+s+' AWG';
     tbody += '<tr>'+
       '<td class="wire-col">'+label+'</td>'+
       '<td>'+r.t60+'A</td>'+
       '<td class="hi">'+r.t75+'A</td>'+
       '<td>'+r.t90+'A</td>'+
-      '<td style="color:var(--success);font-weight:600">'+(typicalBreakers[s]||'—')+'</td>'+
-      '<td class="hi-accent">'+(maxBreakers[s]||'—')+'</td>'+
+      '<td class="hi">'+(breakers[s]||'—')+'</td>'+
     '</tr>';
   }
   document.getElementById('ampRefTable').innerHTML = tbody;
@@ -2707,19 +2746,13 @@ function vdUpdateCalc() {
   var multiplier = phase === '3' ? 1.732 : 2;
   var maxVDrop = voltage * (maxPct / 100);
 
-  // Ampacity lookup for VD table (75°C column)
-  var VD_AMP_CU = {'14':20,'12':25,'10':35,'8':50,'6':65,'4':85,'3':100,'2':115,'1':130,'1/0':150,'2/0':175,'3/0':200,'4/0':230,'250':255,'300':285,'350':310,'400':335,'500':380,'600':420,'700':460,'750':475};
-  var VD_AMP_AL = {'12':20,'10':30,'8':40,'6':50,'4':65,'3':75,'2':90,'1':100,'1/0':120,'2/0':135,'3/0':155,'4/0':180,'250':205,'300':230,'350':250,'400':270,'500':310,'600':340,'700':375,'750':385};
-  var ampTable = mat === 'cu' ? VD_AMP_CU : VD_AMP_AL;
-
-  // Find minimum size that meets BOTH voltage drop AND ampacity
+  // Find minimum size that meets voltage drop requirement
   var minSize = null;
   var minCM = (multiplier * K * amps * feet) / maxVDrop;
 
   for (var i = 0; i < VD_SIZES.length; i++) {
     var cm = VD_CM[VD_SIZES[i].k];
-    var wireAmp = ampTable[VD_SIZES[i].k] || 0;
-    if (cm >= minCM && wireAmp >= amps) {
+    if (cm >= minCM) {
       minSize = VD_SIZES[i];
       break;
     }
@@ -2753,23 +2786,12 @@ function vdUpdateCalc() {
     var vd = res.vDrop;
     var pct = res.pct;
     var vAtLoad = voltage - vd;
-    var wireAmp = ampTable[sz.k] || 0;
-    var ampOK = wireAmp >= amps;
     var isRec = minSize && sz.k === minSize.k;
     var passes = pct <= maxPct;
-    var statusColor, statusText;
-    if (!ampOK) {
-      statusColor = 'var(--danger)';
-      statusText = '✗ AMPACITY';
-    } else if (passes) {
-      statusColor = 'var(--success)';
-      statusText = '✓ OK';
-    } else {
-      statusColor = 'var(--danger)';
-      statusText = '✗ VD OVER';
-    }
-    var pctColor = !ampOK ? 'var(--danger)' : pct <= 3 ? 'var(--success)' : pct <= 5 ? 'var(--warn)' : 'var(--danger)';
-    var rowStyle = isRec ? ' style="background:rgba(245,166,35,0.08);border-left:3px solid var(--accent)"' : (!ampOK ? ' style="opacity:0.4"' : '');
+    var statusColor = passes ? 'var(--success)' : 'var(--danger)';
+    var statusText = passes ? '✓ OK' : '✗ OVER';
+    var pctColor = pct <= 2 ? 'var(--success)' : pct <= 3 ? 'var(--success)' : pct <= 5 ? 'var(--warn)' : 'var(--danger)';
+    var rowStyle = isRec ? ' style="background:rgba(245,166,35,0.08);border-left:3px solid var(--accent)"' : '';
 
     tbody += '<tr'+rowStyle+'>'+
       '<td class="wire-col">'+(isRec?'★ ':'')+sz.l+(isRec?' ← RECOMMENDED':'')+'</td>'+
@@ -3094,7 +3116,6 @@ function codeSubTab(name) {
   var wrapper = document.getElementById('csr-content');
   if (!wrapper || !CSR_CONTENT[name]) return;
   wrapper.innerHTML = CSR_CONTENT[name];
-  if (name === 'gfci') gfciInitRooms();
   if (name === 'grounding') groundingInitTopics();
   if (name === 'nyc') nycInitTopics();
 }
@@ -3115,7 +3136,7 @@ window.switchTab = function(name,el){
   origSwitch(name,el);
   if(name==='pullbox'){setTimeout(pbUpdate,50);}
   if(name==='outlets'){setTimeout(initOutletsIfNeeded,50);}
-  if(name==='coderef'){setTimeout(function(){ codeSubTab('gfci'); gfciInitRooms(); },50);}
+  if(name==='coderef'){setTimeout(function(){ codeSubTab('gfci'); },50);}
   if(name==='conduit'){setTimeout(function(){ cfUpdateCalc(); },50);}
 }
 
@@ -3822,9 +3843,9 @@ function favGetValues(type) {
   };
   if (type === 'amp') return {
     wire: document.getElementById('ampWireSize').value,
-    insul: document.getElementById('ampInsul').value,
-    material: document.getElementById('ampMaterial').value,
-    temp: document.getElementById('ampTemp').value,
+    insulation: document.getElementById('ampInsulation').value,
+    conduit: document.getElementById('ampConduit').value,
+    ambient: document.getElementById('ampAmbient').value,
     bundle: document.getElementById('ampBundle').value,
     sun: document.getElementById('ampSun').value
   };
@@ -3861,9 +3882,9 @@ function favSetValues(type, vals) {
     vdUpdateCalc();
   } else if (type === 'amp') {
     document.getElementById('ampWireSize').value = vals.wire || '12';
-    if (vals.insul) document.getElementById('ampInsul').value = vals.insul;
-    if (vals.material) document.getElementById('ampMaterial').value = vals.material;
-    if (vals.temp) document.getElementById('ampTemp').value = vals.temp;
+    if (vals.insulation) document.getElementById('ampInsulation').value = vals.insulation;
+    if (vals.conduit) document.getElementById('ampConduit').value = vals.conduit;
+    document.getElementById('ampAmbient').value = vals.ambient || '86';
     document.getElementById('ampBundle').value = vals.bundle || '1.00';
     document.getElementById('ampSun').value = vals.sun || '0';
     ampUpdateCalc();
@@ -3960,7 +3981,7 @@ function fillCalcMode(mode) {
   var el = document.getElementById('fill-content');
   if (el) FILL_CONTENT['conduit'] = el.innerHTML;
 })();
-FILL_CONTENT['wireway'] = "<div class=\"fill-rules-bar\">\n    <div class=\"nec-row\">\n      <span class=\"fill-pill pill-orange\" style=\"cursor:pointer;flex-shrink:0\" onclick=\"necLink('NEC 376.22 \u2014 Wireways: maximum fill 20% of cross-sectional area')\">NEC 376.22</span>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NEC 376.22 \u2014 Sheet metal wireways maximum fill 20%')\">20%</span> Max fill \u2014 sheet metal wireway</div>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NEC 378.22 \u2014 Non-metallic wireways maximum fill 20%')\">378.22</span> Non-metallic wireway</div>\n    </div>\n  </div>\n\n  <div class=\"cf-controls\">\n    <div class=\"ctrl-group\">\n      <span class=\"ctrl-label\">Wireway Width (in)</span>\n      <select id=\"wwWidth\" onchange=\"wwCalc()\">\n        <option value=\"2\">2\"</option>\n        <option value=\"3\">3\"</option>\n        <option value=\"4\" selected>4\"</option>\n        <option value=\"6\">6\"</option>\n        <option value=\"8\">8\"</option>\n        <option value=\"10\">10\"</option>\n        <option value=\"12\">12\"</option>\n      </select>\n    </div>\n    <div class=\"ctrl-group\">\n      <span class=\"ctrl-label\">Wireway Height (in)</span>\n      <select id=\"wwHeight\" onchange=\"wwCalc()\">\n        <option value=\"2\">2\"</option>\n        <option value=\"3\">3\"</option>\n        <option value=\"4\" selected>4\"</option>\n        <option value=\"6\">6\"</option>\n        <option value=\"8\">8\"</option>\n        <option value=\"10\">10\"</option>\n        <option value=\"12\">12\"</option>\n      </select>\n    </div>\n    <div class=\"ctrl-group\">\n      <span class=\"ctrl-label\">Wire Size</span>\n      <select id=\"wwWireSize\" onchange=\"wwCalc()\">\n        <option value=\"14\">14 AWG</option><option value=\"12\">12 AWG</option>\n        <option value=\"10\">10 AWG</option><option value=\"8\">8 AWG</option>\n        <option value=\"6\">6 AWG</option><option value=\"4\">4 AWG</option>\n        <option value=\"3\">3 AWG</option><option value=\"2\">2 AWG</option>\n        <option value=\"1\">1 AWG</option><option value=\"1/0\">1/0 AWG</option>\n        <option value=\"2/0\">2/0 AWG</option><option value=\"3/0\">3/0 AWG</option>\n        <option value=\"4/0\">4/0 AWG</option><option value=\"250\">250 kcmil</option>\n        <option value=\"300\">300 kcmil</option><option value=\"350\">350 kcmil</option>\n        <option value=\"500\">500 kcmil</option>\n      </select>\n    </div>\n    <div class=\"ctrl-group\">\n      <span class=\"ctrl-label\">Wire Type</span>\n      <select id=\"wwWireType\" onchange=\"wwCalc()\">\n        <option value=\"thhn\">THHN/THWN-2</option>\n        <option value=\"thw\">THW/THHW</option>\n        <option value=\"xhhw\">XHHW-2</option>\n      </select>\n    </div>\n    <div class=\"ctrl-group\" style=\"max-width:80px\">\n      <span class=\"ctrl-label\"># of Wires</span>\n      <input type=\"number\" id=\"wwNumWires\" value=\"6\" min=\"1\" max=\"100\" oninput=\"wwCalc()\">\n    </div>\n    <button class=\"reset-btn\" onclick=\"wwReset()\">\u21ba Reset</button>\n  </div>\n\n  <div class=\"result-box show\" id=\"wwResultBox\" style=\"margin:12px 20px\">\n    <div class=\"result-title\">WIREWAY FILL CALCULATION \u2014 NEC 376.22</div>\n    <div class=\"result-grid\" id=\"wwResultGrid\"></div>\n    <div style=\"padding:10px 16px;border-top:1px solid var(--border)\">\n      <button onclick=\"cfGoToAmpacity()\" style=\"background:none;border:1px solid var(--border);color:var(--text-dim);font-family:IBM Plex Mono,monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;width:100%\" onmouseover=\"this.style.borderColor='var(--nec)';this.style.color='var(--nec)'\" onmouseout=\"this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'\">\n        \u26a1 Check Ampacity Derating for These Conductors \u2192\n      </button>\n    </div>\n  </div>\n\n  <!-- WIREWAY REFERENCE TABLE \u2014 inside wireway mode -->\n  <div class=\"fill-panel\" style=\"flex:1;overflow:hidden\">\n    <div class=\"table-wrap\">\n      <div class=\"table-header\">\n        <span class=\"table-title\">MAX CONDUCTORS @ 20% FILL \u2014 THHN/THWN-2</span>\n      </div>\n      <div style=\"overflow-x:auto;overflow-y:auto;flex:1\">\n        <table class=\"cf-table\" id=\"wwRefTable\">\n          <thead>\n            <tr>\n              <th class=\"wire-col\">Wire Size</th>\n              <th>Area (in\u00b2)</th>\n              <th>2\"\u00d72\"</th>\n              <th>4\"\u00d74\"</th>\n              <th>6\"\u00d76\"</th>\n              <th>8\"\u00d78\"</th>\n              <th>12\"\u00d712\"</th>\n            </tr>\n          </thead>\n          <tbody id=\"wwRefTableBody\"></tbody>\n        </table>\n      </div>\n    </div>\n  </div>";
+FILL_CONTENT['wireway'] = "<div class=\"fill-rules-bar\">\n    <div class=\"nec-row\">\n      <span class=\"fill-pill pill-orange\" style=\"cursor:pointer;flex-shrink:0\" onclick=\"necLink('NEC 376.22 \u2014 Wireways: maximum fill 20% of cross-sectional area')\">NEC 376.22</span>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NEC 376.22 \u2014 Sheet metal wireways maximum fill 20%')\">20%</span> Max fill \u2014 sheet metal wireway</div>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NEC 378.22 \u2014 Non-metallic wireways maximum fill 20%')\">378.22</span> Non-metallic wireway</div>\n    </div>\n  </div>\n\n  <div class=\"cf-controls\">\n    <div class=\"ctrl-group\">\n      <span class=\"ctrl-label\">Wireway Width (in)</span>\n      <select id=\"wwWidth\" onchange=\"wwCalc()\">\n        <option value=\"2\">2\"</option>\n        <option value=\"3\">3\"</option>\n        <option value=\"4\" selected>4\"</option>\n        <option value=\"6\">6\"</option>\n        <option value=\"8\">8\"</option>\n        <option value=\"10\">10\"</option>\n        <option value=\"12\">12\"</option>\n      </select>\n    </div>\n    <div class=\"ctrl-group\">\n      <span class=\"ctrl-label\">Wireway Height (in)</span>\n      <select id=\"wwHeight\" onchange=\"wwCalc()\">\n        <option value=\"2\">2\"</option>\n        <option value=\"3\">3\"</option>\n        <option value=\"4\" selected>4\"</option>\n        <option value=\"6\">6\"</option>\n        <option value=\"8\">8\"</option>\n        <option value=\"10\">10\"</option>\n        <option value=\"12\">12\"</option>\n      </select>\n    </div>\n    <div class=\"ctrl-group\">\n      <span class=\"ctrl-label\">Wire Size</span>\n      <select id=\"wwWireSize\" onchange=\"wwCalc()\">\n        <option value=\"14\">14 AWG</option><option value=\"12\">12 AWG</option>\n        <option value=\"10\">10 AWG</option><option value=\"8\">8 AWG</option>\n        <option value=\"6\">6 AWG</option><option value=\"4\">4 AWG</option>\n        <option value=\"3\">3 AWG</option><option value=\"2\">2 AWG</option>\n        <option value=\"1\">1 AWG</option><option value=\"1/0\">1/0 AWG</option>\n        <option value=\"2/0\">2/0 AWG</option><option value=\"3/0\">3/0 AWG</option>\n        <option value=\"4/0\">4/0 AWG</option><option value=\"250\">250 kcmil</option>\n        <option value=\"300\">300 kcmil</option><option value=\"350\">350 kcmil</option>\n        <option value=\"500\">500 kcmil</option>\n      </select>\n    </div>\n    <div class=\"ctrl-group\">\n      <span class=\"ctrl-label\">Wire Type</span>\n      <select id=\"wwWireType\" onchange=\"wwCalc()\">\n        <option value=\"thhn\">THHN/THWN-2</option>\n        <option value=\"thw\">THW/THHW</option>\n        <option value=\"xhhw\">XHHW-2</option>\n      </select>\n    </div>\n    <div class=\"ctrl-group\" style=\"max-width:80px\">\n      <span class=\"ctrl-label\"># of Wires</span>\n      <input type=\"number\" id=\"wwNumWires\" value=\"6\" min=\"1\" max=\"100\" oninput=\"wwCalc()\">\n    </div>\n    <button class=\"reset-btn\" onclick=\"wwReset()\">\u21ba Reset</button>\n  </div>\n\n  <div class=\"result-box show\" id=\"wwResultBox\" style=\"margin:12px 20px\">\n    <div class=\"result-title\">WIREWAY FILL CALCULATION \u2014 NEC 376.22</div>\n    <div class=\"result-grid\" id=\"wwResultGrid\"></div>\n  </div>\n\n  <!-- WIREWAY REFERENCE TABLE \u2014 inside wireway mode -->\n  <div class=\"fill-panel\" style=\"flex:1;overflow:hidden\">\n    <div class=\"table-wrap\">\n      <div class=\"table-header\">\n        <span class=\"table-title\">MAX CONDUCTORS @ 20% FILL \u2014 THHN/THWN-2</span>\n      </div>\n      <div style=\"overflow-x:auto;overflow-y:auto;flex:1\">\n        <table class=\"cf-table\" id=\"wwRefTable\">\n          <thead>\n            <tr>\n              <th class=\"wire-col\">Wire Size</th>\n              <th>Area (in\u00b2)</th>\n              <th>2\"\u00d72\"</th>\n              <th>4\"\u00d74\"</th>\n              <th>6\"\u00d76\"</th>\n              <th>8\"\u00d78\"</th>\n              <th>12\"\u00d712\"</th>\n            </tr>\n          </thead>\n          <tbody id=\"wwRefTableBody\"></tbody>\n        </table>\n      </div>\n    </div>\n  </div>";
 
 
 function wwRenderTable() {
@@ -4017,6 +4038,21 @@ function wwCalc() {
     '<div class="result-item"><div class="result-item-label">Used Area</div><div class="result-item-value">'+usedArea.toFixed(3)+' in²</div></div>' +
     '<div class="result-item"><div class="result-item-label">Wireway Area</div><div class="result-item-value">'+totalArea.toFixed(2)+' in² ('+w+'"×'+h+'")</div></div>' +
     '<div class="result-item"><div class="result-item-label">Max Conductors</div><div class="result-item-value result-ok">'+maxWires+' max @ 20%</div></div>';
+
+  // Add action buttons below result
+  var btns = document.getElementById('wwActionBtns');
+  if (!btns) {
+    var box = document.getElementById('wwResultBox');
+    if (box) {
+      var div = document.createElement('div');
+      div.id = 'wwActionBtns';
+      div.style.cssText = 'padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px';
+      div.innerHTML =
+        '<button onclick="cfGoToAmpacity()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:\'IBM Plex Mono\',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--nec)\';this.style.color=\'var(--nec)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-dim)\'">⚡ Check Ampacity →</button>' +
+        '<button onclick="cfGoToVDrop()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:\'IBM Plex Mono\',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer" onmouseover="this.style.borderColor=\'var(--nycec)\';this.style.color=\'var(--nycec)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text-dim)\'">📏 Check V-Drop →</button>';
+      box.appendChild(div);
+    }
+  }
 }
 
 function wwReset() {
@@ -4028,12 +4064,26 @@ function wwReset() {
   wwCalc();
 }
 
-function cfGoToAmpacity() {
-  // Get values from whichever mode is active
+function cfGoToVDrop() {
   var numWiresEl = document.getElementById('cfNumWires') || document.getElementById('wwNumWires');
   var wireSizeEl = document.getElementById('cfWireSize') || document.getElementById('wwWireSize');
-  var numWires = parseInt(numWiresEl ? numWiresEl.value : 3) || 3;
   var wireSize = wireSizeEl ? wireSizeEl.value : '12';
+
+  // Switch to vdrop tab
+  var vdTab = document.querySelector('.tab[onclick*="vdrop"]');
+  if (vdTab) switchTab('vdrop', vdTab);
+
+  // Set wire material based on current conduit selection
+  setTimeout(function() {
+    var materialSel = document.getElementById('vdMaterial');
+    if (materialSel) materialSel.value = 'cu'; // default copper
+    if (typeof vdUpdateCalc === 'function') vdUpdateCalc();
+  }, 100);
+}
+
+function cfGoToAmpacity() {
+  var numWires = parseInt(document.getElementById('cfNumWires').value) || 3;
+  var wireSize = document.getElementById('cfWireSize').value;
 
   // Switch to ampacity tab
   var ampTab = document.querySelector('.tab[onclick*="ampacity"]');
@@ -4044,6 +4094,7 @@ function cfGoToAmpacity() {
     var wireSel = document.getElementById('ampWireSize');
     var bundleSel = document.getElementById('ampBundle');
     if (wireSel) wireSel.value = wireSize;
+    // Map num wires to bundle derating factor
     var bundleMap = {
       1:'1.00', 2:'1.00', 3:'1.00',
       4:'0.80', 5:'0.80', 6:'0.80',
@@ -4079,9 +4130,9 @@ function bfReset() {
 }
 function ampReset() {
   document.getElementById('ampWireSize').selectedIndex = 0;
-  document.getElementById('ampInsul').value = 'thhn';
-  document.getElementById('ampMaterial').value = 'cu';
-  document.getElementById('ampTemp').value = '86';
+  document.getElementById('ampInsulation').value = 'thhn';
+  document.getElementById('ampConduit').value = 'raceway';
+  document.getElementById('ampAmbient').value = '86';
   document.getElementById('ampBundle').value = '1.00';
   document.getElementById('ampSun').value = '0';
   ampUpdateCalc();
