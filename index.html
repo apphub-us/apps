@@ -653,8 +653,8 @@
 <!-- TABS -->
 <div class="tab-bar">
   <div class="tab active" onclick="switchTab('chat', this)">AI Chat</div>
-  <div class="tab" onclick="switchTab('conduit', this)">Fill Calc</div>
   <div class="tab" onclick="switchTab('ampacity', this)">Ampacity</div>
+  <div class="tab" onclick="switchTab('conduit', this)">Fill Calc</div>
   <div class="tab" onclick="switchTab('vdrop', this)">V-Drop</div>
   <div class="tab" onclick="switchTab('boxfill', this)">Box Fill</div>
   <div class="tab" onclick="switchTab('loadcalc', this)">Load Calc</div>
@@ -712,6 +712,18 @@
     <div class="trending-btns" id="trendingBtns">
       <span class="trending-loading">Loading...</span>
     </div>
+  </div>
+
+  <!-- WORKFLOW BANNER -->
+  <div style="display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text-dimmer);letter-spacing:1px;text-transform:uppercase;flex-shrink:0">Workflow:</span>
+    <button onclick="switchTab('ampacity',document.querySelector('.tab[onclick*=ampacity]'))" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:3px;cursor:pointer" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">1 · Ampacity</button>
+    <span style="color:var(--text-dimmer);font-size:10px">→</span>
+    <button onclick="switchTab('conduit',document.querySelector('.tab[onclick*=conduit]'))" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:3px;cursor:pointer" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">2 · Fill Calc</button>
+    <span style="color:var(--text-dimmer);font-size:10px">→</span>
+    <button onclick="switchTab('vdrop',document.querySelector('.tab[onclick*=vdrop]'))" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:3px;cursor:pointer" onmouseover="this.style.borderColor='var(--nycec)';this.style.color='var(--nycec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">3 · V-Drop</button>
+    <span style="color:var(--text-dimmer);font-size:10px">→</span>
+    <button onclick="switchTab('boxfill',document.querySelector('.tab[onclick*=boxfill]'))" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:3px;cursor:pointer" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">4 · Box Fill</button>
   </div>
 
   <div class="chat-area" id="chatArea">
@@ -1148,6 +1160,14 @@
   <div class="result-box show" id="ampResultBox" style="margin:12px 20px">
     <div class="result-title">AMPACITY CALCULATION — NEC 310.15</div>
     <div class="result-grid" id="ampResultGrid"></div>
+    <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <button onclick="ampGoToFillCalc()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        📐 Check Fill Calc →
+      </button>
+      <button onclick="ampGoToVDrop()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nycec)';this.style.color='var(--nycec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        📏 Check V-Drop →
+      </button>
+    </div>
   </div>
 
   <!-- REFERENCE TABLE -->
@@ -4075,6 +4095,24 @@ function cfGoToVDrop() {
   setTimeout(function() {
     if (typeof vdUpdateCalc === 'function') vdUpdateCalc();
   }, 100);
+}
+
+function ampGoToFillCalc() {
+  var wireSize = document.getElementById('ampWireSize').value;
+  var conduitTab = document.querySelector('.tab[onclick*="conduit"]');
+  if (conduitTab) switchTab('conduit', conduitTab);
+  setTimeout(function() {
+    var cfWire = document.getElementById('cfWireSize');
+    if (cfWire) { cfWire.value = wireSize; cfUpdateCalc(); }
+  }, 100);
+}
+
+function ampGoToVDrop() {
+  var wireSize = document.getElementById('ampWireSize').value;
+  var vdTab = document.querySelector('.tab[onclick*="vdrop"]');
+  if (vdTab) switchTab('vdrop', vdTab);
+  window.vdHighlightSize = wireSize;
+  setTimeout(function() { if (typeof vdUpdateCalc === 'function') vdUpdateCalc(); }, 100);
 }
 
 function cfReset() {
