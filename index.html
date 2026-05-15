@@ -824,9 +824,9 @@
         <option value="400">400 kcmil</option><option value="500">500 kcmil</option>
       </select>
     </div>
-    <div class="ctrl-group">
+    <div class="ctrl-group" style="max-width:90px">
       <span class="ctrl-label"># of Wires</span>
-      <input type="number" id="cfNumWires" value="3" min="1" max="40" onchange="cfUpdateCalc()" oninput="cfUpdateCalc()">
+      <input type="number" id="cfNumWires" value="3" min="1" max="40" onchange="cfUpdateCalc()" oninput="cfUpdateCalc()" style="height:33px;box-sizing:border-box;padding:0 8px">
     </div>
     <div class="fav-bar">
       <button class="reset-btn" onclick="cfReset()">↺ Reset</button>
