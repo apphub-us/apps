@@ -5234,7 +5234,7 @@ function wsCalc() {
 
     summary =
       '<div style="background:rgba(82,192,122,0.1);border:1px solid rgba(82,192,122,0.3);border-left:4px solid var(--success);border-radius:4px;padding:14px 18px;margin-bottom:16px">' +
-        '<div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:var(--success);margin-bottom:10px">✓ USE: ' + wLabel + ' ' + (mat==='cu'?'COPPER':'ALUMINUM') + '</div>' +
+        '<div style="font-family:Bebas Neue,sans-serif;font-size:28px;letter-spacing:2px;color:var(--success);margin-bottom:10px">✓ USE: ' + wLabel + ' ' + (mat==='cu'?'COPPER':'ALUMINUM') + '</div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:8px;font-family:IBM Plex Mono,monospace;font-size:12px;margin-bottom:10px">' +
           '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:3px">⚡ Ampacity: <strong style="color:var(--success)">' + wFinal.toFixed(0) + 'A</strong> ≥ ' + load + 'A</span>' +
           (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:3px">📏 V-Drop: <strong style="color:var(--success)">' + wVDpct.toFixed(2) + '%</strong> ≤ ' + maxVD + '%</span>' : '') +
