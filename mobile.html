@@ -434,7 +434,7 @@
       <div class="result-grid" id="ampResultGrid"></div>
       <div class="wf-btns">
         <button class="wf-btn" onclick="ampGoToFillCalc()">📐 Fill Calc →</button>
-        <button class="wf-btn" onclick="ampGoToVDrop()">📏 V-Drop →</button>
+        <button class="wf-btn" onclick="ampGoToVDrop()">🎯 Wire Sizer →</button>
       </div>
     </div>
     <div class="tbl-wrap">
@@ -524,7 +524,7 @@
         <div class="result-grid" id="cfResultGrid"></div>
         <div class="wf-btns">
           <button class="wf-btn" onclick="cfGoToAmpacity()">⚡ Ampacity →</button>
-          <button class="wf-btn" onclick="cfGoToVDrop()">📏 V-Drop →</button>
+          <button class="wf-btn" onclick="switchTab('wiresizer', document.getElementById('mnav-wiresizer'))">🎯 Wire Sizer →</button>
         </div>
       </div>
       <div class="tbl-wrap">
@@ -754,6 +754,10 @@
     <div class="rules-row">
       <span class="pill pill-ok">BOTH</span>
       <span class="rule-txt">Wire must pass derating AND voltage drop simultaneously</span>
+    </div>
+    <div class="rules-row">
+      <span class="pill pill-nyc" onclick="necLink('NYCEC 215.2 — NYC voltage drop requirements')">NYCEC 215.2</span>
+      <span class="rule-txt">Commercial: 3% feeder · Residential: 4% feeder · 5% total — legal requirement</span>
     </div>
   </div>
   <div class="controls">
@@ -988,9 +992,6 @@
   </div>
   <div class="nav-item" id="mnav-conduit" onclick="switchTab('conduit',this)">
     <span class="nav-icon">📐</span>Fill Calc
-  </div>
-  <div class="nav-item" id="mnav-vdrop" onclick="switchTab('vdrop',this)">
-    <span class="nav-icon">📉</span>V-Drop
   </div>
   <div class="nav-item" id="mnav-boxfill" onclick="switchTab('boxfill',this)">
     <span class="nav-icon">📦</span>Box Fill
@@ -3291,7 +3292,7 @@ function cfGoToAmpacity() {
 function cfGoToVDrop() {
   var wireSizeEl = document.getElementById('cfWireSize') || document.getElementById('wwWireSize');
   var wireSize = wireSizeEl ? wireSizeEl.value : '12';
-  switchTab('vdrop', document.getElementById('mnav-vdrop'));
+  switchTab('wiresizer', document.getElementById('mnav-wiresizer'));
   window.vdHighlightSize = wireSize;
   setTimeout(function() {
     var typicalStr = AMP_TYPICAL_CU[wireSize] || '';
@@ -3313,7 +3314,7 @@ function ampGoToFillCalc() {
 
 function ampGoToVDrop() {
   var wireSize = document.getElementById('ampWireSize').value;
-  switchTab('vdrop', document.getElementById('mnav-vdrop'));
+  switchTab('wiresizer', document.getElementById('mnav-wiresizer'));
   window.vdHighlightSize = wireSize;
   setTimeout(function() {
     var vdAmps = document.getElementById('vdAmps');

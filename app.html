@@ -656,7 +656,6 @@
   <div class="tab" onclick="switchTab('wiresizer', this)">Wire Sizer</div>
   <div class="tab" onclick="switchTab('ampacity', this)">Ampacity</div>
   <div class="tab" onclick="switchTab('conduit', this)">Fill Calc</div>
-  <div class="tab" onclick="switchTab('vdrop', this)">V-Drop</div>
   <div class="tab" onclick="switchTab('boxfill', this)">Box Fill</div>
   <div class="tab" onclick="switchTab('loadcalc', this)">Load Calc</div>
   <div class="tab" onclick="switchTab('converter', this)">Converter</div>
@@ -678,9 +677,6 @@
   </div>
   <div class="mob-nav-item" id="mnav-ampacity" onclick="switchTab('ampacity',document.querySelector('.tab[onclick*=\'ampacity\']'))">
     <div class="mob-nav-icon">⚡</div><div class="mob-nav-label">Amp</div>
-  </div>
-  <div class="mob-nav-item" id="mnav-vdrop" onclick="switchTab('vdrop',document.querySelector('.tab[onclick*=\'vdrop\']'))">
-    <div class="mob-nav-icon">📏</div><div class="mob-nav-label">V-Drop</div>
   </div>
   <div class="mob-nav-item" id="mnav-pullbox" onclick="switchTab('pullbox',document.querySelector('.tab[onclick*=\'pullbox\']'))">
     <div class="mob-nav-icon">🗃️</div><div class="mob-nav-label">Pull</div>
@@ -722,7 +718,7 @@
     <span style="color:var(--text-dimmer);font-size:10px">→</span>
     <button onclick="switchTab('conduit',document.querySelector('.tab[onclick*=conduit]'))" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:3px;cursor:pointer" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">2 · Fill Calc</button>
     <span style="color:var(--text-dimmer);font-size:10px">→</span>
-    <button onclick="switchTab('vdrop',document.querySelector('.tab[onclick*=vdrop]'))" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:3px;cursor:pointer" onmouseover="this.style.borderColor='var(--nycec)';this.style.color='var(--nycec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">3 · V-Drop</button>
+    <button onclick="switchTab('wiresizer',document.querySelector('.tab[onclick*=wiresizer]'))" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:3px;cursor:pointer" onmouseover="this.style.borderColor='var(--success)';this.style.color='var(--success)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">3 · Wire Sizer</button>
     <span style="color:var(--text-dimmer);font-size:10px">→</span>
     <button onclick="switchTab('boxfill',document.querySelector('.tab[onclick*=boxfill]'))" style="flex-shrink:0;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:3px;cursor:pointer" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">4 · Box Fill</button>
   </div>
@@ -845,8 +841,8 @@
       <button onclick="cfGoToAmpacity()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
         ⚡ Check Ampacity →
       </button>
-      <button onclick="cfGoToVDrop()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nycec)';this.style.color='var(--nycec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
-        📏 Check V-Drop →
+      <button onclick="switchTab('wiresizer',document.querySelector('.tab[onclick*=wiresizer]'))" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nycec)';this.style.color='var(--nycec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        🎯 Wire Sizer →
       </button>
     </div>
   </div>
@@ -1167,8 +1163,8 @@
       <button onclick="ampGoToFillCalc()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nec)';this.style.color='var(--nec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
         📐 Check Fill Calc →
       </button>
-      <button onclick="ampGoToVDrop()" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nycec)';this.style.color='var(--nycec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
-        📏 Check V-Drop →
+      <button onclick="switchTab('wiresizer',document.querySelector('.tab[onclick*=wiresizer]'))" style="flex:1;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--nycec)';this.style.color='var(--nycec)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">
+        🎯 Wire Sizer →
       </button>
     </div>
   </div>
@@ -1780,8 +1776,8 @@
       <div class="fill-rule"><span class="fill-pill" style="background:rgba(82,192,122,0.2);color:var(--success)">BOTH</span> Wire must satisfy BOTH conditions simultaneously</div>
     </div>
     <div class="nycec-row">
-      <span class="fill-pill pill-blue" onclick="necLink('NYCEC 215.2 — NYC voltage drop mandatory 5% total, 3% commercial feeder')">NYCEC 215.2</span>
-      <span style="color:var(--text-dim);font-size:12px">NYC: VD is a legal requirement — not just a recommendation</span>
+      <span class="fill-pill pill-blue" style="cursor:pointer;flex-shrink:0" onclick="necLink('NYCEC 215.2 — NYC voltage drop mandatory: commercial max 3% feeder, residential max 4% feeder, 5% total all occupancies')">NYCEC 215.2</span>
+      <span style="color:var(--text-dim);font-size:12px"><strong style="color:var(--text)">Commercial:</strong> 3% feeder · 5% total &nbsp;|&nbsp; <strong style="color:var(--text)">Residential:</strong> 4% feeder · 5% total &nbsp;— legal requirement</span>
     </div>
   </div>
 
