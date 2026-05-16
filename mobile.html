@@ -743,6 +743,87 @@
   </div>
 </div>
 
+
+<!-- ══ WIRE SIZER PANEL — MOBILE ══ -->
+<div class="panel" id="panel-wiresizer">
+  <div class="rules-bar">
+    <div class="rules-row">
+      <span class="pill pill-nec" onclick="necLink('NEC 310.15 + 210.19 — Wire sizing combining ampacity derating and voltage drop')">310.15 + 210.19</span>
+      <span class="rule-txt">Ampacity after derating AND V-Drop — both conditions</span>
+    </div>
+    <div class="rules-row">
+      <span class="pill pill-ok">BOTH</span>
+      <span class="rule-txt">Wire must pass derating AND voltage drop simultaneously</span>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="ctrl">
+      <span class="ctrl-lbl">Load (Amps)</span>
+      <input type="number" id="wsLoad" placeholder="e.g. 200" min="1" max="2000" oninput="wsCalc()">
+    </div>
+    <div class="ctrl">
+      <span class="ctrl-lbl">One-Way Distance (ft)</span>
+      <input type="number" id="wsFeet" placeholder="optional" min="0" oninput="wsCalc()" style="width:110px">
+    </div>
+    <div class="ctrl">
+      <span class="ctrl-lbl">System Voltage</span>
+      <select id="wsVoltage" onchange="wsCalc()">
+        <option value="120">120V</option><option value="208" selected>208V</option><option value="240">240V</option><option value="277">277V</option><option value="480">480V</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <span class="ctrl-lbl">Phase</span>
+      <select id="wsPhase" onchange="wsCalc()">
+        <option value="1">Single Phase</option><option value="3">Three Phase</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <span class="ctrl-lbl">Material</span>
+      <select id="wsMaterial" onchange="wsCalc()">
+        <option value="cu">Copper (Cu)</option><option value="al">Aluminum (Al)</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <span class="ctrl-lbl">Insulation</span>
+      <select id="wsInsul" onchange="wsCalc()">
+        <option value="thhn" selected>THHN / THWN-2 (90°C)</option>
+        <option value="thw">THW / THHW (75°C)</option>
+        <option value="tw">TW / UF (60°C)</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <span class="ctrl-lbl">CCC Bundling</span>
+      <select id="wsBundle" onchange="wsCalc()">
+        <option value="1.00">1-3 CCC (×1.00)</option>
+        <option value="0.80">4-6 CCC (×0.80)</option>
+        <option value="0.70">7-9 CCC (×0.70)</option>
+        <option value="0.50">10-20 CCC (×0.50)</option>
+        <option value="0.45">21-30 CCC (×0.45)</option>
+        <option value="0.40">31-40 CCC (×0.40)</option>
+        <option value="0.35">41+ CCC (×0.35)</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <span class="ctrl-lbl">Ambient Temp</span>
+      <select id="wsTemp" onchange="wsCalc()">
+        <option value="50">50°F</option><option value="60">60°F</option><option value="70">70°F</option><option value="77">77°F</option><option value="86" selected>86°F (base)</option><option value="95">95°F</option><option value="104">104°F</option><option value="113">113°F</option><option value="122">122°F</option><option value="131">131°F</option><option value="140">140°F</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <span class="ctrl-lbl">Max VD %</span>
+      <select id="wsMaxVD" onchange="wsCalc()">
+        <option value="2">2%</option><option value="3" selected>3% (NEC / NYCEC commercial)</option><option value="4">4% (NYCEC residential)</option><option value="5">5%</option>
+      </select>
+    </div>
+    <div class="fav-bar">
+      <button class="reset-btn" onclick="wsReset()">↺ Reset</button>
+    </div>
+  </div>
+  <div id="wsResult" style="padding:14px">
+    <div style="color:var(--text-dimmer);font-family:IBM Plex Mono,monospace;font-size:12px;padding:20px;text-align:center">Enter load to calculate</div>
+  </div>
+</div>
+
 <!-- ══ MORE PANEL ══ -->
 <div class="panel" id="panel-more">
   <div class="code-subtabs">
@@ -913,6 +994,9 @@
   </div>
   <div class="nav-item" id="mnav-boxfill" onclick="switchTab('boxfill',this)">
     <span class="nav-icon">📦</span>Box Fill
+  </div>
+  <div class="nav-item" id="mnav-wiresizer" onclick="switchTab('wiresizer',this)">
+    <span class="nav-icon">🎯</span>Sizer
   </div>
   <div class="nav-item" id="mnav-more" onclick="switchTab('more',this)">
     <span class="nav-icon">⋯</span>More
@@ -4183,5 +4267,136 @@ function cvInitQuickTables() {
     [15,20,30,40,50,60,80,100].map(function(a){return '<span>'+a+'A →</span><span style="color:var(--text)">'+a*240+'W / '+(a*240/1000).toFixed(1)+'kW</span>';}).join('') +
     '</div></div>';
 }
+</script>
+
+<script>
+
+// ── WIRE SIZER ───────────────────────────────────────────
+function wsCalc() {
+  var load    = parseFloat(document.getElementById('wsLoad').value) || 0;
+  var feet    = parseFloat(document.getElementById('wsFeet').value) || 0;
+  var voltage = parseFloat(document.getElementById('wsVoltage').value) || 208;
+  var phase   = document.getElementById('wsPhase').value;
+  var mat     = document.getElementById('wsMaterial').value;
+  var bundle  = parseFloat(document.getElementById('wsBundle').value) || 1.0;
+  var temp    = parseInt(document.getElementById('wsTemp').value) || 86;
+  var maxVD   = parseFloat(document.getElementById('wsMaxVD').value) || 3;
+  var insul   = document.getElementById('wsInsul').value;
+
+  if (!load) {
+    document.getElementById('wsResult').innerHTML = '<div style="color:var(--text-dimmer);font-family:IBM Plex Mono,monospace;font-size:12px;padding:20px;text-align:center">Enter load and distance to calculate</div>';
+    return;
+  }
+
+  var ampTable = mat === 'cu' ? AMP_CU : AMP_AL;
+  var typicalTable = mat === 'cu' ? AMP_TYPICAL_CU : AMP_TYPICAL_AL;
+  var sizes = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0','250','300','350','400','500','600','700','750'];
+  if (mat === 'al') sizes = sizes.filter(function(s){return s!=='14';});
+
+  var tempFactor = ampGetTempFactor(temp, insul);
+
+  var t75 = {
+    cu: {'14':20,'12':25,'10':35,'8':50,'6':65,'4':85,'3':100,'2':115,'1':130,'1/0':150,'2/0':175,'3/0':200,'4/0':230,'250':255,'300':285,'350':310,'400':335,'500':380,'600':420,'700':460,'750':475},
+    al: {'12':20,'10':30,'8':40,'6':50,'4':65,'3':75,'2':90,'1':100,'1/0':120,'2/0':135,'3/0':155,'4/0':180,'250':205,'300':230,'350':250,'400':270,'500':310,'600':340,'700':375,'750':385}
+  };
+
+  var K = VD_K[mat];
+  var multiplier = phase === '3' ? 1.732 : 2;
+
+  var winner = null;
+  var rows = '';
+
+  for (var i = 0; i < sizes.length; i++) {
+    var sz = sizes[i];
+    var baseData = ampTable[sz];
+    if (!baseData) continue;
+
+    var baseCol = ampGetBaseCol(insul);
+    var base = baseData[baseCol];
+    var afterTemp = base * tempFactor;
+    var afterBundle = afterTemp * bundle;
+    var finalAmp = Math.min(afterBundle, t75[mat][sz] || afterBundle);
+    var ampOK = finalAmp >= load;
+
+    var cm = VD_CM[sz];
+    var vd = 0, vdPct = 0;
+    if (feet && cm) {
+      vd = (multiplier * K * load * feet) / cm;
+      vdPct = (vd / voltage) * 100;
+    }
+    var vdOK = !feet || vdPct <= maxVD;
+    var bothOK = ampOK && vdOK;
+    if (bothOK && !winner) winner = sz;
+
+    var isWinner = winner === sz;
+    var rowBg = isWinner ? 'background:rgba(82,192,122,0.1);border-left:3px solid var(--success)' : (!ampOK ? 'opacity:0.45' : '');
+    var ampColor = ampOK ? 'var(--success)' : 'var(--danger)';
+    var vdColor  = vdOK  ? 'var(--success)' : 'var(--danger)';
+
+    var sizeLabel = sz;
+    if (!sz.includes('/') && parseInt(sz) <= 4) sizeLabel = '#' + sz + ' AWG';
+    else if (sz.includes('/')) sizeLabel = sz + ' AWG';
+    else sizeLabel = sz + ' kcmil';
+
+    rows += '<tr' + (rowBg ? ' style="' + rowBg + '"' : '') + '>' +
+      '<td class="wire-col">' + (isWinner ? '★ ' : '') + sizeLabel + (isWinner ? ' ← USE' : '') + '</td>' +
+      '<td style="color:' + ampColor + '">' + (ampOK?'✓':'✗') + ' ' + finalAmp.toFixed(0) + 'A</td>' +
+      '<td style="color:var(--text-dim);font-size:10px">' + base + '×' + tempFactor.toFixed(2) + '×' + bundle + '</td>' +
+      '<td style="color:' + vdColor + '">' + (feet ? (vdOK?'✓':'✗') + ' ' + vdPct.toFixed(2) + '%' : '—') + '</td>' +
+      '<td style="color:' + vdColor + '">' + (feet ? vd.toFixed(2) + 'V' : '—') + '</td>' +
+    '</tr>';
+  }
+
+  var summary = '';
+  if (winner) {
+    var wd = ampTable[winner];
+    var wBase = wd[ampGetBaseCol(insul)];
+    var wFinal = Math.min(wBase * tempFactor * bundle, t75[mat][winner] || 9999);
+    var wCM = VD_CM[winner];
+    var wVD = feet ? (multiplier * K * load * feet) / wCM : 0;
+    var wVDpct = feet ? (wVD / voltage) * 100 : 0;
+    var typical = typicalTable[winner] || '—';
+    var wLabel = winner.includes('/') ? winner + ' AWG' : (parseInt(winner) > 4 ? winner + ' kcmil' : '#' + winner + ' AWG');
+
+    summary =
+      '<div style="background:rgba(82,192,122,0.1);border:1px solid rgba(82,192,122,0.3);border-left:4px solid var(--success);border-radius:4px;padding:14px 18px;margin-bottom:16px">' +
+        '<div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:var(--success);margin-bottom:10px">✓ USE: ' + wLabel + ' ' + (mat==='cu'?'COPPER':'ALUMINUM') + '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;font-family:IBM Plex Mono,monospace;font-size:12px;margin-bottom:10px">' +
+          '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:3px">⚡ Ampacity: <strong style="color:var(--success)">' + wFinal.toFixed(0) + 'A</strong> ≥ ' + load + 'A</span>' +
+          (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:3px">📏 V-Drop: <strong style="color:var(--success)">' + wVDpct.toFixed(2) + '%</strong> ≤ ' + maxVD + '%</span>' : '') +
+          '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:3px">🔌 Breaker: <strong style="color:var(--accent)">' + typical + '</strong></span>' +
+          (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:3px">🔋 V at load: <strong>' + (voltage - wVD).toFixed(1) + 'V</strong></span>' : '') +
+        '</div>' +
+        '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Derating: ' + wBase + 'A base × ' + tempFactor.toFixed(2) + ' (temp@' + temp + '°F) × ' + bundle + ' (bundle) = ' + (wBase * tempFactor * bundle).toFixed(0) + 'A → capped at 75°C terminal: <strong>' + wFinal.toFixed(0) + 'A</strong></div>' +
+      '</div>';
+  } else {
+    summary = '<div style="background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.3);border-left:4px solid var(--danger);border-radius:4px;padding:14px 18px;margin-bottom:16px;font-family:IBM Plex Mono,monospace">' +
+      '<div style="font-size:16px;color:var(--danger);margin-bottom:6px">✗ No single conductor qualifies</div>' +
+      '<div style="font-size:12px;color:var(--text-dim)">Run parallel conductors or increase voltage/reduce distance.</div></div>';
+  }
+
+  var tableTitle = load + 'A · ' + (feet ? feet + 'ft · ' : 'no distance · ') + voltage + 'V · ' + (phase==='3'?'3Ø':'1Ø') + ' · ' + (mat==='cu'?'Cu':'Al') + (bundle<1?' ×'+bundle+' bundle':'') + (temp!==86?' @'+temp+'°F':'');
+
+  document.getElementById('wsResult').innerHTML = summary +
+    '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;padding:0 4px">' + tableTitle + '</div>' +
+    '<div style="overflow-x:auto"><table class="cf-table" style="min-width:480px">' +
+    '<thead><tr>' +
+      '<th class="wire-col">Wire</th>' +
+      '<th>Ampacity</th>' +
+      '<th style="font-size:9px">Base×Temp×Bundle</th>' +
+      '<th>VD %</th>' +
+      '<th>VD Volts</th>' +
+    '</tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div>';
+}
+
+function wsReset() {
+  ['wsLoad','wsFeet'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  var defs = {wsVoltage:'208',wsPhase:'1',wsMaterial:'cu',wsBundle:'1.00',wsTemp:'86',wsMaxVD:'3',wsInsul:'thhn'};
+  Object.keys(defs).forEach(function(id){ var el=document.getElementById(id); if(el) el.value=defs[id]; });
+  var r=document.getElementById('wsResult');
+  if(r) r.innerHTML='<div style="color:var(--text-dimmer);font-family:IBM Plex Mono,monospace;font-size:12px;padding:20px;text-align:center">Enter load and distance to calculate</div>';
+}
+
 </script>
 </html>
