@@ -256,7 +256,7 @@
   .ctrl-group { display: flex; flex-direction: column; gap: 5px; }
   .ctrl-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
 
-  select, input[type=number] { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 13px; padding: 8px 12px; border-radius: 3px; outline: none; cursor: pointer; transition: border-color 0.15s; }
+  select, input[type=number] { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 13px; padding: 8px 12px; border-radius: 3px; outline: none; cursor: pointer; transition: border-color 0.15s; box-sizing: border-box; height: 38px; }
   select:focus, input[type=number]:focus { border-color: var(--accent); }
   input[type=number] { width: 100%; }
 
