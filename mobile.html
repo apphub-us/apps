@@ -970,10 +970,6 @@ function moreTab(name) {
   if (name === 'loadcalc') lcInit();
 }
 
-<script>
-// ── TABS ─────────────────────────────────────────────────
-// switchTab defined above
-
 // ── CHAT ─────────────────────────────────────────────────
 var API_KEY = localStorage.getItem('nec_ai_key') || '';
 var isLoading = false;
@@ -2242,13 +2238,16 @@ CSR_CONTENT['grounding'] = "<div class=\"fill-rules-bar\">\n    <div class=\"nec
 CSR_CONTENT['nyc'] = "<div class=\"fill-rules-bar\">\n    <div class=\"nec-row\">\n      <span class=\"fill-pill pill-blue\" style=\"cursor:pointer;flex-shrink:0\" onclick=\"necLink('NYCEC 2025 \u2014 New York City Electrical Code current edition amendments and local requirements')\">NYCEC 2025</span>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NYCEC \u2014 New York City Electrical Code based on NEC 2020 with local amendments')\">NYCEC</span> NYC Electrical Code (NEC 2020 base)</div>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NYC Local Laws \u2014 electrical code amendments specific to New York City buildings')\">Local Law</span> NYC-specific amendments</div>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NYC DOB \u2014 Department of Buildings electrical permit and inspection requirements')\">DOB</span> Dept of Buildings requirements</div>\n    </div>\n  </div>\n\n  <div style=\"display:flex;flex:1;overflow:hidden\">\n    <!-- LEFT: Categories -->\n    <div style=\"width:220px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);overflow-y:auto;padding:12px\">\n      <div style=\"font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:10px\">CATEGORY</div>\n      <div style=\"display:flex;flex-direction:column;gap:3px\" id=\"nycTopicList\"></div>\n    </div>\n\n    <!-- RIGHT: Content -->\n    <div style=\"flex:1;overflow-y:auto;padding:20px\">\n      <div id=\"nycContent\">\n        <div style=\"text-align:center;padding:60px 20px;color:var(--text-dimmer)\">\n          <div style=\"font-size:48px;margin-bottom:12px\">\ud83d\uddfd</div>\n          <div style=\"font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)\">NYC Electrical Code</div>\n          <div style=\"font-size:13px;margin-top:8px;line-height:1.6\">Select a category from the left panel</div>\n        </div>\n      </div>\n    </div>\n</div>";
 
 
-var origSwitch = window.switchTab;
-window.switchTab = function(name,el){
-  origSwitch(name, el);
-  if(name==='pullbox'){setTimeout(pbUpdate,50);}
-  if(name==='outlets'){setTimeout(initOutletsIfNeeded,50);}
-  if(name==='coderef'){setTimeout(function(){ codeSubTab('gfci'); gfciInitRooms(); },50);}
-  if(name==='conduit'){setTimeout(function(){ cfUpdateCalc(); },50);}
+// origSwitch removed - mobile uses moreTab for sub-panels
+// Extend switchTab with init hooks
+var _baseSwitchTab = window.switchTab;
+window.switchTab = function(name, el) {
+  _baseSwitchTab(name, el);
+  if (name === 'conduit') setTimeout(cfUpdateCalc, 50);
+  if (name === 'ampacity') setTimeout(ampUpdateCalc, 50);
+  if (name === 'vdrop') setTimeout(vdUpdateCalc, 50);
+  if (name === 'boxfill') setTimeout(bfUpdateCalc, 50);
+  if (name === 'more') setTimeout(function(){ lcInit(); }, 50);
 }
 
 
@@ -2613,8 +2612,8 @@ function necLink(ref) {
   var chatPanel = document.getElementById('panel-chat');
   if (chatPanel) chatPanel.classList.add('active');
 
-  var chatTab = document.querySelector('.tab[onclick*="\'chat\'"]');
-  if (!chatTab) chatTab = document.querySelector('.tab[onclick*="chat"]');
+  var chatTab = document.getElementById('mnav-chat');
+  if (!chatTab) chatTab = document.getElementById('mnav-chat');
   if (chatTab) chatTab.classList.add('active');
 
   var mnavChat = document.getElementById('mnav-chat');
@@ -3183,7 +3182,7 @@ function cfGoToAmpacity() {
   var wireSize = wireSizeEl ? wireSizeEl.value : '12';
 
   // Switch to ampacity tab
-  var ampTab = document.querySelector('.tab[onclick*="ampacity"]');
+  var ampTab = document.getElementById('mnav-ampacity');
   if (ampTab) switchTab('ampacity', ampTab);
 
   // Set wire size and bundle count
@@ -3209,8 +3208,7 @@ function cfGoToAmpacity() {
 function cfGoToVDrop() {
   var wireSizeEl = document.getElementById('cfWireSize') || document.getElementById('wwWireSize');
   var wireSize = wireSizeEl ? wireSizeEl.value : '12';
-  var vdTab = document.querySelector('.tab[onclick*="vdrop"]');
-  if (vdTab) switchTab('vdrop', vdTab);
+  switchTab('vdrop', document.getElementById('mnav-vdrop'));
   window.vdHighlightSize = wireSize;
   setTimeout(function() {
     var typicalStr = AMP_TYPICAL_CU[wireSize] || '';
@@ -3223,8 +3221,7 @@ function cfGoToVDrop() {
 
 function ampGoToFillCalc() {
   var wireSize = document.getElementById('ampWireSize').value;
-  var conduitTab = document.querySelector('.tab[onclick*="conduit"]');
-  if (conduitTab) switchTab('conduit', conduitTab);
+  switchTab('conduit', document.getElementById('mnav-conduit'));
   setTimeout(function() {
     var cfWire = document.getElementById('cfWireSize');
     if (cfWire) { cfWire.value = wireSize; cfUpdateCalc(); }
@@ -3233,8 +3230,7 @@ function ampGoToFillCalc() {
 
 function ampGoToVDrop() {
   var wireSize = document.getElementById('ampWireSize').value;
-  var vdTab = document.querySelector('.tab[onclick*="vdrop"]');
-  if (vdTab) switchTab('vdrop', vdTab);
+  switchTab('vdrop', document.getElementById('mnav-vdrop'));
   window.vdHighlightSize = wireSize;
   setTimeout(function() {
     var vdAmps = document.getElementById('vdAmps');
@@ -4093,7 +4089,7 @@ function renderOutlets() {
     card.onmouseout  = function(){ this.style.borderColor = isOld ? 'rgba(224,82,82,0.3)' : 'var(--border)'; };
     card.onclick = function() {
       document.getElementById('userInput').value = 'Tell me about the NEMA '+o.id+' ('+o.label+'): '+o.amps+'A '+voltLabel+' — wiring requirements, wire size, common applications, and NEC code requirements.';
-      switchTab('chat', document.querySelector('.tab[onclick*="chat"]'));
+      switchTab('chat', document.getElementById('mnav-chat'));
       setTimeout(function(){ sendMessage(); }, 100);
     };
 
