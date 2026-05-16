@@ -4335,9 +4335,9 @@ function wsCalc() {
     var vdColor  = vdOK  ? 'var(--success)' : 'var(--danger)';
 
     var sizeLabel = sz;
-    if (!sz.includes('/') && parseInt(sz) <= 4) sizeLabel = '#' + sz + ' AWG';
-    else if (sz.includes('/')) sizeLabel = sz + ' AWG';
-    else sizeLabel = sz + ' kcmil';
+    if (sz.includes('/')) sizeLabel = sz + ' AWG';
+    else if (parseInt(sz) >= 250) sizeLabel = sz + ' kcmil';
+    else sizeLabel = '#' + sz + ' AWG';
 
     rows += '<tr' + (rowBg ? ' style="' + rowBg + '"' : '') + '>' +
       '<td class="wire-col">' + (isWinner ? '★ ' : '') + sizeLabel + (isWinner ? ' ← USE' : '') + '</td>' +
@@ -4357,7 +4357,7 @@ function wsCalc() {
     var wVD = feet ? (multiplier * K * load * feet) / wCM : 0;
     var wVDpct = feet ? (wVD / voltage) * 100 : 0;
     var typical = typicalTable[winner] || '—';
-    var wLabel = winner.includes('/') ? winner + ' AWG' : (parseInt(winner) > 4 ? winner + ' kcmil' : '#' + winner + ' AWG');
+    var wLabel = winner.includes('/') ? winner + ' AWG' : (parseInt(winner) >= 250 ? winner + ' kcmil' : '#' + winner + ' AWG');
 
     summary =
       '<div style="background:rgba(82,192,122,0.1);border:1px solid rgba(82,192,122,0.3);border-left:4px solid var(--success);border-radius:4px;padding:14px 18px;margin-bottom:16px">' +
