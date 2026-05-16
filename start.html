@@ -3,281 +3,84 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SparkyPro</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="SparkyPro">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0A0A0A">
-<title>SparkyPro — Electrician Field Assistant</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0A0A0A;
-    --surface: #1a1a1a;
-    --border: #2e2e2e;
-    --accent: #FFC700;
-    --text: #e8e8e8;
-    --dim: #888;
-  }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: Inter, -apple-system, sans-serif;
-    min-height: 100vh;
+    background: #0A0A0A;
+    color: #e8e8e8;
+    font-family: 'IBM Plex Mono', monospace;
+    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 30px 20px;
+    gap: 0;
   }
 
   .logo {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 52px;
     letter-spacing: 6px;
-    color: var(--accent);
-    text-align: center;
-    line-height: 1;
-    margin-bottom: 4px;
+    color: #FFC700;
+    margin-bottom: 6px;
   }
 
-  .logo-icon { font-size: 48px; display: block; margin-bottom: 8px; }
-
   .tagline {
-    font-family: 'IBM Plex Mono', monospace;
     font-size: 11px;
     letter-spacing: 3px;
     text-transform: uppercase;
-    color: var(--dim);
-    text-align: center;
-    margin-bottom: 48px;
+    color: #555;
+    margin-bottom: 60px;
   }
 
-  .cards {
-    display: flex;
-    gap: 16px;
-    width: 100%;
-    max-width: 560px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .card {
-    flex: 1;
-    min-width: 220px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 28px 24px;
-    cursor: pointer;
-    text-decoration: none;
-    color: var(--text);
-    transition: all 0.2s;
+  .btn-wrap {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 12px;
-    position: relative;
-    overflow: hidden;
+    gap: 16px;
+    width: 260px;
   }
 
-  .card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: var(--accent);
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-
-  .card:hover { border-color: var(--accent); transform: translateY(-3px); }
-  .card:hover::before { opacity: 1; }
-  .card.recommended { border-color: var(--accent); }
-  .card.recommended::before { opacity: 1; }
-
-  .card-icon { font-size: 40px; }
-
-  .card-title {
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 18px;
     font-family: 'Bebas Neue', sans-serif;
     font-size: 22px;
-    letter-spacing: 2px;
-    color: var(--accent);
-  }
-
-  .card-desc {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    color: var(--dim);
-    line-height: 1.6;
-  }
-
-  .card-badge {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    background: rgba(245,166,35,0.15);
-    color: var(--accent);
-    padding: 3px 10px;
-    border-radius: 20px;
-    letter-spacing: 1px;
-  }
-
-  .card-btn {
-    margin-top: 4px;
-    background: var(--accent);
-    color: #000;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 16px;
-    letter-spacing: 2px;
+    letter-spacing: 4px;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 4px;
     cursor: pointer;
-    width: 100%;
-    transition: background 0.15s;
-  }
-  .card-btn:hover { background: #e6b400; }
-
-  .features {
-    margin-top: 40px;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-    max-width: 560px;
+    transition: opacity 0.15s;
   }
 
-  .feature {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    color: var(--dim);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 5px 12px;
-    border-radius: 20px;
-    letter-spacing: 0.5px;
+  .btn:hover { opacity: 0.85; }
+
+  .btn-mobile {
+    background: #FFC700;
+    color: #000;
   }
 
-  .footer {
-    margin-top: 40px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    color: #444;
-    text-align: center;
-    line-height: 1.8;
-  }
-
-  /* Auto-detected banner */
-  .detected-banner {
-    background: rgba(245,166,35,0.08);
-    border: 1px solid rgba(245,166,35,0.25);
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    color: var(--accent);
-    margin-bottom: 24px;
-    text-align: center;
-    display: none;
+  .btn-web {
+    background: transparent;
+    color: #FFC700;
+    border: 2px solid #FFC700;
   }
 </style>
 </head>
 <body>
-
-<svg width="80" height="80" viewBox="0 0 100 100" fill="none" style="margin-bottom:12px">
-  <rect width="100" height="100" rx="18" fill="#FFC700"/>
-  <path d="M62 12L30 52H50L38 88L70 48H50L62 12Z" fill="#0A0A0A"/>
-</svg>
-<div class="logo" style="font-family:Inter,sans-serif;font-weight:700;font-size:48px;letter-spacing:-1px">
-  <span style="color:#fff">Sparky</span><span style="color:#FFC700">Pro</span>
-</div>
-<div class="tagline">Electrician Field Assistant · NEC 2023</div>
-
-<div class="detected-banner" id="detectedBanner"></div>
-
-<div class="cards">
-  <a class="card" href="mobile.html" id="mobileCard">
-    <div class="card-icon">📱</div>
-    <div class="card-title">Mobile App</div>
-    <div class="card-desc">Optimized for iPhone & Android. Large buttons, easy navigation, works on the job site.</div>
-    <div class="card-badge">iOS · ANDROID</div>
-    <button class="card-btn">OPEN MOBILE</button>
-  </a>
-
-  <a class="card" href="index.html" id="desktopCard">
-    <div class="card-icon">💻</div>
-    <div class="card-title">Web App</div>
-    <div class="card-desc">Full-featured desktop version with reference tables, pull box diagrams, and AI chat.</div>
-    <div class="card-badge">DESKTOP · TABLET</div>
-    <button class="card-btn">OPEN WEB APP</button>
-  </a>
-</div>
-
-<div class="features">
-  <span class="feature">💬 AI Chat</span>
-  <span class="feature">🔧 Conduit Fill</span>
-  <span class="feature">📦 Box Fill</span>
-  <span class="feature">⚡ Ampacity</span>
-  <span class="feature">📏 Voltage Drop</span>
-  <span class="feature">🗃️ Pull Box</span>
-  <span class="feature">🔥 Trending Questions</span>
-  <span class="feature">📡 Works Offline</span>
-</div>
-
-<div class="footer">
-  NEC 2023 · NYC Amendments · Built for electricians by electricians<br>
-  sparkypro.app
-</div>
-
-<script>
-// Auto-detect device and highlight recommended card
-var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
-               (window.innerWidth <= 768);
-
-var banner = document.getElementById('detectedBanner');
-var mobileCard = document.getElementById('mobileCard');
-var desktopCard = document.getElementById('desktopCard');
-
-if (isMobile) {
-  banner.textContent = '📱 Mobile device detected — Mobile App recommended';
-  banner.style.display = 'block';
-  mobileCard.classList.add('recommended');
-  // Auto redirect after 2 seconds with countdown
-  var countdown = 2;
-  var timer = setInterval(function() {
-    countdown--;
-    banner.textContent = '📱 Mobile device detected — Opening Mobile App in ' + countdown + 's... (tap Web App to cancel)';
-    if (countdown <= 0) {
-      clearInterval(timer);
-      window.location.href = 'mobile.html';
-    }
-  }, 1000);
-
-  // Cancel auto-redirect if user taps desktop card
-  desktopCard.addEventListener('click', function() {
-    clearInterval(timer);
-  });
-} else {
-  banner.textContent = '💻 Desktop detected — Web App recommended';
-  banner.style.display = 'block';
-  desktopCard.classList.add('recommended');
-  // Auto redirect after 2 seconds
-  var countdown2 = 2;
-  var timer2 = setInterval(function() {
-    countdown2--;
-    banner.textContent = '💻 Desktop detected — Opening Web App in ' + countdown2 + 's... (tap Mobile to cancel)';
-    if (countdown2 <= 0) {
-      clearInterval(timer2);
-      window.location.href = 'index.html';
-    }
-  }, 1000);
-
-  mobileCard.addEventListener('click', function() {
-    clearInterval(timer2);
-  });
-}
-</script>
+  <div class="logo">SparkyPro</div>
+  <div class="tagline">Electrician Field Assistant</div>
+  <div class="btn-wrap">
+    <a class="btn btn-mobile" href="mobile.html">MOBILE</a>
+    <a class="btn btn-web" href="index.html">WEB</a>
+  </div>
 </body>
 </html>
