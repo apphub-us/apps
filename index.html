@@ -1266,11 +1266,11 @@
     <div class="ctrl-group">
       <span class="ctrl-label">System Voltage</span>
       <select id="vdVoltage" onchange="vdUpdateCalc()">
-        <option value="120">120V (1-phase)</option>
-        <option value="208">208V (1-phase or 3-phase LL)</option>
-        <option value="240" selected>240V (1-phase)</option>
-        <option value="277">277V (1-phase)</option>
-        <option value="480">480V (3-phase)</option>
+        <option value="120">120V</option>
+        <option value="208" selected>208V</option>
+        <option value="240">240V</option>
+        <option value="277">277V</option>
+        <option value="480">480V</option>
       </select>
     </div>
     <div class="ctrl-group">
@@ -3893,7 +3893,7 @@ function favSetValues(type, vals) {
   if (type === 'vd') {
     document.getElementById('vdAmps').value = vals.amps || '';
     document.getElementById('vdFeet').value = vals.feet || '';
-    document.getElementById('vdVoltage').value = vals.voltage || '240';
+    document.getElementById('vdVoltage').value = vals.voltage || '208';
     document.getElementById('vdPhase').value = vals.phase || '1';
     document.getElementById('vdMaterial').value = vals.material || 'cu';
     document.getElementById('vdMaxPct').value = vals.maxPct || '3';
@@ -4173,7 +4173,7 @@ function ampReset() {
 function vdReset() {
   document.getElementById('vdAmps').value = '100';
   document.getElementById('vdFeet').value = '150';
-  document.getElementById('vdVoltage').value = '240';
+  document.getElementById('vdVoltage').value = '208';
   document.getElementById('vdPhase').value = '1';
   document.getElementById('vdMaterial').value = 'cu';
   document.getElementById('vdMaxPct').value = '3';
