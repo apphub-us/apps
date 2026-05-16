@@ -1257,11 +1257,11 @@
   <div class="cf-controls">
     <div class="ctrl-group">
       <span class="ctrl-label">Load (Amps)</span>
-      <input type="number" id="vdAmps" value="100" min="1" max="2000" oninput="vdUpdateCalc()">
+      <input type="number" id="vdAmps" value="100" min="1" max="2000" oninput="vdUpdateCalc()" style="width:80px">
     </div>
     <div class="ctrl-group">
       <span class="ctrl-label">One-Way Distance (feet)</span>
-      <input type="number" id="vdFeet" value="150" min="1" max="5000" oninput="vdUpdateCalc()">
+      <input type="number" id="vdFeet" value="150" min="1" max="5000" oninput="vdUpdateCalc()" style="width:80px">
     </div>
     <div class="ctrl-group">
       <span class="ctrl-label">System Voltage</span>
@@ -1296,8 +1296,8 @@
         <option value="5">5% (NEC total · NYCEC max all occupancies)</option>
       </select>
     </div>
-    <button class="reset-btn" onclick="vdReset()">↺ Reset</button>
     <div class="fav-bar">
+      <button class="reset-btn" onclick="vdReset()">↺ Reset</button>
       <button class="save-btn" onclick="favSave('vd')">⭐ Save</button>
     </div>
     <div class="fav-list" id="vd-fav-list"></div>
