@@ -59,12 +59,13 @@
 
   /* ── CONTENT AREA ── */
   .content {
-    flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0;
+    flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden;
   }
 
   /* ── PANELS ── */
-  .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
-  .panel.active { display: flex; }
+  .panel { display: none; flex: 1; flex-direction: column; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
+  .panel.active { display: flex; flex-direction: column; }
+  .panel::-webkit-scrollbar { display: none; }
 
   /* ── BOTTOM NAV ── */
   .bottom-nav {
@@ -120,7 +121,6 @@
     border-bottom: 1px solid var(--border);
     padding: 12px 14px;
     display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
-    flex-shrink: 0;
   }
   .ctrl { display: flex; flex-direction: column; gap: 5px; }
   .ctrl-lbl {
@@ -188,9 +188,8 @@
 
   /* ── SCROLLABLE BODY ── */
   .scroll-body {
-    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    /* now just a wrapper, panel itself scrolls */
   }
-  .scroll-body::-webkit-scrollbar { display: none; }
 
   /* ── TABLE ── */
   .tbl-wrap { overflow-x: auto; padding: 0 14px 20px; }
@@ -284,7 +283,7 @@
   .fill-subtab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
   /* ── PULL BOX mobile layout — stacked ── */
-  .pb-mobile { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+  .pb-mobile { display: flex; flex-direction: column; }
   .pb-controls { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 14px; overflow-y: auto; flex-shrink: 0; max-height: 50%; }
   .pb-diagram { flex: 1; overflow: auto; padding: 14px; background: var(--bg); display: flex; align-items: flex-start; justify-content: center; }
 
@@ -471,7 +470,7 @@
     <button class="fill-subtab active" id="mode-conduit" onclick="fillCalcMode('conduit')">Conduit Fill</button>
     <button class="fill-subtab" id="mode-wireway" onclick="fillCalcMode('wireway')">Wireway</button>
   </div>
-  <div id="fill-content" style="display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0">
+  <div id="fill-content" style="display:flex;flex-direction:column;">
     <div class="rules-bar">
       <div class="rules-row">
         <span class="pill pill-nec" onclick="necLink('NEC Chapter 9 Tables 1,4,5 — Conduit Fill rules')">NEC Ch.9</span>
@@ -753,10 +752,10 @@
     <button class="code-subtab" id="more-outlets" onclick="moreTab('outlets')">Outlets</button>
     <button class="code-subtab" id="more-converter" onclick="moreTab('converter')">Converter</button>
   </div>
-  <div id="more-content" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+  <div id="more-content" style="flex:1;display:flex;flex-direction:column;">
 
     <!-- LOAD CALC -->
-    <div id="sub-loadcalc" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+    <div id="sub-loadcalc" style="flex:1;display:flex;flex-direction:column;">
       <div class="lc-subtabs">
         <button class="lc-subtab active" id="lct-sf" onclick="lcSubTab('sf')">Single Family</button>
         <button class="lc-subtab" id="lct-mf" onclick="lcSubTab('mf')">Multifamily</button>
@@ -767,7 +766,7 @@
     </div>
 
     <!-- PULL BOX -->
-    <div id="sub-pullbox" style="display:none;flex:1;overflow:hidden;flex-direction:column;min-height:0">
+    <div id="sub-pullbox" style="display:none;flex:1;flex-direction:column;">
       <div class="rules-bar">
         <div class="rules-row">
           <span class="pill pill-nec" onclick="necLink('NEC 314.28 — Pull Box sizing')">NEC 314.28</span>
@@ -809,13 +808,13 @@
     </div>
 
     <!-- CODE REF -->
-    <div id="sub-coderef" style="display:none;flex:1;overflow:hidden;flex-direction:column;min-height:0">
+    <div id="sub-coderef" style="display:none;flex:1;flex-direction:column;">
       <div class="code-subtabs" style="border-top:none">
         <button class="code-subtab active" id="cst-gfci" onclick="codeSubTab('gfci')">GFCI/AFCI</button>
         <button class="code-subtab" id="cst-grounding" onclick="codeSubTab('grounding')">Grounding</button>
         <button class="code-subtab" id="cst-nyc" onclick="codeSubTab('nyc')">NYC Code</button>
       </div>
-      <div id="csr-content" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0">
+      <div id="csr-content" style="flex:1;display:flex;flex-direction:column;">
         <div class="scroll-body">
           <div style="padding:14px">
             <div style="margin-bottom:10px">
