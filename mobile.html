@@ -3397,11 +3397,16 @@ function ampGoToFillCalc() {
 function ampGoToVDrop() {
   var wireSize = document.getElementById('ampWireSize').value;
   switchTab('wiresizer', document.getElementById('mnav-wiresizer'));
-  window.vdHighlightSize = wireSize;
   setTimeout(function() {
-    var vdAmps = document.getElementById('vdAmps');
-    if (vdAmps && window.ampTypicalAmp) vdAmps.value = window.ampTypicalAmp;
-    if (typeof vdUpdateCalc === 'function') vdUpdateCalc();
+    var wsLoad = document.getElementById('wsLoad');
+    var wsMat  = document.getElementById('wsMaterial');
+    if (wsLoad && window.ampTypicalAmp) {
+      wsLoad.value = window.ampTypicalAmp;
+    }
+    // Also pass material from ampacity
+    var ampMat = document.getElementById('ampMaterial');
+    if (wsMat && ampMat) wsMat.value = ampMat.value;
+    if (typeof wsCalc === 'function') wsCalc();
   }, 100);
 }
 
