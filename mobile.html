@@ -439,7 +439,6 @@
       <div class="result-grid" id="ampResultGrid"></div>
       <div class="wf-btns">
         <button class="wf-btn" onclick="ampGoToFillCalc()">📐 Fill Calc →</button>
-        <button class="wf-btn" onclick="ampGoToVDrop()">🎯 Wire Sizer →</button>
       </div>
     </div>
     <div class="tbl-wrap">
@@ -529,7 +528,6 @@
         <div class="result-grid" id="cfResultGrid"></div>
         <div class="wf-btns">
           <button class="wf-btn" onclick="cfGoToAmpacity()">⚡ Ampacity →</button>
-          <button class="wf-btn" onclick="cfGoToVDrop()">🎯 Wire Sizer →</button>
         </div>
       </div>
       <div class="tbl-wrap">
@@ -992,17 +990,17 @@
   <div class="nav-item active" id="mnav-chat" onclick="switchTab('chat',this)">
     <span class="nav-icon">⚡</span>AI Chat
   </div>
-  <div class="nav-item" id="mnav-ampacity" onclick="switchTab('ampacity',this)">
-    <span class="nav-icon">🔌</span>Ampacity
+  <div class="nav-item" id="mnav-wiresizer" onclick="switchTab('wiresizer',this)">
+    <span class="nav-icon">🎯</span>Sizer
   </div>
   <div class="nav-item" id="mnav-conduit" onclick="switchTab('conduit',this)">
     <span class="nav-icon">📐</span>Fill Calc
   </div>
+  <div class="nav-item" id="mnav-ampacity" onclick="switchTab('ampacity',this)">
+    <span class="nav-icon">🔌</span>Ampacity
+  </div>
   <div class="nav-item" id="mnav-boxfill" onclick="switchTab('boxfill',this)">
     <span class="nav-icon">📦</span>Box Fill
-  </div>
-  <div class="nav-item" id="mnav-wiresizer" onclick="switchTab('wiresizer',this)">
-    <span class="nav-icon">🎯</span>Sizer
   </div>
   <div class="nav-item" id="mnav-more" onclick="switchTab('more',this)">
     <span class="nav-icon">⋯</span>More
@@ -3257,7 +3255,6 @@ FILL_CONTENT['wireway'] = (function() {
     '  <div class="result-grid" id="wwResultGrid"></div>',
     '  <div class="wf-btns">',
     '    <button class="wf-btn" onclick="cfGoToAmpacity()">⚡ Ampacity →</button>',
-    '    <button class="wf-btn" onclick="cfGoToVDrop()">🎯 Wire Sizer →</button>',
     '  </div>',
     '</div>',
     '<div class="tbl-wrap">',
@@ -4413,7 +4410,7 @@ function wsCalc() {
     }
     var vdOK = !feet || vdPct <= maxVD;
     var bothOK = ampOK && vdOK;
-    if (bothOK && !winner) winner = sz;
+    if (bothOK && !winner) { winner = sz; window.wsSizerWinner = sz; }
 
     var isWinner = winner === sz;
     var rowBg = isWinner ? 'background:rgba(82,192,122,0.1);border-left:3px solid var(--success)' : (!ampOK ? 'opacity:0.45' : '');
@@ -4464,7 +4461,8 @@ function wsCalc() {
 
   var tableTitle = load + 'A · ' + (feet ? feet + 'ft · ' : 'no distance · ') + voltage + 'V · ' + (phase==='3'?'3Ø':'1Ø') + ' · ' + (mat==='cu'?'Cu':'Al') + (bundle<1?' ×'+bundle+' bundle':'') + (temp!==86?' @'+temp+'°F':'');
 
-  document.getElementById('wsResult').innerHTML = summary +
+  var fillBtn = winner ? '<div style="padding:10px 0 4px"><button onclick="wsGoToFillCalc()" style="width:100%;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:IBM Plex Mono,monospace;font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:12px;border-radius:4px;cursor:pointer" ontouchstart="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" ontouchend="this.style.borderColor='';this.style.color=''">📐 Fill Calc →</button></div>' : '';
+  document.getElementById('wsResult').innerHTML = summary + fillBtn +
     '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;padding:0 4px">' + tableTitle + '</div>' +
     '<div style="overflow-x:auto"><table class="cf-table" style="min-width:480px">' +
     '<thead><tr>' +
@@ -4475,6 +4473,17 @@ function wsCalc() {
       '<th>VD Volts</th>' +
     '</tr></thead>' +
     '<tbody>' + rows + '</tbody></table></div>';
+}
+
+function wsGoToFillCalc() {
+  var winner = window.wsSizerWinner;
+  switchTab('conduit', document.getElementById('mnav-conduit'));
+  if (winner) {
+    setTimeout(function() {
+      var cfWire = document.getElementById('cfWireSize');
+      if (cfWire) { cfWire.value = winner; cfUpdateCalc(); }
+    }, 100);
+  }
 }
 
 function wsReset() {
