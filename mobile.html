@@ -4461,7 +4461,7 @@ function wsCalc() {
 
   var tableTitle = load + 'A · ' + (feet ? feet + 'ft · ' : 'no distance · ') + voltage + 'V · ' + (phase==='3'?'3Ø':'1Ø') + ' · ' + (mat==='cu'?'Cu':'Al') + (bundle<1?' ×'+bundle+' bundle':'') + (temp!==86?' @'+temp+'°F':'');
 
-  var fillBtn = winner ? '<div style="padding:10px 0 4px"><button onclick="wsGoToFillCalc()" style="width:100%;background:none;border:1px solid var(--border);color:var(--text-dim);font-family:IBM Plex Mono,monospace;font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:12px;border-radius:4px;cursor:pointer" ontouchstart="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" ontouchend="this.style.borderColor='';this.style.color=''">📐 Fill Calc →</button></div>' : '';
+  var fillBtn = winner ? '<div style="padding:10px 0 4px"><button onclick="wsGoToFillCalc()" class="wf-btn" style="width:100%">📐 Fill Calc →</button></div>' : '';
   document.getElementById('wsResult').innerHTML = summary + fillBtn +
     '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;padding:0 4px">' + tableTitle + '</div>' +
     '<div style="overflow-x:auto"><table class="cf-table" style="min-width:480px">' +
