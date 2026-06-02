@@ -213,6 +213,8 @@
   .cf-table tbody td.wire-col { text-align: left; color: var(--text); font-weight: 500; }
   .cf-table td.hi { color: var(--text-dim) !important; }
   .cf-table td.hi-accent { color: var(--accent) !important; font-weight: 600; }
+  .cf-table tr.row-selected td { background: rgba(255,199,0,0.1) !important; border-top: 1px solid rgba(255,199,0,0.3); border-bottom: 1px solid rgba(255,199,0,0.3); }
+  .cf-table tr.row-selected td.wire-col { color: var(--accent) !important; }
 
   /* ── CHAT ── */
   .chat-area {
@@ -1844,7 +1846,7 @@ function ampRenderRefTable(mat) {
     var r = table[s]; if (!r) continue;
     var kcmilSizes = {'250':1,'300':1,'350':1,'400':1,'500':1,'600':1,'700':1,'750':1,'800':1,'900':1,'1000':1};
     var label = kcmilSizes[s] ? s+' kcmil' : (s.indexOf('/')>-1 ? s+' AWG' : '#'+s+' AWG');
-    tbody += '<tr>'+
+    tbody += '<tr onclick="ampHighlightRow(this)">'+
       '<td class="wire-col">'+label+'</td>'+
       '<td>'+r.t60+'A</td>'+
       '<td class="hi">'+r.t75+'A</td>'+
@@ -1854,6 +1856,13 @@ function ampRenderRefTable(mat) {
     '</tr>';
   }
   document.getElementById('ampRefTable').innerHTML = tbody;
+}
+
+function ampHighlightRow(tr) {
+  var rows = tr.closest('tbody').querySelectorAll('tr');
+  rows.forEach(function(r){ r.classList.remove('row-selected'); });
+  tr.classList.add('row-selected');
+  tr.scrollIntoView({ block: 'nearest' });
 }
 
 function ampRenderTempTable() {
