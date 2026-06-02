@@ -3372,16 +3372,18 @@ function cfGoToAmpacity() {
 }
 
 function cfGoToVDrop() {
+  // Get wire size from conduit or wireway (whichever is active)
   var wireSizeEl = document.getElementById('cfWireSize') || document.getElementById('wwWireSize');
   var wireSize = wireSizeEl ? wireSizeEl.value : '12';
   switchTab('wiresizer', document.getElementById('mnav-wiresizer'));
-  window.vdHighlightSize = wireSize;
   setTimeout(function() {
     var typicalStr = AMP_TYPICAL_CU[wireSize] || '';
     var typicalMatch = typicalStr.match(/\d+/);
-    var vdAmps = document.getElementById('vdAmps');
-    if (vdAmps && typicalMatch) vdAmps.value = parseInt(typicalMatch[0]);
-    if (typeof vdUpdateCalc === 'function') vdUpdateCalc();
+    var wsLoad = document.getElementById('wsLoad');
+    if (wsLoad && typicalMatch) {
+      wsLoad.value = parseInt(typicalMatch[0]);
+    }
+    if (typeof wsCalc === 'function') wsCalc();
   }, 100);
 }
 
