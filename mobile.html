@@ -2755,6 +2755,7 @@ function lcSection(title) {
 }
 
 function lcUpdate() {
+  if (!document.getElementById('lcMethod')) return;
   var method  = document.getElementById('lcMethod').value;
   var voltageRaw = document.getElementById('lcVoltage').value;
   var voltage = parseFloat(voltageRaw);
@@ -3198,10 +3199,10 @@ function fillCalcMode(mode) {
 }
 
 // Init FILL_CONTENT from DOM on load
-(function() {
+window.addEventListener('DOMContentLoaded', function() {
   var el = document.getElementById('fill-content');
   if (el) FILL_CONTENT['conduit'] = el.innerHTML;
-})();
+});
 FILL_CONTENT['wireway'] = (function() {
   var d = document.createElement('div');
   d.innerHTML = [
@@ -3271,7 +3272,7 @@ FILL_CONTENT['wireway'] = (function() {
     '</div>'
   ].join('\n');
   return d.innerHTML;
-})()
+})();
 
 
 function wwRenderTable() {
