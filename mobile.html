@@ -529,7 +529,7 @@
         <div class="result-grid" id="cfResultGrid"></div>
         <div class="wf-btns">
           <button class="wf-btn" onclick="cfGoToAmpacity()">⚡ Ampacity →</button>
-          <button class="wf-btn" onclick="switchTab('wiresizer', document.getElementById('mnav-wiresizer'))">🎯 Wire Sizer →</button>
+          <button class="wf-btn" onclick="cfGoToVDrop()">🎯 Wire Sizer →</button>
         </div>
       </div>
       <div class="tbl-wrap">
@@ -1414,6 +1414,7 @@ function cfRenderTable(conduitKey) {
 }
 
 function cfUpdateCalc() {
+  if (!document.getElementById('cfConduitType')) return;
   var ct = document.getElementById('cfConduitType').value;
   var cs = document.getElementById('cfConduitSize').value;
   var wt = document.getElementById('cfWireType').value;
@@ -3257,7 +3258,7 @@ FILL_CONTENT['wireway'] = (function() {
     '  <div class="result-grid" id="wwResultGrid"></div>',
     '  <div class="wf-btns">',
     '    <button class="wf-btn" onclick="cfGoToAmpacity()">⚡ Ampacity →</button>',
-    '    <button class="wf-btn" onclick="switchTab(\'wiresizer\', document.getElementById(\'mnav-wiresizer\'))">🎯 Wire Sizer →</button>',
+    '    <button class="wf-btn" onclick="cfGoToVDrop()">🎯 Wire Sizer →</button>',
     '  </div>',
     '</div>',
     '<div class="tbl-wrap">',
