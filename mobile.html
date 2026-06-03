@@ -991,7 +991,15 @@
   <div class="nav-item" id="mnav-conduit" onclick="switchTab('conduit',this)">Fill Calc</div>
   <div class="nav-item" id="mnav-ampacity" onclick="switchTab('ampacity',this)">Ampacity</div>
   <div class="nav-item" id="mnav-boxfill" onclick="switchTab('boxfill',this)">Box Fill</div>
-  <div class="nav-item" id="mnav-more" onclick="switchTab('more',this)">More</div>
+  <div class="nav-item" id="mnav-more-arrow" onclick="toggleMoreNav()" style="font-size:16px;font-weight:700">›</div>
+</nav>
+<nav class="bottom-nav" id="secondary-nav" style="display:none">
+  <div class="nav-item" id="mnav-back-arrow" onclick="toggleMoreNav()" style="font-size:16px;font-weight:700">‹</div>
+  <div class="nav-item" id="mnav-loadcalc" onclick="switchTabMore('loadcalc',this)">Load Calc</div>
+  <div class="nav-item" id="mnav-pullbox" onclick="switchTabMore('pullbox',this)">Pull Box</div>
+  <div class="nav-item" id="mnav-coderef" onclick="switchTabMore('coderef',this)">Code Ref</div>
+  <div class="nav-item" id="mnav-outlets" onclick="switchTabMore('outlets',this)">Outlets</div>
+  <div class="nav-item" id="mnav-converter" onclick="switchTabMore('converter',this)">Converter</div>
 </nav>
 
 
@@ -1017,6 +1025,7 @@ loadTrending();
 
 <script>
 // ── TABS ─────────────────────────────────────────────────
+var moreNavOpen = false;
 function switchTab(name, el) {
   document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
@@ -1025,9 +1034,44 @@ function switchTab(name, el) {
   var nav = document.getElementById('mnav-' + name);
   if (nav) { nav.classList.add('active'); }
   else if (el) { el.classList.add('active'); }
+  // Close secondary nav if switching to primary tab
+  var primaryTabs = ['chat','wiresizer','conduit','ampacity','boxfill'];
+  if (primaryTabs.indexOf(name) >= 0 && moreNavOpen) {
+    moreNavOpen = false;
+    var primary = document.querySelector('.bottom-nav:not(#secondary-nav)');
+    var secondary = document.getElementById('secondary-nav');
+    if (primary) primary.style.display = 'flex';
+    if (secondary) secondary.style.display = 'none';
+  }
 }
 
-// ── MORE SUBTABS ─────────────────────────────────────────
+// ── MORE NAV TOGGLE ──────────────────────────────────────
+function toggleMoreNav() {
+  moreNavOpen = !moreNavOpen;
+  var primary = document.querySelector('.bottom-nav:not(#secondary-nav)');
+  var secondary = document.getElementById('secondary-nav');
+  var arrow = document.getElementById('mnav-more-arrow');
+  if (moreNavOpen) {
+    if (primary) primary.style.display = 'none';
+    if (secondary) secondary.style.display = 'flex';
+  } else {
+    if (primary) primary.style.display = 'flex';
+    if (secondary) secondary.style.display = 'none';
+    // deactivate secondary items
+    document.querySelectorAll('#secondary-nav .nav-item').forEach(function(n){ n.classList.remove('active'); });
+  }
+}
+
+function switchTabMore(name, el) {
+  // Switch panel to panel-more and show sub
+  switchTab('more', null);
+  moreTab(name);
+  // highlight in secondary nav
+  document.querySelectorAll('#secondary-nav .nav-item').forEach(function(n){ n.classList.remove('active'); });
+  if (el) el.classList.add('active');
+}
+
+// ── MORE SUBTABS ──────────────────────────────────────────
 var currentMoreTab = 'loadcalc';
 function moreTab(name) {
   currentMoreTab = name;
