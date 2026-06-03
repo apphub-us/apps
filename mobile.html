@@ -834,7 +834,6 @@
 <div class="panel" id="panel-more">
   <div class="code-subtabs">
     <button class="code-subtab active" id="more-loadcalc" onclick="moreTab('loadcalc')">Load Calc</button>
-    <button class="code-subtab" id="more-pullbox" onclick="moreTab('pullbox')">Pull Box</button>
     <button class="code-subtab" id="more-coderef" onclick="moreTab('coderef')">Code Ref</button>
     <button class="code-subtab" id="more-outlets" onclick="moreTab('outlets')">Outlets</button>
     <button class="code-subtab" id="more-converter" onclick="moreTab('converter')">Converter</button>
@@ -996,7 +995,6 @@
 <nav class="bottom-nav" id="secondary-nav" style="display:none">
   <div class="nav-item" id="mnav-back-arrow" onclick="toggleMoreNav()" style="font-size:16px;font-weight:700">‹</div>
   <div class="nav-item" id="mnav-loadcalc" onclick="switchTabMore('loadcalc',this)">Load Calc</div>
-  <div class="nav-item" id="mnav-pullbox" onclick="switchTabMore('pullbox',this)">Pull Box</div>
   <div class="nav-item" id="mnav-coderef" onclick="switchTabMore('coderef',this)">Code Ref</div>
   <div class="nav-item" id="mnav-outlets" onclick="switchTabMore('outlets',this)">Outlets</div>
   <div class="nav-item" id="mnav-converter" onclick="switchTabMore('converter',this)">Converter</div>
@@ -1075,14 +1073,13 @@ function switchTabMore(name, el) {
 var currentMoreTab = 'loadcalc';
 function moreTab(name) {
   currentMoreTab = name;
-  ['loadcalc','pullbox','coderef','outlets','converter'].forEach(function(t){
+  ['loadcalc','coderef','outlets','converter'].forEach(function(t){
     var sub = document.getElementById('sub-' + t);
     var btn = document.getElementById('more-' + t);
     if (sub) sub.style.display = (t === name ? 'flex' : 'none');
     if (t === name) { if (sub) sub.style.flexDirection = 'column'; }
     if (btn) { btn.classList.toggle('active', t === name); }
   });
-  if (name === 'pullbox') pbUpdate();
   if (name === 'outlets') outletRender();
   if (name === 'converter') cvInitQuickTables();
   if (name === 'loadcalc') lcInit();
@@ -4258,7 +4255,7 @@ function ofSetFilter(key, val) {
 }
 
 function renderOutlets() {
-  var grid = document.getElementById('outletsGrid');
+  var grid = document.getElementById('outletGrid') || document.getElementById('outletsGrid');
   if (!grid) return;
 
   var filtered = OUTLETS.filter(function(o) {
@@ -4273,7 +4270,7 @@ function renderOutlets() {
     return true;
   });
 
-  document.getElementById('ofCount').textContent = 'Showing ' + filtered.length + ' of ' + OUTLETS.length + ' configurations';
+  var cnt = document.getElementById('ofCount'); if(cnt) cnt.textContent = 'Showing ' + filtered.length + ' of ' + OUTLETS.length + ' configurations';
 
   grid.innerHTML = '';
   filtered.forEach(function(o) {
