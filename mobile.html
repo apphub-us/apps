@@ -1399,7 +1399,7 @@ function cfRenderTable(conduitKey) {
   for (var w = 0; w < CF_WIRES.length; w++) {
     var wire = CF_WIRES[w];
     var wa = CF_WIRE[wireType][wire.k]; if (!wa) continue;
-    body += '<tr onclick="ampHighlightRow(this)"><td class="wire-col">' + wire.l + '<span>' + CF_WIRE_LABEL[wireType] + '</span></td>';
+    body += '<tr onclick="ampHighlightRow(this)"><td class="wire-col">' + wire.l + '</td>';
     for (var s = 0; s < avail.length; s++) {
       var cdd = cd[avail[s]]; if (!cdd) { body += '<td>—</td>'; continue; }
       var n = Math.floor(cdd.f40 / wa);
@@ -3281,7 +3281,7 @@ function wwRenderTable() {
     var area = areas[sz] || 0;
     var label = parseFloat(sz) >= 250 ? sz + ' kcmil' : sz + ' AWG';
     tbody += '<tr>';
-    tbody += '<td class="wire-col">' + label + '<span>THHN/THWN-2</span></td>';
+    tbody += '<td class="wire-col">' + label + '</td>';
     tbody += '<td>' + area.toFixed(4) + '</td>';
     wireways.forEach(function(ww) {
       var maxFill = ww.w * ww.h * 0.20;
