@@ -82,15 +82,14 @@
   .bottom-nav::-webkit-scrollbar { display: none; }
 
   .nav-item {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    min-width: 64px; flex: 1;
-    font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.3px;
-    color: var(--text-dimmer); padding: 6px 4px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    min-width: 56px; flex: 1;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.5px;
+    font-weight: 500;
+    color: var(--text-dimmer); padding: 0 4px; cursor: pointer;
     border-top: 2px solid transparent; transition: all 0.15s;
-    gap: 3px;
   }
-  .nav-item .nav-icon { font-size: 18px; line-height: 1; }
-  .nav-item.active { color: var(--accent); border-top-color: var(--accent); }
+  .nav-item.active { color: var(--accent); border-top-color: var(--accent); font-weight: 700; }
   .nav-item:active { background: rgba(255,199,0,0.06); }
 
   /* ── RULES BAR ── */
@@ -987,24 +986,12 @@
 
 <!-- ── BOTTOM NAV ── -->
 <nav class="bottom-nav">
-  <div class="nav-item active" id="mnav-chat" onclick="switchTab('chat',this)">
-    <span class="nav-icon">⚡</span>AI Chat
-  </div>
-  <div class="nav-item" id="mnav-wiresizer" onclick="switchTab('wiresizer',this)">
-    <span class="nav-icon">🎯</span>Sizer
-  </div>
-  <div class="nav-item" id="mnav-conduit" onclick="switchTab('conduit',this)">
-    <span class="nav-icon">📐</span>Fill Calc
-  </div>
-  <div class="nav-item" id="mnav-ampacity" onclick="switchTab('ampacity',this)">
-    <span class="nav-icon">🔌</span>Ampacity
-  </div>
-  <div class="nav-item" id="mnav-boxfill" onclick="switchTab('boxfill',this)">
-    <span class="nav-icon">📦</span>Box Fill
-  </div>
-  <div class="nav-item" id="mnav-more" onclick="switchTab('more',this)">
-    <span class="nav-icon">⋯</span>More
-  </div>
+  <div class="nav-item active" id="mnav-chat" onclick="switchTab('chat',this)">AI Chat</div>
+  <div class="nav-item" id="mnav-wiresizer" onclick="switchTab('wiresizer',this)">Sizer</div>
+  <div class="nav-item" id="mnav-conduit" onclick="switchTab('conduit',this)">Fill Calc</div>
+  <div class="nav-item" id="mnav-ampacity" onclick="switchTab('ampacity',this)">Ampacity</div>
+  <div class="nav-item" id="mnav-boxfill" onclick="switchTab('boxfill',this)">Box Fill</div>
+  <div class="nav-item" id="mnav-more" onclick="switchTab('more',this)">More</div>
 </nav>
 
 
