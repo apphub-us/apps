@@ -1223,7 +1223,8 @@ function addMessage(role, content, isError) {
 
   // Avatar
   var avatar = document.createElement('div'); avatar.className = 'msg-avatar';
-  avatar.textContent = role === 'user' ? 'YOU' : '⚡';
+  avatar.textContent = role === 'user' ? 'YOU' : '';
+  if (role !== 'user') { avatar.style.backgroundImage = 'url(icon-192.png)'; avatar.style.backgroundSize = 'cover'; avatar.style.backgroundPosition = 'center'; }
 
   // Wrap
   var wrap = document.createElement('div'); wrap.className = 'msg-wrap';
@@ -1341,7 +1342,7 @@ function showTyping() {
   var welcome = document.getElementById('welcome'); if (welcome) welcome.remove();
   var chatArea = document.getElementById('chatArea');
   var msg = document.createElement('div'); msg.className = 'msg ai'; msg.id = 'typingMsg';
-  var avatar = document.createElement('div'); avatar.className = 'msg-avatar'; avatar.textContent = '⚡';
+  var avatar = document.createElement('div'); avatar.className = 'msg-avatar'; avatar.style.backgroundImage = 'url(icon-192.png)'; avatar.style.backgroundSize = 'cover'; avatar.style.backgroundPosition = 'center';
   var wrap = document.createElement('div'); wrap.className = 'msg-wrap';
   var name = document.createElement('div'); name.className = 'msg-name'; name.textContent = 'Empire Code AI';
   wrap.appendChild(name);
