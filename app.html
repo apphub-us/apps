@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SparkyPro — Electrician Field Assistant</title>
-<meta name="application-name" content="SparkyPro">
+<title>Empire Code — Electrician Field Assistant</title>
+<meta name="application-name" content="Empire Code">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="SparkyPro">
+<meta name="apple-mobile-web-app-title" content="Empire Code">
 <meta name="theme-color" content="#FFC700">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
@@ -726,7 +726,7 @@
   <div class="chat-area" id="chatArea">
     <div class="welcome" id="welcome">
       <div style="margin-bottom:12px"><svg width="52" height="52" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="18" fill="#FFC700"/><path d="M62 12L30 52H50L38 88L70 48H50L62 12Z" fill="#0A0A0A"/></svg></div>
-      <h2>Ask SparkyPro</h2>
+      <h2>Ask Empire Code</h2>
       <p>Expert AI assistant for <strong>NEC 2020</strong> and <strong>NYCEC 2025</strong> code questions.<br>Calculations, amendments, field questions — all in one place.</p>
       <div class="welcome-examples">
         <div class="welcome-ex" onclick="quickAsk(this.textContent)">"How many 12 AWG THHN in 3/4 EMT?"</div>
@@ -1989,7 +1989,7 @@ var chatHistory = [];
 
 if (API_KEY) document.getElementById('apiModal').style.display = 'none';
 
-var SYSTEM_PROMPT = `You are SparkyPro — an expert electrical code assistant built specifically for licensed electricians working in New York City.
+var SYSTEM_PROMPT = `You are Empire Code — an expert electrical code assistant built specifically for licensed electricians working in New York City.
 
 PRIMARY CODE: NYCEC 2025 (NYC Electrical Code)
 - Effective December 21, 2025
@@ -2128,7 +2128,7 @@ function addMessage(role, content, isError) {
   // Name (AI only)
   if (role === 'ai') {
     var name = document.createElement('div'); name.className = 'msg-name';
-    name.textContent = 'SparkyPro AI'; wrap.appendChild(name);
+    name.textContent = 'Empire Code AI'; wrap.appendChild(name);
   }
 
   // Bubble
@@ -2240,7 +2240,7 @@ function showTyping() {
   var msg = document.createElement('div'); msg.className = 'msg ai'; msg.id = 'typingMsg';
   var avatar = document.createElement('div'); avatar.className = 'msg-avatar'; avatar.textContent = '⚡';
   var wrap = document.createElement('div'); wrap.className = 'msg-wrap';
-  var name = document.createElement('div'); name.className = 'msg-name'; name.textContent = 'SparkyPro AI';
+  var name = document.createElement('div'); name.className = 'msg-name'; name.textContent = 'Empire Code AI';
   wrap.appendChild(name);
   var ind = document.createElement('div'); ind.className = 'typing-indicator';
   ind.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
@@ -3268,7 +3268,7 @@ window.switchTab = function(name,el){
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('sw.js').then(function(reg) {
-      console.log('SparkyPro SW registered:', reg.scope);
+      console.log('Empire Code SW registered:', reg.scope);
     }).catch(function(err) {
       console.log('SW registration failed:', err);
     });
