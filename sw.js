@@ -1,84 +1,71 @@
-// SparkyPro Service Worker v1.0
-// Caches the app for offline use — AI chat requires internet, all tables work offline
-
-var CACHE_NAME = 'sparkypro-v2';
-var OFFLINE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+const CACHE_NAME = 'empire-code-v1';
+const ASSETS = [
+  '/mobile.html',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/manifest.json',
+  'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap'
 ];
 
-// Install — cache core files
-self.addEventListener('install', function(event) {
-  event.waitUntil(
+// Install — cache all assets
+self.addEventListener('install', function(e) {
+  e.waitUntil(
     caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(OFFLINE_URLS);
+      return cache.addAll(ASSETS);
+    }).then(function() {
+      return self.skipWaiting();
     })
   );
-  self.skipWaiting();
 });
 
 // Activate — clean old caches
-self.addEventListener('activate', function(event) {
-  event.waitUntil(
+self.addEventListener('activate', function(e) {
+  e.waitUntil(
     caches.keys().then(function(keys) {
       return Promise.all(
-        keys.filter(function(key) {
-          return key !== CACHE_NAME;
-        }).map(function(key) {
-          return caches.delete(key);
-        })
+        keys.filter(function(k) { return k !== CACHE_NAME; })
+            .map(function(k) { return caches.delete(k); })
       );
+    }).then(function() {
+      return self.clients.claim();
     })
   );
-  self.clients.claim();
 });
 
-// Fetch — serve from cache, fall back to network
-self.addEventListener('fetch', function(event) {
-  // Skip API calls — always need network for AI and Firebase
-  var url = event.request.url;
-  if (
-    url.includes('anthropic.com') ||
-    url.includes('firestore.googleapis.com') ||
-    url.includes('firebase') ||
-    url.includes('googleapis.com')
-  ) {
-    return; // Let these go through to network normally
-  }
+// Fetch — network first, fallback to cache
+self.addEventListener('fetch', function(e) {
+  // Skip non-GET and chrome-extension requests
+  if (e.request.method !== 'GET') return;
+  if (e.request.url.startsWith('chrome-extension')) return;
 
-  // For Google Fonts — try network first, fall back to cache
-  if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com')) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then(function(cache) {
-        return fetch(event.request).then(function(response) {
-          cache.put(event.request, response.clone());
-          return response;
-        }).catch(function() {
-          return caches.match(event.request);
-        });
-      })
-    );
+  // For API calls (Anthropic, Firebase) — network only
+  if (e.request.url.includes('anthropic.com') ||
+      e.request.url.includes('firestore.googleapis.com') ||
+      e.request.url.includes('firebase')) {
     return;
   }
 
-  // For app files — cache first, then network
-  event.respondWith(
-    caches.match(event.request).then(function(cached) {
-      if (cached) return cached;
-      return fetch(event.request).then(function(response) {
+  e.respondWith(
+    fetch(e.request)
+      .then(function(response) {
         // Cache successful responses
         if (response && response.status === 200) {
           var clone = response.clone();
           caches.open(CACHE_NAME).then(function(cache) {
-            cache.put(event.request, clone);
+            cache.put(e.request, clone);
           });
         }
         return response;
-      }).catch(function() {
-        // Offline fallback — return cached index
-        return caches.match('/index.html');
-      });
-    })
+      })
+      .catch(function() {
+        // Network failed — serve from cache
+        return caches.match(e.request).then(function(cached) {
+          if (cached) return cached;
+          // Fallback to mobile.html for navigation
+          if (e.request.mode === 'navigate') {
+            return caches.match('/mobile.html');
+          }
+        });
+      })
   );
 });
