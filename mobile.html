@@ -52,7 +52,7 @@
     display: flex; align-items: center; justify-content: space-between;
     flex-shrink: 0;
   }
-  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: 3px; color: var(--accent); }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: var(--accent); }
   .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--nycec); animation: pulse 2s infinite; display: inline-block; margin-right: 6px; }
   .status-txt { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dim); }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
@@ -333,9 +333,9 @@
 <!-- ── HEADER ── -->
 <header>
   <div class="logo">Empire Code</div>
-  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
     <div><span class="status-dot"></span><span class="status-txt" style="color:var(--nycec)">NYCEC 2025</span></div>
-    <div><span style="width:6px;height:6px;border-radius:50%;background:var(--nec);animation:pulse 2s infinite 0.5s;display:inline-block;margin-right:5px"></span><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--nec)">NEC 2020</span></div>
+    <div><span style="width:7px;height:7px;border-radius:50%;background:var(--nec);animation:pulse 2s infinite 0.5s;display:inline-block;margin-right:6px"></span><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--nec)">NEC 2020</span></div>
   </div>
 </header>
 
@@ -350,7 +350,7 @@
   </div>
   <div class="chat-area" id="chatArea">
     <div class="welcome" id="welcome">
-      <div style="margin-bottom:16px"><img src="icon-192.png" style="width:80px;height:80px;border-radius:18px"></div>
+      <div style="font-size:40px;margin-bottom:12px">⚡</div>
       <h2>Empire Code AI</h2>
       <p>NEC &amp; NYCEC 2025 field assistant</p>
       <button class="welcome-ex" onclick="quickAsk('What wire size for 200A service in NYC?')">What wire size for 200A service in NYC?</button>
@@ -899,6 +899,9 @@
         <button class="code-subtab active" id="cst-gfci" onclick="codeSubTab('gfci')">GFCI/AFCI</button>
         <button class="code-subtab" id="cst-grounding" onclick="codeSubTab('grounding')">Grounding</button>
         <button class="code-subtab" id="cst-nyc" onclick="codeSubTab('nyc')">NYC Code</button>
+        <button class="code-subtab" id="cst-coned" onclick="codeSubTab('coned')">Con Ed</button>
+        <button class="code-subtab" id="cst-dob" onclick="codeSubTab('dob')">DOB/EPR</button>
+        <button class="code-subtab" id="cst-locallaws" onclick="codeSubTab('locallaws')">Local Laws</button>
       </div>
       <div id="csr-content" style="flex:1;display:flex;flex-direction:column;">
         <div class="scroll-body">
@@ -1223,8 +1226,7 @@ function addMessage(role, content, isError) {
 
   // Avatar
   var avatar = document.createElement('div'); avatar.className = 'msg-avatar';
-  avatar.textContent = role === 'user' ? 'YOU' : '';
-  if (role !== 'user') { avatar.style.backgroundImage = 'url(icon-192.png)'; avatar.style.backgroundSize = 'cover'; avatar.style.backgroundPosition = 'center'; }
+  avatar.textContent = role === 'user' ? 'YOU' : '⚡';
 
   // Wrap
   var wrap = document.createElement('div'); wrap.className = 'msg-wrap';
@@ -1342,7 +1344,7 @@ function showTyping() {
   var welcome = document.getElementById('welcome'); if (welcome) welcome.remove();
   var chatArea = document.getElementById('chatArea');
   var msg = document.createElement('div'); msg.className = 'msg ai'; msg.id = 'typingMsg';
-  var avatar = document.createElement('div'); avatar.className = 'msg-avatar'; avatar.style.backgroundImage = 'url(icon-192.png)'; avatar.style.backgroundSize = 'cover'; avatar.style.backgroundPosition = 'center';
+  var avatar = document.createElement('div'); avatar.className = 'msg-avatar'; avatar.textContent = '⚡';
   var wrap = document.createElement('div'); wrap.className = 'msg-wrap';
   var name = document.createElement('div'); name.className = 'msg-name'; name.textContent = 'Empire Code AI';
   wrap.appendChild(name);
@@ -2359,6 +2361,291 @@ function codeSubTab(name) {
 // Store grounding and nyc content
 CSR_CONTENT['grounding'] = "<div class=\"fill-rules-bar\">\n    <div class=\"nec-row\">\n      <span class=\"fill-pill pill-orange\" style=\"cursor:pointer;flex-shrink:0\" onclick=\"necLink('NEC Article 250 \u2014 Complete Grounding and Bonding requirements overview')\">NEC Art. 250</span>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NEC Article 250 \u2014 Grounding and Bonding requirements')\">NEC 250</span> Grounding and Bonding</div>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NEC 250.118 \u2014 Equipment Grounding Conductor EGC types and sizing')\">EGC</span> Equipment Grounding Conductor</div>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NEC 250.66 \u2014 Grounding Electrode Conductor GEC sizing')\">GEC</span> Grounding Electrode Conductor</div>\n    </div>\n  </div>\n\n  <div style=\"display:flex;flex:1;overflow:hidden\">\n    <!-- LEFT: Topics -->\n    <div style=\"width:220px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);overflow-y:auto;padding:12px\">\n      <div style=\"font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:10px\">SELECT TOPIC</div>\n      <div style=\"display:flex;flex-direction:column;gap:3px\" id=\"groundingTopicList\"></div>\n    </div>\n\n    <!-- RIGHT: Content -->\n    <div style=\"flex:1;overflow-y:auto;padding:20px\">\n      <div id=\"groundingContent\">\n        <div style=\"text-align:center;padding:60px 20px;color:var(--text-dimmer)\">\n          <div style=\"font-size:48px;margin-bottom:12px\">\ud83c\udf0d</div>\n          <div style=\"font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)\">Grounding & Bonding</div>\n          <div style=\"font-size:13px;margin-top:8px;line-height:1.6\">Select a topic from the left panel</div>\n        </div>\n      </div>\n    </div>\n  </div>";
 CSR_CONTENT['nyc'] = "<div class=\"fill-rules-bar\">\n    <div class=\"nec-row\">\n      <span class=\"fill-pill pill-blue\" style=\"cursor:pointer;flex-shrink:0\" onclick=\"necLink('NYCEC 2025 \u2014 New York City Electrical Code current edition amendments and local requirements')\">NYCEC 2025</span>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NYCEC \u2014 New York City Electrical Code based on NEC 2020 with local amendments')\">NYCEC</span> NYC Electrical Code (NEC 2020 base)</div>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NYC Local Laws \u2014 electrical code amendments specific to New York City buildings')\">Local Law</span> NYC-specific amendments</div>\n      <div class=\"fill-rule\"><span class=\"fill-pill pill-orange\" onclick=\"necLink('NYC DOB \u2014 Department of Buildings electrical permit and inspection requirements')\">DOB</span> Dept of Buildings requirements</div>\n    </div>\n  </div>\n\n  <div style=\"display:flex;flex:1;overflow:hidden\">\n    <!-- LEFT: Categories -->\n    <div style=\"width:220px;flex-shrink:0;background:var(--surface2);border-right:1px solid var(--border);overflow-y:auto;padding:12px\">\n      <div style=\"font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:10px\">CATEGORY</div>\n      <div style=\"display:flex;flex-direction:column;gap:3px\" id=\"nycTopicList\"></div>\n    </div>\n\n    <!-- RIGHT: Content -->\n    <div style=\"flex:1;overflow-y:auto;padding:20px\">\n      <div id=\"nycContent\">\n        <div style=\"text-align:center;padding:60px 20px;color:var(--text-dimmer)\">\n          <div style=\"font-size:48px;margin-bottom:12px\">\ud83d\uddfd</div>\n          <div style=\"font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--accent)\">NYC Electrical Code</div>\n          <div style=\"font-size:13px;margin-top:8px;line-height:1.6\">Select a category from the left panel</div>\n        </div>\n      </div>\n    </div>\n</div>";
+
+
+// ── CON ED BLUE BOOK ──────────────────────────────────────
+CSR_CONTENT['coned'] = (function() {
+  var sections = [
+    {
+      title: 'Meter Socket Height',
+      ref: 'Con Ed Blue Book — Meter Installation Specs (MES-394)',
+      color: 'nycec',
+      items: [
+        'Meter center line: 4 ft 6 in minimum to 5 ft 6 in maximum above finished grade',
+        'Lowest socket on vertical multi-meter (3 or less): minimum 2 ft from grade',
+        'Meters must be installed on side of building with walkway or driveway access when practicable',
+        'Meter sockets must be set plumb and level — use shims on shingles or siding'
+      ]
+    },
+    {
+      title: 'Service Entrance — Conduit Minimum',
+      ref: 'Con Ed Blue Book — Service Installation Requirements',
+      color: 'nycec',
+      items: [
+        'Minimum 1-1/2" conduit for service entrance',
+        'Underground service: rigid metal conduit (RMC) or PVC Schedule 40 in concrete — no EMT underground',
+        'Overhead service: weatherhead must be minimum 10 ft above grade, 3 ft above roofline',
+        'Service conduit must be sealed with Con Ed-approved service entrance cap'
+      ]
+    },
+    {
+      title: 'Meter Placement — Line Side',
+      ref: 'Con Ed Blue Book — Metering Requirements',
+      color: 'nycec',
+      items: [
+        '1-2 meter sockets (residential & non-residential): must be on LINE SIDE of service disconnect',
+        '3-6 meter sockets (non-residential): must also be on line side of service disconnect',
+        'Where existing disconnect is already line side and adding meters requires replacing it — new meters must be line side',
+        'Con Ed must approve meter room layout for multiple meters before installation'
+      ]
+    },
+    {
+      title: 'Grounding — Meter Case',
+      ref: 'Con Ed Blue Book — Grounding Requirements',
+      color: 'nycec',
+      items: [
+        'Meter case grounding conductor: minimum #10 AWG copper',
+        'Ground must be connected to same electrode as service grounding',
+        'Color coding must comply with NYC Electrical Code Par. B30-62.0(d2)',
+        'Phase identification by color maintained from service entrance to meter sockets'
+      ]
+    },
+    {
+      title: 'Voltage & Phase — NYC Standard',
+      ref: 'Con Ed Service Specifications',
+      color: 'nycec',
+      items: [
+        'Standard residential: 120/208V 3-phase 4-wire WYE',
+        'Standard commercial: 120/208V 3-phase 4-wire WYE',
+        'High-rise/large commercial: 277/480V 3-phase 4-wire WYE',
+        'Single phase available: 120/240V 3-wire (limited areas)',
+        '240V 3-phase 4-wire delta — available but rare in NYC',
+        'Always confirm available voltage with Con Ed Project Center before design'
+      ]
+    },
+    {
+      title: 'Project Center — How to Apply',
+      ref: 'coned.com — Project Center',
+      color: 'nycec',
+      items: [
+        'All new service requests submitted via Con Ed Project Center (online)',
+        'Submit work request → Con Ed assigns case → receive case handler contact',
+        'Plans must be approved by Con Ed BEFORE installation begins',
+        'Load letter (load calculation) required for new or upgraded services',
+        'Con Ed contact for questions: "Ask a Question" in Project Center',
+        'Response time: within 1 business day'
+      ]
+    }
+  ];
+
+  var html = '<div style="padding:14px;overflow-y:auto">';
+  html += '<div style="background:rgba(74,158,255,0.1);border:1px solid rgba(74,158,255,0.3);border-left:4px solid var(--nycec);border-radius:4px;padding:12px 14px;margin-bottom:14px">';
+  html += '<div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--nycec);margin-bottom:4px">CON EDISON — ELECTRIC BLUE BOOK</div>';
+  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Requirements for Service Installation · coned.com/en/save-money/using-private-generation-energy-sources</div>';
+  html += '</div>';
+
+  sections.forEach(function(s) {
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:10px">';
+    html += '<div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;color:var(--accent);margin-bottom:4px">' + s.title + '</div>';
+    html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--nycec);margin-bottom:10px">' + s.ref + '</div>';
+    s.items.forEach(function(item) {
+      html += '<div style="display:flex;gap:8px;margin-bottom:6px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);line-height:1.5">';
+      html += '<span style="color:var(--nycec);flex-shrink:0">▸</span><span>' + item + '</span></div>';
+    });
+    html += '</div>';
+  });
+
+  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);padding:10px 0;text-align:center">Source: Con Ed Electric Blue Book (latest revision) · Always verify with Con Ed Project Center</div>';
+  html += '</div>';
+  return html;
+})();
+
+// ── DOB / EPR ──────────────────────────────────────────────
+CSR_CONTENT['dob'] = (function() {
+  var html = '<div style="padding:14px;overflow-y:auto">';
+  
+  html += '<div style="background:rgba(255,107,26,0.1);border:1px solid rgba(255,107,26,0.3);border-left:4px solid var(--nec);border-radius:4px;padding:12px 14px;margin-bottom:14px">';
+  html += '<div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--nec);margin-bottom:4px">DOB — ELECTRICAL PLAN REVIEW (EPR)</div>';
+  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">NYC Department of Buildings · NYCEC Section 110.2(B) · 1 RCNY §4000-01</div>';
+  html += '</div>';
+
+  var steps = [
+    {
+      step: '1',
+      title: 'Is EPR Required?',
+      color: 'var(--nec)',
+      items: [
+        'EPR required per NYCEC 110.2(B) — typically: new services over certain KVA, large alterations, high voltage',
+        'All new building electrical work with new/altered service',
+        'Alterations exceeding thresholds in NYCEC 110.2(B)',
+        'Contact DOB EPR unit to confirm: elecplanreview@buildings.nyc.gov'
+      ]
+    },
+    {
+      step: '2',
+      title: 'EPR Submission Requirements',
+      color: 'var(--nec)',
+      items: [
+        'Submit electronically to: elecplanreview@buildings.nyc.gov',
+        'Subject line: Job Number + Job Address ONLY',
+        'Filing fee: $650.00 per submission',
+        'Must be prepared and signed by NYS Licensed PE or Registered Architect',
+        'Required: one-line diagram, plan view, equipment room layout (if required)',
+        'New work must be encircled by "bubble" or "cloud" on drawings',
+        'Include selective coordination report with TCCs and short circuit calculations'
+      ]
+    },
+    {
+      step: '3',
+      title: 'After EPR Approval',
+      color: 'var(--success)',
+      items: [
+        'EPR must be approved BEFORE filing Electrical Permit Application in DOB NOW',
+        'Submit Electrical Permit Application via DOB NOW',
+        'Enter EPR Approval Number in Job Description field',
+        'All work under 2025 NYCEC — indicate this when requesting inspection in DOB NOW'
+      ]
+    },
+    {
+      step: '4',
+      title: 'Electrical Inspection',
+      color: 'var(--success)',
+      items: [
+        'Request inspection via DOB NOW: Inspections',
+        'Indicate permit issued under 2025 NYCEC',
+        'Work approved under 2025 NYCEC inspected under 2025 NYCEC',
+        'Work approved under 2011 NYCEC (before Dec 21, 2025) — inspected under 2011 NYCEC'
+      ]
+    }
+  ];
+
+  steps.forEach(function(s) {
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:10px">';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">';
+    html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:16px;color:' + s.color + ';flex-shrink:0">' + s.step + '</div>';
+    html += '<div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;color:var(--accent)">' + s.title + '</div></div>';
+    s.items.forEach(function(item) {
+      html += '<div style="display:flex;gap:8px;margin-bottom:6px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);line-height:1.5">';
+      html += '<span style="color:' + s.color + ';flex-shrink:0">▸</span><span>' + item + '</span></div>';
+    });
+    html += '</div>';
+  });
+
+  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:12px;margin-bottom:10px">';
+  html += '<div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;color:var(--accent);margin-bottom:8px">USEFUL LINKS</div>';
+  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--nycec);line-height:2">';
+  html += '▸ DOB EPR page: nyc.gov/site/buildings/codes/electrical-advisory-board-plan-review.page<br>';
+  html += '▸ EPR email: elecplanreview@buildings.nyc.gov<br>';
+  html += '▸ DOB NOW: a810-dobnowpub.nyc.gov<br>';
+  html += '▸ 1 RCNY §4000-01: nyc.gov/assets/buildings/rules/1_RCNY_4000-01.pdf';
+  html += '</div></div>';
+
+  html += '</div>';
+  return html;
+})();
+
+// ── LOCAL LAWS ─────────────────────────────────────────────
+CSR_CONTENT['locallaws'] = (function() {
+  var laws = [
+    {
+      id: 'LL97',
+      name: 'Local Law 97 of 2019',
+      topic: 'Carbon Emissions — Building Electrification',
+      color: 'var(--success)',
+      relevance: 'HIGH — affects electrical upgrades in large buildings',
+      items: [
+        'Buildings over 25,000 sq ft must meet carbon emission limits starting 2024',
+        'Penalties: up to $268 per ton of CO₂ over the cap (2025+)',
+        'Drives demand for electrical upgrades: heat pumps, EV charging, energy storage',
+        'Electricians needed for: panel upgrades, EV charger installs, building electrification',
+        'Compliance reporting to NYC DEP — not DOB'
+      ]
+    },
+    {
+      id: 'LL49',
+      name: 'Local Law 49 of 2025 / LL96 of 2021',
+      topic: 'EV Charging — Parking Garages',
+      color: 'var(--nycec)',
+      relevance: 'HIGH — new construction and major renovations require EV infrastructure',
+      items: [
+        'New parking garages (5+ spaces): minimum 20% spaces must be EV-ready',
+        'EV-ready = conduit + wiring capacity for Level 2 charger (minimum 40A circuit)',
+        'Existing garages with major renovations: may trigger EV-ready requirements',
+        'Permit required — file through Con Ed Project Center for service upgrade',
+        'Level 2 charger: 208V or 240V, 1-phase, typically 40-80A circuit'
+      ]
+    },
+    {
+      id: 'LL152',
+      name: 'Local Law 152 of 2016',
+      topic: 'Gas Piping Inspections (Plumber — not electrician)',
+      color: 'var(--text-dimmer)',
+      relevance: 'LOW for electricians — but good to know for coordination',
+      items: [
+        'Periodic inspection of exposed gas piping every 4 years',
+        'Must be performed by NYC Licensed Master Plumber',
+        'Inspection cycle by community district (4-year rotation)',
+        'Districts 4, 6, 8, 9, 16: deadline Dec 31, 2026',
+        'Districts 11, 12, 14, 15, 17: deadline Dec 31, 2027',
+        'NOT electrical work — but electricians may be asked about it on job sites'
+      ]
+    },
+    {
+      id: 'LL154',
+      name: 'Local Law 154 of 2021',
+      topic: 'Building Electrification — Gas Ban',
+      color: 'var(--success)',
+      relevance: 'HIGH — major driver of electrical upgrades',
+      items: [
+        'Phased ban on fossil fuel combustion in new buildings',
+        'New buildings under 7 stories: no gas after Dec 31, 2023',
+        'New buildings 7+ stories: no gas after Dec 31, 2027',
+        'Drives installation of: electric heating, induction cooking, heat pump water heaters',
+        'Electricians must size panels for all-electric loads — significant service upgrades required'
+      ]
+    },
+    {
+      id: 'LL88',
+      name: 'Local Law 88 of 2009 (amended 2018)',
+      topic: 'Lighting Upgrades & Sub-metering',
+      color: 'var(--nycec)',
+      relevance: 'MEDIUM — applies to large commercial buildings',
+      items: [
+        'Non-residential buildings over 25,000 sq ft: lighting upgrade to meet energy code',
+        'Tenant spaces over 10,000 sq ft in large buildings: sub-metering required',
+        'Deadline: December 31, 2025 (most buildings)',
+        'Electricians needed for: LED retrofit, occupancy sensors, sub-meter installation'
+      ]
+    }
+  ];
+
+  var html = '<div style="padding:14px;overflow-y:auto">';
+
+  html += '<div style="background:rgba(255,199,0,0.08);border:1px solid rgba(255,199,0,0.2);border-left:4px solid var(--accent);border-radius:4px;padding:12px 14px;margin-bottom:14px">';
+  html += '<div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--accent);margin-bottom:4px">NYC LOCAL LAWS — ELECTRICIAN RELEVANCE</div>';
+  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Laws that directly impact electrical work in NYC buildings</div>';
+  html += '</div>';
+
+  laws.forEach(function(law) {
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ' + law.color + ';border-radius:4px;padding:14px;margin-bottom:10px">';
+    html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:8px">';
+    html += '<div>';
+    html += '<div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;color:var(--accent)">' + law.id + ' — ' + law.topic + '</div>';
+    html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:2px">' + law.name + '</div>';
+    html += '</div></div>';
+    html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;padding:4px 8px;border-radius:3px;background:var(--surface2);border:1px solid var(--border);color:' + law.color + ';margin-bottom:10px;display:inline-block">RELEVANCE: ' + law.relevance + '</div>';
+    html += '<br>';
+    law.items.forEach(function(item) {
+      html += '<div style="display:flex;gap:8px;margin-bottom:6px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);line-height:1.5">';
+      html += '<span style="color:' + law.color + ';flex-shrink:0">▸</span><span>' + item + '</span></div>';
+    });
+    html += '</div>';
+  });
+
+  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);padding:10px 0;text-align:center">Source: NYC.gov · Always verify current deadlines at nyc.gov/buildings</div>';
+  html += '</div>';
+  return html;
+})();
 
 
 // origSwitch removed - mobile uses moreTab for sub-panels
