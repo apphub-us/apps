@@ -551,12 +551,12 @@
 <div class="panel" id="panel-vdrop">
   <div class="rules-bar">
     <div class="rules-row">
-      <span class="pill pill-nec" onclick="necLink('NEC 210.19 and NEC 215.2 — Voltage drop recommendations')">NEC 210.19</span>
-      <span class="rule-txt">3% branch · 5% feeder+branch total</span>
+      <span class="pill pill-nec" onclick="necLink('NEC 210.19 and NEC 215.2 — Voltage drop, informational only in base NEC')">NEC 210.19</span>
+      <span class="rule-txt">3% branch / 3% feeder recommended (informational, not enforced under base NEC)</span>
     </div>
     <div class="rules-row">
-      <span class="pill pill-nyc" onclick="necLink('NYCEC 215.2 — NYC voltage drop legal requirements')">NYCEC 215.2</span>
-      <span class="rule-txt">Commercial: 3% feeder · Residential: 4% feeder</span>
+      <span class="pill pill-nyc" onclick="necLink('NYCEC 210.19(A) and 215.2(A)(1) — NYC voltage drop is a mandatory 5% total limit, not a recommendation')">NYCEC 215.2</span>
+      <span class="rule-txt">5% total (feeder + branch combined) — MANDATORY in NYC, same for all occupancies</span>
     </div>
   </div>
   <div class="controls">
@@ -591,10 +591,9 @@
     <div class="ctrl">
       <span class="ctrl-lbl">Max VD %</span>
       <select id="vdMaxPct" onchange="vdUpdateCalc()">
-        <option value="2">2% (conservative)</option>
-        <option value="3" selected>3% (NEC / NYCEC commercial)</option>
-        <option value="4">4% (NYCEC residential)</option>
-        <option value="5">5% (NEC total max)</option>
+        <option value="2">2% (conservative design target)</option>
+        <option value="3">3% (NEC informational guideline — not enforced)</option>
+        <option value="5" selected>5% (NYCEC 2025 mandatory total)</option>
       </select>
     </div>
     <div class="fav-bar">
@@ -758,8 +757,8 @@
       <span class="rule-txt">Wire must pass derating AND voltage drop simultaneously</span>
     </div>
     <div class="rules-row">
-      <span class="pill pill-nyc" onclick="necLink('NYCEC 215.2 — NYC voltage drop requirements')">NYCEC 215.2</span>
-      <span class="rule-txt">Commercial: 3% feeder · Residential: 4% feeder · 5% total — legal requirement</span>
+      <span class="pill pill-nyc" onclick="necLink('NYCEC 210.19(A) and 215.2(A)(1) — NYC mandatory 5% total voltage drop limit')">NYCEC 215.2</span>
+      <span class="rule-txt">5% total (feeder + branch combined) — MANDATORY in NYC, same for all occupancies</span>
     </div>
   </div>
   <div class="controls">
@@ -818,8 +817,11 @@
     <div class="ctrl">
       <span class="ctrl-lbl">Max VD %</span>
       <select id="wsMaxVD" onchange="wsCalc()">
-        <option value="2">2%</option><option value="3" selected>3% (NEC / NYCEC commercial)</option><option value="4">4% (NYCEC residential)</option><option value="5">5%</option>
+        <option value="2">2% (conservative design target)</option>
+        <option value="3">3% (NEC informational guideline — not enforced)</option>
+        <option value="5" selected>5% (NYCEC 2025 mandatory total)</option>
       </select>
+      <div id="wsMaxVDNote" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4"></div>
     </div>
     <div class="fav-bar">
       <button class="reset-btn" onclick="wsReset()">↺ Reset</button>
@@ -2661,6 +2663,7 @@ window.switchTab = function(name, el) {
   if (name === 'ampacity') setTimeout(ampUpdateCalc, 50);
   if (name === 'vdrop') setTimeout(vdUpdateCalc, 50);
   if (name === 'boxfill') setTimeout(bfUpdateCalc, 50);
+  if (name === 'wiresizer') setTimeout(wsCalc, 50);
   if (name === 'more') setTimeout(function(){ lcInit(); }, 50);
 }
 
@@ -5058,8 +5061,19 @@ function wsCalc() {
   var mat     = document.getElementById('wsMaterial').value;
   var bundle  = parseFloat(document.getElementById('wsBundle').value) || 1.0;
   var temp    = parseInt(document.getElementById('wsTemp').value) || 86;
-  var maxVD   = parseFloat(document.getElementById('wsMaxVD').value) || 3;
+  var maxVD   = parseFloat(document.getElementById('wsMaxVD').value) || 5;
   var insul   = document.getElementById('wsInsul').value;
+
+  // Update Max VD hint note based on selection
+  var vdNoteEl = document.getElementById('wsMaxVDNote');
+  if (vdNoteEl) {
+    var vdNotes = {
+      2: 'Tighter than code requires — extra safety margin.',
+      3: 'Use this if you\'re only sizing part of the run (e.g. just the feeder) and want to leave margin for the branch circuit that follows.',
+      5: 'NYCEC counts this to the FARTHEST outlet — feeder + branch circuit combined, not just this one segment. If more wire follows this run, the total for the whole path still can\'t exceed 5%.'
+    };
+    vdNoteEl.textContent = vdNotes[maxVD] || '';
+  }
 
   if (!load) {
     document.getElementById('wsResult').innerHTML = '<div style="color:var(--text-dimmer);font-family:IBM Plex Mono,monospace;font-size:12px;padding:20px;text-align:center">Enter load and distance to calculate</div>';
@@ -5182,7 +5196,7 @@ function wsGoToFillCalc() {
 
 function wsReset() {
   ['wsLoad','wsFeet'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  var defs = {wsVoltage:'208',wsPhase:'1',wsMaterial:'cu',wsBundle:'1.00',wsTemp:'86',wsMaxVD:'3',wsInsul:'thhn'};
+  var defs = {wsVoltage:'208',wsPhase:'1',wsMaterial:'cu',wsBundle:'1.00',wsTemp:'86',wsMaxVD:'5',wsInsul:'thhn'};
   Object.keys(defs).forEach(function(id){ var el=document.getElementById(id); if(el) el.value=defs[id]; });
   var r=document.getElementById('wsResult');
   if(r) r.innerHTML='<div style="color:var(--text-dimmer);font-family:IBM Plex Mono,monospace;font-size:12px;padding:20px;text-align:center">Enter load and distance to calculate</div>';
