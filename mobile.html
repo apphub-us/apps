@@ -821,7 +821,7 @@
         <option value="3">3% (NEC informational guideline — not enforced)</option>
         <option value="5" selected>5% (NYCEC 2025 mandatory total)</option>
       </select>
-      <div id="wsMaxVDNote" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4"></div>
+      <div id="wsMaxVDNote" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-top:4px;line-height:1.4"></div>
     </div>
     <div class="fav-bar">
       <button class="reset-btn" onclick="wsReset()">↺ Reset</button>
@@ -844,12 +844,6 @@
 
     <!-- LOAD CALC -->
     <div id="sub-loadcalc" style="flex:1;display:flex;flex-direction:column;">
-      <div class="lc-subtabs">
-        <button class="lc-subtab active" id="lct-sf" onclick="lcSubTab('sf')">Single Family</button>
-        <button class="lc-subtab" id="lct-mf" onclick="lcSubTab('mf')">Multifamily</button>
-        <button class="lc-subtab" id="lct-comm" onclick="lcSubTab('comm')">Commercial</button>
-        <button class="lc-subtab" id="lct-optional" onclick="lcSubTab('optional')">Optional</button>
-      </div>
       <div class="scroll-body" id="lcContent"></div>
     </div>
 
@@ -3099,9 +3093,7 @@ function lcUpdate() {
   var voltageLabel = voltage + 'V ' + (is3phase ? '3Ø' : '1Ø');
 
   var scope = document.getElementById('lcScope') ? document.getElementById('lcScope').value : '';
-  var nycAC = parseInt(document.getElementById('lcNycAC') ? document.getElementById('lcNycAC').value : 0) || 0;
   var meterVA = parseFloat(document.getElementById('lcMeterVA') ? document.getElementById('lcMeterVA').value : 0) || 0;
-  var nycACVA = nycAC * 1500;
 
   // Occupancy note — derived from "What are you sizing?" answer in Step 1
   var occEl = document.getElementById('lcOccupancyNote');
@@ -3118,18 +3110,22 @@ function lcUpdate() {
   }
 
   var sqFt    = parseFloat(document.getElementById('lcSqFt').value) || 0;
-  var smallAppl = parseInt(document.getElementById('lcSmallAppl').value) || 2;
-  var laundry   = parseInt(document.getElementById('lcLaundry').value) || 1;
+  var smallAppl = 2; // NEC 220.82(B)(2)/220.42 minimum — 2 required small-appliance circuits, not user-editable
 
-  // Sum dynamic appliance list
-  var applianceItems = window.lcAppliances || [];
+  // Sum dynamic appliance list — laundry items are split out and treated as
+  // part of General Load (demand-factored), NOT Fixed Appliances (100%), per NEC 220.82(B)(2)
+  var allApplianceItems = window.lcAppliances || [];
+  var laundryItems = allApplianceItems.filter(function(i) { return i.category === 'laundry'; });
+  var applianceItems = allApplianceItems.filter(function(i) { return i.category !== 'laundry'; });
   var appliancesVA = applianceItems.reduce(function(s, i) { return s + i.va; }, 0);
+  var laundryVA = laundryItems.reduce(function(s, i) { return s + i.va; }, 0);
 
   // Sum dynamic HVAC list by category, then take the largest category total
   var hvacItems = window.lcHvac || [];
   var hvacByCat = { ac: 0, heat: 0, heatpump: 0 };
   hvacItems.forEach(function(i) { hvacByCat[i.category] = (hvacByCat[i.category] || 0) + i.va; });
   var ac = hvacByCat.ac, heat = hvacByCat.heat, heatPump = hvacByCat.heatpump;
+  var hvacVA = Math.max(ac, heat, heatPump); // largest category — used by all methods
 
   // Sum dynamic EV list
   var evItems = window.lcEV || [];
@@ -3140,19 +3136,20 @@ function lcUpdate() {
 
   if (method === 'nec87') {
     // ── NEC 220.87 — Existing Load from Meter Data ──────
-    var newLoadsVA = appliancesVA + ev + nycACVA;
+    var newLoadsVA = appliancesVA + laundryVA + ev + hvacVA;
     var newLoads25 = newLoadsVA * 1.25;
     totalVA = meterVA + newLoads25;
     html += '<div style="font-family:Bebas Neue,monospace;font-size:22px;letter-spacing:2px;color:var(--nycec);margin-bottom:16px">NEC 220.87 — EXISTING LOAD (METER DATA)</div>';
-    html += lcSection('STEP 1 — EXISTING LOAD FROM METER');
+    html += lcSection('PART 1 — EXISTING LOAD FROM METER');
     html += '<div style="background:rgba(74,158,255,0.06);border:1px solid rgba(74,158,255,0.3);border-radius:4px;margin-bottom:12px;overflow:hidden">';
     html += lcRow('Peak Demand (from meter data)', meterVA, 'Use highest 15-min reading — 12 months preferred');
     html += '</div>';
-    html += lcSection('STEP 2 — NEW LOADS × 125%');
+    html += lcSection('PART 2 — NEW LOADS × 125%');
     html += '<div style="background:rgba(74,158,255,0.06);border:1px solid rgba(74,158,255,0.3);border-radius:4px;margin-bottom:12px;overflow:hidden">';
     applianceItems.forEach(function(i) { html += lcRow(i.name, i.va); });
+    laundryItems.forEach(function(i) { html += lcRow(i.name, i.va); });
     evItems.forEach(function(i) { html += lcRow(i.name, i.va); });
-    if (nycACVA) html += lcRow('NYC AC Outlets ('+nycAC+' × 1,500 VA)', nycACVA, 'NYCEC 220.14(N)');
+    if (hvacItems.length > 0) html += lcRow('HVAC (largest category)', hvacVA, hvacItems.length + ' unit(s) added');
     html += lcRow('New Loads Subtotal', newLoadsVA);
     html += lcRow('New Loads × 125%', Math.round(newLoads25), 'NEC 220.87', true);
     html += '</div>';
@@ -3160,8 +3157,7 @@ function lcUpdate() {
     // ── NEC 220.82 Optional Method ────────────────────────
     // Step 1: General loads
     var lightingVA    = sqFt * 3;                    // 3 VA/sq ft — 220.82(B)(1)
-    var smallApplVA   = smallAppl * 1500;             // 1500 VA each — 220.82(B)(2)
-    var laundryVA     = laundry * 1500;               // 1500 VA each — 220.82(B)(2)
+    var smallApplVA   = smallAppl * 1500;             // 1500 VA each — 220.82(B)(2), NEC minimum 2 circuits
     var generalTotal  = lightingVA + smallApplVA + laundryVA;
 
     // Step 2: Apply demand factor to general loads
@@ -3174,7 +3170,7 @@ function lcUpdate() {
     // (appliancesVA already computed above)
 
     // Step 4: Heating/Cooling — use LARGEST category at 100%
-    var hvacVA = Math.max(ac, heat, heatPump);
+    // (hvacVA already computed above)
 
     // Step 5: EV at 100%
     var evVA = ev;
@@ -3185,11 +3181,15 @@ function lcUpdate() {
     html += '<div style="font-family:Bebas Neue,monospace;font-size:22px;letter-spacing:2px;color:var(--accent);margin-bottom:16px">NEC 220.82 — OPTIONAL METHOD</div>';
 
     // General loads section
-    html += lcSection('STEP 1 — GENERAL LOADS (220.82(B))');
+    html += lcSection('PART 1 — GENERAL LOADS (220.82(B))');
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
     html += lcRow('General Lighting ('+sqFt.toLocaleString()+' sq ft × 3 VA)', lightingVA, 'NEC 220.82(B)(1) — 3 VA/sq ft');
-    html += lcRow('Small Appliance Circuits ('+smallAppl+' × 1,500 VA)', smallApplVA, 'NEC 220.82(B)(2) — min 2 circuits');
-    html += lcRow('Laundry Circuit(s) ('+laundry+' × 1,500 VA)', laundryVA, 'NEC 220.82(B)(2)');
+    html += lcRow('Small Appliance Circuits (2 × 1,500 VA)', smallApplVA, 'NEC 220.82(B)(2) — NEC minimum, always 2');
+    if (laundryItems.length === 0) {
+      html += lcRow('Laundry Circuit', 0, 'None added — OK if unit uses common laundry facilities');
+    } else {
+      laundryItems.forEach(function(i) { html += lcRow(i.name, i.va, 'NEC 220.82(B)(2)'); });
+    }
     html += lcRow('General Load Subtotal', generalTotal, '', false);
     html += '</div>';
 
@@ -3197,13 +3197,13 @@ function lcUpdate() {
     var demandNote = generalTotal <= 10000
       ? 'All at 100% (total ≤ 10,000 VA)'
       : 'First 10,000 VA @ 100% + ' + (generalTotal-10000).toLocaleString() + ' VA @ 40%';
-    html += lcSection('STEP 2 — DEMAND FACTOR (220.82(B))');
+    html += lcSection('PART 2 — DEMAND FACTOR (220.82(B))');
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
     html += lcRow('General Load After Demand Factor', Math.round(generalDemand), demandNote, true);
     html += '</div>';
 
     // Appliances
-    html += lcSection('STEP 3 — FIXED APPLIANCES @ 100% (220.82(C)(1))');
+    html += lcSection('PART 3 — FIXED APPLIANCES @ 100% (220.82(C)(1))');
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
     if (applianceItems.length === 0) html += lcRow('No appliances added', 0);
     applianceItems.forEach(function(i) { html += lcRow(i.name, i.va); });
@@ -3211,7 +3211,7 @@ function lcUpdate() {
     html += '</div>';
 
     // HVAC
-    html += lcSection('STEP 4 — HEATING/COOLING — LARGEST CATEGORY (220.82(C)(2))');
+    html += lcSection('PART 4 — HEATING/COOLING — LARGEST CATEGORY (220.82(C)(2))');
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
     if (hvacItems.length === 0) html += lcRow('No HVAC units added', 0);
     html += lcRow('A/C total', ac, ac >= heat && ac >= heatPump && ac > 0 ? '← LARGEST — used' : 'not used');
@@ -3233,9 +3233,8 @@ function lcUpdate() {
     // ── NEC 220.83 Optional Method — Existing Dwelling ───
     var lightingVA  = sqFt * 3;
     var smallApplVA = smallAppl * 1500;
-    var laundryVA   = laundry * 1500;
     var appliancesTotal83 = appliancesVA + ev;
-    var hvacVA      = Math.max(ac, heat, heatPump);
+    // (hvacVA already computed above)
     var allLoads    = lightingVA + smallApplVA + laundryVA + appliancesTotal83 + hvacVA;
 
     // 220.83: First 8,000 VA @ 100%, remainder @ 40%
@@ -3252,7 +3251,7 @@ function lcUpdate() {
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
     html += lcRow('General Lighting ('+sqFt+' sq ft × 3 VA)', lightingVA, 'NEC 220.83');
     html += lcRow('Small Appliance Circuits', smallApplVA);
-    html += lcRow('Laundry', laundryVA);
+    html += lcRow('Laundry Circuit(s)', laundryVA, laundryItems.length === 0 ? 'None added' : '');
     html += lcRow('All Appliances + EV', appliancesTotal83);
     html += lcRow('HVAC (largest category)', hvacVA);
     html += lcRow('Total Before Demand', Math.round(allLoads), '', false);
@@ -3274,9 +3273,8 @@ function lcUpdate() {
 
     var lightingVAu  = sqFt * 3;
     var smallApplVAu = smallAppl * 1500;
-    var laundryVAu   = laundry * 1500;
-    var hvacVAu      = Math.max(ac, heat, heatPump);
-    var perUnitTotal = lightingVAu + smallApplVAu + laundryVAu + appliancesVA + hvacVAu;
+    var hvacVAu      = hvacVA; // same largest-category calc, per unit
+    var perUnitTotal = lightingVAu + smallApplVAu + laundryVA + appliancesVA + hvacVAu;
 
     var totalConnected = perUnitTotal * numUnits;
     var demandPct = lcTable22084(numUnits);
@@ -3291,7 +3289,7 @@ function lcUpdate() {
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
     html += lcRow('Lighting (' + sqFt.toLocaleString() + ' sq ft × 3 VA)', lightingVAu, 'per unit');
     html += lcRow('Small Appliance Circuits', smallApplVAu, 'per unit');
-    html += lcRow('Laundry Circuit(s)', laundryVAu, 'per unit — 0 if common laundry room');
+    html += lcRow('Laundry Circuit(s)', laundryVA, 'per unit — 0 if common laundry room');
     html += lcRow('Fixed Appliances', appliancesVA, 'per unit — from list below');
     html += lcRow('HVAC (largest category)', hvacVAu, 'per unit');
     html += lcRow('Per-Unit Subtotal', perUnitTotal, '', false);
@@ -3321,7 +3319,6 @@ function lcUpdate() {
     // ── Standard Method NEC 220.42 ──────────────────────
     var lightingVA  = sqFt * 3;
     var smallApplVA = smallAppl * 1500;
-    var laundryVA   = laundry * 1500;
     var generalTotal= lightingVA + smallApplVA + laundryVA;
 
     // NEC 220.42 Table: first 3000 VA @ 100%, 3001-120,000 @ 35%, remainder @ 25%
@@ -3334,7 +3331,7 @@ function lcUpdate() {
     var applianceCount = applianceItems.length;
     var appliancesDemand = applianceCount >= 4 ? appliancesVA * 0.75 : appliancesVA;
 
-    var hvacVA = Math.max(ac, heat, heatPump);
+    // (hvacVA already computed above)
     var evVA = ev;
 
     totalVA = lightingDemand + appliancesDemand + hvacVA + evVA;
@@ -3346,7 +3343,7 @@ function lcUpdate() {
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
     html += lcRow('Lighting ('+sqFt+' sq ft × 3 VA)', lightingVA);
     html += lcRow('Small Appliance Circuits', smallApplVA);
-    html += lcRow('Laundry', laundryVA);
+    html += lcRow('Laundry Circuit(s)', laundryVA, laundryItems.length === 0 ? 'None added' : '');
     html += lcRow('Subtotal', generalTotal);
     html += lcRow('After Demand Factor (Table 220.42)', Math.round(lightingDemand), 'First 3000 VA @ 100%, remainder @ 35%', true);
     html += '</div>';
@@ -3458,8 +3455,6 @@ function favGetValues(type) {
     voltage: document.getElementById('lcVoltage').value,
     scope: document.getElementById('lcScope') ? document.getElementById('lcScope').value : '',
     sqFt: document.getElementById('lcSqFt').value,
-    smallAppl: document.getElementById('lcSmallAppl').value,
-    laundry: document.getElementById('lcLaundry').value,
     appliances: JSON.stringify(window.lcAppliances || []),
     hvac: JSON.stringify(window.lcHvac || []),
     ev: JSON.stringify(window.lcEV || [])
@@ -3503,8 +3498,6 @@ function favSetValues(type, vals) {
     document.getElementById('lcVoltage').value = vals.voltage || '208';
     if (document.getElementById('lcScope') && vals.scope) { document.getElementById('lcScope').value = vals.scope; lcGuideChanged(); }
     document.getElementById('lcSqFt').value = vals.sqFt || '1500';
-    document.getElementById('lcSmallAppl').value = vals.smallAppl || '2';
-    document.getElementById('lcLaundry').value = vals.laundry || '1';
     try { window.lcAppliances = vals.appliances ? JSON.parse(vals.appliances) : []; } catch(e) { window.lcAppliances = []; }
     try { window.lcHvac = vals.hvac ? JSON.parse(vals.hvac) : []; } catch(e) { window.lcHvac = []; }
     try { window.lcEV = vals.ev ? JSON.parse(vals.ev) : []; } catch(e) { window.lcEV = []; }
@@ -3830,17 +3823,15 @@ function lcReset() {
   document.getElementById('lcMethod').value = 'optional';
   document.getElementById('lcVoltage').value = '208';
   document.getElementById('lcSqFt').value = '1500';
-  document.getElementById('lcSmallAppl').value = '2';
-  document.getElementById('lcLaundry').value = '1';
   window.lcAppliances = [
     { id: 'r1', name: 'Range / Oven', va: 12000, category: 'appliance' },
-    { id: 'r2', name: 'Water Heater', va: 4500, category: 'appliance' }
+    { id: 'r2', name: 'Water Heater', va: 4500, category: 'appliance' },
+    { id: 'r3', name: 'Laundry Circuit', va: 1500, category: 'laundry' }
   ];
   window.lcHvac = [
     { id: 'h1', name: 'A/C', va: 5000, category: 'ac' }
   ];
   window.lcEV = [];
-  if (document.getElementById('lcNycAC')) document.getElementById('lcNycAC').value = '0';
   if (document.getElementById('lcMeterVA')) document.getElementById('lcMeterVA').value = '0';
   if (document.getElementById('lcNumUnits')) document.getElementById('lcNumUnits').value = '12';
   if (document.getElementById('lcHouseLoads')) document.getElementById('lcHouseLoads').value = '0';
@@ -4692,7 +4683,7 @@ function lcInit() {
     container.innerHTML = '<div style="padding:14px;display:flex;flex-direction:column;gap:14px">' +
 
       // ── STEP 1: Method ──────────────────────────────────
-      lcSectionHeader('1', 'CHOOSE YOUR METHOD') +
+      lcSectionHeader('1', 'CHOOSE YOUR METHOD', 'lcStepMethod') +
       '<div class="ctrl" style="width:100%"><span class="ctrl-lbl">What are you sizing?</span><select id="lcScope" onchange="lcGuideChanged()" style="width:100%">' +
       '<option value="">— Select —</option>' +
       '<option value="house">Single-Family House</option>' +
@@ -4713,7 +4704,7 @@ function lcInit() {
       '<div id="lcMethodNote" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.6;padding:8px 10px;border-radius:3px;border-left:3px solid var(--accent);background:rgba(255,199,0,0.05)"></div>' +
 
       // ── STEP 2: Basics ──────────────────────────────────
-      lcSectionHeader('2', 'BASICS') +
+      lcSectionHeader('2', 'BASICS', 'lcStepBasics') +
       '<div class="ctrl" style="width:100%;max-width:220px"><span class="ctrl-lbl">Service Voltage</span><select id="lcVoltage" onchange="lcUpdate()" style="width:100%">' +
       '<option value="208">208V — 1Ø</option><option value="208_3">208V — 3Ø</option>' +
       '<option value="240" selected>240V — 1Ø</option><option value="240_3">240V — 3Ø</option>' +
@@ -4724,41 +4715,37 @@ function lcInit() {
 
       // ── STEP 3: Meter Data (only for nec87) ───────────
       '<div id="lcMeterSection" style="display:none">' +
-      lcSectionHeader('3', 'EXISTING LOAD FROM METER') +
+      lcSectionHeader('3', 'EXISTING LOAD FROM METER', 'lcStepMeter') +
       lcField('Peak Demand', 'lcMeterVA', 0, 'VA', 'Highest 15-min reading from meter — 12 months preferred') +
       '</div>' +
 
       // ── STEP 3b: Multifamily Building (only for multifamily) ──
       '<div id="lcMultifamilySection" style="display:none">' +
-      lcSectionHeader('3', 'BUILDING — MULTIFAMILY') +
+      lcSectionHeader('3', 'BUILDING — MULTIFAMILY', 'lcStepMultifamily') +
       '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin:-6px 0 4px">All values below (floor area, appliances, HVAC) are PER UNIT — the app multiplies by unit count and applies Table 220.84</div>' +
       lcField('Number of Dwelling Units', 'lcNumUnits', 12, 'units', '3+ required to use this method — each unit needs electric cooking + electric heat or A/C') +
       lcField('House Loads', 'lcHouseLoads', 0, 'VA', 'Common areas only — hallway/lobby lighting, elevators, laundry room, pool — NOT demand-factored, added at 100%') +
       '</div>' +
 
       // ── STEP 4: Fixed Appliances — dynamic list ─────────
-      lcSectionHeader('4', 'FIXED APPLIANCES') +
-      lcField('Small Appliance Circuits', 'lcSmallAppl', 2, 'circuits', 'Kitchen/dining 20A circuits — min. 2 required') +
-      lcField('Laundry Circuits', 'lcLaundry', 1, 'circuits', 'Min. 1 required if dwelling has laundry area') +
-      '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin:4px 0 4px">Add each appliance — add more than one of the same kind if needed (e.g. 2 ovens)</div>' +
+      lcSectionHeader('4', 'FIXED APPLIANCES', 'lcStepAppliances') +
+      '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin:4px 0 4px">Add each appliance — add more than one of the same kind if needed (e.g. 2 ovens). Small appliance circuits (kitchen/dining) are counted automatically per NEC minimum — no need to add them. Laundry Circuit is legally part of "General Loads" (NEC 220.82(B)(2)), so it shows up under that heading in the results below, not with the other fixed appliances.</div>' +
       '<div id="lcApplianceList"></div>' +
       lcAddPicker('appliance') +
 
       // ── STEP 5: HVAC — dynamic list ──────────────────────
-      lcSectionHeader('5', 'HEATING / COOLING') +
+      lcSectionHeader('5', 'HEATING / COOLING', 'lcStepHeating') +
       '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin:-6px 0 4px">Add every unit — items in the same category are added together, then only the LARGEST category (A/C vs Heat vs Heat Pump) counts</div>' +
       '<div id="lcHvacList"></div>' +
       lcAddPicker('hvac') +
 
       // ── STEP 6: EV Chargers — dynamic list ───────────────
-      lcSectionHeader('6', 'EV CHARGERS') +
+      '<div id="lcEVSection">' +
+      lcSectionHeader('6', 'EV CHARGERS', 'lcStepEV') +
       '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin:-6px 0 4px">Add one per charger — each counted at 100%</div>' +
       '<div id="lcEVList"></div>' +
       lcAddPicker('ev') +
-
-      // ── NYC extras (kept as single field — building-wide) ──
-      lcSectionHeader('7', 'NYC EXTRAS') +
-      lcField('NYC AC Outlets', 'lcNycAC', 0, 'outlets', 'NYCEC 220.14(N) — 1,500 VA per dedicated A/C outlet', true) +
+      '</div>' +
 
       '<div class="fav-bar" style="margin-top:4px"><button class="reset-btn" onclick="lcReset()">↺ Reset</button><button class="save-btn" onclick="favSave(\'lc\')">⭐ Save</button></div>' +
       '<div class="fav-list" id="lc-fav-list"></div>' +
@@ -4769,9 +4756,9 @@ function lcInit() {
   }
 }
 
-function lcSectionHeader(num, title) {
+function lcSectionHeader(num, title, circleId) {
   return '<div style="display:flex;align-items:center;gap:8px;margin-top:4px">' +
-    '<div style="background:var(--surface2);border:1px solid var(--accent);border-radius:50%;width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:Bebas Neue,sans-serif;font-size:12px;color:var(--accent)">' + num + '</div>' +
+    '<div id="' + (circleId || '') + '" style="background:var(--surface2);border:1px solid var(--accent);border-radius:50%;width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:Bebas Neue,sans-serif;font-size:12px;color:var(--accent)">' + num + '</div>' +
     '<div style="font-family:Bebas Neue,sans-serif;font-size:14px;letter-spacing:2px;color:var(--accent)">' + title + '</div></div>';
 }
 
@@ -4789,11 +4776,12 @@ function lcField(label, id, val, unit, hint, isNyc) {
 // ── DYNAMIC APPLIANCE / HVAC / EV LISTS ───────────────────
 var LC_PRESETS = {
   appliance: [
-    ['Range / Oven', 12000], ['Dryer', 5000], ['Dishwasher', 1500],
+    ['Laundry Circuit', 1500, 'laundry'], ['Range / Oven', 12000], ['Dryer', 5000], ['Dishwasher', 1500],
     ['Microwave', 1500], ['Garbage Disposal', 900], ['Water Heater', 4500], ['Other', 1500]
   ],
   hvac: [
-    ['A/C', 5000, 'ac'], ['Electric Heat', 10000, 'heat'], ['Heat Pump', 6000, 'heatpump']
+    ['A/C Unit', 5000, 'ac'], ['Electric Heat', 10000, 'heat'], ['Heat Pump', 6000, 'heatpump'],
+    ['A/C Window Outlet — NYCEC 220.14(N)', 1500, 'ac']
   ],
   ev: [
     ['EV Charger — Level 2', 7200], ['EV Charger — Level 1', 1800]
@@ -4897,6 +4885,15 @@ function lcGuideChanged() {
       '</select></div>';
   } else if (scope === 'commercial') {
     followupEl.innerHTML = '';
+  }
+
+  // Update EV Chargers visibility immediately based on scope, independent of
+  // whether the rest of the guide has resolved a method yet
+  var evSection = document.getElementById('lcEVSection');
+  if (evSection) {
+    var hideEV = (scope === 'apartment');
+    evSection.style.display = hideEV ? 'none' : 'flex';
+    if (hideEV) window.lcEV = [];
   }
 
   lcGuideResolve();
@@ -5008,6 +5005,33 @@ function lcShowMethodOverride() {
   if (confirm) confirm.style.display = 'none';
 }
 
+function lcRenumberSteps(isMeterMethod, isMultifamily) {
+  // Step 3 (Meter or Multifamily) only exists for some methods — renumber
+  // everything after it so there are never gaps like 1, 2, 4 (skipping 3).
+  var hasStep3 = isMeterMethod || isMultifamily;
+  var n = 3;
+  var stepMeter = document.getElementById('lcStepMeter');
+  var stepMf = document.getElementById('lcStepMultifamily');
+  if (stepMeter) stepMeter.textContent = isMeterMethod ? n : '';
+  if (stepMf) stepMf.textContent = isMultifamily ? n : '';
+  if (hasStep3) n++;
+
+  var stepAppliances = document.getElementById('lcStepAppliances');
+  if (stepAppliances) stepAppliances.textContent = n++;
+  var stepHeating = document.getElementById('lcStepHeating');
+  if (stepHeating) stepHeating.textContent = n++;
+
+  // EV Chargers — hidden for a single apartment unit (parking/EV is almost
+  // always on the building's own circuit, not routed through one unit's panel)
+  var scope = document.getElementById('lcScope') ? document.getElementById('lcScope').value : '';
+  var hideEV = (scope === 'apartment');
+  var evSection = document.getElementById('lcEVSection');
+  if (evSection) evSection.style.display = hideEV ? 'none' : 'flex';
+  if (hideEV) { window.lcEV = []; } // clear any EV items so they don't silently count toward the total
+  var stepEV = document.getElementById('lcStepEV');
+  if (stepEV && !hideEV) stepEV.textContent = n++;
+}
+
 function lcMethodChanged() {
   var method = document.getElementById('lcMethod').value;
   var meterSection = document.getElementById('lcMeterSection');
@@ -5017,6 +5041,8 @@ function lcMethodChanged() {
 
   if (meterSection) { meterSection.style.display = isMeterMethod ? 'flex' : 'none'; meterSection.style.flexDirection = 'column'; meterSection.style.gap = '10px'; }
   if (mfSection) { mfSection.style.display = isMultifamily ? 'flex' : 'none'; mfSection.style.flexDirection = 'column'; mfSection.style.gap = '10px'; }
+
+  lcRenumberSteps(isMeterMethod, isMultifamily);
 
   var noteEl = document.getElementById('lcMethodNote');
   if (noteEl) {
