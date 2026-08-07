@@ -1132,7 +1132,11 @@ Voltage Drop (MANDATORY in NYC — not just recommended):
 
 Load Calculations:
 - NYCEC 220.14(N): Each AC outlet = min 1500VA in load calculation
-- NYCEC 220.87: Existing loads — max demand data acceptable (12 months or min 30 days)
+- NEC 220.82: Optional, one dwelling unit, new/full recalc
+- NEC 220.83: Optional, one dwelling unit, existing + adding load
+- NEC 220.84: Optional, multifamily building 3+ units (needs electric cooking + electric heat/AC in every unit)
+- NEC 220.42: Standard Method — required for commercial, fallback when Optional Method conditions aren't met
+- NEC 220.87: Existing loads — max demand data acceptable (12 months or min 30 days)
 
 Services & Equipment:
 - NYCEC 230.64: Services ≥1000 kVA — 2-hr fire rated room, 5 ft working space, 2 egress paths
@@ -3068,6 +3072,19 @@ function lcSection(title) {
   return '<div style="background:rgba(245,166,35,0.08);border-left:3px solid var(--accent);padding:8px 14px;font-family:Bebas Neue,monospace;font-size:13px;letter-spacing:2px;color:var(--accent)">' + title + '</div>';
 }
 
+// ── NEC TABLE 220.84 — Multifamily Demand Factors ─────────
+function lcTable22084(units) {
+  var table = [
+    [5,45],[7,44],[10,43],[11,42],[13,41],[15,40],[17,39],[20,38],
+    [21,37],[23,36],[25,35],[27,34],[30,33],[31,32],[33,31],[36,30],
+    [38,29],[42,28],[45,27],[50,26],[55,25],[61,24]
+  ];
+  for (var i = 0; i < table.length; i++) {
+    if (units <= table[i][0]) return table[i][1];
+  }
+  return 23; // 62 and over
+}
+
 function lcUpdate() {
   if (!document.getElementById('lcMethod')) return;
   var method  = document.getElementById('lcMethod').value;
@@ -3078,65 +3095,63 @@ function lcUpdate() {
   if (voltageRaw === '240_3') voltage = 240;
   var voltageLabel = voltage + 'V ' + (is3phase ? '3Ø' : '1Ø');
 
-  var occupancy = document.getElementById('lcOccupancy') ? document.getElementById('lcOccupancy').value : 'sf';
+  var scope = document.getElementById('lcScope') ? document.getElementById('lcScope').value : '';
   var nycAC = parseInt(document.getElementById('lcNycAC') ? document.getElementById('lcNycAC').value : 0) || 0;
   var meterVA = parseFloat(document.getElementById('lcMeterVA') ? document.getElementById('lcMeterVA').value : 0) || 0;
   var nycACVA = nycAC * 1500;
 
-  // Show/hide meter field for NYCEC 220.87
-  var meterGroup = document.getElementById('lcMeterDataGroup');
-  if (meterGroup) meterGroup.style.display = method === 'nycec87' ? '' : 'none';
-
-  // Occupancy note
+  // Occupancy note — derived from "What are you sizing?" answer in Step 1
   var occEl = document.getElementById('lcOccupancyNote');
   if (occEl) {
     var occNotes = {
-      sf:    'Single Family · Optional Method allowed · 240V/1Ø',
-      mf:    'Multifamily · Optional Method per unit · 208V/1Ø · NYCEC: AFCI exempt kitchen/laundry (3+ floors)',
-      comm:  '⚠ Commercial · Standard Method 220.42 ONLY · Optional Method not permitted',
-      mixed: 'Mixed Use · Residential units: Optional · Commercial space: Standard 220.42'
+      house:      'Single-Family House · 240V/1Ø typical',
+      apartment:  'One Apartment / Unit · 208V/1Ø typical in NYC',
+      building:   'Multifamily Building · demand factor by unit count · NYCEC: AFCI exempt kitchen/laundry (3+ floors)',
+      commercial: '⚠ Commercial · Standard Method 220.42 required'
     };
-    occEl.textContent = occNotes[occupancy] || '';
-    occEl.style.borderColor = (occupancy === 'comm') ? 'var(--danger)' : (occupancy === 'mf') ? 'var(--nycec)' : 'var(--border)';
-    occEl.style.color = (occupancy === 'comm') ? 'var(--danger)' : 'var(--text-dim)';
+    occEl.textContent = occNotes[scope] || 'Select "What are you sizing?" above in Step 1';
+    occEl.style.borderColor = (scope === 'commercial') ? 'var(--danger)' : (scope === 'building') ? 'var(--nycec)' : 'var(--border)';
+    occEl.style.color = (scope === 'commercial') ? 'var(--danger)' : 'var(--text-dim)';
   }
 
   var sqFt    = parseFloat(document.getElementById('lcSqFt').value) || 0;
   var smallAppl = parseInt(document.getElementById('lcSmallAppl').value) || 2;
   var laundry   = parseInt(document.getElementById('lcLaundry').value) || 1;
-  var range     = parseFloat(document.getElementById('lcRange').value) || 0;
-  var dryer     = parseFloat(document.getElementById('lcDryer').value) || 0;
-  var dishwasher= parseFloat(document.getElementById('lcDishwasher').value) || 0;
-  var microwave = parseFloat(document.getElementById('lcMicrowave').value) || 0;
-  var disposal  = parseFloat(document.getElementById('lcDisposal').value) || 0;
-  var waterHtr  = parseFloat(document.getElementById('lcWaterHtr').value) || 0;
-  var other     = parseFloat(document.getElementById('lcOther').value) || 0;
-  var ac        = parseFloat(document.getElementById('lcAC').value) || 0;
-  var heat      = parseFloat(document.getElementById('lcHeat').value) || 0;
-  var heatPump  = parseFloat(document.getElementById('lcHeatPump').value) || 0;
-  var ev        = parseFloat(document.getElementById('lcEV').value) || 0;
+
+  // Sum dynamic appliance list
+  var applianceItems = window.lcAppliances || [];
+  var appliancesVA = applianceItems.reduce(function(s, i) { return s + i.va; }, 0);
+
+  // Sum dynamic HVAC list by category, then take the largest category total
+  var hvacItems = window.lcHvac || [];
+  var hvacByCat = { ac: 0, heat: 0, heatpump: 0 };
+  hvacItems.forEach(function(i) { hvacByCat[i.category] = (hvacByCat[i.category] || 0) + i.va; });
+  var ac = hvacByCat.ac, heat = hvacByCat.heat, heatPump = hvacByCat.heatpump;
+
+  // Sum dynamic EV list
+  var evItems = window.lcEV || [];
+  var ev = evItems.reduce(function(s, i) { return s + i.va; }, 0);
 
   var html = '';
   var totalVA = 0;
 
-  if (method === 'nycec87') {
-    // ── NYCEC 220.87 — Existing Load from Meter Data ──────
-    var newLoadsVA = range + dryer + dishwasher + microwave + disposal + waterHtr + other + ev + nycACVA;
+  if (method === 'nec87') {
+    // ── NEC 220.87 — Existing Load from Meter Data ──────
+    var newLoadsVA = appliancesVA + ev + nycACVA;
     var newLoads25 = newLoadsVA * 1.25;
     totalVA = meterVA + newLoads25;
-    html += '<div style="font-family:Bebas Neue,monospace;font-size:22px;letter-spacing:2px;color:var(--nycec);margin-bottom:16px">NYCEC 220.87 — EXISTING LOAD (METER DATA)</div>';
+    html += '<div style="font-family:Bebas Neue,monospace;font-size:22px;letter-spacing:2px;color:var(--nycec);margin-bottom:16px">NEC 220.87 — EXISTING LOAD (METER DATA)</div>';
     html += lcSection('STEP 1 — EXISTING LOAD FROM METER');
     html += '<div style="background:rgba(74,158,255,0.06);border:1px solid rgba(74,158,255,0.3);border-radius:4px;margin-bottom:12px;overflow:hidden">';
     html += lcRow('Peak Demand (from meter data)', meterVA, 'Use highest 15-min reading — 12 months preferred');
     html += '</div>';
     html += lcSection('STEP 2 — NEW LOADS × 125%');
     html += '<div style="background:rgba(74,158,255,0.06);border:1px solid rgba(74,158,255,0.3);border-radius:4px;margin-bottom:12px;overflow:hidden">';
-    if (range) html += lcRow('Range/Oven', range);
-    if (dryer) html += lcRow('Dryer', dryer);
-    if (ev) html += lcRow('EV Charger', ev);
+    applianceItems.forEach(function(i) { html += lcRow(i.name, i.va); });
+    evItems.forEach(function(i) { html += lcRow(i.name, i.va); });
     if (nycACVA) html += lcRow('NYC AC Outlets ('+nycAC+' × 1,500 VA)', nycACVA, 'NYCEC 220.14(N)');
     html += lcRow('New Loads Subtotal', newLoadsVA);
-    html += lcRow('New Loads × 125%', Math.round(newLoads25), 'NYCEC 220.87', true);
+    html += lcRow('New Loads × 125%', Math.round(newLoads25), 'NEC 220.87', true);
     html += '</div>';
   } else if (method === 'optional') {
     // ── NEC 220.82 Optional Method ────────────────────────
@@ -3153,9 +3168,9 @@ function lcUpdate() {
       : 10000 + (generalTotal - 10000) * 0.40;
 
     // Step 3: Fixed appliances at 100%
-    var appliancesVA  = range + dryer + dishwasher + microwave + disposal + waterHtr + other;
+    // (appliancesVA already computed above)
 
-    // Step 4: Heating/Cooling — use LARGEST at 100%
+    // Step 4: Heating/Cooling — use LARGEST category at 100%
     var hvacVA = Math.max(ac, heat, heatPump);
 
     // Step 5: EV at 100%
@@ -3187,30 +3202,27 @@ function lcUpdate() {
     // Appliances
     html += lcSection('STEP 3 — FIXED APPLIANCES @ 100% (220.82(C)(1))');
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
-    if (range)      html += lcRow('Range / Oven', range);
-    if (dryer)      html += lcRow('Dryer', dryer);
-    if (dishwasher) html += lcRow('Dishwasher', dishwasher);
-    if (microwave)  html += lcRow('Microwave', microwave);
-    if (disposal)   html += lcRow('Disposal', disposal);
-    if (waterHtr)   html += lcRow('Water Heater', waterHtr);
-    if (other)      html += lcRow('Other Appliance', other);
+    if (applianceItems.length === 0) html += lcRow('No appliances added', 0);
+    applianceItems.forEach(function(i) { html += lcRow(i.name, i.va); });
     html += lcRow('Appliances Subtotal', appliancesVA, '@ 100%', true);
     html += '</div>';
 
     // HVAC
-    html += lcSection('STEP 4 — HEATING/COOLING — USE LARGEST (220.82(C)(2))');
+    html += lcSection('STEP 4 — HEATING/COOLING — LARGEST CATEGORY (220.82(C)(2))');
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
-    html += lcRow('A/C', ac, ac >= heat && ac >= heatPump ? '← LARGEST — used' : 'not used');
-    if (heat > 0) html += lcRow('Electric Heat', heat, heat >= ac && heat >= heatPump ? '← LARGEST — used' : 'not used');
-    if (heatPump > 0) html += lcRow('Heat Pump', heatPump, heatPump >= ac && heatPump >= heat ? '← LARGEST — used' : 'not used');
+    if (hvacItems.length === 0) html += lcRow('No HVAC units added', 0);
+    html += lcRow('A/C total', ac, ac >= heat && ac >= heatPump && ac > 0 ? '← LARGEST — used' : 'not used');
+    if (heat > 0) html += lcRow('Electric Heat total', heat, heat >= ac && heat >= heatPump ? '← LARGEST — used' : 'not used');
+    if (heatPump > 0) html += lcRow('Heat Pump total', heatPump, heatPump >= ac && heatPump >= heat ? '← LARGEST — used' : 'not used');
     html += lcRow('HVAC Load Used', hvacVA, '@ 100%', true);
     html += '</div>';
 
     // EV
-    if (ev > 0) {
-      html += lcSection('EV CHARGER @ 100%');
+    if (evItems.length > 0) {
+      html += lcSection('EV CHARGERS @ 100%');
       html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
-      html += lcRow('EV Charger', ev, '@ 100%');
+      evItems.forEach(function(i) { html += lcRow(i.name, i.va); });
+      html += lcRow('EV Subtotal', evVA, '@ 100%', true);
       html += '</div>';
     }
 
@@ -3219,9 +3231,9 @@ function lcUpdate() {
     var lightingVA  = sqFt * 3;
     var smallApplVA = smallAppl * 1500;
     var laundryVA   = laundry * 1500;
-    var appliancesVA= range + dryer + dishwasher + microwave + disposal + waterHtr + other + ev;
+    var appliancesTotal83 = appliancesVA + ev;
     var hvacVA      = Math.max(ac, heat, heatPump);
-    var allLoads    = lightingVA + smallApplVA + laundryVA + appliancesVA + hvacVA;
+    var allLoads    = lightingVA + smallApplVA + laundryVA + appliancesTotal83 + hvacVA;
 
     // 220.83: First 8,000 VA @ 100%, remainder @ 40%
     var demand = allLoads <= 8000
@@ -3238,8 +3250,8 @@ function lcUpdate() {
     html += lcRow('General Lighting ('+sqFt+' sq ft × 3 VA)', lightingVA, 'NEC 220.83');
     html += lcRow('Small Appliance Circuits', smallApplVA);
     html += lcRow('Laundry', laundryVA);
-    html += lcRow('All Appliances', appliancesVA);
-    html += lcRow('HVAC (largest)', hvacVA);
+    html += lcRow('All Appliances + EV', appliancesTotal83);
+    html += lcRow('HVAC (largest category)', hvacVA);
     html += lcRow('Total Before Demand', Math.round(allLoads), '', false);
     html += '</div>';
 
@@ -3252,6 +3264,56 @@ function lcUpdate() {
     html += lcRow('Total After Demand Factor', Math.round(demand), demandNote83, true);
     html += '</div>';
 
+  } else if (method === 'multifamily') {
+    // ── NEC 220.84 Optional Method — Multifamily Building (3+ units) ──
+    var numUnits = parseInt(document.getElementById('lcNumUnits').value) || 3;
+    var houseLoads = parseFloat(document.getElementById('lcHouseLoads').value) || 0;
+
+    var lightingVAu  = sqFt * 3;
+    var smallApplVAu = smallAppl * 1500;
+    var laundryVAu   = laundry * 1500;
+    var hvacVAu      = Math.max(ac, heat, heatPump);
+    var perUnitTotal = lightingVAu + smallApplVAu + laundryVAu + appliancesVA + hvacVAu;
+
+    var totalConnected = perUnitTotal * numUnits;
+    var demandPct = lcTable22084(numUnits);
+    var demandLoad = totalConnected * (demandPct / 100);
+
+    totalVA = demandLoad + houseLoads + ev;
+    var totalAmps = totalVA / voltage;
+
+    html += '<div style="font-family:Bebas Neue,monospace;font-size:22px;letter-spacing:2px;color:var(--accent);margin-bottom:16px">NEC 220.84 — MULTIFAMILY BUILDING</div>';
+
+    html += lcSection('PER-UNIT LOAD (× ' + numUnits + ' units)');
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    html += lcRow('Lighting (' + sqFt.toLocaleString() + ' sq ft × 3 VA)', lightingVAu, 'per unit');
+    html += lcRow('Small Appliance Circuits', smallApplVAu, 'per unit');
+    html += lcRow('Laundry Circuit(s)', laundryVAu, 'per unit — 0 if common laundry room');
+    html += lcRow('Fixed Appliances', appliancesVA, 'per unit — from list below');
+    html += lcRow('HVAC (largest category)', hvacVAu, 'per unit');
+    html += lcRow('Per-Unit Subtotal', perUnitTotal, '', false);
+    html += '</div>';
+
+    html += lcSection('TOTAL CONNECTED LOAD — ALL UNITS');
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    html += lcRow('Per-Unit Subtotal × ' + numUnits + ' units', totalConnected, 'NEC 220.84(C)');
+    html += '</div>';
+
+    html += lcSection('DEMAND FACTOR — TABLE 220.84 (' + numUnits + ' units)');
+    html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+    html += lcRow('After Demand Factor (' + demandPct + '%)', Math.round(demandLoad), numUnits + ' units → ' + demandPct + '% per Table 220.84', true);
+    html += '</div>';
+
+    if (houseLoads > 0 || ev > 0) {
+      html += lcSection('ADDED AT 100% — NOT DEMAND-FACTORED');
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+      if (houseLoads > 0) html += lcRow('House Loads (common areas)', houseLoads, 'NEC 220.84(B) — Part III calc');
+      if (ev > 0) {
+        evItems.forEach(function(i) { html += lcRow(i.name, i.va, 'building total'); });
+      }
+      html += '</div>';
+    }
+
   } else {
     // ── Standard Method NEC 220.42 ──────────────────────
     var lightingVA  = sqFt * 3;
@@ -3259,20 +3321,15 @@ function lcUpdate() {
     var laundryVA   = laundry * 1500;
     var generalTotal= lightingVA + smallApplVA + laundryVA;
 
-    // 220.42 demand factors: first 3000 VA @ 35%, next 117,000 @ 35%, remainder @ 25%
-    // Simplified: first 3000 @ 100% after applying 35% = 3000*0.35? 
-    // Actually NEC 220.42: first 3000 VA @ 35%, 3001-120,000 @ 35%, >120,000 @ 25%
-    // Wait — correct: first 3000 @ 100% then apply 35% to general lighting only
-    // Standard method: lighting+small appl+laundry then demand table 220.42
+    // NEC 220.42 Table: first 3000 VA @ 100%, 3001-120,000 @ 35%, remainder @ 25%
     var lightingDemand;
     if (generalTotal <= 3000) lightingDemand = generalTotal;
     else if (generalTotal <= 120000) lightingDemand = 3000 + (generalTotal - 3000) * 0.35;
     else lightingDemand = 3000 + 117000 * 0.35 + (generalTotal - 120000) * 0.25;
 
-    // Appliances: 4+ fixed appliances get 75% demand
-    var appliances = [range, dryer, dishwasher, microwave, disposal, waterHtr, other].filter(function(v){return v>0;});
-    var appliancesTotal = appliances.reduce(function(a,b){return a+b;},0);
-    var appliancesDemand = appliances.length >= 4 ? appliancesTotal * 0.75 : appliancesTotal;
+    // Appliances: 4+ fixed appliances get 75% demand (count = number of items added)
+    var applianceCount = applianceItems.length;
+    var appliancesDemand = applianceCount >= 4 ? appliancesVA * 0.75 : appliancesVA;
 
     var hvacVA = Math.max(ac, heat, heatPump);
     var evVA = ev;
@@ -3293,9 +3350,18 @@ function lcUpdate() {
 
     html += lcSection('FIXED APPLIANCES');
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
-    html += lcRow('Appliances Total', appliancesTotal);
-    html += lcRow('After Demand ('+appliances.length+'+ = 75%)', Math.round(appliancesDemand), appliances.length >= 4 ? '4+ appliances @ 75%' : 'Fewer than 4 @ 100%', true);
+    if (applianceItems.length === 0) html += lcRow('No appliances added', 0);
+    applianceItems.forEach(function(i) { html += lcRow(i.name, i.va); });
+    html += lcRow('Appliances Total', appliancesVA);
+    html += lcRow('After Demand ('+applianceCount+' items = '+(applianceCount>=4?'75%':'100%')+')', Math.round(appliancesDemand), applianceCount >= 4 ? '4+ appliances @ 75%' : 'Fewer than 4 @ 100%', true);
     html += '</div>';
+
+    if (evItems.length > 0) {
+      html += lcSection('EV CHARGERS @ 100%');
+      html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;margin-bottom:12px;overflow:hidden">';
+      evItems.forEach(function(i) { html += lcRow(i.name, i.va); });
+      html += '</div>';
+    }
   }
 
   // ── FINAL RESULT (all methods) ────────────────────────
@@ -3387,14 +3453,13 @@ function favGetValues(type) {
   if (type === 'lc') return {
     method: document.getElementById('lcMethod').value,
     voltage: document.getElementById('lcVoltage').value,
-    occupancy: document.getElementById('lcOccupancy') ? document.getElementById('lcOccupancy').value : 'sf',
+    scope: document.getElementById('lcScope') ? document.getElementById('lcScope').value : '',
     sqFt: document.getElementById('lcSqFt').value,
     smallAppl: document.getElementById('lcSmallAppl').value,
     laundry: document.getElementById('lcLaundry').value,
-    range: document.getElementById('lcRange').value,
-    dryer: document.getElementById('lcDryer').value,
-    ac: document.getElementById('lcAC').value,
-    ev: document.getElementById('lcEV').value
+    appliances: JSON.stringify(window.lcAppliances || []),
+    hvac: JSON.stringify(window.lcHvac || []),
+    ev: JSON.stringify(window.lcEV || [])
   };
   return {};
 }
@@ -3433,15 +3498,15 @@ function favSetValues(type, vals) {
   } else if (type === 'lc') {
     document.getElementById('lcMethod').value = vals.method || 'optional';
     document.getElementById('lcVoltage').value = vals.voltage || '208';
-    if (document.getElementById('lcOccupancy') && vals.occupancy) document.getElementById('lcOccupancy').value = vals.occupancy;
+    if (document.getElementById('lcScope') && vals.scope) { document.getElementById('lcScope').value = vals.scope; lcGuideChanged(); }
     document.getElementById('lcSqFt').value = vals.sqFt || '1500';
     document.getElementById('lcSmallAppl').value = vals.smallAppl || '2';
     document.getElementById('lcLaundry').value = vals.laundry || '1';
-    document.getElementById('lcRange').value = vals.range || '0';
-    document.getElementById('lcDryer').value = vals.dryer || '0';
-    document.getElementById('lcAC').value = vals.ac || '0';
-    document.getElementById('lcEV').value = vals.ev || '0';
-    lcUpdate();
+    try { window.lcAppliances = vals.appliances ? JSON.parse(vals.appliances) : []; } catch(e) { window.lcAppliances = []; }
+    try { window.lcHvac = vals.hvac ? JSON.parse(vals.hvac) : []; } catch(e) { window.lcHvac = []; }
+    try { window.lcEV = vals.ev ? JSON.parse(vals.ev) : []; } catch(e) { window.lcEV = []; }
+    lcRenderLists();
+    lcMethodChanged();
   }
 }
 
@@ -3761,24 +3826,23 @@ function vdReset() {
 function lcReset() {
   document.getElementById('lcMethod').value = 'optional';
   document.getElementById('lcVoltage').value = '208';
-  if (document.getElementById('lcOccupancy')) document.getElementById('lcOccupancy').value = 'mf';
   document.getElementById('lcSqFt').value = '1500';
   document.getElementById('lcSmallAppl').value = '2';
   document.getElementById('lcLaundry').value = '1';
-  document.getElementById('lcRange').value = '12000';
-  document.getElementById('lcDryer').value = '5000';
-  document.getElementById('lcDishwasher').value = '1500';
-  document.getElementById('lcMicrowave').value = '1500';
-  document.getElementById('lcDisposal').value = '900';
-  document.getElementById('lcWaterHtr').value = '4500';
-  document.getElementById('lcOther').value = '0';
-  document.getElementById('lcAC').value = '5000';
-  document.getElementById('lcHeat').value = '0';
-  document.getElementById('lcHeatPump').value = '0';
-  document.getElementById('lcEV').value = '0';
+  window.lcAppliances = [
+    { id: 'r1', name: 'Range / Oven', va: 12000, category: 'appliance' },
+    { id: 'r2', name: 'Water Heater', va: 4500, category: 'appliance' }
+  ];
+  window.lcHvac = [
+    { id: 'h1', name: 'A/C', va: 5000, category: 'ac' }
+  ];
+  window.lcEV = [];
   if (document.getElementById('lcNycAC')) document.getElementById('lcNycAC').value = '0';
   if (document.getElementById('lcMeterVA')) document.getElementById('lcMeterVA').value = '0';
-  lcUpdate();
+  if (document.getElementById('lcNumUnits')) document.getElementById('lcNumUnits').value = '12';
+  if (document.getElementById('lcHouseLoads')) document.getElementById('lcHouseLoads').value = '0';
+  lcRenderLists();
+  lcMethodChanged();
 }
 function cvReset() {
   document.getElementById('cv-voltage').value = '240';
@@ -4618,38 +4682,352 @@ function initOutletsIfNeeded() {
 function lcInit() {
   var container = document.getElementById('lcContent');
   if (container && container.innerHTML.trim() === '') {
-    container.innerHTML = '<div style="padding:14px;display:flex;flex-direction:column;gap:12px">' +
-      '<div class="ctrl"><span class="ctrl-lbl">Calculation Method</span><select id="lcMethod" onchange="lcUpdate()" style="width:100%">' +
-      '<option value="optional">220.82 — Optional · New Dwelling</option>' +
-      '<option value="existing">220.83 — Optional · Existing Dwelling</option>' +
+    if (!window.lcAppliances) window.lcAppliances = [];
+    if (!window.lcHvac) window.lcHvac = [];
+    if (!window.lcEV) window.lcEV = [];
+
+    container.innerHTML = '<div style="padding:14px;display:flex;flex-direction:column;gap:14px">' +
+
+      // ── STEP 1: Method ──────────────────────────────────
+      lcSectionHeader('1', 'CHOOSE YOUR METHOD') +
+      '<div class="ctrl" style="width:100%"><span class="ctrl-lbl">What are you sizing?</span><select id="lcScope" onchange="lcGuideChanged()" style="width:100%">' +
+      '<option value="">— Select —</option>' +
+      '<option value="house">Single-Family House</option>' +
+      '<option value="apartment">One Apartment / Unit (has its own feeder)</option>' +
+      '<option value="building">Whole Multifamily Building (3+ units, main service)</option>' +
+      '<option value="commercial">Commercial Space</option>' +
+      '</select></div>' +
+      '<div id="lcScopeFollowup"></div>' +
+      '<div id="lcGuideResult"></div>' +
+      '<div id="lcMethodConfirm" style="display:none;font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)"></div>' +
+      '<div class="ctrl" id="lcMethodWrap" style="width:100%"><span class="ctrl-lbl">Calculation Method</span><select id="lcMethod" onchange="lcMethodChanged()" style="width:100%">' +
+      '<option value="optional">220.82 — New Dwelling Unit (Optional)</option>' +
+      '<option value="existing">220.83 — Existing Dwelling, Adding Load</option>' +
+      '<option value="multifamily">220.84 — Multifamily Building (3+ Units)</option>' +
       '<option value="standard">220.42 — Standard Method</option>' +
-      '<option value="nycec87">NYCEC 220.87 — Existing · Meter Data</option>' +
+      '<option value="nec87">NEC 220.87 — Existing Load From Meter Data</option>' +
       '</select></div>' +
-      '<div class="ctrl"><span class="ctrl-lbl">Service Voltage</span><select id="lcVoltage" onchange="lcUpdate()" style="width:100%">' +
-      '<option value="208">208V — Single Phase</option><option value="208_3">208V — Three Phase</option>' +
-      '<option value="240" selected>240V — Single Phase</option><option value="240_3">240V — Three Phase</option>' +
-      '<option value="480">480V — Three Phase</option>' +
-      '</select></div>' +
-      '<div class="ctrl"><span class="ctrl-lbl">Occupancy Type</span><select id="lcOccupancy" onchange="lcUpdate()" style="width:100%">' +
-      '<option value="sf">Single Family</option><option value="mf" selected>Multifamily</option>' +
-      '<option value="comm">Commercial</option><option value="mixed">Mixed Use</option>' +
+      '<div id="lcMethodNote" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.6;padding:8px 10px;border-radius:3px;border-left:3px solid var(--accent);background:rgba(255,199,0,0.05)"></div>' +
+
+      // ── STEP 2: Basics ──────────────────────────────────
+      lcSectionHeader('2', 'BASICS') +
+      '<div class="ctrl" style="width:100%;max-width:220px"><span class="ctrl-lbl">Service Voltage</span><select id="lcVoltage" onchange="lcUpdate()" style="width:100%">' +
+      '<option value="208">208V — 1Ø</option><option value="208_3">208V — 3Ø</option>' +
+      '<option value="240" selected>240V — 1Ø</option><option value="240_3">240V — 3Ø</option>' +
+      '<option value="480">480V — 3Ø</option>' +
       '</select></div>' +
       '<div id="lcOccupancyNote" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.6;padding:6px 10px;border-radius:3px;border-left:3px solid var(--border);background:rgba(255,255,255,0.02)"></div>' +
-      lcField('Floor Area (sq ft)', 'lcSqFt', 1500) + lcField('Small Appliance Circuits (min 2)', 'lcSmallAppl', 2) + lcField('Laundry Circuits (min 1)', 'lcLaundry', 1) +
-      lcField('Range / Oven (VA)', 'lcRange', 12000) + lcField('Dryer (VA)', 'lcDryer', 5000) + lcField('Dishwasher (VA)', 'lcDishwasher', 1500) + lcField('Microwave (VA)', 'lcMicrowave', 1500) + lcField('Disposal (VA)', 'lcDisposal', 900) + lcField('Water Heater (VA)', 'lcWaterHtr', 4500) + lcField('Other Fixed Appliance (VA)', 'lcOther', 0) +
-      lcField('A/C (VA)', 'lcAC', 5000) + lcField('Electric Heat (VA)', 'lcHeat', 0) + lcField('Heat Pump (VA)', 'lcHeatPump', 0) + lcField('EV Charger (VA)', 'lcEV', 0) +
-      '<div class="ctrl" style="border-top:1px solid var(--nycec);padding-top:10px"><span class="ctrl-lbl" style="color:var(--nycec)">AC Outlets — NYCEC 220.14(N) (1,500VA each)</span><input type="number" id="lcNycAC" value="0" min="0" max="20" oninput="lcUpdate()" style="width:90px"></div>' +
-      '<div class="ctrl" id="lcMeterDataGroup" style="display:none"><span class="ctrl-lbl" style="color:var(--nycec)">Peak Demand from Meter (VA)</span><input type="number" id="lcMeterVA" value="0" min="0" oninput="lcUpdate()" style="width:120px"></div>' +
-      '<div class="fav-bar"><button class="reset-btn" onclick="lcReset()">↺ Reset</button><button class="save-btn" onclick="favSave(\'lc\')">⭐ Save</button></div>' +
+      lcField('Floor Area', 'lcSqFt', 1500, 'sq ft', '3 VA per sq ft — living area only') +
+
+      // ── STEP 3: Meter Data (only for nec87) ───────────
+      '<div id="lcMeterSection" style="display:none">' +
+      lcSectionHeader('3', 'EXISTING LOAD FROM METER') +
+      lcField('Peak Demand', 'lcMeterVA', 0, 'VA', 'Highest 15-min reading from meter — 12 months preferred') +
+      '</div>' +
+
+      // ── STEP 3b: Multifamily Building (only for multifamily) ──
+      '<div id="lcMultifamilySection" style="display:none">' +
+      lcSectionHeader('3', 'BUILDING — MULTIFAMILY') +
+      '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin:-6px 0 4px">All values below (floor area, appliances, HVAC) are PER UNIT — the app multiplies by unit count and applies Table 220.84</div>' +
+      lcField('Number of Dwelling Units', 'lcNumUnits', 12, 'units', '3+ required to use this method — each unit needs electric cooking + electric heat or A/C') +
+      lcField('House Loads', 'lcHouseLoads', 0, 'VA', 'Common areas only — hallway/lobby lighting, elevators, laundry room, pool — NOT demand-factored, added at 100%') +
+      '</div>' +
+
+      // ── STEP 4: Fixed Appliances — dynamic list ─────────
+      lcSectionHeader('4', 'FIXED APPLIANCES') +
+      lcField('Small Appliance Circuits', 'lcSmallAppl', 2, 'circuits', 'Kitchen/dining 20A circuits — min. 2 required') +
+      lcField('Laundry Circuits', 'lcLaundry', 1, 'circuits', 'Min. 1 required if dwelling has laundry area') +
+      '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin:4px 0 4px">Add each appliance — add more than one of the same kind if needed (e.g. 2 ovens)</div>' +
+      '<div id="lcApplianceList"></div>' +
+      lcAddPicker('appliance') +
+
+      // ── STEP 5: HVAC — dynamic list ──────────────────────
+      lcSectionHeader('5', 'HEATING / COOLING') +
+      '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin:-6px 0 4px">Add every unit — items in the same category are added together, then only the LARGEST category (A/C vs Heat vs Heat Pump) counts</div>' +
+      '<div id="lcHvacList"></div>' +
+      lcAddPicker('hvac') +
+
+      // ── STEP 6: EV Chargers — dynamic list ───────────────
+      lcSectionHeader('6', 'EV CHARGERS') +
+      '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin:-6px 0 4px">Add one per charger — each counted at 100%</div>' +
+      '<div id="lcEVList"></div>' +
+      lcAddPicker('ev') +
+
+      // ── NYC extras (kept as single field — building-wide) ──
+      lcSectionHeader('7', 'NYC EXTRAS') +
+      lcField('NYC AC Outlets', 'lcNycAC', 0, 'outlets', 'NYCEC 220.14(N) — 1,500 VA per dedicated A/C outlet', true) +
+
+      '<div class="fav-bar" style="margin-top:4px"><button class="reset-btn" onclick="lcReset()">↺ Reset</button><button class="save-btn" onclick="favSave(\'lc\')">⭐ Save</button></div>' +
       '<div class="fav-list" id="lc-fav-list"></div>' +
       '<div id="lcResult" style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:4px;padding:14px;min-height:100px"><div style="text-align:center;padding:20px;color:var(--text-dimmer);font-family:IBM Plex Mono,monospace;font-size:12px">Adjust values above ↑</div></div>' +
       '</div>';
-    lcUpdate();
+    lcMethodChanged();
+    lcRenderLists();
   }
 }
 
-function lcField(label, id, val) {
-  return '<div class="ctrl"><span class="ctrl-lbl">' + label + '</span><input type="number" id="' + id + '" value="' + val + '" min="0" oninput="lcUpdate()" style="width:120px"></div>';
+function lcSectionHeader(num, title) {
+  return '<div style="display:flex;align-items:center;gap:8px;margin-top:4px">' +
+    '<div style="background:var(--surface2);border:1px solid var(--accent);border-radius:50%;width:22px;height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:Bebas Neue,sans-serif;font-size:12px;color:var(--accent)">' + num + '</div>' +
+    '<div style="font-family:Bebas Neue,sans-serif;font-size:14px;letter-spacing:2px;color:var(--accent)">' + title + '</div></div>';
+}
+
+function lcField(label, id, val, unit, hint, isNyc) {
+  var lblColor = isNyc ? 'color:var(--nycec)' : '';
+  var borderStyle = isNyc ? 'border-left:3px solid var(--nycec);padding-left:10px' : '';
+  var html = '<div class="ctrl" style="width:100%;' + borderStyle + '">';
+  html += '<span class="ctrl-lbl" style="' + lblColor + '">' + label + (unit ? ' (' + unit + ')' : '') + '</span>';
+  html += '<input type="number" id="' + id + '" value="' + val + '" min="0" oninput="lcUpdate()" style="width:100%">';
+  if (hint) html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">' + hint + '</div>';
+  html += '</div>';
+  return html;
+}
+
+// ── DYNAMIC APPLIANCE / HVAC / EV LISTS ───────────────────
+var LC_PRESETS = {
+  appliance: [
+    ['Range / Oven', 12000], ['Dryer', 5000], ['Dishwasher', 1500],
+    ['Microwave', 1500], ['Garbage Disposal', 900], ['Water Heater', 4500], ['Other', 1500]
+  ],
+  hvac: [
+    ['A/C', 5000, 'ac'], ['Electric Heat', 10000, 'heat'], ['Heat Pump', 6000, 'heatpump']
+  ],
+  ev: [
+    ['EV Charger — Level 2', 7200], ['EV Charger — Level 1', 1800]
+  ]
+};
+
+function lcAddPicker(type) {
+  var opts = LC_PRESETS[type];
+  var selId = 'lcPick_' + type + '_name';
+  var vaId  = 'lcPick_' + type + '_va';
+  var html = '<div style="display:flex;gap:8px;align-items:flex-end;background:var(--surface2);border:1px dashed var(--border);border-radius:4px;padding:10px;margin-bottom:4px">';
+  html += '<div style="flex:1.4"><select id="' + selId + '" onchange="lcPickerChanged(\'' + type + '\')" style="width:100%">';
+  opts.forEach(function(o, i) { html += '<option value="' + i + '">' + o[0] + '</option>'; });
+  html += '</select></div>';
+  html += '<div style="width:85px"><input type="number" id="' + vaId + '" value="' + opts[0][1] + '" min="0" style="width:100%"></div>';
+  html += '<button onclick="lcConfirmAdd(\'' + type + '\')" style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:11px 16px;font-family:Bebas Neue,sans-serif;font-size:14px;letter-spacing:1px;cursor:pointer;flex-shrink:0">+ ADD</button>';
+  html += '</div>';
+  return html;
+}
+
+function lcPickerChanged(type) {
+  var sel = document.getElementById('lcPick_' + type + '_name');
+  var idx = parseInt(sel.value);
+  var va = LC_PRESETS[type][idx][1];
+  document.getElementById('lcPick_' + type + '_va').value = va;
+}
+
+function lcConfirmAdd(type) {
+  var sel = document.getElementById('lcPick_' + type + '_name');
+  var idx = parseInt(sel.value);
+  var preset = LC_PRESETS[type][idx];
+  var name = preset[0];
+  var category = preset[2] || type;
+  var va = parseFloat(document.getElementById('lcPick_' + type + '_va').value) || 0;
+  if (!va) return;
+  var id = 'i' + Date.now() + Math.floor(Math.random() * 1000);
+  var arr = type === 'appliance' ? window.lcAppliances : type === 'hvac' ? window.lcHvac : window.lcEV;
+  arr.push({ id: id, name: name, va: va, category: category });
+  lcRenderLists();
+  lcUpdate();
+}
+
+function lcRemoveItem(type, id) {
+  var arr = type === 'appliance' ? window.lcAppliances : type === 'hvac' ? window.lcHvac : window.lcEV;
+  var idx = arr.findIndex(function(i) { return i.id === id; });
+  if (idx >= 0) arr.splice(idx, 1);
+  lcRenderLists();
+  lcUpdate();
+}
+
+function lcRenderLists() {
+  var a = document.getElementById('lcApplianceList');
+  if (a) a.innerHTML = lcRenderListItems(window.lcAppliances, 'appliance');
+  var h = document.getElementById('lcHvacList');
+  if (h) h.innerHTML = lcRenderListItems(window.lcHvac, 'hvac');
+  var e = document.getElementById('lcEVList');
+  if (e) e.innerHTML = lcRenderListItems(window.lcEV, 'ev');
+}
+
+function lcRenderListItems(items, type) {
+  if (!items || items.length === 0) {
+    return '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);padding:4px 2px 8px">Nothing added yet</div>';
+  }
+  return items.map(function(it) {
+    return '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:8px 10px;margin-bottom:6px">' +
+      '<span style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text)">' + it.name + '</span>' +
+      '<div style="display:flex;align-items:center;gap:10px">' +
+      '<span style="font-family:Bebas Neue,sans-serif;font-size:15px;color:var(--accent)">' + it.va.toLocaleString() + ' VA</span>' +
+      '<button onclick="lcRemoveItem(\'' + type + '\',\'' + it.id + '\')" style="background:none;border:1px solid var(--border);color:var(--danger);font-size:13px;cursor:pointer;padding:3px 9px;border-radius:3px;line-height:1">✕</button>' +
+      '</div></div>';
+  }).join('');
+}
+
+// ── GUIDED DECISION TREE — "What are you sizing?" ─────────
+function lcGuideChanged() {
+  var scope = document.getElementById('lcScope').value;
+  var followupEl = document.getElementById('lcScopeFollowup');
+  var resultEl = document.getElementById('lcGuideResult');
+  if (!followupEl || !resultEl) return;
+
+  if (!scope) {
+    followupEl.innerHTML = '';
+    resultEl.innerHTML = '';
+    return;
+  }
+
+  if (scope === 'house') {
+    followupEl.innerHTML = '<div class="ctrl" style="width:100%"><span class="ctrl-lbl">This house\'s service</span><select id="lcHouseFeeder" onchange="lcGuideChanged3()" style="width:100%">' +
+      '<option value="yes100">Single service, 100A or more (almost always true)</option>' +
+      '<option value="no100">Under 100A — old unupgraded service</option>' +
+      '</select></div><div id="lcHouseFollowup2"></div>';
+  } else if (scope === 'apartment') {
+    followupEl.innerHTML = '<div class="ctrl" style="width:100%"><span class="ctrl-lbl">This apartment\'s feeder</span><select id="lcAptFeeder" onchange="lcGuideChanged2()" style="width:100%">' +
+      '<option value="yes100">Single feeder, own panel, 100A or more</option>' +
+      '<option value="no100">Under 100A — or shares a feeder with other units</option>' +
+      '</select></div><div id="lcAptFollowup2"></div>';
+  } else if (scope === 'building') {
+    followupEl.innerHTML = '<div class="ctrl" style="width:100%"><span class="ctrl-lbl">Cooking &amp; heat/AC in every unit</span><select id="lcBldgCooking" onchange="lcGuideResolve()" style="width:100%">' +
+      '<option value="yesall">Every unit has ELECTRIC cooking AND electric heat or A/C</option>' +
+      '<option value="noall">At least one unit has GAS cooking, or lacks electric heat/AC</option>' +
+      '</select></div>';
+  } else if (scope === 'commercial') {
+    followupEl.innerHTML = '';
+  }
+
+  lcGuideResolve();
+}
+
+function lcGuideChanged3() {
+  var houseFeeder = document.getElementById('lcHouseFeeder').value;
+  var followup2 = document.getElementById('lcHouseFollowup2');
+  if (houseFeeder === 'yes100') {
+    followup2.innerHTML = '<div class="ctrl" style="width:100%;margin-top:8px"><span class="ctrl-lbl">Status</span><select id="lcHouseState" onchange="lcGuideResolve()" style="width:100%">' +
+      '<option value="new">New service, or full recalculation</option>' +
+      '<option value="existing">Existing — just adding a load (EV, addition, new AC)</option>' +
+      '<option value="meter">Existing — I have 12mo (or 30-day) meter data</option>' +
+      '</select></div>';
+  } else {
+    followup2.innerHTML = '';
+  }
+  lcGuideResolve();
+}
+
+function lcGuideChanged2() {
+  var aptFeeder = document.getElementById('lcAptFeeder').value;
+  var followup2 = document.getElementById('lcAptFollowup2');
+  if (aptFeeder === 'yes100') {
+    followup2.innerHTML = '<div class="ctrl" style="width:100%;margin-top:8px"><span class="ctrl-lbl">Status</span><select id="lcHouseState" onchange="lcGuideResolve()" style="width:100%">' +
+      '<option value="new">New service, or full recalculation</option>' +
+      '<option value="existing">Existing — just adding a load (EV, addition, new AC)</option>' +
+      '<option value="meter">Existing — I have 12mo (or 30-day) meter data</option>' +
+      '</select></div>';
+  } else {
+    followup2.innerHTML = '';
+  }
+  lcGuideResolve();
+}
+
+function lcGuideResolve() {
+  var scope = document.getElementById('lcScope').value;
+  var resultEl = document.getElementById('lcGuideResult');
+  if (!resultEl) return;
+
+  var method = null, reason = '';
+
+  if (scope === 'house') {
+    var houseFeeder = document.getElementById('lcHouseFeeder') ? document.getElementById('lcHouseFeeder').value : 'yes100';
+    if (houseFeeder === 'no100') {
+      method = 'standard';
+      reason = 'Under 100A service doesn\'t qualify for the Optional Method → NEC 220.42 Standard Method required. Common in older, unupgraded NYC houses.';
+    } else {
+      var state = document.getElementById('lcHouseState') ? document.getElementById('lcHouseState').value : 'new';
+      if (state === 'new') { method = 'optional'; reason = 'Single-family house with a 100A+ service = one dwelling unit → NEC 220.82 sizes it from scratch.'; }
+      else if (state === 'existing') { method = 'existing'; reason = 'Adding a load to an existing house → NEC 220.83 combines old + new, one demand factor.'; }
+      else { method = 'nec87'; reason = 'You have real usage data → NEC 220.87 uses actual peak demand instead of recalculating.'; }
+    }
+  } else if (scope === 'apartment') {
+    var feeder = document.getElementById('lcAptFeeder') ? document.getElementById('lcAptFeeder').value : 'yes100';
+    if (feeder === 'no100') {
+      method = 'standard';
+      reason = 'Under 100A or a shared feeder doesn\'t qualify for the Optional Method → NEC 220.42 Standard Method required for this unit.';
+    } else {
+      var state2 = document.getElementById('lcHouseState') ? document.getElementById('lcHouseState').value : 'new';
+      if (state2 === 'new') { method = 'optional'; reason = 'One apartment with its own 100A+ feeder = one dwelling unit, same as a house → NEC 220.82.'; }
+      else if (state2 === 'existing') { method = 'existing'; reason = 'Adding a load to this apartment\'s existing feeder → NEC 220.83.'; }
+      else { method = 'nec87'; reason = 'Real meter history for this apartment\'s feeder → NEC 220.87.'; }
+    }
+  } else if (scope === 'building') {
+    var cooking = document.getElementById('lcBldgCooking') ? document.getElementById('lcBldgCooking').value : 'noall';
+    if (cooking === 'yesall') {
+      method = 'multifamily';
+      reason = 'Every unit qualifies (electric cooking + electric heat/AC) → NEC 220.84 lets you apply a diversity demand factor across all units.';
+    } else {
+      method = 'standard';
+      reason = 'Gas cooking (or missing electric heat/AC) in at least one unit disqualifies 220.84 → NEC 220.42 Standard Method required for the whole building. Very common in NYC pre-war buildings.';
+    }
+  } else if (scope === 'commercial') {
+    method = 'standard';
+    reason = 'Optional Methods (220.82/83/84) are dwelling-only → commercial always uses NEC 220.42 Standard Method.';
+  }
+
+  if (method) {
+    var methodLabels = { optional: '220.82', existing: '220.83', multifamily: '220.84', standard: '220.42', nec87: 'NEC 220.87' };
+    resultEl.innerHTML = '<div style="background:rgba(82,192,122,0.08);border:1px solid rgba(82,192,122,0.3);border-left:4px solid var(--success);border-radius:4px;padding:10px 12px;margin:4px 0">' +
+      '<div style="font-family:Bebas Neue,sans-serif;font-size:16px;letter-spacing:1px;color:var(--success);margin-bottom:4px">✓ USE: NEC ' + methodLabels[method] + '</div>' +
+      '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.5">' + reason + '</div></div>';
+    var methodSelect = document.getElementById('lcMethod');
+    if (methodSelect) { methodSelect.value = method; }
+
+    // Hide the raw dropdown, show a compact confirmation with an override link instead
+    var wrap = document.getElementById('lcMethodWrap');
+    var confirm = document.getElementById('lcMethodConfirm');
+    if (wrap) wrap.style.display = 'none';
+    if (confirm) {
+      confirm.style.display = 'block';
+      confirm.innerHTML = 'Method locked to <strong style="color:var(--accent)">NEC ' + methodLabels[method] + '</strong> based on your answers above. <span onclick="lcShowMethodOverride()" style="color:var(--nycec);text-decoration:underline;cursor:pointer">Change manually →</span>';
+    }
+    lcMethodChanged();
+  } else {
+    resultEl.innerHTML = '';
+    var wrap2 = document.getElementById('lcMethodWrap');
+    var confirm2 = document.getElementById('lcMethodConfirm');
+    if (wrap2) wrap2.style.display = '';
+    if (confirm2) confirm2.style.display = 'none';
+  }
+}
+
+function lcShowMethodOverride() {
+  var wrap = document.getElementById('lcMethodWrap');
+  var confirm = document.getElementById('lcMethodConfirm');
+  if (wrap) wrap.style.display = 'flex';
+  if (confirm) confirm.style.display = 'none';
+}
+
+function lcMethodChanged() {
+  var method = document.getElementById('lcMethod').value;
+  var meterSection = document.getElementById('lcMeterSection');
+  var mfSection = document.getElementById('lcMultifamilySection');
+  var isMeterMethod = method === 'nec87';
+  var isMultifamily = method === 'multifamily';
+
+  if (meterSection) { meterSection.style.display = isMeterMethod ? 'flex' : 'none'; meterSection.style.flexDirection = 'column'; meterSection.style.gap = '10px'; }
+  if (mfSection) { mfSection.style.display = isMultifamily ? 'flex' : 'none'; mfSection.style.flexDirection = 'column'; mfSection.style.gap = '10px'; }
+
+  var noteEl = document.getElementById('lcMethodNote');
+  if (noteEl) {
+    var notes = {
+      optional: '📘 ONE dwelling unit with its own service/feeder ≥100A (single set of 120/240V or 208Y/120V, 3-wire conductors) — e.g. a house, or one apartment with its own dedicated panel. This condition must actually be true — it\'s not automatic just because it\'s a house. Simplest method: general loads get one demand factor, appliances and HVAC counted separately. Use for a NEW service or a full recalculation.',
+      existing: '📗 Same scope and same ≥100A condition as 220.82 — e.g. a house or one apartment\'s own feeder — but for an EXISTING service where you\'re just adding a load: EV charger, new AC, renovation. Combines everything first, then applies one demand factor. Faster than 220.82 when you don\'t want to size the whole service from zero.',
+      multifamily: '🏢 The BUILDING\'s main service — e.g. a Manhattan high-rise meter bank feeding 3+ apartments through one set of conductors. Only valid if EVERY unit has electric cooking AND electric heat or A/C — many NYC buildings have gas stoves, which disqualifies this method (use 220.42 Standard instead). Demand factor drops as unit count rises — more units, more diversity.',
+      standard: '📙 Required for COMMERCIAL spaces — Optional Methods are dwelling-only. Also the fallback whenever the ≥100A condition or the 220.84 conditions aren\'t met — e.g. an under-100A house or apartment feeder, or a building with gas cooking in even one unit. Uses NEC Table 220.42 demand factors instead of a flat percentage.',
+      nec87: '📕 Not NYC-specific — plain NEC. Use on an EXISTING service (house, apartment feeder, or whole building) when you have real meter history and want to justify available capacity from actual usage instead of recalculating from scratch. Needs 12 months of demand data, or a 30-day recorded minimum.'
+    };
+    noteEl.textContent = notes[method] || '';
+  }
+
+  lcUpdate();
 }
 
 // Also fix outletRender to call renderOutlets
