@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Montserrat:wght@800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0A0A0A;
@@ -52,9 +52,9 @@
     display: flex; align-items: center; justify-content: space-between;
     flex-shrink: 0;
   }
-  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; color: var(--accent); }
+  .logo { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 15px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--accent); }
   .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--nycec); animation: pulse 2s infinite; display: inline-block; margin-right: 6px; }
-  .status-txt { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dim); }
+  .status-txt { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 9px; letter-spacing: 0.3px; color: var(--text-dim); }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
   /* ── CONTENT AREA ── */
@@ -84,8 +84,8 @@
   .nav-item {
     display: flex; align-items: center; justify-content: center;
     min-width: 56px; flex: 1;
-    font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.5px;
-    font-weight: 500;
+    font-family: 'Montserrat', sans-serif; font-size: 10px; letter-spacing: 0.3px;
+    font-weight: 800; text-transform: uppercase;
     color: var(--text-dimmer); padding: 0 4px; cursor: pointer;
     border-top: 2px solid transparent; transition: all 0.15s;
   }
@@ -335,7 +335,7 @@
   <div class="logo">Empire Code</div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
     <div><span class="status-dot"></span><span class="status-txt" style="color:var(--nycec)">NYCEC 2025</span></div>
-    <div><span style="width:7px;height:7px;border-radius:50%;background:var(--nec);animation:pulse 2s infinite 0.5s;display:inline-block;margin-right:6px"></span><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--nec)">NEC 2020</span></div>
+    <div><span style="width:7px;height:7px;border-radius:50%;background:var(--nec);animation:pulse 2s infinite 0.5s;display:inline-block;margin-right:6px"></span><span style="font-family:'Montserrat',sans-serif;font-weight:800;font-size:9px;letter-spacing:0.3px;color:var(--nec)">NEC 2020</span></div>
   </div>
 </header>
 
