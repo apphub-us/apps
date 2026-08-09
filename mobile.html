@@ -863,12 +863,8 @@
 
 <!-- ══ MORE PANEL ══ -->
 <div class="panel" id="panel-more">
-  <div class="code-subtabs">
-    <button class="code-subtab active" id="more-loadcalc" onclick="moreTab('loadcalc')">Load Calc</button>
-    <button class="code-subtab" id="more-coderef" onclick="moreTab('coderef')">Code Ref</button>
-    <button class="code-subtab" id="more-outlets" onclick="moreTab('outlets')">Outlets</button>
-    <button class="code-subtab" id="more-converter" onclick="moreTab('converter')">Converter</button>
-  </div>
+  <!-- Section switching lives in the secondary bottom nav (the › toggle);
+       a second row of the same four tabs up here was pure duplication. -->
   <div id="more-content" style="flex:1;display:flex;flex-direction:column;">
 
     <!-- LOAD CALC -->
@@ -1022,10 +1018,10 @@
 </nav>
 <nav class="bottom-nav" id="secondary-nav" style="display:none">
   <div class="nav-item" id="mnav-back-arrow" onclick="toggleMoreNav()" style="font-size:16px;font-weight:700">‹</div>
-  <div class="nav-item" id="mnav-loadcalc" onclick="switchTabMore('loadcalc',this)">Load Calc</div>
-  <div class="nav-item" id="mnav-coderef" onclick="switchTabMore('coderef',this)">Code Ref</div>
-  <div class="nav-item" id="mnav-outlets" onclick="switchTabMore('outlets',this)">Outlets</div>
-  <div class="nav-item" id="mnav-converter" onclick="switchTabMore('converter',this)">Converter</div>
+  <div class="nav-item" id="mnav-loadcalc" onclick="switchTabMore('loadcalc')">Load Calc</div>
+  <div class="nav-item" id="mnav-coderef" onclick="switchTabMore('coderef')">Code Ref</div>
+  <div class="nav-item" id="mnav-outlets" onclick="switchTabMore('outlets')">Outlets</div>
+  <div class="nav-item" id="mnav-converter" onclick="switchTabMore('converter')">Converter</div>
 </nav>
 
 
@@ -1154,25 +1150,20 @@ function toggleMoreNav() {
   moreNavOpen = !moreNavOpen;
   var primary = document.querySelector('.bottom-nav:not(#secondary-nav)');
   var secondary = document.getElementById('secondary-nav');
-  var arrow = document.getElementById('mnav-more-arrow');
   if (moreNavOpen) {
     if (primary) primary.style.display = 'none';
     if (secondary) secondary.style.display = 'flex';
+    syncMoreNav();
   } else {
     if (primary) primary.style.display = 'flex';
     if (secondary) secondary.style.display = 'none';
-    // deactivate secondary items
     document.querySelectorAll('#secondary-nav .nav-item').forEach(function(n){ n.classList.remove('active'); });
   }
 }
 
-function switchTabMore(name, el) {
-  // Switch panel to panel-more and show sub
+function switchTabMore(name) {
   switchTab('more', null);
-  moreTab(name);
-  // highlight in secondary nav
-  document.querySelectorAll('#secondary-nav .nav-item').forEach(function(n){ n.classList.remove('active'); });
-  if (el) el.classList.add('active');
+  moreTab(name);   // moreTab handles the nav highlight via syncMoreNav
 }
 
 // ── MORE SUBTABS ──────────────────────────────────────────
@@ -1181,14 +1172,28 @@ function moreTab(name) {
   currentMoreTab = name;
   ['loadcalc','coderef','outlets','converter'].forEach(function(t){
     var sub = document.getElementById('sub-' + t);
-    var btn = document.getElementById('more-' + t);
-    if (sub) sub.style.display = (t === name ? 'flex' : 'none');
-    if (t === name) { if (sub) sub.style.flexDirection = 'column'; }
-    if (btn) { btn.classList.toggle('active', t === name); }
+    if (sub) {
+      sub.style.display = (t === name ? 'flex' : 'none');
+      if (t === name) sub.style.flexDirection = 'column';
+    }
   });
+  syncMoreNav();
   if (name === 'outlets') outletRender();
   if (name === 'converter') cvInitQuickTables();
   if (name === 'loadcalc') lcInit();
+}
+
+// Keep the secondary bottom nav in step with whichever section is showing,
+// so re-opening it via › lands on a highlighted item rather than a blank row.
+function syncMoreNav() {
+  var onMore = document.getElementById('panel-more');
+  onMore = onMore && onMore.classList.contains('active');
+  document.querySelectorAll('#secondary-nav .nav-item').forEach(function(n){
+    n.classList.remove('active');
+  });
+  if (!onMore) return;
+  var item = document.getElementById('mnav-' + currentMoreTab);
+  if (item) item.classList.add('active');
 }
 
 // ── CHAT ─────────────────────────────────────────────────
