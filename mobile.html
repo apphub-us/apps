@@ -99,10 +99,22 @@
     border-bottom: 1px solid var(--border);
     padding: 8px 14px;
     flex-shrink: 0;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    display: flex; align-items: flex-start; gap: 6px;
   }
-  .rules-bar::-webkit-scrollbar { display: none; }
+  .rules-inner { flex: 1; min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .rules-inner::-webkit-scrollbar { display: none; }
+  /* Collapsed is the default: the code badges stay visible on one line, the
+     explanatory text folds away. Reference material shouldn't eat 80px of
+     phone screen above every calculator. */
+  .rules-bar.collapsed .rules-inner { display: flex; align-items: center; gap: 8px; }
+  .rules-bar.collapsed .rules-row { margin-top: 0; display: inline-flex; min-height: 0; }
+  .rules-bar.collapsed .rule-txt { display: none; }
+  .rules-toggle {
+    flex-shrink: 0; background: none; border: none; cursor: pointer;
+    color: var(--text-dim); font-size: 10px; line-height: 1;
+    padding: 6px 0 6px 8px; font-family: 'IBM Plex Mono', monospace;
+  }
+  .rules-toggle:active { color: var(--accent); }
   .rules-row { display: flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 26px; }
   .rules-row + .rules-row { margin-top: 4px; }
   .pill {
@@ -363,7 +375,7 @@
 <div class="panel active" id="panel-chat">
   <div class="trending-bar">
     <span class="trending-label">Trending</span>
-    <div id="trendingBtns" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch"><span style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">Loading...</span></div>
+    <div id="trendingBtns" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch"><span style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">—</span></div>
   </div>
   <div class="chat-area" id="chatArea">
     <div class="welcome" id="welcome">
@@ -1017,27 +1029,105 @@
 </nav>
 
 
-<!-- ── FIREBASE ── -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
-var firebaseConfig = {
-  apiKey: "AIzaSyA4sYtm1nAMQjvJPNF1cy1dQ6V5B83ZsNo",
-  authDomain: "nec-ai.firebaseapp.com",
-  projectId: "nec-ai",
-  storageBucket: "nec-ai.firebasestorage.app",
-  messagingSenderId: "261873895081",
-  appId: "1:261873895081:web:0a1aa3fa738e4c6a123456"
+<!-- ── FIREBASE (lazy) ── -->
+<script>
+// Firebase is only needed for the "trending questions" strip and for logging
+// asked questions — neither is on the critical path. Loading it up front cost
+// ~100KB of JS before the calculators became interactive, so it now loads
+// once the browser goes idle, or sooner if the user actually sends a message.
+window._fbReady = false;
+var _fbLoading = false;
+
+window.initFirebase = async function() {
+  if (window._fbReady || _fbLoading) return;
+  _fbLoading = true;
+  try {
+    var appMod = await import("https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js");
+    var fsMod  = await import("https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js");
+    var fbApp = appMod.initializeApp({
+      apiKey: "AIzaSyA4sYtm1nAMQjvJPNF1cy1dQ6V5B83ZsNo",
+      authDomain: "nec-ai.firebaseapp.com",
+      projectId: "nec-ai",
+      storageBucket: "nec-ai.firebasestorage.app",
+      messagingSenderId: "261873895081",
+      appId: "1:261873895081:web:0a1aa3fa738e4c6a123456"
+    });
+    window._db = fsMod.getFirestore(fbApp);
+    window._fns = {
+      doc: fsMod.doc, getDoc: fsMod.getDoc, setDoc: fsMod.setDoc,
+      collection: fsMod.collection, query: fsMod.query,
+      orderBy: fsMod.orderBy, limit: fsMod.limit, getDocs: fsMod.getDocs
+    };
+    window._fbReady = true;
+    if (typeof loadTrending === 'function') loadTrending();
+  } catch (e) {
+    console.log('Firebase unavailable:', e);
+    _fbLoading = false;
+  }
 };
-var fbApp = initializeApp(firebaseConfig);
-var db = getFirestore(fbApp);
-window._db = db;
-window._fns = { doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs };
-window._fbReady = true;
-loadTrending();
+
+// Kick off once the page is idle so it never competes with first paint
+// or with the calculators becoming usable.
+window.addEventListener('load', function() {
+  if (window.requestIdleCallback) {
+    requestIdleCallback(function(){ window.initFirebase(); }, { timeout: 4000 });
+  } else {
+    setTimeout(function(){ window.initFirebase(); }, 2000);
+  }
+});
 </script>
 
 <script>
+// ── COLLAPSIBLE RULES BARS ────────────────────────────────
+// Wraps each bar's rows and adds a toggle, so the seven existing bars in the
+// markup don't each need editing. Safe to call repeatedly — bars injected
+// later (wireway, Code Ref) get picked up on the next call.
+var RULES_KEY = 'ec_rules_open';
+
+function rulesBarsOpen() {
+  try { return localStorage.getItem(RULES_KEY) === '1'; } catch(e) { return false; }
+}
+
+function initRulesBars() {
+  document.querySelectorAll('.rules-bar').forEach(function(bar) {
+    // Structural checks rather than a flag: FILL_CONTENT snapshots the DOM on
+    // DOMContentLoaded too, so a bar can come back already wrapped but with its
+    // handler lost. Re-binding unconditionally keeps those toggles alive.
+    var inner = bar.querySelector(':scope > .rules-inner');
+    if (!inner) {
+      inner = document.createElement('div');
+      inner.className = 'rules-inner';
+      while (bar.firstChild) inner.appendChild(bar.firstChild);
+      bar.appendChild(inner);
+    }
+    var btn = bar.querySelector(':scope > .rules-toggle');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.className = 'rules-toggle';
+      btn.setAttribute('aria-label', 'Toggle code references');
+      bar.appendChild(btn);
+    }
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      var open = !rulesBarsOpen();
+      try { localStorage.setItem(RULES_KEY, open ? '1' : '0'); } catch(err) {}
+      applyRulesBars();
+    };
+  });
+  applyRulesBars();
+}
+
+function applyRulesBars() {
+  var open = rulesBarsOpen();
+  document.querySelectorAll('.rules-bar').forEach(function(bar) {
+    bar.classList.toggle('collapsed', !open);
+    var btn = bar.querySelector('.rules-toggle');
+    if (btn) btn.textContent = open ? '\u25B4' : '\u25BE';
+  });
+}
+
+window.addEventListener('DOMContentLoaded', initRulesBars);
+
 // ── TABS ─────────────────────────────────────────────────
 var moreNavOpen = false;
 function switchTab(name, el) {
@@ -1191,8 +1281,8 @@ function quickAsk(text) { document.getElementById('userInput').value = text; sen
 
 window.loadTrending = async function() {
   var container = document.getElementById('trendingBtns');
-  var waited = 0;
-  while (!window._fbReady && waited < 3000) { await new Promise(function(r){setTimeout(r,100);}); waited += 100; }
+  if (!container) return;
+  // initFirebase() calls this itself once ready, so no polling wait is needed.
   if (!window._db) { container.innerHTML = '<span class="trending-loading">Ask the first question!</span>'; return; }
   try {
     var fns = window._fns, db = window._db;
@@ -1212,7 +1302,11 @@ window.loadTrending = async function() {
 };
 
 async function trackQuestion(question) {
-  if (!API_KEY || !window._db) return;
+  if (!API_KEY) return;
+  // If the idle load hasn't fired yet, pull Firebase in now — the user is
+  // clearly using the chat, so it has earned its download.
+  if (!window._db) { await window.initFirebase(); }
+  if (!window._db) return;
   try {
     var resp = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
@@ -2369,7 +2463,7 @@ pbUpdate();
 var CSR_CONTENT = {};
 
 function codeSubTab(name) {
-  ['gfci','grounding','nyc'].forEach(function(n) {
+  ['gfci','grounding','nyc','coned','dob','locallaws'].forEach(function(n) {
     var btn = document.getElementById('cst-' + n);
     if (btn) btn.classList.toggle('active', n === name);
   });
@@ -2379,6 +2473,7 @@ function codeSubTab(name) {
   if (name === 'gfci') gfciInitRooms();
   if (name === 'grounding') groundingInitTopics();
   if (name === 'nyc') nycInitTopics();
+  if (typeof initRulesBars === 'function') initRulesBars();
 }
 
 // Init CSR_CONTENT from DOM on load
@@ -3600,6 +3695,7 @@ function fillCalcMode(mode) {
   wrapper.innerHTML = FILL_CONTENT[mode];
   if (mode === 'wireway') { wwCalc(); wwRenderTable(); }
   if (mode === 'conduit') { cfUpdateCalc(); }
+  if (typeof initRulesBars === 'function') initRulesBars();
 }
 
 // Init FILL_CONTENT from DOM on load
