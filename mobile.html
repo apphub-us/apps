@@ -156,8 +156,24 @@
     background: var(--surface); border: 1px solid var(--border);
     border-left: 4px solid var(--accent); border-radius: 4px;
     display: none; flex-shrink: 0;
+    transition: border-left-color 0.2s, background 0.2s;
   }
   .result-box.show { display: block; }
+  /* Green = calculation done and within code. Red = done but over limit —
+     a green bar above an over-fill result would be misleading in a
+     code-compliance tool, so the state has to be honest. */
+  .result-box.ready {
+    border-left-color: var(--success);
+    background: rgba(82,192,122,0.06);
+    border-color: rgba(82,192,122,0.25);
+  }
+  .result-box.fail {
+    border-left-color: var(--danger);
+    background: rgba(224,82,82,0.06);
+    border-color: rgba(224,82,82,0.25);
+  }
+  .result-box.ready .result-title { color: var(--success); }
+  .result-box.fail  .result-title { color: var(--danger); }
   .result-title {
     font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 11px;
     letter-spacing: 0.5px; color: var(--accent); margin-bottom: 10px;
@@ -1471,6 +1487,8 @@ function cfUpdateCalc() {
   var maxN = Math.floor(avail / wa);
   var fits = used <= avail;
   var sc = fits ? 'result-ok' : 'result-over';
+  box.classList.toggle('ready', fits);
+  box.classList.toggle('fail', !fits);
 
   document.getElementById('cfResultGrid').innerHTML =
     '<div class="result-item"><div class="result-item-label">Status</div><div class="result-item-value '+sc+'">'+(fits?'✓ FITS':'✗ OVER')+'</div></div>'+
@@ -1548,6 +1566,12 @@ function bfUpdateCalc() {
   if (maxCond < 0) maxCond = 0;
 
   var sc = fits ? 'result-ok' : 'result-over';
+
+  var bfBox = document.getElementById('bfResultBox');
+  if (bfBox) {
+    bfBox.classList.toggle('ready', fits);
+    bfBox.classList.toggle('fail', !fits);
+  }
 
   var extLabel = extVol > 0 ? ' (+'+extVol.toFixed(1)+' ext)' : '';
   document.getElementById('bfResultGrid').innerHTML =
@@ -1799,10 +1823,13 @@ function ampUpdateCalc() {
 
   var table = material === 'cu' ? AMP_CU : AMP_AL;
   var row = table[wireSize];
+  var ampBox = document.getElementById('ampResultBox');
   if (!row) {
+    if (ampBox) { ampBox.classList.remove('ready'); ampBox.classList.add('fail'); }
     document.getElementById('ampResultGrid').innerHTML = '<div class="result-item"><div class="result-item-label">N/A</div><div class="result-item-value result-over">Not available for Al in this size</div></div>';
     return;
   }
+  if (ampBox) { ampBox.classList.remove('fail'); ampBox.classList.add('ready'); }
 
   var col = ampGetBaseCol(insulType);
   var baseAmp = row[col];
@@ -3695,6 +3722,12 @@ function wwCalc() {
 
   var statusColor = passes ? 'var(--success)' : 'var(--danger)';
   var statusText = passes ? '✓ PASS' : '✗ OVER FILL';
+
+  var wwBox = document.getElementById('wwResultBox');
+  if (wwBox) {
+    wwBox.classList.toggle('ready', passes);
+    wwBox.classList.toggle('fail', !passes);
+  }
 
   document.getElementById('wwResultGrid').innerHTML =
     '<div class="result-item"><div class="result-item-label">Status</div><div class="result-item-value" style="color:'+statusColor+';font-size:22px">'+statusText+'</div></div>' +
