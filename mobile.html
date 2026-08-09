@@ -84,7 +84,7 @@
 
   .nav-item {
     display: flex; align-items: center; justify-content: center;
-    min-width: 56px; flex: 1;
+    min-width: 48px; flex: 1;
     font-family: 'Montserrat', sans-serif; font-size: 10px; letter-spacing: 0.3px;
     font-weight: 600; text-transform: uppercase;
     color: var(--text-dimmer); padding: 0 4px; cursor: pointer;
@@ -958,6 +958,82 @@
     </div>
 
     <!-- CONVERTER -->
+    <div id="sub-motor" style="display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
+      <div style="padding:14px;display:flex;flex-direction:column;gap:12px">
+
+        <div class="rules-bar">
+          <div class="rules-row">
+            <span class="pill pill-nec" onclick="necLink('NEC 430.6(A)(1) — motor conductors and branch-circuit protection are sized from the TABLE full-load current, not the nameplate')">430.6(A)(1)</span>
+            <span class="rule-txt">Size from TABLE FLC \u2014 not the nameplate</span>
+          </div>
+          <div class="rules-row">
+            <span class="pill pill-nec" onclick="necLink('NEC 430.32 — motor overload protection is based on the nameplate full-load amps')">430.32</span>
+            <span class="rule-txt">Overload is the one thing sized from the NAMEPLATE</span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div class="ctrl" style="flex:1;min-width:110px">
+            <span class="ctrl-lbl">Phase</span>
+            <select id="mt-phase" onchange="mtPhaseChanged()" style="width:100%">
+              <option value="3" selected>Three Phase</option>
+              <option value="1">Single Phase</option>
+            </select>
+          </div>
+          <div class="ctrl" style="flex:1;min-width:110px">
+            <span class="ctrl-lbl">Voltage</span>
+            <select id="mt-volts" onchange="mtCalc()" style="width:100%"></select>
+          </div>
+          <div class="ctrl" style="flex:1;min-width:110px">
+            <span class="ctrl-lbl">Horsepower</span>
+            <select id="mt-hp" onchange="mtCalc()" style="width:100%"></select>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div class="ctrl" style="flex:1;min-width:150px">
+            <span class="ctrl-lbl">Motor Type</span>
+            <select id="mt-type" onchange="mtCalc()" style="width:100%">
+              <option value="designB" selected>Squirrel cage \u2014 Design B, energy efficient</option>
+              <option value="other">Squirrel cage \u2014 other than Design B</option>
+              <option value="wound">Wound rotor</option>
+              <option value="dc">DC (constant voltage)</option>
+            </select>
+          </div>
+          <div class="ctrl" style="flex:1;min-width:150px">
+            <span class="ctrl-lbl">Protective Device</span>
+            <select id="mt-ocpd" onchange="mtCalc()" style="width:100%">
+              <option value="inverse" selected>Inverse time breaker \u2014 most common</option>
+              <option value="dual">Dual element (time delay) fuse</option>
+              <option value="nontd">Non-time-delay fuse</option>
+              <option value="inst">Instantaneous trip breaker (MCP)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin-top:4px">Overload only \u2014 read these off the motor nameplate</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div class="ctrl" style="flex:1;min-width:130px">
+            <span class="ctrl-lbl">Nameplate FLA</span>
+            <input type="number" id="mt-nameplate" placeholder="e.g. 31" min="0" step="0.1" oninput="mtCalc()" style="width:100%">
+            <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">Leave blank to skip the overload figure</div>
+          </div>
+          <div class="ctrl" style="flex:1;min-width:150px">
+            <span class="ctrl-lbl">Service Factor / Temp Rise</span>
+            <select id="mt-sf" onchange="mtCalc()" style="width:100%">
+              <option value="1.25" selected>SF 1.15 or greater, or rise \u2264 40\u00B0C</option>
+              <option value="1.15">All other motors</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fav-bar"><button class="reset-btn" onclick="mtReset()">Reset</button></div>
+
+        <div id="mt-result" style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:4px;overflow:hidden"></div>
+        <div id="mt-note" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.7;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px"></div>
+      </div>
+    </div>
+
     <div id="sub-bender" style="display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
       <div style="padding:14px;display:flex;flex-direction:column;gap:12px">
 
@@ -1172,11 +1248,12 @@
 </nav>
 <nav class="bottom-nav" id="secondary-nav" style="display:none">
   <div class="nav-item" id="mnav-back-arrow" onclick="toggleMoreNav()" style="font-size:16px;font-weight:700">‹</div>
-  <div class="nav-item" id="mnav-loadcalc" onclick="switchTabMore('loadcalc')">Load Calc</div>
-  <div class="nav-item" id="mnav-coderef" onclick="switchTabMore('coderef')">Code Ref</div>
-  <div class="nav-item" id="mnav-outlets" onclick="switchTabMore('outlets')">Outlets</div>
-  <div class="nav-item" id="mnav-bender" onclick="switchTabMore('bender')">Bender</div>
-  <div class="nav-item" id="mnav-converter" onclick="switchTabMore('converter')">Converter</div>
+  <div class="nav-item" id="mnav-loadcalc" onclick="switchTabMore('loadcalc')">Load</div>
+  <div class="nav-item" id="mnav-motor" onclick="switchTabMore('motor')">Motor</div>
+  <div class="nav-item" id="mnav-bender" onclick="switchTabMore('bender')">Bend</div>
+  <div class="nav-item" id="mnav-converter" onclick="switchTabMore('converter')">Convert</div>
+  <div class="nav-item" id="mnav-coderef" onclick="switchTabMore('coderef')">Code</div>
+  <div class="nav-item" id="mnav-outlets" onclick="switchTabMore('outlets')">NEMA</div>
 </nav>
 
 
@@ -1325,7 +1402,7 @@ function switchTabMore(name) {
 var currentMoreTab = 'loadcalc';
 function moreTab(name) {
   currentMoreTab = name;
-  ['loadcalc','coderef','outlets','bender','converter'].forEach(function(t){
+  ['loadcalc','coderef','outlets','bender','motor','converter'].forEach(function(t){
     var sub = document.getElementById('sub-' + t);
     if (sub) {
       sub.style.display = (t === name ? 'flex' : 'none');
@@ -1336,6 +1413,7 @@ function moreTab(name) {
   if (name === 'outlets') outletRender();
   if (name === 'converter') cvInitQuickTables();
   if (name === 'bender') bdInit();
+  if (name === 'motor') mtInit();
   if (name === 'loadcalc') lcInit();
 }
 
@@ -4136,6 +4214,186 @@ function lcReset() {
 
 // ── UNIT CONVERTER ────────────────────────────────────────
 var cvUpdating = false;
+
+// ══ MOTORS — NEC ARTICLE 430 ══════════════════════════════
+// The single most common motor mistake is sizing conductors from the
+// nameplate. NEC 430.6(A)(1) requires the TABLE value for conductors and
+// branch-circuit protection; the nameplate is used only for overload (430.32).
+
+// Table 430.248 — single-phase, full-load current (A)
+var MT_FLC_1PH = {
+  '1/6':[4.4,2.5,2.4,2.2], '1/4':[5.8,3.3,3.2,2.9], '1/3':[7.2,4.1,4.0,3.6],
+  '1/2':[9.8,5.6,5.4,4.9], '3/4':[13.8,7.9,7.6,6.9], '1':[16,9.2,8.8,8.0],
+  '1.5':[20,11.5,11.0,10], '2':[24,13.8,13.2,12], '3':[34,19.6,18.7,17],
+  '5':[56,32.2,30.8,28], '7.5':[80,46.0,44.0,40], '10':[100,57.5,55.0,50]
+};
+var MT_V_1PH = ['115','200','208','230'];
+
+// Table 430.250 — three-phase, induction squirrel cage / wound rotor (A)
+var MT_FLC_3PH = {
+  '1/2':[4.4,2.5,2.4,2.2,1.1,0.9], '3/4':[6.4,3.7,3.5,3.2,1.6,1.3],
+  '1':[8.4,4.8,4.6,4.2,2.1,1.7],   '1.5':[12,6.9,6.6,6,3,2.4],
+  '2':[13.6,7.8,7.5,6.8,3.4,2.7],  '3':[null,11,10.6,9.6,4.8,3.9],
+  '5':[null,17.5,16.7,15.2,7.6,6.1],'7.5':[null,25.3,24.2,22,11,9],
+  '10':[null,32.2,30.8,28,14,11],  '15':[null,48.3,46.2,42,21,17],
+  '20':[null,62.1,59.4,54,27,22],  '25':[null,78.2,74.8,68,34,27],
+  '30':[null,92,88,80,40,32],      '40':[null,120,114,104,52,41],
+  '50':[null,150,143,130,65,52],   '60':[null,177,169,154,77,62],
+  '75':[null,221,211,192,96,77],   '100':[null,285,273,248,124,99],
+  '125':[null,359,343,312,156,125],'150':[null,414,396,360,180,144],
+  '200':[null,552,528,480,240,192]
+};
+var MT_V_3PH = ['115','200','208','230','460','575'];
+
+// Table 430.52 — max % of FLC by device type
+var MT_PCT = {
+  designB: { nontd:300, dual:175, inst:1100, inverse:250 },
+  other:   { nontd:300, dual:175, inst:800,  inverse:250 },
+  wound:   { nontd:150, dual:150, inst:800,  inverse:150 },
+  dc:      { nontd:150, dual:150, inst:250,  inverse:150 }
+};
+var MT_OCPD_LABEL = { nontd:'Non-time-delay fuse', dual:'Dual element (time delay) fuse',
+                      inst:'Instantaneous trip breaker', inverse:'Inverse time breaker' };
+
+// NEC 240.6(A) standard ampere ratings
+var MT_STD = [15,20,25,30,35,40,45,50,60,70,80,90,100,110,125,150,175,200,225,250,
+              300,350,400,450,500,600,700,800,1000,1200,1600,2000,2500,3000,4000,5000,6000];
+
+function mtNextStd(x) {
+  for (var i = 0; i < MT_STD.length; i++) if (MT_STD[i] >= x) return MT_STD[i];
+  return null;
+}
+
+function mtInit() {
+  if (!document.getElementById('mt-phase')) return;
+  mtPhaseChanged();
+}
+
+function mtPhaseChanged() {
+  var ph = document.getElementById('mt-phase').value;
+  var volts = ph === '1' ? MT_V_1PH : MT_V_3PH;
+  var table = ph === '1' ? MT_FLC_1PH : MT_FLC_3PH;
+
+  var vs = document.getElementById('mt-volts');
+  var prevV = vs.value;
+  vs.innerHTML = '';
+  volts.forEach(function(v){
+    var o = document.createElement('option');
+    o.value = v; o.textContent = v + 'V';
+    vs.appendChild(o);
+  });
+  vs.value = volts.indexOf(prevV) >= 0 ? prevV : (ph === '1' ? '230' : '208');
+
+  var hs = document.getElementById('mt-hp');
+  var prevH = hs.value;
+  hs.innerHTML = '';
+  Object.keys(table).forEach(function(hp){
+    var o = document.createElement('option');
+    o.value = hp; o.textContent = hp + ' HP';
+    hs.appendChild(o);
+  });
+  hs.value = table[prevH] ? prevH : (ph === '1' ? '1' : '10');
+
+  mtCalc();
+}
+
+function mtRow(label, value, note, strong) {
+  return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(46,46,46,0.5)' +
+    (strong ? ';background:rgba(255,199,0,0.05)' : '') + '">' +
+    '<div><span style="font-size:13px;color:var(--text)">' + label + '</span>' +
+    (note ? '<span style="display:block;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer)">' + note + '</span>' : '') +
+    '</div><span style="font-family:IBM Plex Mono,monospace;font-size:15px;font-weight:600;color:' +
+    (strong ? 'var(--success)' : 'var(--accent)') + ';white-space:nowrap">' + value + '</span></div>';
+}
+
+function mtCalc() {
+  var res = document.getElementById('mt-result');
+  if (!res) return;
+  var note = document.getElementById('mt-note');
+
+  var ph    = document.getElementById('mt-phase').value;
+  var volts = document.getElementById('mt-volts').value;
+  var hp    = document.getElementById('mt-hp').value;
+  var type  = document.getElementById('mt-type').value;
+  var dev   = document.getElementById('mt-ocpd').value;
+
+  var vList = ph === '1' ? MT_V_1PH : MT_V_3PH;
+  var table = ph === '1' ? MT_FLC_1PH : MT_FLC_3PH;
+  var row = table[hp];
+  var flc = row ? row[vList.indexOf(volts)] : null;
+
+  if (flc === null || flc === undefined) {
+    res.innerHTML = mtRow('Not listed', '\u2014', hp + ' HP at ' + volts + 'V is not in the NEC table for this phase');
+    if (note) note.textContent = 'Pick a different voltage or horsepower — this combination has no table entry.';
+    return;
+  }
+
+  // Conductors — NEC 430.22, 125% of TABLE full-load current
+  var minAmp = flc * 1.25;
+  var wire = null;
+  if (typeof AMP_CU !== 'undefined') {
+    var sizes = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0',
+                 '250','300','350','400','500','600','700','750'];
+    for (var i = 0; i < sizes.length; i++) {
+      var r = AMP_CU[sizes[i]];
+      if (r && r.t75 >= minAmp) { wire = sizes[i]; break; }
+    }
+  }
+  var wireLbl = wire ? (wire.indexOf('/') >= 0 ? wire + ' AWG'
+                        : (parseInt(wire) >= 250 ? wire + ' kcmil' : '#' + wire + ' AWG'))
+                     : 'parallel run needed';
+
+  // Branch-circuit short-circuit / ground-fault — NEC 430.52
+  var pct = MT_PCT[type][dev];
+  var raw = flc * pct / 100;
+  var std = mtNextStd(raw);
+
+  // Disconnect — NEC 430.110, at least 115% of FLC
+  var disc = mtNextStd(flc * 1.15);
+
+  var html = '';
+  html += mtRow('Table FLC', flc + ' A',
+    (ph === '1' ? 'NEC Table 430.248' : 'NEC Table 430.250') + ' \u2014 ' + hp + ' HP @ ' + volts + 'V', true);
+  html += mtRow('Min conductor ampacity', minAmp.toFixed(1) + ' A', 'NEC 430.22 \u2014 125% of table FLC');
+  html += mtRow('Conductor size', wireLbl, 'Copper at 75\u00B0C, before any derating');
+  html += mtRow('Max ' + MT_OCPD_LABEL[dev].toLowerCase(), raw.toFixed(1) + ' A',
+    'NEC Table 430.52 \u2014 ' + pct + '% of FLC');
+  html += mtRow('Next standard size', std ? std + ' A' : 'above 6000 A',
+    'NEC 240.6(A) \u2014 430.52(C)(1) Ex.1 permits rounding up', true);
+  html += mtRow('Disconnect rating', disc + ' A min', 'NEC 430.110 \u2014 at least 115% of FLC');
+
+  var np = parseFloat(document.getElementById('mt-nameplate').value);
+  var sf = parseFloat(document.getElementById('mt-sf').value);
+  if (!isNaN(np) && np > 0) {
+    var ol = np * sf;
+    html += mtRow('Overload setting', ol.toFixed(1) + ' A max',
+      'NEC 430.32 \u2014 ' + Math.round(sf * 100) + '% of NAMEPLATE ' + np + ' A, not the table', true);
+  } else {
+    html += mtRow('Overload setting', 'enter nameplate FLA', 'NEC 430.32 uses the nameplate, not the table');
+  }
+
+  res.innerHTML = html;
+
+  var tip = 'Conductors and the breaker come from the table value (' + flc + ' A). ';
+  if (!isNaN(np) && np > 0 && Math.abs(np - flc) > 0.05) {
+    tip += 'Your nameplate reads ' + np + ' A — that difference is expected and correct: ' +
+           'the table figure sizes the wire and breaker, the nameplate sizes the overload. ';
+  }
+  tip += 'If the ' + MT_OCPD_LABEL[dev].toLowerCase() + ' at ' + (std || raw.toFixed(0)) +
+         ' A will not let the motor start, 430.52(C) Exception 2 allows going higher — ' +
+         'up to 400% (inverse time \u2264100 A), 225% (dual element) or 300% (non-time-delay).';
+  if (note) note.innerHTML = tip +
+    '<br><span style="color:var(--text-dimmer)">Table values assume usual speeds and normal torque. Low-speed (under 1200 RPM), high-torque and multispeed motors use the nameplate instead \u2014 see 430.6(A)(1) Exception.</span>';
+}
+
+function mtReset() {
+  document.getElementById('mt-phase').value = '3';
+  document.getElementById('mt-type').value = 'designB';
+  document.getElementById('mt-ocpd').value = 'inverse';
+  document.getElementById('mt-sf').value = '1.25';
+  document.getElementById('mt-nameplate').value = '';
+  mtPhaseChanged();
+}
 
 // ══ CONDUIT BENDER ════════════════════════════════════════
 // Deduct / take-up values are the hand-bender figures stamped on Ideal, Klein,
