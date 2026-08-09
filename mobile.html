@@ -958,6 +958,46 @@
     </div>
 
     <!-- CONVERTER -->
+    <div id="sub-bender" style="display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
+      <div style="padding:14px;display:flex;flex-direction:column;gap:12px">
+
+        <div class="conduit-tabs" id="bdTypeTabs">
+          <div class="conduit-tab active" onclick="bdType('stub',this)">Stub-Up 90&deg;</div>
+          <div class="conduit-tab" onclick="bdType('b2b',this)">Back-to-Back</div>
+          <div class="conduit-tab" onclick="bdType('offset',this)">Offset</div>
+          <div class="conduit-tab" onclick="bdType('saddle3',this)">3-Pt Saddle</div>
+          <div class="conduit-tab" onclick="bdType('saddle4',this)">4-Pt Saddle</div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <div class="ctrl" style="flex:1;min-width:130px">
+            <span class="ctrl-lbl">Conduit</span>
+            <select id="bd-size" onchange="bdCalc()" style="width:100%"></select>
+          </div>
+          <div class="ctrl" id="bd-angle-wrap" style="flex:1;min-width:130px;display:none">
+            <span class="ctrl-lbl">Bend Angle</span>
+            <select id="bd-angle" onchange="bdCalc()" style="width:100%">
+              <option value="10">10&deg; &mdash; shallow</option>
+              <option value="22.5">22.5&deg;</option>
+              <option value="30" selected>30&deg; &mdash; most common</option>
+              <option value="45">45&deg;</option>
+              <option value="60">60&deg; &mdash; tight space</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="bd-inputs" style="display:flex;flex-direction:column;gap:10px"></div>
+
+        <div class="fav-bar"><button class="reset-btn" onclick="bdReset()">Reset</button></div>
+
+        <div id="bd-result" style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:4px;overflow:hidden"></div>
+
+        <div id="bd-note" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.7;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px"></div>
+
+        <div style="overflow-x:auto"><table class="cf-table" id="bd-ref-table" style="min-width:420px"></table></div>
+      </div>
+    </div>
+
     <div id="sub-converter" style="display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
       <div style="padding:14px;display:flex;flex-direction:column;gap:12px">
 
@@ -1135,6 +1175,7 @@
   <div class="nav-item" id="mnav-loadcalc" onclick="switchTabMore('loadcalc')">Load Calc</div>
   <div class="nav-item" id="mnav-coderef" onclick="switchTabMore('coderef')">Code Ref</div>
   <div class="nav-item" id="mnav-outlets" onclick="switchTabMore('outlets')">Outlets</div>
+  <div class="nav-item" id="mnav-bender" onclick="switchTabMore('bender')">Bender</div>
   <div class="nav-item" id="mnav-converter" onclick="switchTabMore('converter')">Converter</div>
 </nav>
 
@@ -1284,7 +1325,7 @@ function switchTabMore(name) {
 var currentMoreTab = 'loadcalc';
 function moreTab(name) {
   currentMoreTab = name;
-  ['loadcalc','coderef','outlets','converter'].forEach(function(t){
+  ['loadcalc','coderef','outlets','bender','converter'].forEach(function(t){
     var sub = document.getElementById('sub-' + t);
     if (sub) {
       sub.style.display = (t === name ? 'flex' : 'none');
@@ -1294,6 +1335,7 @@ function moreTab(name) {
   syncMoreNav();
   if (name === 'outlets') outletRender();
   if (name === 'converter') cvInitQuickTables();
+  if (name === 'bender') bdInit();
   if (name === 'loadcalc') lcInit();
 }
 
@@ -4094,6 +4136,193 @@ function lcReset() {
 
 // ── UNIT CONVERTER ────────────────────────────────────────
 var cvUpdating = false;
+
+// ══ CONDUIT BENDER ════════════════════════════════════════
+// Deduct / take-up values are the hand-bender figures stamped on Ideal, Klein,
+// Greenlee and Gardner Bender shoes. Multipliers and shrink are the trade-table
+// values (rounded cosecants) rather than exact trig, deliberately: they must
+// match what is printed on the tool in the electrician's hand.
+var BD_DEDUCT = { '1/2': 5, '3/4': 6, '1': 8, '1-1/4': 11 };
+
+// NEC Chapter 9, Table 2 — one-shot / full-shoe bender minimum radius (in)
+var BD_RADIUS = { '1/2': 4, '3/4': 4.5, '1': 5.75, '1-1/4': 7.25 };
+
+var BD_MULT   = { '10': 6.0, '22.5': 2.6, '30': 2.0, '45': 1.4, '60': 1.15 };
+var BD_SHRINK = { '10': 0.0625, '22.5': 0.1875, '30': 0.25, '45': 0.375, '60': 0.5 };
+
+var bdCurrent = 'stub';
+
+// Decimal inches -> nearest 1/16" as a tape-measure fraction
+function bdFrac(x) {
+  if (isNaN(x)) return '—';
+  var neg = x < 0; x = Math.abs(x);
+  var whole = Math.floor(x);
+  var six = Math.round((x - whole) * 16);
+  if (six === 16) { whole += 1; six = 0; }
+  var out;
+  if (six === 0) out = whole + '"';
+  else {
+    var n = six, d = 16;
+    while (n % 2 === 0) { n /= 2; d /= 2; }
+    out = (whole ? whole + '-' : '') + n + '/' + d + '"';
+  }
+  return (neg ? '-' : '') + out;
+}
+
+function bdInit() {
+  var sel = document.getElementById('bd-size');
+  if (sel && !sel.options.length) {
+    Object.keys(BD_DEDUCT).forEach(function(k){
+      var o = document.createElement('option');
+      o.value = k; o.textContent = k + '" EMT';
+      if (k === '1/2') o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+  bdRefTable();
+  bdType(bdCurrent, document.querySelector('#bdTypeTabs .conduit-tab.active'));
+}
+
+function bdType(kind, el) {
+  bdCurrent = kind;
+  document.querySelectorAll('#bdTypeTabs .conduit-tab').forEach(function(t){ t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+
+  var needsAngle = (kind === 'offset' || kind === 'saddle4');
+  var aw = document.getElementById('bd-angle-wrap');
+  if (aw) aw.style.display = needsAngle ? '' : 'none';
+
+  var f = {
+    stub:    [['Stub Height', 'bd-stub', 10, 'in', 'Finished height from floor to top of the 90']],
+    b2b:     [['Back-to-Back Length', 'bd-b2b', 24, 'in', 'Outside of first 90 to outside of second 90']],
+    offset:  [['Offset Depth', 'bd-depth', 4, 'in', 'How far the run has to shift sideways'],
+              ['Distance to Obstruction', 'bd-travel', 0, 'in', 'End of conduit to the near edge — leave 0 to skip shrink compensation']],
+    saddle3: [['Obstruction Height', 'bd-depth', 3, 'in', 'Height of the pipe or duct being crossed'],
+              ['Distance to Centre', 'bd-travel', 0, 'in', 'End of conduit to the centre of the obstruction — leave 0 to skip shrink']],
+    saddle4: [['Obstruction Height', 'bd-depth', 4, 'in', 'Height being crossed'],
+              ['Obstruction Width', 'bd-width', 12, 'in', 'Across the top of the obstruction'],
+              ['Distance to Obstruction', 'bd-travel', 0, 'in', 'End of conduit to the near edge — leave 0 to skip shrink']]
+  }[kind];
+
+  var host = document.getElementById('bd-inputs');
+  if (host) {
+    host.innerHTML = f.map(function(x){
+      return '<div class="ctrl" style="width:100%;max-width:260px">' +
+        '<span class="ctrl-lbl">' + x[0] + ' (' + x[3] + ')</span>' +
+        '<input type="number" id="' + x[1] + '" value="' + x[2] + '" min="0" step="0.0625" oninput="bdCalc()" style="width:100%">' +
+        '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">' + x[4] + '</div>' +
+        '</div>';
+    }).join('');
+  }
+  bdCalc();
+}
+
+function bdRow(label, value, note) {
+  return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(46,46,46,0.5)">' +
+    '<div><span style="font-size:13px;color:var(--text)">' + label + '</span>' +
+    (note ? '<span style="display:block;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer)">' + note + '</span>' : '') +
+    '</div><span style="font-family:IBM Plex Mono,monospace;font-size:15px;font-weight:600;color:var(--accent);white-space:nowrap">' + value + '</span></div>';
+}
+
+function bdVal(id, dflt) {
+  var e = document.getElementById(id);
+  if (!e) return dflt;
+  var v = parseFloat(e.value);
+  return isNaN(v) ? dflt : v;
+}
+
+function bdCalc() {
+  var res  = document.getElementById('bd-result');
+  var note = document.getElementById('bd-note');
+  if (!res) return;
+
+  var size   = (document.getElementById('bd-size') || {}).value || '1/2';
+  var deduct = BD_DEDUCT[size];
+  var angle  = (document.getElementById('bd-angle') || {}).value || '30';
+  var mult   = BD_MULT[angle];
+  var shrPer = BD_SHRINK[angle];
+  var html = '', tip = '';
+
+  if (bdCurrent === 'stub') {
+    var stub = bdVal('bd-stub', 0);
+    var mark = stub - deduct;
+    html = bdRow('Mark from end of conduit', bdFrac(mark), 'Line up the bender ARROW here')
+         + bdRow('Deduct (take-up)', bdFrac(deduct), size + '" EMT hand bender')
+         + bdRow('Finished stub', bdFrac(stub), 'Floor to top of the 90');
+    tip = mark <= 0
+      ? 'That stub is shorter than the bender take-up — this bend cannot be made with a hand bender at this size.'
+      : 'Measure ' + bdFrac(mark) + ' from the end, wrap the mark all the way round the pipe, align the ARROW, bend to 90°.';
+
+  } else if (bdCurrent === 'b2b') {
+    var b2b = bdVal('bd-b2b', 0);
+    var stub2 = bdVal('bd-stub', 10);
+    html = bdRow('First bend — mark from end', bdFrac(stub2 - deduct), 'Arrow, bend 90° (a normal stub)')
+         + bdRow('Second bend — mark at', bdFrac(b2b), 'Measured from the BACK of the first 90')
+         + bdRow('Align using', 'STAR / notch', 'Not the arrow — the star point')
+         + bdRow('Deduct (take-up)', bdFrac(deduct), size + '" EMT hand bender');
+    tip = 'Bend the first 90 as a normal stub. Then measure ' + bdFrac(b2b) + ' from the back of that 90, align the STAR, and bend the second 90 the same direction.';
+
+  } else if (bdCurrent === 'offset') {
+    var depth  = bdVal('bd-depth', 0);
+    var travel = bdVal('bd-travel', 0);
+    var spacing = depth * mult;
+    var shrink  = depth * shrPer;
+    var first   = travel > 0 ? travel + shrink : null;
+    html = bdRow('Distance between marks', bdFrac(spacing), depth + '" × ' + mult + ' multiplier (' + angle + '°)')
+         + bdRow('Shrink', bdFrac(shrink), depth + '" × ' + shrPer + '"/in — the run pulls back by this much')
+         + (first !== null
+            ? bdRow('First mark from end', bdFrac(first), 'Obstruction at ' + bdFrac(travel) + ' + shrink')
+            : bdRow('First mark from end', 'enter distance', 'Fill in Distance to Obstruction'))
+         + bdRow('Second mark', bdFrac(spacing) + ' further on', 'Both bends to ' + angle + '°, opposite directions');
+    tip = 'Bend both marks to ' + angle + '° in OPPOSITE directions, keeping them in the same plane — if they twist you get a dog leg. Shrink is why the first mark moves out by ' + bdFrac(shrink) + '.';
+
+  } else if (bdCurrent === 'saddle3') {
+    var h = bdVal('bd-depth', 0);
+    var toCentre = bdVal('bd-travel', 0);
+    var outer = h * 2.5;
+    var shrink3 = h * 0.1875;
+    var centreMark = toCentre > 0 ? toCentre + shrink3 : null;
+    html = bdRow('Centre mark', centreMark !== null ? bdFrac(centreMark) : 'enter distance', centreMark !== null ? 'Distance to centre + ' + bdFrac(shrink3) + ' shrink' : 'Fill in Distance to Centre')
+         + bdRow('Outer marks', '± ' + bdFrac(outer), h + '" × 2.5 either side of centre')
+         + bdRow('Centre bend', '45°', 'Bend first, on the centre mark')
+         + bdRow('Outer bends', '22.5° each', 'Opposite direction to the centre bend')
+         + bdRow('Shrink', bdFrac(shrink3), h + '" × 3/16"/in');
+    tip = 'Bend the 45° at the centre mark first using the rim notch, then the two 22.5° bends at the outer marks in the opposite direction. Keep all three in one plane.';
+
+  } else if (bdCurrent === 'saddle4') {
+    var h4 = bdVal('bd-depth', 0);
+    var w4 = bdVal('bd-width', 0);
+    var travel4 = bdVal('bd-travel', 0);
+    var spacing4 = h4 * mult;
+    var shrink4  = 2 * h4 * shrPer;
+    var m1 = travel4 > 0 ? travel4 + (shrink4 / 2) : null;
+    html = bdRow('Mark 1', m1 !== null ? bdFrac(m1) : 'enter distance', m1 !== null ? 'Near edge + half the shrink' : 'Fill in Distance to Obstruction')
+         + bdRow('Mark 2', '+ ' + bdFrac(spacing4), h4 + '" × ' + mult + ' (' + angle + '°)')
+         + bdRow('Mark 3', '+ ' + bdFrac(w4) + ' after mark 2', 'Across the obstruction')
+         + bdRow('Mark 4', '+ ' + bdFrac(spacing4), 'Mirrors the first offset')
+         + bdRow('Total shrink', bdFrac(shrink4), 'Two offsets — double the single-offset shrink');
+    tip = 'A 4-point saddle is two offsets back to back. Bends 1 and 2 climb onto the obstruction, bends 3 and 4 come back down. All four at ' + angle + '°, all in one plane.';
+  }
+
+  res.innerHTML = html;
+  if (note) note.innerHTML = tip +
+    '<br><span style="color:var(--text-dimmer)">Take-up figures are for hand benders (1/2"–1-1/4" EMT). Mechanical and hydraulic benders use different shoes — check the tool. NEC Chapter 9 Table 2 sets the minimum radius; it does not set take-up.</span>';
+}
+
+function bdReset() {
+  bdType(bdCurrent, document.querySelector('#bdTypeTabs .conduit-tab.active'));
+}
+
+function bdRefTable() {
+  var t = document.getElementById('bd-ref-table');
+  if (!t || t.innerHTML.trim() !== '') return;
+  var h = '<thead><tr><th class="wire-col">EMT</th><th>Deduct</th><th>Min Radius</th></tr></thead><tbody>';
+  Object.keys(BD_DEDUCT).forEach(function(k){
+    h += '<tr onclick="ampHighlightRow(this)"><td class="wire-col">' + k + '"</td><td>' + bdFrac(BD_DEDUCT[k]) + '</td><td>' + bdFrac(BD_RADIUS[k]) + '</td></tr>';
+  });
+  h += '</tbody>';
+  t.innerHTML = h;
+}
 
 // ── CONVERTER: tool switching ─────────────────────────────
 function cvTool(name, el) {
