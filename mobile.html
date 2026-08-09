@@ -959,46 +959,160 @@
 
     <!-- CONVERTER -->
     <div id="sub-converter" style="display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch">
-      <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div style="padding:14px;display:flex;flex-direction:column;gap:12px">
 
-        <!-- Ohm's Law / PIE -->
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:12px">
-          <div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:2px;color:var(--accent);text-transform:uppercase;margin-bottom:10px">OHM'S LAW — SOLVE FOR ANY</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
-            <div class="ctrl" style="flex:1;min-width:80px">
-              <span class="ctrl-lbl">Volts (V)</span>
-              <input type="number" id="cv-volts" placeholder="?" min="0" oninput="cvCalc('volts')" style="width:100%">
+        <!-- tool picker -->
+        <div class="conduit-tabs" id="cvToolTabs">
+          <div class="conduit-tab active" onclick="cvTool('power',this)">Power</div>
+          <div class="conduit-tab" onclick="cvTool('torque',this)">Torque</div>
+          <div class="conduit-tab" onclick="cvTool('wire',this)">Wire Size</div>
+          <div class="conduit-tab" onclick="cvTool('temp',this)">Temp</div>
+          <div class="conduit-tab" onclick="cvTool('length',this)">Length</div>
+        </div>
+
+        <!-- ══ POWER / OHM'S LAW ══ -->
+        <div id="cvt-power">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <div class="ctrl" style="flex:1;min-width:120px">
+              <span class="ctrl-lbl">System Voltage</span>
+              <select id="cv-voltage" onchange="cvVoltageChanged()" style="width:100%">
+                <option value="120">120V</option><option value="208" selected>208V</option>
+                <option value="240">240V</option><option value="277">277V</option>
+                <option value="480">480V</option><option value="custom">Custom</option>
+              </select>
             </div>
-            <div class="ctrl" style="flex:1;min-width:80px">
+            <div class="ctrl" id="cv-voltage-custom-group" style="display:none;flex:1;min-width:100px">
+              <span class="ctrl-lbl">Custom V</span>
+              <input type="number" id="cv-voltage-custom" value="240" min="1" oninput="cvCalc('voltage')" style="width:100%">
+            </div>
+            <div class="ctrl" style="flex:1;min-width:120px">
+              <span class="ctrl-lbl">Phase</span>
+              <select id="cv-phase" onchange="cvCalc('voltage')" style="width:100%">
+                <option value="1">Single Phase</option>
+                <option value="3">Three Phase</option>
+              </select>
+            </div>
+            <div class="ctrl" style="flex:1;min-width:120px">
+              <span class="ctrl-lbl">Power Factor</span>
+              <select id="cv-pf" onchange="cvCalc('voltage')" style="width:100%">
+                <option value="1">1.00 — resistive (heat, incandescent)</option>
+                <option value="0.95">0.95 — LED / electronic</option>
+                <option value="0.85" selected>0.85 — motors, typical</option>
+                <option value="0.8">0.80 — motors, loaded</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:8px">Type into any one field — the rest follow.</div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="ctrl" style="flex:1;min-width:100px">
               <span class="ctrl-lbl">Amps (A)</span>
               <input type="number" id="cv-amps" placeholder="?" min="0" oninput="cvCalc('amps')" style="width:100%">
             </div>
-            <div class="ctrl" style="flex:1;min-width:80px">
+            <div class="ctrl" style="flex:1;min-width:100px">
               <span class="ctrl-lbl">Watts (W)</span>
-              <input type="number" id="cv-watts" placeholder="?" min="0" step="1" oninput="cvCalc('watts')" style="width:100%">
+              <input type="number" id="cv-watts" placeholder="?" min="0" oninput="cvCalc('watts')" style="width:100%">
             </div>
-            <div class="ctrl" style="flex:1;min-width:80px">
-              <span class="ctrl-lbl">Ohms (Ω)</span>
-              <input type="number" id="cv-ohms" placeholder="?" min="0" oninput="cvCalc('ohms')" style="width:100%">
+            <div class="ctrl" style="flex:1;min-width:100px">
+              <span class="ctrl-lbl">Kilowatts (kW)</span>
+              <input type="number" id="cv-kw" placeholder="?" min="0" oninput="cvCalc('kw')" style="width:100%">
+            </div>
+            <div class="ctrl" style="flex:1;min-width:100px">
+              <span class="ctrl-lbl">VA</span>
+              <input type="number" id="cv-va" placeholder="?" min="0" oninput="cvCalc('va')" style="width:100%">
+            </div>
+            <div class="ctrl" style="flex:1;min-width:100px">
+              <span class="ctrl-lbl">kVA</span>
+              <input type="number" id="cv-kva" placeholder="?" min="0" oninput="cvCalc('kva')" style="width:100%">
+            </div>
+            <div class="ctrl" style="flex:1;min-width:100px">
+              <span class="ctrl-lbl">Horsepower</span>
+              <input type="number" id="cv-hp" placeholder="?" min="0" oninput="cvCalc('hp')" style="width:100%">
             </div>
           </div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <div class="ctrl">
-              <span class="ctrl-lbl">System V</span>
-              <select id="cv-voltage" onchange="cvCalc('voltage')" style="width:90px">
-                <option value="120">120V</option><option value="208">208V</option><option value="240" selected>240V</option><option value="277">277V</option><option value="480">480V</option><option value="custom">Custom</option>
-              </select>
-            </div>
-            <div class="ctrl" id="cv-custom-wrap" style="display:none">
-              <span class="ctrl-lbl">Custom V</span>
-              <input type="number" id="cv-voltage-custom" value="240" min="1" oninput="cvCalc('voltage')" style="width:80px">
-            </div>
+
+          <div class="fav-bar" style="margin-top:10px"><button class="reset-btn" onclick="cvReset()">Reset</button></div>
+
+          <div id="cv-result" style="display:none;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--success);border-radius:4px;overflow:hidden;margin-top:10px">
+            <div id="cv-result-rows"></div>
           </div>
-          <div id="cv-result" style="margin-top:10px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);line-height:1.8"></div>
+
+          <div id="cv-quick-tables" style="margin-top:10px"></div>
         </div>
 
-        <!-- Quick tables -->
-        <div id="cv-quick-tables"></div>
+        <!-- ══ TORQUE ══ -->
+        <div id="cvt-torque" style="display:none">
+          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:10px">NEC 110.14(D) requires terminals to be tightened with a calibrated torque tool. Specs come in mixed units — convert here.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="ctrl" style="flex:1;min-width:110px">
+              <span class="ctrl-lbl">Pound-feet (lb-ft)</span>
+              <input type="number" id="tq-lbft" placeholder="?" min="0" oninput="tqCalc('lbft')" style="width:100%">
+            </div>
+            <div class="ctrl" style="flex:1;min-width:110px">
+              <span class="ctrl-lbl">Pound-inches (lb-in)</span>
+              <input type="number" id="tq-lbin" placeholder="?" min="0" oninput="tqCalc('lbin')" style="width:100%">
+            </div>
+            <div class="ctrl" style="flex:1;min-width:110px">
+              <span class="ctrl-lbl">Newton-metres (N·m)</span>
+              <input type="number" id="tq-nm" placeholder="?" min="0" oninput="tqCalc('nm')" style="width:100%">
+            </div>
+          </div>
+          <div id="tq-note" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.7"></div>
+        </div>
+
+        <!-- ══ WIRE SIZE ══ -->
+        <div id="cvt-wire" style="display:none">
+          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:10px">Imported gear and EU documentation are sized in mm². Cross-reference to AWG here.</div>
+          <div class="ctrl" style="max-width:220px">
+            <span class="ctrl-lbl">AWG / kcmil</span>
+            <select id="wc-awg" onchange="wcCalc()" style="width:100%"></select>
+          </div>
+          <div id="wc-out" style="margin-top:12px"></div>
+          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin:14px 0 6px">Nearest AWG for a metric size</div>
+          <div class="ctrl" style="max-width:160px">
+            <span class="ctrl-lbl">mm²</span>
+            <input type="number" id="wc-mm2" placeholder="e.g. 16" min="0" step="0.1" oninput="wcFromMM2()" style="width:100%">
+          </div>
+          <div id="wc-mm2-out" style="margin-top:10px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim)"></div>
+        </div>
+
+        <!-- ══ TEMPERATURE ══ -->
+        <div id="cvt-temp" style="display:none">
+          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:10px">Derating tables are in °C, site thermometers read °F.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="ctrl" style="flex:1;min-width:120px">
+              <span class="ctrl-lbl">Fahrenheit (°F)</span>
+              <input type="number" id="tp-f" placeholder="?" oninput="tpCalc('f')" style="width:100%">
+            </div>
+            <div class="ctrl" style="flex:1;min-width:120px">
+              <span class="ctrl-lbl">Celsius (°C)</span>
+              <input type="number" id="tp-c" placeholder="?" oninput="tpCalc('c')" style="width:100%">
+            </div>
+          </div>
+          <div id="tp-note" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-top:12px;line-height:1.7"></div>
+        </div>
+
+        <!-- ══ LENGTH ══ -->
+        <div id="cvt-length" style="display:none">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div class="ctrl" style="flex:1;min-width:100px">
+              <span class="ctrl-lbl">Feet</span>
+              <input type="number" id="ln-ft" placeholder="?" min="0" oninput="lnCalc('ft')" style="width:100%">
+            </div>
+            <div class="ctrl" style="flex:1;min-width:100px">
+              <span class="ctrl-lbl">Inches</span>
+              <input type="number" id="ln-in" placeholder="?" min="0" oninput="lnCalc('in')" style="width:100%">
+            </div>
+            <div class="ctrl" style="flex:1;min-width:100px">
+              <span class="ctrl-lbl">Metres</span>
+              <input type="number" id="ln-m" placeholder="?" min="0" step="0.01" oninput="lnCalc('m')" style="width:100%">
+            </div>
+          </div>
+          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin:16px 0 6px">Conduit trade size — metric designator</div>
+          <div style="overflow-x:auto"><table class="cf-table" id="cv-conduit-table" style="min-width:320px"></table></div>
+        </div>
+
       </div>
     </div>
 
@@ -3974,15 +4088,6 @@ function lcReset() {
   lcRenderLists();
   lcMethodChanged();
 }
-function cvReset() {
-  document.getElementById('cv-voltage').value = '240';
-  document.getElementById('cv-phase').value = '1';
-  document.getElementById('cv-voltage-custom-group').style.display = 'none';
-  ['cv-amps','cv-watts','cv-kw','cv-hp','cv-va','cv-kva'].forEach(function(id){
-    document.getElementById(id).value = '';
-  });
-  document.getElementById('cv-result').style.display = 'none';
-}
 
 
 
@@ -3990,129 +4095,305 @@ function cvReset() {
 // ── UNIT CONVERTER ────────────────────────────────────────
 var cvUpdating = false;
 
+// ── CONVERTER: tool switching ─────────────────────────────
+function cvTool(name, el) {
+  ['power','torque','wire','temp','length'].forEach(function(t){
+    var p = document.getElementById('cvt-' + t);
+    if (p) p.style.display = (t === name ? '' : 'none');
+  });
+  document.querySelectorAll('#cvToolTabs .conduit-tab').forEach(function(t){ t.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  if (name === 'wire')   wcInit();
+  if (name === 'length') lnInitTable();
+}
+
+// ── POWER / OHM'S LAW ─────────────────────────────────────
 function cvGetVoltage() {
-  var sel = document.getElementById('cv-voltage').value;
-  if (sel === 'custom') return parseFloat(document.getElementById('cv-voltage-custom').value) || 240;
-  return parseFloat(sel);
+  var el = document.getElementById('cv-voltage');
+  if (!el) return 208;
+  if (el.value === 'custom') {
+    var cu = document.getElementById('cv-voltage-custom');
+    return (cu && parseFloat(cu.value)) || 240;
+  }
+  return parseFloat(el.value);
 }
 
 function cvGetPF() {
-  return 1.0; // PF removed — W = V × A (resistive assumption)
+  var el = document.getElementById('cv-pf');
+  return el ? (parseFloat(el.value) || 1) : 1;
 }
 
 function cvGetPhase() {
-  return parseFloat(document.getElementById('cv-phase').value);
+  var el = document.getElementById('cv-phase');
+  return el ? (parseFloat(el.value) || 1) : 1;
 }
 
-document.getElementById('cv-voltage').addEventListener('change', function() {
-  var isCustom = this.value === 'custom';
-  document.getElementById('cv-voltage-custom-group').style.display = isCustom ? '' : 'none';
+function cvVoltageChanged() {
+  var isCustom = document.getElementById('cv-voltage').value === 'custom';
+  var grp = document.getElementById('cv-voltage-custom-group');
+  if (grp) grp.style.display = isCustom ? '' : 'none';
   cvCalc('voltage');
-});
+}
 
 function cvCalc(from) {
   if (cvUpdating) return;
+  if (!document.getElementById('cv-amps')) return;
   cvUpdating = true;
 
-  var V   = cvGetVoltage();
-  var PF  = cvGetPF();
-  var ph  = cvGetPhase();
-  var mult = ph === 3 ? 1.732 : 1;
+  var V    = cvGetVoltage();
+  var PF   = cvGetPF();
+  var ph   = cvGetPhase();
+  var mult = ph === 3 ? Math.sqrt(3) : 1;
 
-  var amps, watts, kw, hp, va, kva;
+  function val(id) { var e = document.getElementById(id); return e ? parseFloat(e.value) : NaN; }
 
-  // Get entered value and derive all others
-  if (from === 'amps') {
-    amps  = parseFloat(document.getElementById('cv-amps').value);
-    if (isNaN(amps)||amps<0) { cvClear(); cvUpdating=false; return; }
-    va    = V * amps * mult;
-    watts = va * PF;
-  } else if (from === 'watts') {
-    watts = parseFloat(document.getElementById('cv-watts').value);
-    if (isNaN(watts)||watts<0) { cvClear(); cvUpdating=false; return; }
-    va    = watts / PF;
-    amps  = va / (V * mult);
-  } else if (from === 'kw') {
-    kw    = parseFloat(document.getElementById('cv-kw').value);
-    if (isNaN(kw)||kw<0) { cvClear(); cvUpdating=false; return; }
-    watts = kw * 1000;
-    va    = watts / PF;
-    amps  = va / (V * mult);
-  } else if (from === 'hp') {
-    hp    = parseFloat(document.getElementById('cv-hp').value);
-    if (isNaN(hp)||hp<0) { cvClear(); cvUpdating=false; return; }
-    watts = hp * 746;
-    va    = watts / PF;
-    amps  = va / (V * mult);
-  } else if (from === 'va') {
-    va    = parseFloat(document.getElementById('cv-va').value);
-    if (isNaN(va)||va<0) { cvClear(); cvUpdating=false; return; }
-    watts = va * PF;
-    amps  = va / (V * mult);
-  } else if (from === 'kva') {
-    kva   = parseFloat(document.getElementById('cv-kva').value);
-    if (isNaN(kva)||kva<0) { cvClear(); cvUpdating=false; return; }
-    va    = kva * 1000;
-    watts = va * PF;
-    amps  = va / (V * mult);
-  } else if (from === 'voltage') {
-    // recalc from whatever is filled
-    var w = parseFloat(document.getElementById('cv-watts').value);
-    var a = parseFloat(document.getElementById('cv-amps').value);
-    if (!isNaN(w) && w > 0) { watts=w; va=watts/PF; amps=va/(V*mult); }
-    else if (!isNaN(a) && a > 0) { amps=a; va=V*amps*mult; watts=va*PF; }
-    else { cvClear(); cvUpdating=false; return; }
+  var amps, watts, va;
+
+  if (from === 'amps')       { amps  = val('cv-amps');  if (bad(amps))  return stop(); va = V * amps * mult; watts = va * PF; }
+  else if (from === 'watts') { watts = val('cv-watts'); if (bad(watts)) return stop(); va = watts / PF; amps = va / (V * mult); }
+  else if (from === 'kw')    { var kwIn = val('cv-kw');  if (bad(kwIn))  return stop(); watts = kwIn * 1000; va = watts / PF; amps = va / (V * mult); }
+  else if (from === 'va')    { va    = val('cv-va');    if (bad(va))    return stop(); watts = va * PF; amps = va / (V * mult); }
+  else if (from === 'kva')   { var kvaIn = val('cv-kva'); if (bad(kvaIn)) return stop(); va = kvaIn * 1000; watts = va * PF; amps = va / (V * mult); }
+  else if (from === 'hp')    { var hpIn = val('cv-hp');  if (bad(hpIn))  return stop(); watts = hpIn * 746; va = watts / PF; amps = va / (V * mult); }
+  else { // voltage / phase / PF changed — recompute from whichever field holds a value
+    var a = val('cv-amps'), w = val('cv-watts');
+    if (!isNaN(a) && a > 0)      { amps = a; va = V * amps * mult; watts = va * PF; }
+    else if (!isNaN(w) && w > 0) { watts = w; va = watts / PF; amps = va / (V * mult); }
+    else return stop();
   }
 
-  // Derived values
-  if (watts === undefined) watts = va * PF;
-  kw  = watts / 1000;
-  hp  = watts / 746;
-  if (va === undefined) va = watts / PF;
-  kva = va / 1000;
+  function bad(x) { return isNaN(x) || x < 0; }
+  function stop() { cvClear(); cvUpdating = false; return true; }
 
-  // Update all fields except the one being typed
-  var fields = {amps:amps, watts:watts, kw:kw, hp:hp, va:va, kva:kva};
+  var kw  = watts / 1000;
+  var kva = va / 1000;
+  var hp  = watts / 746;
+  var ohms = amps > 0 ? V / amps : 0;
+
+  var fields = { amps: amps, watts: watts, kw: kw, va: va, kva: kva, hp: hp };
   Object.keys(fields).forEach(function(key) {
-    if (key !== from) {
-      var el = document.getElementById('cv-' + key);
-      var val = fields[key];
-      if (key === 'amps') el.value = val.toFixed(2);
-      else if (key === 'watts') el.value = Math.round(val);
-      else if (key === 'kw' || key === 'kva') el.value = val.toFixed(3);
-      else if (key === 'hp') el.value = val.toFixed(3);
-      else if (key === 'va') el.value = Math.round(val);
-    }
+    if (key === from) return;
+    var el = document.getElementById('cv-' + key);
+    if (!el) return;
+    var v = fields[key];
+    if (key === 'watts' || key === 'va') el.value = Math.round(v);
+    else if (key === 'amps')             el.value = v.toFixed(2);
+    else                                 el.value = v.toFixed(3);
   });
 
-  // Show result card
-  var phaseLabel = ph === 3 ? '3-Phase' : 'Single Phase';
+  var phaseLabel = ph === 3 ? 'Three phase (\u00D7\u221A3)' : 'Single phase';
   document.getElementById('cv-result').style.display = '';
   document.getElementById('cv-result-rows').innerHTML =
-    cvRow('Amps (A)', amps.toFixed(2) + ' A', 'Current draw') +
-    cvRow('Watts (W)', Math.round(watts).toLocaleString() + ' W', 'Real / active power') +
-    cvRow('Kilowatts (kW)', kw.toFixed(3) + ' kW', 'Real power ÷ 1000') +
-    cvRow('Horsepower (HP)', hp.toFixed(3) + ' HP', '1 HP = 746 W') +
-    cvRow('VA (Apparent)', Math.round(va).toLocaleString() + ' VA', 'Apparent power') +
-    cvRow('kVA', kva.toFixed(3) + ' kVA', 'Apparent power ÷ 1000') +
-    cvRow('System', V + 'V ' + phaseLabel + ' · PF ' + PF, 'Parameters used');
+    cvRow('Amps', amps.toFixed(2) + ' A', 'Current draw') +
+    cvRow('Watts', Math.round(watts).toLocaleString() + ' W', 'Real power \u2014 what the meter bills') +
+    cvRow('VA', Math.round(va).toLocaleString() + ' VA', 'Apparent power \u2014 what the conductor carries') +
+    cvRow('kVA', kva.toFixed(3) + ' kVA', 'Used for transformer sizing') +
+    cvRow('Horsepower', hp.toFixed(3) + ' HP', '1 HP = 746 W') +
+    (amps > 0 ? cvRow('Resistance', ohms.toFixed(2) + ' \u03A9', 'V \u00F7 A \u2014 resistive loads only') : '') +
+    cvRow('Basis', V + 'V \u00B7 ' + phaseLabel + ' \u00B7 PF ' + PF.toFixed(2), 'Change above to recalculate');
 
   cvUpdating = false;
 }
 
 function cvRow(label, value, note) {
-  return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 16px;border-bottom:1px solid rgba(46,46,46,0.5)">' +
+  return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid rgba(46,46,46,0.5)">' +
     '<div><span style="font-size:13px;color:var(--text)">' + label + '</span>' +
     (note ? '<span style="display:block;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer)">' + note + '</span>' : '') +
     '</div>' +
-    '<span style="font-family:IBM Plex Mono,monospace;font-size:16px;font-weight:600;color:var(--accent)">' + value + '</span>' +
+    '<span style="font-family:IBM Plex Mono,monospace;font-size:15px;font-weight:600;color:var(--accent);white-space:nowrap">' + value + '</span>' +
   '</div>';
 }
 
 function cvClear() {
-  document.getElementById('cv-result').style.display = 'none';
+  var r = document.getElementById('cv-result');
+  if (r) r.style.display = 'none';
 }
 
+function cvReset() {
+  ['cv-amps','cv-watts','cv-kw','cv-va','cv-kva','cv-hp'].forEach(function(id){
+    var e = document.getElementById(id); if (e) e.value = '';
+  });
+  // back to NYC defaults: 208V single phase, motor-typical power factor
+  var v = document.getElementById('cv-voltage');   if (v) v.value = '208';
+  var p = document.getElementById('cv-phase');     if (p) p.value = '1';
+  var f = document.getElementById('cv-pf');        if (f) f.value = '0.85';
+  var g = document.getElementById('cv-voltage-custom-group'); if (g) g.style.display = 'none';
+  cvClear();
+}
+
+// ── TORQUE ────────────────────────────────────────────────
+// 1 lb-ft = 12 lb-in = 1.35582 N·m
+function tqCalc(from) {
+  if (cvUpdating) return;
+  cvUpdating = true;
+  function v(id){ var e=document.getElementById(id); return e?parseFloat(e.value):NaN; }
+  var lbft;
+  if (from === 'lbft')      lbft = v('tq-lbft');
+  else if (from === 'lbin') lbft = v('tq-lbin') / 12;
+  else                      lbft = v('tq-nm') / 1.35582;
+
+  if (isNaN(lbft) || lbft < 0) {
+    ['tq-lbft','tq-lbin','tq-nm'].forEach(function(id){
+      if (id !== 'tq-' + from) { var e=document.getElementById(id); if(e) e.value=''; }
+    });
+    document.getElementById('tq-note').textContent = '';
+    cvUpdating = false; return;
+  }
+
+  var map = { 'tq-lbft': lbft, 'tq-lbin': lbft * 12, 'tq-nm': lbft * 1.35582 };
+  Object.keys(map).forEach(function(id){
+    if (id === 'tq-' + from) return;
+    var e = document.getElementById(id);
+    if (e) e.value = map[id].toFixed(2);
+  });
+
+  document.getElementById('tq-note').innerHTML =
+    lbft.toFixed(2) + ' lb-ft &nbsp;=&nbsp; ' + (lbft*12).toFixed(1) + ' lb-in &nbsp;=&nbsp; ' + (lbft*1.35582).toFixed(2) + ' N\u00B7m' +
+    '<br><span style="color:var(--text-dimmer)">Always use the value on the equipment label \u2014 these are unit conversions, not torque specs.</span>';
+  cvUpdating = false;
+}
+
+// ── TEMPERATURE ───────────────────────────────────────────
+function tpCalc(from) {
+  if (cvUpdating) return;
+  cvUpdating = true;
+  function v(id){ var e=document.getElementById(id); return e?parseFloat(e.value):NaN; }
+  var f, cdeg;
+  if (from === 'f') { f = v('tp-f'); cdeg = (f - 32) * 5/9; }
+  else              { cdeg = v('tp-c'); f = cdeg * 9/5 + 32; }
+
+  if (isNaN(f) || isNaN(cdeg)) {
+    var other = from === 'f' ? 'tp-c' : 'tp-f';
+    var oe = document.getElementById(other); if (oe) oe.value = '';
+    document.getElementById('tp-note').textContent = '';
+    cvUpdating = false; return;
+  }
+
+  var target = from === 'f' ? 'tp-c' : 'tp-f';
+  var te = document.getElementById(target);
+  if (te) te.value = (from === 'f' ? cdeg : f).toFixed(1);
+
+  var band = cdeg <= 30 ? 'At or below the 30\u00B0C base \u2014 no temperature correction needed.'
+           : cdeg <= 40 ? 'Above 30\u00B0C base \u2014 apply the correction factor from NEC 310.15(B)(1).'
+           : 'Well above base \u2014 correction factor is significant, check Ampacity.';
+  document.getElementById('tp-note').innerHTML =
+    f.toFixed(1) + '\u00B0F &nbsp;=&nbsp; ' + cdeg.toFixed(1) + '\u00B0C<br><span style="color:var(--text-dimmer)">' + band + '</span>';
+  cvUpdating = false;
+}
+
+// ── LENGTH ────────────────────────────────────────────────
+function lnCalc(from) {
+  if (cvUpdating) return;
+  cvUpdating = true;
+  function v(id){ var e=document.getElementById(id); return e?parseFloat(e.value):NaN; }
+  var ft;
+  if (from === 'ft')      ft = v('ln-ft');
+  else if (from === 'in') ft = v('ln-in') / 12;
+  else                    ft = v('ln-m') * 3.28084;
+
+  if (isNaN(ft) || ft < 0) {
+    ['ln-ft','ln-in','ln-m'].forEach(function(id){
+      if (id !== 'ln-' + from) { var e=document.getElementById(id); if(e) e.value=''; }
+    });
+    cvUpdating = false; return;
+  }
+  var map = { 'ln-ft': ft, 'ln-in': ft * 12, 'ln-m': ft / 3.28084 };
+  Object.keys(map).forEach(function(id){
+    if (id === 'ln-' + from) return;
+    var e = document.getElementById(id);
+    if (e) e.value = map[id].toFixed(2);
+  });
+  cvUpdating = false;
+}
+
+var CV_TRADE = [['1/2"',16],['3/4"',21],['1"',27],['1-1/4"',35],['1-1/2"',41],['2"',53],
+                ['2-1/2"',63],['3"',78],['3-1/2"',91],['4"',103],['5"',129],['6"',155]];
+
+function lnInitTable() {
+  var t = document.getElementById('cv-conduit-table');
+  if (!t || t.innerHTML.trim() !== '') return;
+  var h = '<thead><tr><th class="wire-col">Trade Size</th><th>Metric Designator</th></tr></thead><tbody>';
+  CV_TRADE.forEach(function(r){
+    h += '<tr onclick="ampHighlightRow(this)"><td class="wire-col">' + r[0] + '</td><td>' + r[1] + '</td></tr>';
+  });
+  t.innerHTML = h + '</tbody>';
+}
+
+// ── WIRE SIZE: AWG / kcmil / mm² / circular mils ──────────
+// Circular mils come from VD_CM (already used by Wire Sizer), so the two
+// tools can never drift apart. mm² = cmil x 0.0005067.
+var WC_SIZES = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0',
+                '250','300','350','400','500','600','700','750'];
+
+function wcLabel(sz) {
+  if (sz.indexOf('/') >= 0) return sz + ' AWG';
+  return parseInt(sz) >= 250 ? sz + ' kcmil' : '#' + sz + ' AWG';
+}
+
+function wcInit() {
+  var sel = document.getElementById('wc-awg');
+  if (!sel || sel.options.length) return;
+  WC_SIZES.forEach(function(sz){
+    var o = document.createElement('option');
+    o.value = sz; o.textContent = wcLabel(sz);
+    if (sz === '12') o.selected = true;
+    sel.appendChild(o);
+  });
+  wcCalc();
+}
+
+function wcCalc() {
+  var sel = document.getElementById('wc-awg');
+  var out = document.getElementById('wc-out');
+  if (!sel || !out) return;
+  var sz = sel.value;
+  var cm = (typeof VD_CM !== 'undefined' && VD_CM[sz]) ? VD_CM[sz] : null;
+  if (!cm) { out.innerHTML = ''; return; }
+  var mm2 = cm * 0.0005067;
+  var kcmil = cm / 1000;
+  out.innerHTML =
+    '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--success);border-radius:4px;overflow:hidden">' +
+    cvRow('Cross-section', mm2.toFixed(2) + ' mm\u00B2', 'Metric equivalent') +
+    cvRow('Circular mils', cm.toLocaleString() + ' cmil', 'Used in voltage-drop maths') +
+    cvRow('kcmil', kcmil.toFixed(2), 'Thousands of circular mils') +
+    '</div>';
+}
+
+function wcFromMM2() {
+  var el = document.getElementById('wc-mm2');
+  var out = document.getElementById('wc-mm2-out');
+  if (!el || !out) return;
+  var mm2 = parseFloat(el.value);
+  if (isNaN(mm2) || mm2 <= 0) { out.textContent = ''; return; }
+  var targetCM = mm2 / 0.0005067;
+
+  // Nearest AWG at or above the metric size — never round down into a
+  // smaller conductor, that would under-size the run.
+  var pick = null;
+  for (var i = 0; i < WC_SIZES.length; i++) {
+    var cm = (typeof VD_CM !== 'undefined') ? VD_CM[WC_SIZES[i]] : null;
+    if (cm && cm >= targetCM) { pick = WC_SIZES[i]; break; }
+  }
+  if (!pick) { out.innerHTML = '<span style="color:var(--danger)">Larger than 750 kcmil \u2014 parallel conductors needed.</span>'; return; }
+  var pickCM = VD_CM[pick];
+  out.innerHTML = mm2 + ' mm\u00B2 \u2192 nearest size at or above: <strong style="color:var(--accent)">' + wcLabel(pick) + '</strong>' +
+    ' <span style="color:var(--text-dimmer)">(' + (pickCM * 0.0005067).toFixed(2) + ' mm\u00B2)</span>' +
+    '<br><span style="color:var(--text-dimmer)">Rounded up \u2014 never down into a smaller conductor.</span>';
+}
+
+// Quick reference kept from the original converter
+function cvInitQuickTables() {
+  var el = document.getElementById('cv-quick-tables');
+  if (!el || el.innerHTML.trim() !== '') return;
+  var V = 208;
+  el.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden">' +
+    '<div style="background:rgba(255,199,0,0.08);padding:8px 14px;font-family:Montserrat,sans-serif;font-weight:700;font-size:10px;letter-spacing:0.5px;color:var(--accent)">AMPS \u2192 WATTS @ ' + V + 'V, 1\u00D8, PF 1.0</div>' +
+    '<div style="padding:10px 14px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);display:grid;grid-template-columns:auto 1fr;gap:3px 18px">' +
+    [15,20,30,40,50,60,80,100].map(function(a){
+      return '<span>' + a + 'A</span><span style="color:var(--text)">' + (a*V).toLocaleString() + ' W \u00B7 ' + ((a*V)/1000).toFixed(1) + ' kW</span>';
+    }).join('') +
+    '</div></div>';
+}
 
 // ── GROUNDING/BONDING DATA ────────────────────────────────
 var GROUNDING_TOPICS = [
@@ -5201,15 +5482,7 @@ function outletRender() {
 }
 
 // Converter quick tables for mobile
-function cvInitQuickTables() {
-  var el = document.getElementById('cv-quick-tables');
-  if (!el || el.innerHTML.trim() !== '') return;
-  el.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid rgba(255,199,0,0.08);padding:0;border-radius:4px;overflow:hidden;margin-top:4px">' +
-    '<div style="background:rgba(255,199,0,0.08);padding:8px 14px;font-family:Montserrat,sans-serif;font-weight:800;font-size:10px;letter-spacing:0.5px;color:var(--accent)">AMPS → WATTS @ 240V</div>' +
-    '<div style="padding:0 14px 10px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);display:grid;grid-template-columns:1fr 1fr;gap:2px 20px">' +
-    [15,20,30,40,50,60,80,100].map(function(a){return '<span>'+a+'A →</span><span style="color:var(--text)">'+a*240+'W / '+(a*240/1000).toFixed(1)+'kW</span>';}).join('') +
-    '</div></div>';
-}
+
 </script>
 
 <script>
