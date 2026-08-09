@@ -12,7 +12,9 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;600&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0A0A0A;
@@ -53,9 +55,8 @@
     flex-shrink: 0;
   }
   .logo { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 15px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--accent); }
-  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--nycec); animation: pulse 2s infinite; display: inline-block; margin-right: 6px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--nycec); display: inline-block; margin-right: 6px; }
   .status-txt { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 9px; letter-spacing: 0.3px; color: var(--text-dim); }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
   /* ── CONTENT AREA ── */
   .content {
@@ -106,7 +107,7 @@
   .rules-row + .rules-row { margin-top: 4px; }
   .pill {
     padding: 3px 9px; border-radius: 4px;
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
     flex-shrink: 0; cursor: pointer;
   }
   .pill-nec { background: rgba(255,107,26,0.2); color: var(--nec); }
@@ -225,7 +226,7 @@
   .cf-table thead th.wire-col { text-align: left; }
   .cf-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
   .cf-table tbody td { padding: 9px 12px; border: none; border-bottom: 1px solid var(--border); text-align: center; color: var(--text-dim); white-space: nowrap; }
-  .cf-table tbody td.wire-col { text-align: left; color: var(--text); font-weight: 500; }
+  .cf-table tbody td.wire-col { text-align: left; color: var(--text); font-weight: 600; }
   .cf-table td.hi { color: var(--text-dim) !important; }
   .cf-table td.hi-accent { color: var(--accent) !important; font-weight: 600; }
   .cf-table tr.row-selected td { background: rgba(255,199,0,0.1) !important; border-top: 1px solid rgba(255,199,0,0.3); border-bottom: 1px solid rgba(255,199,0,0.3); }
@@ -235,22 +236,22 @@
   .chat-area {
     flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
     padding: 14px; display: flex; flex-direction: column; gap: 8px;
-    background: radial-gradient(ellipse at 20% 50%, rgba(255,199,0,0.03) 0%, transparent 60%), #111416;
+    background: #111416;
   }
   .msg { display: flex; align-items: flex-end; gap: 8px; animation: fadeIn 0.2s ease; }
   .msg.user { flex-direction: row-reverse; align-self: flex-end; max-width: 88%; }
   .msg.ai  { align-self: flex-start; max-width: 88%; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
   .msg-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; font-weight: bold; }
-  .msg.user .msg-avatar { background: linear-gradient(135deg,#FFC700,#e6b400); color: #000; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 9px; }
-  .msg.ai  .msg-avatar { background: linear-gradient(135deg,#1e3a2e,#2a5240); color: var(--accent); font-size: 16px; }
+  .msg.user .msg-avatar { background: var(--accent); color: #000; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 9px; }
+  .msg.ai  .msg-avatar { background: var(--surface2); color: var(--accent); font-size: 16px; }
   .msg-wrap { display: flex; flex-direction: column; gap: 2px; }
   .msg.user .msg-wrap { align-items: flex-end; }
   .msg.ai  .msg-wrap { align-items: flex-start; }
   .msg-name { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #52c07a; padding: 0 4px; font-weight: 600; }
   .msg.user .msg-name { display: none; }
   .msg-bubble { padding: 10px 13px; font-size: 14px; line-height: 1.65; position: relative; word-break: break-word; }
-  .msg.user .msg-bubble { background: linear-gradient(135deg,#1a4a7a,#1e3a5e); border-radius: 18px 18px 4px 18px; color: #e8f0ff; box-shadow: 0 2px 8px rgba(0,0,0,0.35); }
+  .msg.user .msg-bubble { background: #1d3f63; border-radius: 18px 18px 4px 18px; color: #e8f0ff; }
   .msg.ai  .msg-bubble { background: #1e2428; border-radius: 18px 18px 18px 4px; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.35); border: 1px solid rgba(255,199,0,0.1); }
   .msg-time { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--text-dimmer); padding: 0 4px; }
   .msg.ai .msg-bubble table { width: 100%; border-collapse: collapse; margin: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
@@ -351,7 +352,7 @@
   <div class="logo">Empire Code</div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
     <div><span class="status-dot"></span><span class="status-txt" style="color:var(--nycec)">NYCEC 2025</span></div>
-    <div><span style="width:7px;height:7px;border-radius:50%;background:var(--nec);animation:pulse 2s infinite 0.5s;display:inline-block;margin-right:6px"></span><span style="font-family:'Montserrat',sans-serif;font-weight:800;font-size:9px;letter-spacing:0.3px;color:var(--nec)">NEC 2020</span></div>
+    <div><span style="width:6px;height:6px;border-radius:50%;background:var(--nec);display:inline-block;margin-right:6px"></span><span style="font-family:'Montserrat',sans-serif;font-weight:800;font-size:9px;letter-spacing:0.3px;color:var(--nec)">NEC 2020</span></div>
   </div>
 </header>
 
@@ -361,12 +362,12 @@
 <!-- ══ AI CHAT ══ -->
 <div class="panel active" id="panel-chat">
   <div class="trending-bar">
-    <span class="trending-label">🔥</span>
+    <span class="trending-label">Trending</span>
     <div id="trendingBtns" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch"><span style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">Loading...</span></div>
   </div>
   <div class="chat-area" id="chatArea">
     <div class="welcome" id="welcome">
-      <div style="font-size:40px;margin-bottom:12px">⚡</div>
+      <div style="margin-bottom:16px"><img src="icon-192.png" alt="" style="width:72px;height:72px;border-radius:16px"></div>
       <h2>Empire Code AI</h2>
       <p>NEC &amp; NYCEC 2025 field assistant</p>
       <button class="welcome-ex" onclick="quickAsk('What wire size for 200A service in NYC?')">What wire size for 200A service in NYC?</button>
@@ -443,8 +444,8 @@
       </select>
     </div>
     <div class="fav-bar">
-      <button class="reset-btn" onclick="ampReset()">↺ Reset</button>
-      <button class="save-btn" onclick="favSave('amp')">⭐ Save</button>
+      <button class="reset-btn" onclick="ampReset()">Reset</button>
+      <button class="save-btn" onclick="favSave('amp')">Save</button>
     </div>
     <div class="fav-list" id="amp-fav-list"></div>
   </div>
@@ -453,7 +454,7 @@
       <div class="result-title">AMPACITY — NEC 310.15</div>
       <div class="result-grid" id="ampResultGrid"></div>
       <div class="wf-btns">
-        <button class="wf-btn" onclick="ampGoToFillCalc()">📐 Fill Calc →</button>
+        <button class="wf-btn" onclick="ampGoToFillCalc()">Fill Calc →</button>
       </div>
     </div>
     <div class="tbl-wrap">
@@ -532,8 +533,8 @@
         </select>
       </div>
       <div class="fav-bar">
-        <button class="reset-btn" onclick="cfReset()">↺ Reset</button>
-        <button class="save-btn" onclick="favSave('cf')">⭐ Save</button>
+        <button class="reset-btn" onclick="cfReset()">Reset</button>
+        <button class="save-btn" onclick="favSave('cf')">Save</button>
       </div>
       <div class="fav-list" id="cf-fav-list"></div>
     </div>
@@ -542,7 +543,7 @@
         <div class="result-title">CALCULATION RESULT</div>
         <div class="result-grid" id="cfResultGrid"></div>
         <div class="wf-btns">
-          <button class="wf-btn" onclick="cfGoToAmpacity()">⚡ Ampacity →</button>
+          <button class="wf-btn" onclick="cfGoToAmpacity()">Ampacity →</button>
         </div>
       </div>
       <div class="tbl-wrap">
@@ -613,8 +614,8 @@
       </select>
     </div>
     <div class="fav-bar">
-      <button class="reset-btn" onclick="vdReset()">↺ Reset</button>
-      <button class="save-btn" onclick="favSave('vd')">⭐ Save</button>
+      <button class="reset-btn" onclick="vdReset()">Reset</button>
+      <button class="save-btn" onclick="favSave('vd')">Save</button>
     </div>
     <div class="fav-list" id="vd-fav-list"></div>
   </div>
@@ -735,7 +736,7 @@
       </select>
     </div>
     <div class="fav-bar">
-      <button class="reset-btn" onclick="bfReset()">↺ Reset</button>
+      <button class="reset-btn" onclick="bfReset()">Reset</button>
     </div>
   </div>
   <div class="scroll-body">
@@ -840,7 +841,7 @@
       <div id="wsMaxVDNote" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-top:4px;line-height:1.4"></div>
     </div>
     <div class="fav-bar">
-      <button class="reset-btn" onclick="wsReset()">↺ Reset</button>
+      <button class="reset-btn" onclick="wsReset()">Reset</button>
     </div>
   </div>
   <div id="wsResult" style="padding:14px">
@@ -1119,7 +1120,7 @@ SECONDARY: NEC 2023
 - NYS (outside NYC) adopted NEC 2023 via 2025 Uniform Code (effective Dec 31, 2025)
 
 CRITICAL RULE — ALWAYS MENTION NYC AMENDMENT:
-For EVERY answer, you MUST end with a "🗽 NYC:" section that states:
+For EVERY answer, you MUST end with a "NYC:" section that states:
 - The relevant NYCEC amendment if one exists
 - OR "No NYC amendment — NEC applies as written" if none exists
 This is mandatory. Never skip it.
@@ -1168,7 +1169,7 @@ RESPONSE FORMAT:
 2. Show math step by step for calculations
 3. Use tables for comparisons
 4. End EVERY response with:
-   🗽 NYC: [NYCEC section + what it changes vs NEC] or [No NYC amendment]
+   NYC: [NYCEC section + what it changes vs NEC] or [No NYC amendment]
 
 TONE: Direct, practical, field-ready. You are talking to a working NYC electrician.`;
 
@@ -1242,7 +1243,8 @@ function addMessage(role, content, isError) {
 
   // Avatar
   var avatar = document.createElement('div'); avatar.className = 'msg-avatar';
-  avatar.textContent = role === 'user' ? 'YOU' : '⚡';
+  avatar.textContent = role === 'user' ? 'YOU' : '';
+  if (role !== 'user') { avatar.style.backgroundImage = 'url(icon-192.png)'; avatar.style.backgroundSize = 'cover'; avatar.style.backgroundPosition = 'center'; }
 
   // Wrap
   var wrap = document.createElement('div'); wrap.className = 'msg-wrap';
@@ -1360,7 +1362,7 @@ function showTyping() {
   var welcome = document.getElementById('welcome'); if (welcome) welcome.remove();
   var chatArea = document.getElementById('chatArea');
   var msg = document.createElement('div'); msg.className = 'msg ai'; msg.id = 'typingMsg';
-  var avatar = document.createElement('div'); avatar.className = 'msg-avatar'; avatar.textContent = '⚡';
+  var avatar = document.createElement('div'); avatar.className = 'msg-avatar'; avatar.style.backgroundImage = 'url(icon-192.png)'; avatar.style.backgroundSize = 'cover'; avatar.style.backgroundPosition = 'center';
   var wrap = document.createElement('div'); wrap.className = 'msg-wrap';
   var name = document.createElement('div'); name.className = 'msg-name'; name.textContent = 'Empire Code AI';
   wrap.appendChild(name);
@@ -2111,7 +2113,7 @@ function pbUpdate(){
   if(type==='straight'){
     var largest=parseFloat(document.getElementById('pbStraightSize').value);
     var minLen=8*largest;
-    result='<span style="color:var(--accent)">STRAIGHT PULL — NEC 314.28(A)(1)</span>\n\nLargest raceway: <strong>'+largest+'"</strong>\nMin box length: <strong style="color:var(--success)">'+minLen+'" ('+( minLen/12).toFixed(2)+' ft)</strong>\n\nFormula: 8 × '+largest+'" = <strong>'+minLen+'"</strong>\n\n<span style="color:var(--text-dimmer);font-size:10px">⚠ Applies to conductors 4 AWG and larger only.\nFor 6 AWG and smaller — use Box Fill (314.16) only.</span>';
+    result='<span style="color:var(--accent)">STRAIGHT PULL — NEC 314.28(A)(1)</span>\n\nLargest raceway: <strong>'+largest+'"</strong>\nMin box length: <strong style="color:var(--success)">'+minLen+'" ('+( minLen/12).toFixed(2)+' ft)</strong>\n\nFormula: 8 × '+largest+'" = <strong>'+minLen+'"</strong>\n\n<span style="color:var(--text-dimmer);font-size:10px">Applies to conductors 4 AWG and larger only.\nFor 6 AWG and smaller — use Box Fill (314.16) only.</span>';
     document.getElementById('pbDiagram').innerHTML=pbSvgStraight(largest,minLen);
   } else if(type==='angle'){
     var lMax=Math.max.apply(null,pbLeftList);
@@ -2122,14 +2124,14 @@ function pbUpdate(){
     var hR=(6*rMax)+(rSum-rMax)+lSum;
     var minSz=Math.max(hL,hR);
     var cDist=6*Math.max(lMax,rMax);
-    result='<span style="color:var(--accent)">ANGLE PULL — NEC 314.28(A)(2)</span>\n\nLeft: '+pbLeftList.map(function(v){return v+'"';}).join(', ')+'\nRight/Bottom: '+pbRightList.map(function(v){return v+'"';}).join(', ')+'\n\nHoriz (L→R): (6×'+lMax+'")+'+( lSum-lMax)+'"+'+rSum+'" = <strong style="color:var(--success)">'+hL+'"</strong>\nHoriz (R→L): (6×'+rMax+'")+'+( rSum-rMax)+'"+'+lSum+'" = <strong style="color:var(--success)">'+hR+'"</strong>\nUse largest: <strong style="color:var(--success)">'+minSz+'"</strong>\n\nC (between entries): 6×'+Math.max(lMax,rMax)+'" = <strong style="color:var(--warn)">'+cDist+'"</strong>\n\n<span style="color:var(--text-dimmer);font-size:10px">⚠ Applies to conductors 4 AWG and larger only.</span>';
+    result='<span style="color:var(--accent)">ANGLE PULL — NEC 314.28(A)(2)</span>\n\nLeft: '+pbLeftList.map(function(v){return v+'"';}).join(', ')+'\nRight/Bottom: '+pbRightList.map(function(v){return v+'"';}).join(', ')+'\n\nHoriz (L→R): (6×'+lMax+'")+'+( lSum-lMax)+'"+'+rSum+'" = <strong style="color:var(--success)">'+hL+'"</strong>\nHoriz (R→L): (6×'+rMax+'")+'+( rSum-rMax)+'"+'+lSum+'" = <strong style="color:var(--success)">'+hR+'"</strong>\nUse largest: <strong style="color:var(--success)">'+minSz+'"</strong>\n\nC (between entries): 6×'+Math.max(lMax,rMax)+'" = <strong style="color:var(--warn)">'+cDist+'"</strong>\n\n<span style="color:var(--text-dimmer);font-size:10px">Applies to conductors 4 AWG and larger only.</span>';
     document.getElementById('pbDiagram').innerHTML=pbSvgAngle(lMax,pbLeftList,rMax,pbRightList,minSz,cDist);
   } else {
     var uMax=Math.max.apply(null,pbLeftList);
     var uSum=pbLeftList.reduce(function(a,b){return a+b;},0);
     var uDist=6*uMax;
     var uLen=uDist+uSum;
-    result='<span style="color:var(--accent)">U PULL — NEC 314.28(A)(2)</span>\n\nRaceways: '+pbLeftList.map(function(v){return v+'"';}).join(', ')+'\nLargest: <strong>'+uMax+'"</strong>\n\nC = 6×'+uMax+'" = <strong style="color:var(--success)">'+uDist+'"</strong>\nMin box length = '+uDist+'" + '+uSum+'" = <strong style="color:var(--success)">'+uLen+'"</strong>\n\n<span style="color:var(--text-dimmer);font-size:10px">⚠ Applies to conductors 4 AWG and larger only.</span>';
+    result='<span style="color:var(--accent)">U PULL — NEC 314.28(A)(2)</span>\n\nRaceways: '+pbLeftList.map(function(v){return v+'"';}).join(', ')+'\nLargest: <strong>'+uMax+'"</strong>\n\nC = 6×'+uMax+'" = <strong style="color:var(--success)">'+uDist+'"</strong>\nMin box length = '+uDist+'" + '+uSum+'" = <strong style="color:var(--success)">'+uLen+'"</strong>\n\n<span style="color:var(--text-dimmer);font-size:10px">Applies to conductors 4 AWG and larger only.</span>';
     document.getElementById('pbDiagram').innerHTML=pbSvgU(uMax,pbLeftList,uDist,uLen);
   }
   document.getElementById('pbResult').innerHTML=result.replace(/\n/g,'<br>');
@@ -2233,7 +2235,7 @@ function pbSvgStraight(largest, minLen) {
     '<text x="'+(bX+bW/2)+'" y="'+(dimY+52)+'" fill="'+SV.dim+'" font-size="12" font-family="'+SV.font+'" text-anchor="middle">Box length ≥ 8 × largest raceway — NEC 314.28(A)(1)</text>';
 
   var title='<text x="'+W/2+'" y="48" fill="'+SV.title+'" font-size="16" font-family="'+SV.fontB+'" text-anchor="middle" letter-spacing="2">STRAIGHT PULL — NEC 314.28(A)(1)</text>';
-  var note='<text x="'+W/2+'" y="'+(H-6)+'" fill="'+SV.note+'" font-size="10" font-family="'+SV.font+'" text-anchor="middle">⚠ Applies to conductors 4 AWG and larger only — sum of raceways does NOT matter for straight pull</text>';
+  var note='<text x="'+W/2+'" y="'+(H-6)+'" fill="'+SV.note+'" font-size="10" font-family="'+SV.font+'" text-anchor="middle">Applies to conductors 4 AWG and larger only — sum of raceways does NOT matter for straight pull</text>';
 
   return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;background:'+SV.bg+';border-radius:10px;border:1px solid #263040">'+
     title+svBox(bX,bY,bW,bH)+wires+hub1+hub2+labs+dims+insideNote+formula+note+'</svg>';
@@ -2293,7 +2295,7 @@ function pbSvgAngle(lMax,leftList,rMax,rightList,minSz,cDist) {
     '<text x="'+(bX+bS/2)+'" y="'+(dimY+52)+'" fill="'+SV.dim+'" font-size="11" font-family="'+SV.font+'" text-anchor="middle">(6×largest) + other entries same wall = '+minSz+'"</text>';
 
   var title='<text x="'+W/2+'" y="30" fill="'+SV.title+'" font-size="16" font-family="'+SV.fontB+'" text-anchor="middle" letter-spacing="2">ANGLE PULL — NEC 314.28(A)(2)</text>';
-  var note='<text x="'+W/2+'" y="'+(H-6)+'" fill="'+SV.note+'" font-size="10" font-family="'+SV.font+'" text-anchor="middle">⚠ Applies to conductors 4 AWG and larger only</text>';
+  var note='<text x="'+W/2+'" y="'+(H-6)+'" fill="'+SV.note+'" font-size="10" font-family="'+SV.font+'" text-anchor="middle">Applies to conductors 4 AWG and larger only</text>';
 
   return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;background:'+SV.bg+';border-radius:10px;border:1px solid #263040">'+
     title+svBox(bX,bY,bS,bS)+wires+hubs+dims+fb+note+'</svg>';
@@ -2352,7 +2354,7 @@ function pbSvgU(uMax,raceways,uDist,uLen) {
     '<text x="'+(bX+bS/2)+'" y="'+(bY+bS*0.65)+'" fill="rgba(232,194,58,0.5)" font-size="11" font-family="'+SV.font+'" text-anchor="middle">C = 6 × largest raceway</text>';
 
   var title='<text x="'+W/2+'" y="30" fill="'+SV.title+'" font-size="16" font-family="'+SV.fontB+'" text-anchor="middle" letter-spacing="2">U PULL — NEC 314.28(A)(2)</text>';
-  var note='<text x="'+W/2+'" y="'+(H-6)+'" fill="'+SV.note+'" font-size="10" font-family="'+SV.font+'" text-anchor="middle">⚠ Applies to conductors 4 AWG and larger only</text>';
+  var note='<text x="'+W/2+'" y="'+(H-6)+'" fill="'+SV.note+'" font-size="10" font-family="'+SV.font+'" text-anchor="middle">Applies to conductors 4 AWG and larger only</text>';
 
   return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;background:'+SV.bg+';border-radius:10px;border:1px solid #263040">'+
     title+svBox(bX,bY,bS,bS)+wires+hubs+dims+formula+note+'</svg>';
@@ -2707,21 +2709,21 @@ if ('serviceWorker' in navigator) {
 // ── GFCI/AFCI DATA ───────────────────────────────────────
 
 var GFCI_ROOMS = [
-  { id:'bathroom',    icon:'🚿', label:'Bathroom' },
-  { id:'kitchen',     icon:'🍳', label:'Kitchen' },
-  { id:'garage',      icon:'🚗', label:'Garage' },
-  { id:'outdoor',     icon:'🌿', label:'Outdoor / Exterior' },
-  { id:'basement',    icon:'🏠', label:'Basement' },
-  { id:'crawlspace',  icon:'📦', label:'Crawl Space' },
-  { id:'bedroom',     icon:'🛏', label:'Bedroom' },
-  { id:'living',      icon:'🛋', label:'Living / Family Room' },
-  { id:'dining',      icon:'🍽', label:'Dining Room' },
-  { id:'hallway',     icon:'🚪', label:'Hallway / Corridor' },
-  { id:'laundry',     icon:'👕', label:'Laundry Room' },
-  { id:'boiler',      icon:'🔥', label:'Boiler / Utility Room' },
-  { id:'pool',        icon:'🏊', label:'Pool / Hot Tub' },
-  { id:'rooftop',     icon:'🏗', label:'Rooftop' },
-  { id:'commercial',  icon:'🏢', label:'Commercial Kitchen' },
+  { id:'bathroom',    label:'Bathroom' },
+  { id:'kitchen',     label:'Kitchen' },
+  { id:'garage',      label:'Garage' },
+  { id:'outdoor',     label:'Outdoor / Exterior' },
+  { id:'basement',    label:'Basement' },
+  { id:'crawlspace',  label:'Crawl Space' },
+  { id:'bedroom',     label:'Bedroom' },
+  { id:'living',      label:'Living / Family Room' },
+  { id:'dining',      label:'Dining Room' },
+  { id:'hallway',     label:'Hallway / Corridor' },
+  { id:'laundry',     label:'Laundry Room' },
+  { id:'boiler',      label:'Boiler / Utility Room' },
+  { id:'pool',        label:'Pool / Hot Tub' },
+  { id:'rooftop',     label:'Rooftop' },
+  { id:'commercial',  label:'Commercial Kitchen' },
 ];
 
 // Requirements per room — residential NEC 2023
@@ -2855,7 +2857,7 @@ var GFCI_DATA = {
       'NEC 2020 did NOT require GFCI in laundry — verify which code edition applies in your jurisdiction',
       'NYC currently on NEC 2020 — check local amendment for laundry GFCI'
     ],
-    nyc: '⚠ NYC uses NEC 2020 — laundry GFCI was added in NEC 2023. Verify with local AHJ.',
+    nyc: 'NYC uses NEC 2020 — laundry GFCI was added in NEC 2023. Verify with local AHJ.',
     color: 'dual'
   },
   boiler: {
@@ -2883,7 +2885,7 @@ var GFCI_DATA = {
     ],
     nyc: 'GFCI required for all pool circuits per NEC 680. Bonding and grounding requirements are extensive — see NEC 680.26.',
     color: 'gfci',
-    extra: '⚠ Pool work requires Article 680 compliance — equipotential bonding, specific wire types, conduit fill restrictions, and clearance distances. Highly regulated.'
+    extra: 'Pool work requires Article 680 compliance — equipotential bonding, specific wire types, conduit fill restrictions, and clearance distances. Highly regulated.'
   },
   rooftop: {
     gfci: true, afci: false,
@@ -2928,7 +2930,7 @@ function gfciInitRooms() {
     var btn = document.createElement('div');
     btn.id = 'gfci-btn-' + room.id;
     btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim)';
-    btn.innerHTML = '<span style="font-size:16px">' + room.icon + '</span>' + room.label;
+    btn.innerHTML = room.label;
     btn.onclick = function() { gfciSelectRoom(room.id); };
     btn.onmouseover = function() { if(gfciSelectedRoom !== room.id) this.style.background = 'rgba(255,199,0,0.05)'; };
     btn.onmouseout = function() { if(gfciSelectedRoom !== room.id) this.style.background = ''; };
@@ -2966,7 +2968,7 @@ function gfciUpdate() {
 
   // Build status badge
   var statusBadge = '<div style="display:inline-flex;align-items:center;gap:8px;background:'+colorData.bg+';border:1px solid '+colorData.border+';border-radius:4px;padding:8px 16px;margin-bottom:20px">' +
-    '<span style="font-size:20px">' + (data.color==='dual'?'✓✓':data.color==='gfci'?'⚡':data.color==='afci'?'🔥':'✗') + '</span>' +
+    '<span style="font-size:20px">' + (data.color==='dual'?'✓✓':data.color==='gfci'?'✓':data.color==='afci'?'✓':'✗') + '</span>' +
     '<span style="font-family:Montserrat,sans-serif;font-weight:700;font-size:14px;letter-spacing:0.5px;color:'+colorData.text+'">'+colorData.label+'</span>' +
     '</div>';
 
@@ -2974,12 +2976,12 @@ function gfciUpdate() {
   var gfciCard = '';
   if (data.gfci) {
     gfciCard = '<div style="background:rgba(255,199,0,0.06);border:1px solid rgba(255,199,0,0.25);border-left:4px solid var(--accent);border-radius:4px;padding:16px;margin-bottom:14px">' +
-      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--accent);margin-bottom:8px">⚡ GFCI REQUIRED — <span class="nec-link" onclick="necLink(\'' + data.gfciRef + '\')" title="Learn about ' + data.gfciRef + '">' + data.gfciRef + '</span></div>' +
+      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--accent);margin-bottom:8px">GFCI REQUIRED — <span class="nec-link" onclick="necLink(\'' + data.gfciRef + '\')" title="Learn about ' + data.gfciRef + '">' + data.gfciRef + '</span></div>' +
       '<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text);line-height:1.7">' + necify(data.gfciNote) + '</div>' +
       '</div>';
   } else {
     gfciCard = '<div style="background:rgba(136,136,136,0.05);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">' +
-      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;letter-spacing:0.5px;color:var(--text-dimmer)">⚡ GFCI — NOT REQUIRED</div>' +
+      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;letter-spacing:0.5px;color:var(--text-dimmer)">GFCI — NOT REQUIRED</div>' +
       '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin-top:6px;line-height:1.6">GFCI protection is not specifically required in this location unless near water.</div>' +
       '</div>';
   }
@@ -2988,12 +2990,12 @@ function gfciUpdate() {
   var afciCard = '';
   if (data.afci) {
     afciCard = '<div style="background:rgba(232,194,58,0.06);border:1px solid rgba(232,194,58,0.25);border-left:4px solid var(--warn);border-radius:4px;padding:16px;margin-bottom:14px">' +
-      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--warn);margin-bottom:8px">🔥 AFCI REQUIRED — <span class="nec-link" onclick="necLink(\'' + data.afciRef + '\')" title="Learn about ' + data.afciRef + '">' + data.afciRef + '</span></div>' +
+      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--warn);margin-bottom:8px">AFCI REQUIRED — <span class="nec-link" onclick="necLink(\'' + data.afciRef + '\')" title="Learn about ' + data.afciRef + '">' + data.afciRef + '</span></div>' +
       '<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text);line-height:1.7">' + necify(data.afciNote) + '</div>' +
       '</div>';
   } else {
     afciCard = '<div style="background:rgba(136,136,136,0.05);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">' +
-      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;letter-spacing:0.5px;color:var(--text-dimmer)">🔥 AFCI — NOT REQUIRED</div>' +
+      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;letter-spacing:0.5px;color:var(--text-dimmer)">AFCI — NOT REQUIRED</div>' +
       '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin-top:6px;line-height:1.6">AFCI protection is not required in this location per NEC 2023.</div>' +
       '</div>';
   }
@@ -3002,7 +3004,7 @@ function gfciUpdate() {
   var exceptionsHtml = '';
   if (data.exceptions && data.exceptions.length > 0) {
     exceptionsHtml = '<div style="background:rgba(136,136,136,0.05);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">' +
-      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:10px">⚠ EXCEPTIONS</div>';
+      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:10px">EXCEPTIONS</div>';
     data.exceptions.forEach(function(ex) {
       exceptionsHtml += '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.7;padding:4px 0;border-bottom:1px solid var(--border)">• ' + ex + '</div>';
     });
@@ -3011,7 +3013,7 @@ function gfciUpdate() {
 
   // NYC note
   var nycHtml = '<div style="background:rgba(82,192,122,0.06);border:1px solid rgba(82,192,122,0.2);border-radius:4px;padding:12px;margin-bottom:14px">' +
-    '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:10px;letter-spacing:0.5px;color:var(--success);margin-bottom:6px">🗽 NYC NOTE</div>' +
+    '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:10px;letter-spacing:0.5px;color:var(--success);margin-bottom:6px">NYC NOTE</div>' +
     '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.7">' + data.nyc + '</div>' +
     '</div>';
 
@@ -3022,7 +3024,7 @@ function gfciUpdate() {
     '</div>' : '';
 
   content.innerHTML =
-    '<div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:22px;letter-spacing:0.5px;color:var(--accent);margin-bottom:6px">' + room.icon + ' ' + room.label + '</div>' +
+    '<div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:22px;letter-spacing:0.5px;color:var(--accent);margin-bottom:6px">' + room.label + '</div>' +
     statusBadge +
     gfciCard +
     afciCard +
@@ -3129,7 +3131,7 @@ function lcUpdate() {
       house:      'Single-Family House · 240V/1Ø typical',
       apartment:  'One Apartment / Unit · 208V/1Ø typical in NYC',
       building:   'Multifamily Building · demand factor by unit count · NYCEC: AFCI exempt kitchen/laundry (3+ floors)',
-      commercial: '⚠ Commercial · Standard Method 220.42 required'
+      commercial: 'Commercial · Standard Method 220.42 required'
     };
     occEl.textContent = occNotes[scope] || 'Select "What are you sizing?" above in Step 1';
     occEl.style.borderColor = (scope === 'commercial') ? 'var(--danger)' : (scope === 'building') ? 'var(--nycec)' : 'var(--border)';
@@ -3574,7 +3576,7 @@ function favRender(type) {
   if (items.length === 0) { el.innerHTML = ''; return; }
   el.innerHTML = items.map(function(f) {
     return '<div class="fav-item" onclick="favLoad(\'' + type + '\',' + f.id + ')">' +
-      '<span style="color:var(--accent)">⭐</span>' +
+      '<span style="color:var(--accent)">★</span>' +
       '<span class="fav-item-name">' + f.name + '</span>' +
       '<span class="fav-delete" onclick="event.stopPropagation();favDelete(\'' + type + '\',' + f.id + ')" title="Delete">×</span>' +
     '</div>';
@@ -3649,8 +3651,8 @@ FILL_CONTENT['wireway'] = (function() {
     '      <option>12</option><option>15</option><option>20</option><option>25</option><option>30</option><option>40</option>',
     '    </select></div>',
     '  <div class="fav-bar">',
-    '    <button class="reset-btn" onclick="wwReset()">↺ Reset</button>',
-    '    <button class="save-btn" onclick="favSave(\'ww\')">⭐ Save</button>',
+    '    <button class="reset-btn" onclick="wwReset()">Reset</button>',
+    '    <button class="save-btn" onclick="favSave(\'ww\')">Save</button>',
     '  </div>',
     '  <div class="fav-list" id="ww-fav-list"></div>',
     '</div>',
@@ -3658,7 +3660,7 @@ FILL_CONTENT['wireway'] = (function() {
     '  <div class="result-title">WIREWAY FILL — NEC 376.22</div>',
     '  <div class="result-grid" id="wwResultGrid"></div>',
     '  <div class="wf-btns">',
-    '    <button class="wf-btn" onclick="cfGoToAmpacity()">⚡ Ampacity →</button>',
+    '    <button class="wf-btn" onclick="cfGoToAmpacity()">Ampacity →</button>',
     '  </div>',
     '</div>',
     '<div class="tbl-wrap">',
@@ -4013,18 +4015,18 @@ function cvClear() {
 
 // ── GROUNDING/BONDING DATA ────────────────────────────────
 var GROUNDING_TOPICS = [
-  {id:'basics',     icon:'📚', label:'Basics — Why Ground?'},
-  {id:'types',      icon:'🔌', label:'Types of Grounding'},
-  {id:'egc',        icon:'🟢', label:'EGC Sizing — Table 250.122'},
-  {id:'gec',        icon:'🔵', label:'GEC Sizing — Table 250.66'},
-  {id:'electrodes', icon:'⚡', label:'Grounding Electrodes'},
-  {id:'bonding',    icon:'🔗', label:'Bonding Requirements'},
-  {id:'panel',      icon:'🗄', label:'Panel / Service Grounding'},
-  {id:'water_pipe', icon:'💧', label:'Water Pipe Bonding'},
-  {id:'gas_pipe',   icon:'🔥', label:'Gas Pipe Bonding'},
-  {id:'pool',       icon:'🏊', label:'Pool Bonding — Art. 680'},
-  {id:'struct_steel',icon:'🏗', label:'Structural Steel'},
-  {id:'separate',   icon:'🏠', label:'Separate Buildings'},
+  {id:'basics',     label:'Basics — Why Ground?'},
+  {id:'types',      label:'Types of Grounding'},
+  {id:'egc',        label:'EGC Sizing — Table 250.122'},
+  {id:'gec',        label:'GEC Sizing — Table 250.66'},
+  {id:'electrodes', label:'Grounding Electrodes'},
+  {id:'bonding',    label:'Bonding Requirements'},
+  {id:'panel',      label:'Panel / Service Grounding'},
+  {id:'water_pipe', label:'Water Pipe Bonding'},
+  {id:'gas_pipe',   label:'Gas Pipe Bonding'},
+  {id:'pool',       label:'Pool Bonding — Art. 680'},
+  {id:'struct_steel',label:'Structural Steel'},
+  {id:'separate',   label:'Separate Buildings'},
 ];
 
 var GROUNDING_DATA = {
@@ -4137,7 +4139,7 @@ var GROUNDING_DATA = {
       {
         heading: 'Main Bonding Jumper — NEC 250.28',
         color: 'warn',
-        content: 'Connects the neutral (grounded conductor) to the equipment grounding conductor and grounding electrode at the SERVICE ONLY.\n\n**Sizing:** Per Table 250.102(C)(1) — same as GEC based on service conductor size.\n\n⚠ MBJ is installed ONLY at the service disconnect. NEVER at a subpanel — this creates dangerous parallel neutral paths.',
+        content: 'Connects the neutral (grounded conductor) to the equipment grounding conductor and grounding electrode at the SERVICE ONLY.\n\n**Sizing:** Per Table 250.102(C)(1) — same as GEC based on service conductor size.\n\nMBJ is installed ONLY at the service disconnect. NEVER at a subpanel — this creates dangerous parallel neutral paths.',
         ref: 'NEC 250.28, 250.142'
       },
       {
@@ -4160,7 +4162,7 @@ var GROUNDING_DATA = {
       {
         heading: 'Subpanel — Critical Differences',
         color: 'danger',
-        content: '⚠ Most common wiring mistake in inspections!\n\n**Subpanel MUST have:**\n• Neutral bar ISOLATED from enclosure (floating neutral)\n• Separate ground bar bonded to enclosure\n• 4-wire feed: Hot, Hot, Neutral, EGC\n• NO main bonding jumper\n\n**Never bond neutral to ground in subpanel** — creates shock hazard and code violation.',
+        content: 'Most common wiring mistake in inspections!\n\n**Subpanel MUST have:**\n• Neutral bar ISOLATED from enclosure (floating neutral)\n• Separate ground bar bonded to enclosure\n• 4-wire feed: Hot, Hot, Neutral, EGC\n• NO main bonding jumper\n\n**Never bond neutral to ground in subpanel** — creates shock hazard and code violation.',
         ref: 'NEC 250.142(B), 408.40'
       },
       {
@@ -4200,7 +4202,7 @@ var GROUNDING_DATA = {
       {
         heading: 'NYC Gas Bonding',
         color: 'warn',
-        content: 'NYC requires gas piping to be bonded. Gas company (Con Edison) has specific requirements for bonding at the meter.\n\n⚠ Do NOT bond gas pipe to the neutral conductor — bond to EGC or GEC only. Gas company may have additional requirements beyond NEC.',
+        content: 'NYC requires gas piping to be bonded. Gas company (Con Edison) has specific requirements for bonding at the meter.\n\nDo NOT bond gas pipe to the neutral conductor — bond to EGC or GEC only. Gas company may have additional requirements beyond NEC.',
         ref: 'NYCEC 250.104(B), Con Ed requirements'
       }
     ]
@@ -4268,7 +4270,7 @@ function groundingInitTopics() {
     var btn = document.createElement('div');
     btn.id = 'gtopic-' + t.id;
     btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;font-size:12px;color:var(--text-dim)';
-    btn.innerHTML = '<span style="font-size:14px">' + t.icon + '</span>' + t.label;
+    btn.innerHTML = t.label;
     btn.onclick = function() { groundingSelectTopic(t.id); };
     container.appendChild(btn);
   });
@@ -4314,17 +4316,17 @@ function groundingSelectTopic(id) {
 
 // ── NYC AMENDMENTS DATA ───────────────────────────────────
 var NYC_TOPICS = [
-  {id:'overview',   icon:'📋', label:'Overview — NYCEC'},
-  {id:'wiring',     icon:'🔌', label:'Wiring Methods'},
-  {id:'gfci_afci',  icon:'⚡', label:'GFCI/AFCI Rules'},
-  {id:'service',    icon:'🗄', label:'Service & Metering'},
-  {id:'conduit',    icon:'🔧', label:'Conduit Requirements'},
-  {id:'permits',    icon:'📄', label:'Permits & Inspections'},
-  {id:'solar',      icon:'☀️', label:'Solar / Photovoltaic'},
-  {id:'ev',         icon:'🚗', label:'EV Charging'},
-  {id:'emergency',  icon:'🚨', label:'Emergency Systems'},
-  {id:'highrise',   icon:'🏢', label:'High-Rise Buildings'},
-  {id:'violations', icon:'⚠️', label:'Common Violations'},
+  {id:'overview',   label:'Overview — NYCEC'},
+  {id:'wiring',     label:'Wiring Methods'},
+  {id:'gfci_afci',  label:'GFCI/AFCI Rules'},
+  {id:'service',    label:'Service & Metering'},
+  {id:'conduit',    label:'Conduit Requirements'},
+  {id:'permits',    label:'Permits & Inspections'},
+  {id:'solar',      label:'Solar / Photovoltaic'},
+  {id:'ev',         label:'EV Charging'},
+  {id:'emergency',  label:'Emergency Systems'},
+  {id:'highrise',   label:'High-Rise Buildings'},
+  {id:'violations', label:'Common Violations'},
 ];
 
 var NYC_DATA = {
@@ -4333,14 +4335,14 @@ var NYC_DATA = {
     items: [
       {label:'Base Code', section:'Admin §101', color:'accent', content:'NYC uses NEC 2020 as the base code with significant local amendments. The NYC Electrical Code (NYCEC) is administered by the NYC Department of Buildings (DOB).\n\nLast major update: Local Law 2024. Always verify current edition with NYC DOB at nyc.gov/buildings.'},
       {label:'Jurisdiction', section:'Admin §105', color:'success', content:'All electrical work in NYC requires:\n• Licensed Master Electrician (ME) or Special Electrician (SE)\n• NYC DOB permits for most work\n• Inspection by NYC DOB or approved special inspection agency\n• Certificates of Inspection (C of I) for completed work'},
-      {label:'Licenses Required', section:'Admin §107', color:'warn', content:'**Master Electrician (ME):** Can pull permits, supervise all electrical work, certify completed installations.\n\n**Special Electrician (SE):** Licensed for specific locations/equipment (elevators, signs, etc.)\n\n**Journeyman:** Can work under ME supervision. No permit authority.\n\n⚠ Unlicensed electrical work in NYC = Class A misdemeanor + fines.'},
+      {label:'Licenses Required', section:'Admin §107', color:'warn', content:'**Master Electrician (ME):** Can pull permits, supervise all electrical work, certify completed installations.\n\n**Special Electrician (SE):** Licensed for specific locations/equipment (elevators, signs, etc.)\n\n**Journeyman:** Can work under ME supervision. No permit authority.\n\nUnlicensed electrical work in NYC = Class A misdemeanor + fines.'},
     ]
   },
   wiring: {
     title: 'Wiring Methods — NYC Amendments',
     items: [
       {label:'EMT Required — Major Difference', section:'334.12', color:'danger', content:'**NYC requires EMT (or rigid conduit) in most commercial and multifamily occupancies.**\n\nRomex (NM cable) is generally NOT permitted in:\n• Commercial buildings\n• Multifamily buildings (3+ units)\n• Any building over 3 stories\n\nRomex IS permitted in:\n• 1 and 2 family dwellings\n• Townhouses (with restrictions)'},
-      {label:'MC Cable', section:'330.10', color:'warn', content:'MC Cable (Metal Clad) is permitted in NYC under specific conditions:\n• Healthcare facilities\n• Concealed in walls of certain occupancies\n• Check NYCEC Chapter 3 for specific applications\n\n⚠ Always verify with NYC DOB — inspectors are strict about wiring methods.'},
+      {label:'MC Cable', section:'330.10', color:'warn', content:'MC Cable (Metal Clad) is permitted in NYC under specific conditions:\n• Healthcare facilities\n• Concealed in walls of certain occupancies\n• Check NYCEC Chapter 3 for specific applications\n\nAlways verify with NYC DOB — inspectors are strict about wiring methods.'},
       {label:'Conduit Fill', section:'Ch.9 T.1', color:'success', content:'Same as NEC Chapter 9 — no NYC amendment to conduit fill rules. However:\n• Splices in conduit are generally not permitted (NEC 300.13 applies)\n• All conductors in a conduit must be same voltage system\n• Verify conduit material per occupancy type'},
     ]
   },
@@ -4348,7 +4350,7 @@ var NYC_DATA = {
     title: 'GFCI/AFCI — NYC Rules',
     items: [
       {label:'GFCI Requirements', section:'210.8', color:'accent', content:'NYC follows NEC 2020 GFCI requirements:\n• Bathrooms — all receptacles\n• Garages — all receptacles\n• Outdoors — all receptacles\n• Kitchens — countertop receptacles within 6 ft of sink\n• Basements — all receptacles\n• Crawl spaces — all receptacles\n• Boat hoisting areas, pools, hot tubs\n• Rooftop — all receptacles'},
-      {label:'AFCI Requirements', section:'210.12', color:'warn', content:'NYC adopted AFCI requirements per NEC 2020:\n• All 120V, 15A and 20A branch circuits in dwelling units\n• Bedrooms, living rooms, dining rooms, hallways, closets\n• All rooms in dwelling units (NEC 2020 expanded scope)\n\n⚠ AFCI breakers must be listed for the panel manufacturer.'},
+      {label:'AFCI Requirements', section:'210.12', color:'warn', content:'NYC adopted AFCI requirements per NEC 2020:\n• All 120V, 15A and 20A branch circuits in dwelling units\n• Bedrooms, living rooms, dining rooms, hallways, closets\n• All rooms in dwelling units (NEC 2020 expanded scope)\n\nAFCI breakers must be listed for the panel manufacturer.'},
       {label:'Combination AFCI/GFCI', section:'210.12(A)', color:'success', content:'Combination AFCI/GFCI devices are acceptable in NYC and satisfy both requirements where both apply (e.g., kitchen, bathroom in dwelling unit).\n\nMost manufacturers now offer dual-function breakers. Verify listing with panel manufacturer.'},
     ]
   },
@@ -4365,13 +4367,13 @@ var NYC_DATA = {
     items: [
       {label:'EMT — Most Common in NYC', color:'accent', content:'EMT (Electrical Metallic Tubing) is the standard wiring method in NYC commercial and multifamily work.\n\n• All fittings must be steel — no plastic EMT connectors allowed\n• Compression fittings preferred for wet locations\n• Set-screw fittings acceptable in dry, concealed locations\n• Minimum 1/2" trade size'},
       {label:'RMC in Specific Locations', color:'warn', content:'Rigid Metal Conduit (RMC) required:\n• Below grade (underground)\n• Where subject to physical damage\n• Service entrance conduit (often required)\n• Locations specified by NYC DOB\n• Exposed in some commercial occupancies'},
-      {label:'PVC — Restricted Use', color:'danger', content:'PVC conduit has LIMITED use in NYC:\n• Underground only in most cases\n• NOT permitted exposed in buildings\n• NOT permitted in concrete slabs that are a floor/ceiling assembly\n• Verify with AHJ for each application\n\n⚠ NYC inspectors often reject PVC where RMC or EMT is required.'},
+      {label:'PVC — Restricted Use', color:'danger', content:'PVC conduit has LIMITED use in NYC:\n• Underground only in most cases\n• NOT permitted exposed in buildings\n• NOT permitted in concrete slabs that are a floor/ceiling assembly\n• Verify with AHJ for each application\n\nNYC inspectors often reject PVC where RMC or EMT is required.'},
     ]
   },
   permits: {
     title: 'Permits & Inspections — NYC DOB',
     items: [
-      {label:'When Permits Are Required', color:'accent', content:'**Permit REQUIRED for:**\n• New electrical installations\n• Panel replacements or upgrades\n• Adding circuits\n• Service changes\n• Any work in commercial buildings\n• Multifamily building work\n\n**Permit NOT required (generally):**\n• Like-for-like device replacement (outlets, switches)\n• Fixture replacement (same circuit, same location)\n• Minor repairs\n\n⚠ When in doubt — pull a permit.'},
+      {label:'When Permits Are Required', color:'accent', content:'**Permit REQUIRED for:**\n• New electrical installations\n• Panel replacements or upgrades\n• Adding circuits\n• Service changes\n• Any work in commercial buildings\n• Multifamily building work\n\n**Permit NOT required (generally):**\n• Like-for-like device replacement (outlets, switches)\n• Fixture replacement (same circuit, same location)\n• Minor repairs\n\nWhen in doubt — pull a permit.'},
       {label:'Filing Process', color:'success', content:'1. Master Electrician files drawings/plans via NYC DOB NOW portal\n2. DOB reviews and approves (or requests revisions)\n3. Work permit issued\n4. Work performed\n5. Final inspection requested\n6. DOB inspects and issues Certificate of Inspection\n\nRush/expedited filing available for additional fee.'},
       {label:'Inspection Process', color:'warn', content:'**NYC DOB Electrical Inspections:**\n• Rough inspection: before walls closed\n• Final inspection: all work complete\n• Inspector checks NEC 2020 + NYCEC compliance\n• Common rejections: neutral-ground bond in subpanel, wrong wiring method, missing GFCI/AFCI, improper grounding\n\nAlways have permit and plans on site during inspection.'},
     ]
@@ -4428,7 +4430,7 @@ function nycInitTopics() {
     var btn = document.createElement('div');
     btn.id = 'nyctopic-' + t.id;
     btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;font-size:12px;color:var(--text-dim)';
-    btn.innerHTML = '<span style="font-size:14px">' + t.icon + '</span>' + t.label;
+    btn.innerHTML = t.label;
     btn.onclick = function() { nycSelectTopic(t.id); };
     container.appendChild(btn);
   });
@@ -4453,7 +4455,7 @@ function nycSelectTopic(id) {
     danger:  'rgba(224,82,82,0.08)|rgba(224,82,82,0.3)|#e05252'
   };
 
-  var html = '<div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:20px;letter-spacing:0.5px;color:var(--accent);margin-bottom:16px">🗽 ' + data.title + '</div>';
+  var html = '<div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:20px;letter-spacing:0.5px;color:var(--accent);margin-bottom:16px">' + data.title + '</div>';
 
   data.items.forEach(function(item) {
     var cols = (colorMap[item.color]||colorMap.accent).split('|');
@@ -4780,7 +4782,7 @@ function lcInit() {
       lcAddPicker('ev') +
       '</div>' +
 
-      '<div class="fav-bar" style="margin-top:4px"><button class="reset-btn" onclick="lcReset()">↺ Reset</button><button class="save-btn" onclick="favSave(\'lc\')">⭐ Save</button></div>' +
+      '<div class="fav-bar" style="margin-top:4px"><button class="reset-btn" onclick="lcReset()">Reset</button><button class="save-btn" onclick="favSave(\'lc\')">Save</button></div>' +
       '<div class="fav-list" id="lc-fav-list"></div>' +
       '<div id="lcResult" style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:4px;padding:14px;min-height:100px"><div style="text-align:center;padding:20px;color:var(--text-dimmer);font-family:IBM Plex Mono,monospace;font-size:12px">Adjust values above ↑</div></div>' +
       '</div>';
@@ -5080,11 +5082,11 @@ function lcMethodChanged() {
   var noteEl = document.getElementById('lcMethodNote');
   if (noteEl) {
     var notes = {
-      optional: '📘 ONE dwelling unit with its own service/feeder ≥100A (single set of 120/240V or 208Y/120V, 3-wire conductors) — e.g. a house, or one apartment with its own dedicated panel. This condition must actually be true — it\'s not automatic just because it\'s a house. Simplest method: general loads get one demand factor, appliances and HVAC counted separately. Use for a NEW service or a full recalculation.',
-      existing: '📗 Same scope and same ≥100A condition as 220.82 — e.g. a house or one apartment\'s own feeder — but for an EXISTING service where you\'re just adding a load: EV charger, new AC, renovation. Combines everything first, then applies one demand factor. Faster than 220.82 when you don\'t want to size the whole service from zero.',
-      multifamily: '🏢 The BUILDING\'s main service — e.g. a Manhattan high-rise meter bank feeding 3+ apartments through one set of conductors. Only valid if EVERY unit has electric cooking AND electric heat or A/C — many NYC buildings have gas stoves, which disqualifies this method (use 220.42 Standard instead). Demand factor drops as unit count rises — more units, more diversity.',
-      standard: '📙 Required for COMMERCIAL spaces — Optional Methods are dwelling-only. Also the fallback whenever the ≥100A condition or the 220.84 conditions aren\'t met — e.g. an under-100A house or apartment feeder, or a building with gas cooking in even one unit. Uses NEC Table 220.42 demand factors instead of a flat percentage.',
-      nec87: '📕 Not NYC-specific — plain NEC. Use on an EXISTING service (house, apartment feeder, or whole building) when you have real meter history and want to justify available capacity from actual usage instead of recalculating from scratch. Needs 12 months of demand data, or a 30-day recorded minimum.'
+      optional: 'ONE dwelling unit with its own service/feeder ≥100A (single set of 120/240V or 208Y/120V, 3-wire conductors) — e.g. a house, or one apartment with its own dedicated panel. This condition must actually be true — it\'s not automatic just because it\'s a house. Simplest method: general loads get one demand factor, appliances and HVAC counted separately. Use for a NEW service or a full recalculation.',
+      existing: 'Same scope and same ≥100A condition as 220.82 — e.g. a house or one apartment\'s own feeder — but for an EXISTING service where you\'re just adding a load: EV charger, new AC, renovation. Combines everything first, then applies one demand factor. Faster than 220.82 when you don\'t want to size the whole service from zero.',
+      multifamily: 'The BUILDING\'s main service — e.g. a Manhattan high-rise meter bank feeding 3+ apartments through one set of conductors. Only valid if EVERY unit has electric cooking AND electric heat or A/C — many NYC buildings have gas stoves, which disqualifies this method (use 220.42 Standard instead). Demand factor drops as unit count rises — more units, more diversity.',
+      standard: 'Required for COMMERCIAL spaces — Optional Methods are dwelling-only. Also the fallback whenever the ≥100A condition or the 220.84 conditions aren\'t met — e.g. an under-100A house or apartment feeder, or a building with gas cooking in even one unit. Uses NEC Table 220.42 demand factors instead of a flat percentage.',
+      nec87: 'Not NYC-specific — plain NEC. Use on an EXISTING service (house, apartment feeder, or whole building) when you have real meter history and want to justify available capacity from actual usage instead of recalculating from scratch. Needs 12 months of demand data, or a 30-day recorded minimum.'
     };
     noteEl.textContent = notes[method] || '';
   }
@@ -5213,10 +5215,10 @@ function wsCalc() {
       '<div style="background:rgba(82,192,122,0.1);border:1px solid rgba(82,192,122,0.3);border-left:4px solid var(--success);border-radius:4px;padding:14px 18px;margin-bottom:16px">' +
         '<div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:22px;letter-spacing:0.5px;color:var(--success);margin-bottom:10px">✓ USE: ' + wLabel + ' ' + (mat==='cu'?'COPPER':'ALUMINUM') + '</div>' +
         '<div style="display:flex;flex-wrap:wrap;gap:8px;font-family:IBM Plex Mono,monospace;font-size:12px;margin-bottom:10px">' +
-          '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">⚡ Ampacity: <strong style="color:var(--success)">' + wFinal.toFixed(0) + 'A</strong> ≥ ' + load + 'A</span>' +
-          (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">📏 V-Drop: <strong style="color:var(--success)">' + wVDpct.toFixed(2) + '%</strong> ≤ ' + maxVD + '%</span>' : '') +
-          '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">🔌 Breaker: <strong style="color:var(--accent)">' + typical + '</strong></span>' +
-          (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">🔋 V at load: <strong>' + (voltage - wVD).toFixed(1) + 'V</strong></span>' : '') +
+          '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">Ampacity: <strong style="color:var(--success)">' + wFinal.toFixed(0) + 'A</strong> ≥ ' + load + 'A</span>' +
+          (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">V-Drop: <strong style="color:var(--success)">' + wVDpct.toFixed(2) + '%</strong> ≤ ' + maxVD + '%</span>' : '') +
+          '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">Breaker: <strong style="color:var(--accent)">' + typical + '</strong></span>' +
+          (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">V at load: <strong>' + (voltage - wVD).toFixed(1) + 'V</strong></span>' : '') +
         '</div>' +
         '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Derating: ' + wBase + 'A base × ' + tempFactor.toFixed(2) + ' (temp@' + temp + '°F) × ' + bundle + ' (bundle) = ' + (wBase * tempFactor * bundle).toFixed(0) + 'A → capped at 75°C terminal: <strong>' + wFinal.toFixed(0) + 'A</strong></div>' +
       '</div>';
@@ -5228,7 +5230,7 @@ function wsCalc() {
 
   var tableTitle = load + 'A · ' + (feet ? feet + 'ft · ' : 'no distance · ') + voltage + 'V · ' + (phase==='3'?'3Ø':'1Ø') + ' · ' + (mat==='cu'?'Cu':'Al') + (bundle<1?' ×'+bundle+' bundle':'') + (temp!==86?' @'+temp+'°F':'');
 
-  var fillBtn = winner ? '<div style="padding:10px 0 4px"><button onclick="wsGoToFillCalc()" class="wf-btn" style="width:100%">📐 Fill Calc →</button></div>' : '';
+  var fillBtn = winner ? '<div style="padding:10px 0 4px"><button onclick="wsGoToFillCalc()" class="wf-btn" style="width:100%">Fill Calc →</button></div>' : '';
   document.getElementById('wsResult').innerHTML = summary + fillBtn +
     '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;padding:0 4px">' + tableTitle + '</div>' +
     '<div style="overflow-x:auto"><table class="cf-table" style="min-width:480px">' +
