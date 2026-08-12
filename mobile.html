@@ -386,6 +386,17 @@
       <button class="welcome-ex" onclick="quickAsk('GFCI requirements for kitchen in commercial?')">GFCI requirements for kitchen in commercial?</button>
       <button class="welcome-ex" onclick="quickAsk('How many #12 THHN fit in 3/4 EMT?')">How many #12 THHN fit in 3/4" EMT?</button>
     </div>
+    <div id="pinnedWrap" style="display:none;width:100%;max-width:460px;align-self:center;margin-top:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 2px">
+        <span style="font-family:Montserrat,sans-serif;font-weight:800;font-size:10px;letter-spacing:0.5px;color:var(--accent)">PINNED</span>
+        <span id="pinnedEditBtn" onclick="pinToggleEdit()" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);cursor:pointer">Edit</span>
+      </div>
+      <div id="pinnedList" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+    </div>
+    <div id="pinnedPicker" style="display:none;width:100%;max-width:460px;align-self:center;margin-top:14px">
+      <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:8px;padding:0 2px">Tap to pin or unpin \u2014 shortcuts appear here on the home screen.</div>
+      <div id="pinnedOptions" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
   </div>
   <div class="input-area">
     <div class="input-row">
@@ -1306,6 +1317,130 @@ window.addEventListener('load', function() {
 </script>
 
 <script>
+// ══ PINNED SHORTCUTS ══════════════════════════════════════
+// There are now a dozen tools across two nav rows. This lets an electrician
+// put the three or four they actually use on the home screen.
+// Distinct from the "Save" button inside each calculator: that stores a set of
+// VALUES, this stores a shortcut to a TOOL.
+var PIN_KEY = 'ec_pinned';
+
+// kind 'main' = primary bottom nav, 'more' = behind the › toggle
+var PIN_TOOLS = [
+  { id:'wiresizer', label:'Wire Sizer', kind:'main' },
+  { id:'conduit',   label:'Fill Calc',  kind:'main' },
+  { id:'ampacity',  label:'Ampacity',   kind:'main' },
+  { id:'boxfill',   label:'Box Fill',   kind:'main' },
+  { id:'loadcalc',  label:'Load Calc',  kind:'more' },
+  { id:'motor',     label:'Motor 430',  kind:'more' },
+  { id:'bender',    label:'Bender',     kind:'more' },
+  { id:'converter', label:'Converter',  kind:'more' },
+  { id:'coderef',   label:'Code Ref',   kind:'more' },
+  { id:'outlets',   label:'NEMA',       kind:'more' }
+];
+
+var pinEditing = false;
+
+function pinGet() {
+  try {
+    var raw = JSON.parse(localStorage.getItem(PIN_KEY));
+    if (Array.isArray(raw)) return raw.filter(function(id){
+      return PIN_TOOLS.some(function(t){ return t.id === id; });
+    });
+  } catch(e) {}
+  return ['wiresizer', 'conduit', 'ampacity', 'loadcalc']; // sensible starting set
+}
+
+function pinSet(list) {
+  try { localStorage.setItem(PIN_KEY, JSON.stringify(list)); } catch(e) {}
+}
+
+function pinGo(id) {
+  var tool = PIN_TOOLS.filter(function(t){ return t.id === id; })[0];
+  if (!tool) return;
+  if (tool.kind === 'main') {
+    switchTab(id, document.getElementById('mnav-' + id));
+  } else {
+    // sections under › live inside panel-more, so open that then the sub-tab
+    switchTabMore(id);
+  }
+}
+
+function pinRender() {
+  var wrap = document.getElementById('pinnedWrap');
+  var list = document.getElementById('pinnedList');
+  if (!wrap || !list) return;
+
+  var pinned = pinGet();
+  wrap.style.display = (pinned.length || pinEditing) ? '' : 'none';
+
+  list.innerHTML = pinned.map(function(id){
+    var t = PIN_TOOLS.filter(function(x){ return x.id === id; })[0];
+    if (!t) return '';
+    if (pinEditing) {
+      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:12px 12px">' +
+        '<span style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;color:var(--text)">' + t.label + '</span>' +
+        '<button onclick="pinRemove(\'' + t.id + '\')" style="background:none;border:1px solid var(--border);color:var(--danger);font-size:12px;cursor:pointer;padding:2px 8px;border-radius:4px;line-height:1.4">\u2715</button>' +
+        '</div>';
+    }
+    return '<button onclick="pinGo(\'' + t.id + '\')" style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:4px;padding:14px 12px;text-align:left;cursor:pointer;font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;color:var(--text)">' +
+      t.label + '</button>';
+  }).join('');
+
+  var picker = document.getElementById('pinnedPicker');
+  if (picker) picker.style.display = pinEditing ? '' : 'none';
+  if (pinEditing) pinRenderPicker();
+
+  var btn = document.getElementById('pinnedEditBtn');
+  if (btn) btn.textContent = pinEditing ? 'Done' : 'Edit';
+}
+
+function pinRenderPicker() {
+  var host = document.getElementById('pinnedOptions');
+  if (!host) return;
+  var pinned = pinGet();
+  host.innerHTML = PIN_TOOLS.map(function(t){
+    var on = pinned.indexOf(t.id) >= 0;
+    return '<button onclick="pinToggle(\'' + t.id + '\')" style="background:' +
+      (on ? 'rgba(255,199,0,0.12)' : 'var(--surface)') + ';border:1px solid ' +
+      (on ? 'rgba(255,199,0,0.4)' : 'var(--border)') + ';color:' +
+      (on ? 'var(--accent)' : 'var(--text-dim)') +
+      ';font-family:IBM Plex Mono,monospace;font-size:11px;padding:7px 11px;border-radius:4px;cursor:pointer">' +
+      (on ? '\u2713 ' : '+ ') + t.label + '</button>';
+  }).join('');
+}
+
+function pinToggle(id) {
+  var pinned = pinGet();
+  var i = pinned.indexOf(id);
+  if (i >= 0) pinned.splice(i, 1);
+  else {
+    if (pinned.length >= 6) return; // keep the home screen scannable
+    pinned.push(id);
+  }
+  pinSet(pinned);
+  pinRender();
+}
+
+function pinRemove(id) {
+  var pinned = pinGet().filter(function(x){ return x !== id; });
+  pinSet(pinned);
+  pinRender();
+}
+
+function pinHide() {
+  ['pinnedWrap','pinnedPicker'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.remove();
+  });
+}
+
+function pinToggleEdit() {
+  pinEditing = !pinEditing;
+  pinRender();
+}
+
+window.addEventListener('DOMContentLoaded', pinRender);
+
 // ── COLLAPSIBLE RULES BARS ────────────────────────────────
 // Wraps each bar's rows and adds a toggle, so the seven existing bars in the
 // markup don't each need editing. Safe to call repeatedly — bars injected
@@ -1395,6 +1530,16 @@ function toggleMoreNav() {
 
 function switchTabMore(name) {
   switchTab('more', null);
+  // Reaching a "more" section from a pinned shortcut has to open the secondary
+  // row too, otherwise the bottom bar shows the primary tabs while a more
+  // section is on screen.
+  if (!moreNavOpen) {
+    var primary = document.querySelector('.bottom-nav:not(#secondary-nav)');
+    var secondary = document.getElementById('secondary-nav');
+    if (primary) primary.style.display = 'none';
+    if (secondary) secondary.style.display = 'flex';
+    moreNavOpen = true;
+  }
   moreTab(name);   // moreTab handles the nav highlight via syncMoreNav
 }
 
@@ -1571,6 +1716,7 @@ function getNow() {
 function addMessage(role, content, isError) {
   var welcome = document.getElementById('welcome');
   if (welcome) welcome.remove();
+  pinHide();
   var chatArea = document.getElementById('chatArea');
   var msg = document.createElement('div'); msg.className = 'msg ' + role;
 
@@ -1693,6 +1839,7 @@ function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 
 function showTyping() {
   var welcome = document.getElementById('welcome'); if (welcome) welcome.remove();
+  pinHide();
   var chatArea = document.getElementById('chatArea');
   var msg = document.createElement('div'); msg.className = 'msg ai'; msg.id = 'typingMsg';
   var avatar = document.createElement('div'); avatar.className = 'msg-avatar'; avatar.style.backgroundImage = 'url(icon-192.png)'; avatar.style.backgroundSize = 'cover'; avatar.style.backgroundPosition = 'center';
