@@ -935,9 +935,11 @@
         <button class="code-subtab" id="cst-dob" onclick="codeSubTab('dob')">DOB/EPR</button>
         <button class="code-subtab" id="cst-locallaws" onclick="codeSubTab('locallaws')">Local Laws</button>
       </div>
-      <div id="csr-content" style="flex:1;display:flex;flex-direction:column;">
+      <!-- GFCI keeps its own node: its buttons hold JS click handlers, which
+           cannot survive an innerHTML swap. Only #csr-content is replaced. -->
+      <div id="gfci-panel" style="flex:1;display:flex;flex-direction:column;">
         <div class="scroll-body">
-          <div style="padding:14px">
+          <div id="gfciListView" style="padding:14px">
             <div style="margin-bottom:10px">
               <span class="ctrl-lbl">Building Type</span>
               <select id="gfciBuildingType" onchange="gfciUpdate()" style="margin-top:5px;width:100%">
@@ -948,9 +950,13 @@
             </div>
             <div id="gfciRoomList" style="display:flex;flex-direction:column;gap:6px"></div>
           </div>
-          <div id="gfciContent" style="padding:14px;padding-top:0"></div>
+          <div id="gfciDetailView" style="display:none">
+            <div onclick="gfciBack()" style="display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);position:sticky;top:0;background:var(--bg);z-index:2">\u2039 All rooms</div>
+            <div id="gfciContent" style="padding:16px 14px"></div>
+          </div>
         </div>
       </div>
+      <div id="csr-content" style="flex:1;display:none;flex-direction:column;"></div>
     </div>
 
     <!-- OUTLETS -->
@@ -2853,24 +2859,30 @@ function codeSubTab(name) {
     var btn = document.getElementById('cst-' + n);
     if (btn) btn.classList.toggle('active', n === name);
   });
-  var wrapper = document.getElementById('csr-content');
+
+  var gfciPanel = document.getElementById('gfci-panel');
+  var wrapper   = document.getElementById('csr-content');
+
+  // GFCI lives in its own node so its JS click handlers are never wiped;
+  // everything else is rendered from a string into the shared wrapper.
+  if (name === 'gfci') {
+    if (gfciPanel) gfciPanel.style.display = 'flex';
+    if (wrapper)   wrapper.style.display = 'none';
+    gfciBack();
+    if (typeof initRulesBars === 'function') initRulesBars();
+    return;
+  }
+
+  if (gfciPanel) gfciPanel.style.display = 'none';
   if (!wrapper || !CSR_CONTENT[name]) return;
+  wrapper.style.display = 'flex';
   wrapper.innerHTML = CSR_CONTENT[name];
-  if (name === 'gfci') gfciInitRooms();
   if (name === 'grounding') { groundingInitTopics(); groundingBack(); }
   if (name === 'nyc') { nycInitTopics(); nycBack(); }
   if (typeof initRulesBars === 'function') initRulesBars();
 }
 
-// Init CSR_CONTENT from DOM on load.
-// This must capture the EMPTY shell, before gfciInitRooms() populates the room
-// list: the buttons carry their click handlers in JS, and innerHTML cannot
-// store those. codeSubTab() calls gfciInitRooms() after restoring this markup,
-// so the buttons are rebuilt live and stay clickable.
-(function() {
-  var el = document.getElementById('csr-content');
-  if (el) CSR_CONTENT['gfci'] = el.innerHTML;
-})();
+// GFCI no longer needs a snapshot — it has its own persistent container.
 
 // Store grounding and nyc content
 CSR_CONTENT['grounding'] = "<div class=\"rules-bar\">\n    <div class=\"rules-row\">\n      <span class=\"pill pill-nec\" onclick=\"necLink('NEC Article 250 \u2014 Complete Grounding and Bonding requirements overview')\">NEC Art. 250</span>\n      <span class=\"rule-txt\">Grounding and Bonding \u2014 EGC, GEC, electrodes, bonding</span>\n    </div>\n  </div>\n\n  <div style=\"flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch\">\n    <div id=\"groundingListView\" style=\"padding:14px\">\n      <div style=\"font-family:Montserrat,sans-serif;font-weight:800;font-size:10px;letter-spacing:0.5px;color:var(--accent);margin-bottom:10px\">SELECT TOPIC</div>\n      <div style=\"display:flex;flex-direction:column;gap:6px\" id=\"groundingTopicList\"></div>\n    </div>\n    <div id=\"groundingDetailView\" style=\"display:none\">\n      <div onclick=\"groundingBack()\" style=\"display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);position:sticky;top:0;background:var(--bg);z-index:2\">\u2039 All topics</div>\n      <div id=\"groundingContent\" style=\"padding:16px 14px\"></div>\n    </div>\n  </div>";
@@ -3414,8 +3426,8 @@ function gfciInitRooms() {
   GFCI_ROOMS.forEach(function(room) {
     var btn = document.createElement('div');
     btn.id = 'gfci-btn-' + room.id;
-    btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:4px;cursor:pointer;border:1px solid transparent;transition:all 0.15s;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim)';
-    btn.innerHTML = room.label;
+    btn.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 12px;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:var(--surface);font-size:13px;color:var(--text)';
+    btn.innerHTML = '<span>' + room.label + '</span><span style="color:var(--text-dimmer);font-size:14px">\u203A</span>';
     btn.onclick = function() { gfciSelectRoom(room.id); };
     btn.onmouseover = function() { if(gfciSelectedRoom !== room.id) this.style.background = 'rgba(255,199,0,0.05)'; };
     btn.onmouseout = function() { if(gfciSelectedRoom !== room.id) this.style.background = ''; };
@@ -3423,8 +3435,27 @@ function gfciInitRooms() {
   });
 }
 
+function gfciShowDetail() {
+  var l = document.getElementById('gfciListView');
+  var d = document.getElementById('gfciDetailView');
+  if (l) l.style.display = 'none';
+  if (d) d.style.display = '';
+  var sc = d && d.parentElement;
+  if (sc) sc.scrollTop = 0;
+}
+
+function gfciBack() {
+  var l = document.getElementById('gfciListView');
+  var d = document.getElementById('gfciDetailView');
+  if (d) d.style.display = 'none';
+  if (l) l.style.display = '';
+  var sc = l && l.parentElement;
+  if (sc) sc.scrollTop = 0;
+}
+
 function gfciSelectRoom(id) {
   gfciSelectedRoom = id;
+  gfciShowDetail();
   // Update button styles
   GFCI_ROOMS.forEach(function(room) {
     var btn = document.getElementById('gfci-btn-' + room.id);
@@ -3434,16 +3465,16 @@ function gfciSelectRoom(id) {
       btn.style.borderColor = 'var(--accent)';
       btn.style.color = 'var(--accent)';
     } else {
-      btn.style.background = '';
-      btn.style.borderColor = 'transparent';
-      btn.style.color = 'var(--text-dim)';
+      btn.style.background = 'var(--surface)';
+      btn.style.borderColor = 'var(--border)';
+      btn.style.color = 'var(--text)';
     }
   });
   gfciUpdate();
 }
 
 function gfciUpdate() {
-  if (!gfciSelectedRoom) return;
+  if (!gfciSelectedRoom) return;   // nothing picked yet — stay on the list
   var data = GFCI_DATA[gfciSelectedRoom];
   var room = GFCI_ROOMS.find(function(r){ return r.id === gfciSelectedRoom; });
   if (!data || !room) return;
