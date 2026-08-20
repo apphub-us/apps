@@ -49,3 +49,16 @@ The engine is injected into `mobile.html` between `EC-CALC:START/END` markers by
 `test/build.test.js` proves the injected engine is identical to the required
 sources. `test/shippedApp.test.js` records known electrical divergences as
 `todo` — visible on every run, non-blocking until each is fixed.
+
+
+## Service worker
+
+`sw.js` caches `mobile.html`, `manifest.json` and the icons atomically; Google
+Fonts is pre-cached separately and its failure cannot block installation.
+
+Navigation is network-first with a 3 s deadline: a healthy connection always
+delivers the newest calculator engine, a poor one falls back to cache instead
+of freezing.
+
+**Bump `CACHE_NAME` whenever a safety-critical calculator fix ships**, so every
+installed PWA re-installs and picks it up.
