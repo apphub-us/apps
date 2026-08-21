@@ -1006,7 +1006,7 @@
             <div id="gfciRoomList" style="display:flex;flex-direction:column;gap:6px"></div>
           </div>
           <div id="gfciDetailView" style="display:none">
-            <div onclick="gfciBack()" style="display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);position:sticky;top:0;background:var(--bg);z-index:2">\u2039 All rooms</div>
+            <div onclick="gfciBack()" style="display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);position:sticky;top:0;background:var(--bg);z-index:2">&lsaquo; All rooms</div>
             <div id="gfciContent" style="padding:16px 14px"></div>
           </div>
         </div>
@@ -1036,7 +1036,7 @@
         <div class="rules-bar">
           <div class="rules-row">
             <span class="pill pill-nec" onclick="necLink('NEC 430.6(A)(1) — motor conductors and branch-circuit protection are sized from the TABLE full-load current, not the nameplate')">430.6(A)(1)</span>
-            <span class="rule-txt">Size from TABLE FLC \u2014 not the nameplate</span>
+            <span class="rule-txt">Size from TABLE FLC &mdash; not the nameplate</span>
           </div>
           <div class="rules-row">
             <span class="pill pill-nec" onclick="necLink('NEC 430.32 — motor overload protection is based on the nameplate full-load amps')">430.32</span>
@@ -1066,8 +1066,8 @@
           <div class="ctrl" style="flex:1;min-width:150px">
             <span class="ctrl-lbl">Motor Type</span>
             <select id="mt-type" onchange="mtCalc()" style="width:100%">
-              <option value="designB" selected>Squirrel cage \u2014 Design B, energy efficient</option>
-              <option value="other">Squirrel cage \u2014 other than Design B</option>
+              <option value="designB" selected>Squirrel cage &mdash; Design B, energy efficient</option>
+              <option value="other">Squirrel cage &mdash; other than Design B</option>
               <option value="wound">Wound rotor</option>
               <option value="dc">DC (constant voltage)</option>
             </select>
@@ -1075,7 +1075,7 @@
           <div class="ctrl" style="flex:1;min-width:150px">
             <span class="ctrl-lbl">Protective Device</span>
             <select id="mt-ocpd" onchange="mtCalc()" style="width:100%">
-              <option value="inverse" selected>Inverse time breaker \u2014 most common</option>
+              <option value="inverse" selected>Inverse time breaker &mdash; most common</option>
               <option value="dual">Dual element (time delay) fuse</option>
               <option value="nontd">Non-time-delay fuse</option>
               <option value="inst">Instantaneous trip breaker (MCP)</option>
@@ -1083,7 +1083,7 @@
           </div>
         </div>
 
-        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin-top:4px">Overload only \u2014 read these off the motor nameplate</div>
+        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin-top:4px">Overload only &mdash; read these off the motor nameplate</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <div class="ctrl" style="flex:1;min-width:130px">
             <span class="ctrl-lbl">Nameplate FLA</span>
@@ -1093,7 +1093,7 @@
           <div class="ctrl" style="flex:1;min-width:150px">
             <span class="ctrl-lbl">Service Factor / Temp Rise</span>
             <select id="mt-sf" onchange="mtCalc()" style="width:100%">
-              <option value="1.25" selected>SF 1.15 or greater, or rise \u2264 40\u00B0C</option>
+              <option value="1.25" selected>SF 1.15 or greater, or rise &le; 40&deg;C</option>
               <option value="1.15">All other motors</option>
             </select>
           </div>
