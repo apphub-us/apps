@@ -14,7 +14,7 @@
  */
 
 const { AMP_CU, AMP_AL, VD_CM } = require('./tables');
-const { calculateAmpacity, maxOvercurrentDevice } = require('./ampacity');
+const { calculateAmpacity, smallConductorOcpdLimit, STANDARD_OCPD } = require('./ampacity');
 const { calculateVoltageDrop } = require('./voltageDrop');
 
 const SIZE_ORDER = ['14', '12', '10', '8', '6', '4', '3', '2', '1', '1/0', '2/0',
@@ -39,6 +39,12 @@ function selectConductor(input) {
     load, continuousLoad = 0, feet = 0, voltage = 208, phase = 1,
     material = 'cu', insulation = 'thhn', ambientF = 86,
     adjustmentFactor = 1.0, maxVoltDropPercent = 5, terminalRatingC = 75,
+    /**
+     * Optional. The actual or intended device rating, when the caller knows it.
+     * Left null the engine derives the smallest standard device that can serve
+     * the load — it never assumes OCPD equals the load current.
+     */
+    proposedOcpd = null,
   } = input || {};
 
   if (!(load > 0)) return { ok: false, reason: 'INVALID_LOAD', load };
@@ -62,12 +68,42 @@ function selectConductor(input) {
     });
     if (!amp.ok) continue;
 
-    const ampacityOK = amp.finalAmpacity >= requiredAmpacity;
+    // ── the six concepts, kept distinct ──────────────────────────────
+    // 1. calculated ampacity      base x correction x adjustment
+    // 2. terminal-limited ampacity after NEC 110.14(C)
+    // 3. minimum conductor size    driven by requiredAmpacity
+    // 4. max OCPD under 240.4(D)   material-specific, small conductors only
+    // 5. selected OCPD             smallest standard device that can serve the load
+    // 6. acceptance + reason
+    const calculatedAmpacity = amp.afterAdjustment;
+    const terminalLimitedAmpacity = amp.finalAmpacity;
+    const ampacityOK = terminalLimitedAmpacity >= requiredAmpacity;
 
-    // NEC 240.4(D): a #14/#12/#10 conductor cannot be protected above
-    // 15/20/30 A, which caps the load it may serve regardless of ampacity.
-    const ocpd = maxOvercurrentDevice(amp.finalAmpacity, size);
-    const ocpdOK = ocpd.rating === null ? false : ocpd.rating >= requiredAmpacity;
+    // The Wire Sizer is not told the breaker, and it does not size one.
+    //
+    // When the caller supplies proposedOcpd, that is a real device rating and
+    // is reported as selectedOcpd.
+    //
+    // Otherwise nothing has been selected. We derive the smallest standard
+    // device that could carry the present load PURELY as a check basis: any
+    // real installation needs at least this much, so if even that exceeds the
+    // 240.4(D) ceiling, no permissible device exists for this conductor. It is
+    // reported as derivedOcpdForSizing and must not be presented to the user
+    // as a chosen breaker. It also ignores continuous-load factors, which are
+    // out of scope here (P0-3).
+    const callerSupplied = proposedOcpd !== null && proposedOcpd !== undefined;
+    const selectedOcpd = callerSupplied ? proposedOcpd : null;
+    const derivedOcpdForSizing = callerSupplied
+      ? null
+      : (STANDARD_OCPD.find((b) => b >= requiredAmpacity) ?? null);
+    const ocpdCheckValue = callerSupplied ? selectedOcpd : derivedOcpdForSizing;
+    const ocpdBasis = callerSupplied ? 'CALLER_SUPPLIED' : 'SMALLEST_STANDARD_FOR_CURRENT_LOAD';
+
+    const maxOcpdUnder240_4_D = smallConductorOcpdLimit(size, material);
+    const smallConductorRuleApplies = maxOcpdUnder240_4_D !== null;
+    const ocpdOK = ocpdCheckValue === null
+      ? false
+      : (!smallConductorRuleApplies || ocpdCheckValue <= maxOcpdUnder240_4_D);
 
     let vd = null;
     let vdOK = true;
@@ -77,16 +113,29 @@ function selectConductor(input) {
     }
 
     const passes = ampacityOK && ocpdOK && vdOK;
+    const reason = passes ? 'ACCEPTED'
+      : !ampacityOK ? 'INSUFFICIENT_AMPACITY'
+      : !ocpdOK ? 'OCPD_EXCEEDS_240_4_D_LIMIT'
+      : 'VOLTAGE_DROP_EXCEEDS_LIMIT';
+
     evaluated.push({
       size,
-      finalAmpacity: amp.finalAmpacity,
+      calculatedAmpacity,
+      terminalLimitedAmpacity,
+      finalAmpacity: terminalLimitedAmpacity, // retained for existing callers
       ampacityOK,
-      maxOcpd: ocpd.rating,
+      smallConductorRuleApplies,
+      maxOcpdUnder240_4_D,
+      selectedOcpd,           // non-null ONLY when the caller supplied one
+      derivedOcpdForSizing,   // non-null ONLY when inferred as a check basis
+      ocpdCheckValue,         // whichever of the two was compared to the limit
+      ocpdBasis,
       ocpdOK,
-      ocpdCappedBySmallConductorRule: ocpd.cappedBySmallConductorRule,
       voltDropPercent: vd && vd.ok ? vd.percentDrop : null,
       vdOK,
+      conductorAccepted: passes,
       passes,
+      reason,
     });
     if (passes && !winner) winner = size;
   }
@@ -102,6 +151,12 @@ function selectConductor(input) {
     continuousFactorApplied: continuousLoad > 0,
     recommendedSize: winner,
     recommended: win,
+    note: 'Overcurrent protection limited per NEC 240.4(D). This tool does not '
+      + 'size the overcurrent device: where none was supplied, the smallest '
+      + 'standard device able to carry the present load is derived solely to '
+      + 'test the 240.4(D) ceiling. Continuous-load factors are not applied. '
+      + 'Equipment-specific exceptions in 240.4(E) (taps) and 240.4(G) (motors, '
+      + 'A/C and similar) are NOT evaluated here.',
     limitingFactor: win
       ? (win.voltDropPercent !== null && win.voltDropPercent > maxVoltDropPercent * 0.9
         ? 'VOLTAGE_DROP' : 'AMPACITY')

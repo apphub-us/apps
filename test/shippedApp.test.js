@@ -75,14 +75,16 @@ describe('Shipped app — known divergences from the verified core', { skip: ski
     assert.strictEqual(tempCorrectionFactor(146, 'thhn'), 0.65, 'truncated-table regression');
   });
 
-  test('P0-2: Wire Sizer omits the NEC 240.4(D) small-conductor limit',
-    { todo: 'wsCalc accepts #14 for a 20 A load; 240.4(D) caps #14 at 15 A' },
-    () => {
-      const s = html.indexOf('function wsCalc');
-      const body = html.slice(s, html.indexOf('function wsGoToFillCalc'));
-      assert.ok(/240\.4\(D\)|maxSmall|smallConductor/.test(body),
-        'no 240.4(D) handling found in wsCalc');
-    });
+  test('P0-2: 240.4(D) is enforced and lives in the shared engine only', () => {
+    // Promoted from `todo`.
+    assert.ok(!/maxSmall\s*=\s*\{/.test(html),
+      'a duplicate hard-coded 240.4(D) table is back in mobile.html');
+    assert.ok(/smallConductorOcpdLimit/.test(html),
+      'mobile.html must delegate 240.4(D) to the shared engine');
+    const { selectConductor } = require('../src/calc/wireSizing');
+    assert.notStrictEqual(selectConductor({ load: 20 }).recommendedSize, '14');
+    assert.notStrictEqual(selectConductor({ load: 20, material: 'al' }).recommendedSize, '12');
+  });
 
   test('P0-3: Wire Sizer has no continuous-load input',
     { todo: 'NEC 210.19(A)(1) requires 125% of continuous load; no such input exists' },

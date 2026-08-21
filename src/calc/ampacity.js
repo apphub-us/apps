@@ -18,8 +18,37 @@ const { AMP_CU, AMP_AL, AMP_TEMP_LOOKUP } = require('./tables');
 const STANDARD_OCPD = [15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 110,
   125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500, 600];
 
-/** NEC 240.4(D) — small conductor overcurrent limits (copper). */
-const SMALL_CONDUCTOR_MAX = { '14': 15, '12': 20, '10': 30 };
+/**
+ * NEC 2020 240.4(D) — Small Conductors.
+ *
+ * "Unless specifically permitted in 240.4(E) or 240.4(G), the overcurrent
+ * protection shall not exceed that required by (D)(1) through (D)(7) AFTER any
+ * correction factors for ambient temperature and number of conductors have
+ * been applied."
+ *
+ * This limits the OVERCURRENT DEVICE, not the conductor's ampacity. #12 THHN
+ * really is 30 A in Table 310.16; the rule caps the breaker at 20 A.
+ *
+ * Material-specific — aluminium and copper-clad aluminium are lower than copper
+ * at the same size. NYC: NYCEC 2025 does not amend Article 240.
+ */
+const SMALL_CONDUCTOR_OCPD_LIMIT = {
+  cu: { '18': 7, '16': 10, '14': 15, '12': 20, '10': 30 },
+  al: { '12': 15, '10': 25 },
+};
+
+/**
+ * Maximum overcurrent device permitted by 240.4(D) for a conductor size.
+ * @returns {number|null} null when the size is outside the small-conductor rule
+ */
+function smallConductorOcpdLimit(size, material) {
+  const table = material === 'al' ? SMALL_CONDUCTOR_OCPD_LIMIT.al : SMALL_CONDUCTOR_OCPD_LIMIT.cu;
+  const limit = table[size];
+  return limit === undefined ? null : limit;
+}
+
+/** Back-compat alias for the copper table. Prefer smallConductorOcpdLimit(). */
+const SMALL_CONDUCTOR_MAX = SMALL_CONDUCTOR_OCPD_LIMIT.cu;
 
 /**
  * NEC 2020 Table 310.15(B)(1) band upper bounds, °F. Ascending.
@@ -280,7 +309,7 @@ function calculateAmpacity(input) {
  * @returns {object}
  */
 function maxOvercurrentDevice(ampacity, size, opts = {}) {
-  const { allowNextSizeUp = true } = opts;
+  const { allowNextSizeUp = true, material = 'cu' } = opts;
 
   let rating;
   const exact = STANDARD_OCPD.includes(ampacity);
@@ -297,10 +326,11 @@ function maxOvercurrentDevice(ampacity, size, opts = {}) {
     rating = [...STANDARD_OCPD].reverse().find((b) => b <= ampacity) ?? null;
   }
 
-  // NEC 240.4(D) overrides everything above for small conductors.
-  const smallCap = SMALL_CONDUCTOR_MAX[size];
+  // NEC 240.4(D) overrides everything above for small conductors. It is NOT
+  // qualified by 240.4(B), so the next-size-up rule cannot lift this cap.
+  const smallCap = smallConductorOcpdLimit(size, material);
   let cappedBySmallConductorRule = false;
-  if (smallCap !== undefined && rating !== null && rating > smallCap) {
+  if (smallCap !== null && rating !== null && rating > smallCap) {
     rating = smallCap;
     cappedBySmallConductorRule = true;
   }
@@ -319,6 +349,8 @@ module.exports = {
   TEMP_BANDS,
   MAX_TABLE_AMBIENT_F,
   maxOvercurrentDevice,
+  smallConductorOcpdLimit,
+  SMALL_CONDUCTOR_OCPD_LIMIT,
   evaluateRooftopAdjustment,
   ROOFTOP_RULE,
   insulationColumn,
