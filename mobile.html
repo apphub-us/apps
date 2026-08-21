@@ -372,7 +372,27 @@
 <div class="content">
 
 <!-- ══ AI CHAT ══ -->
-<div class="panel active" id="panel-chat">
+<!-- ══ HOME ══ -->
+<div class="panel active" id="panel-home">
+  <div class="scroll-body" style="padding:14px">
+
+    <div id="pinnedWrap" style="display:none;margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 2px">
+        <span style="font-family:Montserrat,sans-serif;font-weight:800;font-size:10px;letter-spacing:0.5px;color:var(--accent)">PINNED</span>
+        <span id="pinnedEditBtn" onclick="pinToggleEdit()" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);cursor:pointer">Edit</span>
+      </div>
+      <div id="pinnedList" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+    </div>
+    <div id="pinnedPicker" style="display:none;margin-bottom:20px">
+      <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:8px;padding:0 2px">Tap to pin or unpin &mdash; shortcuts appear at the top of Home.</div>
+      <div id="pinnedOptions" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+
+    <div id="homeGroups"></div>
+  </div>
+</div>
+
+<div class="panel" id="panel-chat">
   <div class="trending-bar">
     <span class="trending-label">Trending</span>
     <div id="trendingBtns" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch"><span style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">—</span></div>
@@ -386,17 +406,7 @@
       <button class="welcome-ex" onclick="quickAsk('GFCI requirements for kitchen in commercial?')">GFCI requirements for kitchen in commercial?</button>
       <button class="welcome-ex" onclick="quickAsk('How many #12 THHN fit in 3/4 EMT?')">How many #12 THHN fit in 3/4" EMT?</button>
     </div>
-    <div id="pinnedWrap" style="display:none;width:100%;max-width:460px;align-self:center;margin-top:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 2px">
-        <span style="font-family:Montserrat,sans-serif;font-weight:800;font-size:10px;letter-spacing:0.5px;color:var(--accent)">PINNED</span>
-        <span id="pinnedEditBtn" onclick="pinToggleEdit()" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);cursor:pointer">Edit</span>
-      </div>
-      <div id="pinnedList" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
-    </div>
-    <div id="pinnedPicker" style="display:none;width:100%;max-width:460px;align-self:center;margin-top:14px">
-      <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:8px;padding:0 2px">Tap to pin or unpin \u2014 shortcuts appear here on the home screen.</div>
-      <div id="pinnedOptions" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-    </div>
+    
   </div>
   <div class="input-area">
     <div class="input-row">
@@ -1300,23 +1310,14 @@
 </div><!-- end .content -->
 
 <!-- ── BOTTOM NAV ── -->
-<nav class="bottom-nav">
-  <div class="nav-item active" id="mnav-chat" onclick="switchTab('chat',this)">AI Chat</div>
-  <div class="nav-item" id="mnav-wiresizer" onclick="switchTab('wiresizer',this)">Sizer</div>
-  <div class="nav-item" id="mnav-conduit" onclick="switchTab('conduit',this)">Fill Calc</div>
-  <div class="nav-item" id="mnav-ampacity" onclick="switchTab('ampacity',this)">Ampacity</div>
-  <div class="nav-item" id="mnav-boxfill" onclick="switchTab('boxfill',this)">Box Fill</div>
-  <div class="nav-item" id="mnav-more-arrow" onclick="toggleMoreNav()" style="font-size:16px;font-weight:700">›</div>
-</nav>
-<nav class="bottom-nav" id="secondary-nav" style="display:none">
-  <div class="nav-item" id="mnav-back-arrow" onclick="toggleMoreNav()" style="font-size:16px;font-weight:700">‹</div>
-  <div class="nav-item" id="mnav-loadcalc" onclick="switchTabMore('loadcalc')">Load</div>
-  <div class="nav-item" id="mnav-motor" onclick="switchTabMore('motor')">Motor</div>
-  <div class="nav-item" id="mnav-bender" onclick="switchTabMore('bender')">Bend</div>
-  <div class="nav-item" id="mnav-converter" onclick="switchTabMore('converter')">Convert</div>
-  <div class="nav-item" id="mnav-coderef" onclick="switchTabMore('coderef')">Code</div>
-  <div class="nav-item" id="mnav-outlets" onclick="switchTabMore('outlets')">NEMA</div>
-</nav>
+  <!-- One fixed row. The former two-row / arrow mechanism is gone: every tool
+       is reached from Home, which stays the parent section while a calculator
+       is open. -->
+  <nav class="bottom-nav">
+    <div class="nav-item active" id="mnav-home" onclick="switchTab('home',this)">Home</div>
+    <div class="nav-item" id="mnav-chat" onclick="switchTab('chat',this)">AI Chat</div>
+    <div class="nav-item" id="mnav-coderef" onclick="openTool('coderef')">Code</div>
+  </nav>
 
 
 <!-- EC-CALC:START — generated, do not edit by hand -->
@@ -2703,6 +2704,95 @@ window.addEventListener('load', function() {
 </script>
 
 <script>
+// ══ HOME — TOOL CATALOGUE AND CENTRAL ROUTING ═════════════
+// One definition of every user-facing tool and one way to open it. Home tiles
+// and PINNED shortcuts both go through openTool(), so routing can never drift
+// between the two surfaces.
+//
+// `open` reuses the EXISTING panels and subtab functions. Nothing here creates
+// a calculator, moves calculation logic, or duplicates a container.
+var TOOL_GROUPS = [
+  { title: 'CONDUCTORS & CIRCUITS', tools: ['wiresizer', 'ampacity', 'loadcalc'] },
+  { title: 'RACEWAYS & BOXES',      tools: ['conduit', 'wireway', 'boxfill'] },
+  { title: 'EQUIPMENT & GROUNDING', tools: ['motor', 'grounding', 'outlets'] },
+  { title: 'FIELD TOOLS',           tools: ['bender', 'converter'] }
+];
+
+var TOOLS = {
+  wiresizer: { label: 'Wire Sizer',
+    open: function () { switchTab('wiresizer', null); } },
+  ampacity:  { label: 'Ampacity',
+    open: function () { switchTab('ampacity', null); } },
+  loadcalc:  { label: 'Load Calculator',
+    open: function () { switchTabMore('loadcalc'); } },
+
+  conduit:   { label: 'Conduit Fill',
+    open: function () { switchTab('conduit', null); if (typeof fillCalcMode === 'function') fillCalcMode('conduit'); } },
+  // Same panel as Conduit Fill, opened with the Wireway mode already active.
+  wireway:   { label: 'Wireway Fill',
+    open: function () { switchTab('conduit', null); if (typeof fillCalcMode === 'function') fillCalcMode('wireway'); } },
+  boxfill:   { label: 'Box Fill',
+    open: function () { switchTab('boxfill', null); } },
+
+  motor:     { label: 'Motor 430',
+    open: function () { switchTabMore('motor'); } },
+  // Deep-link into the EXISTING grounding calculator topic. No second
+  // container, no duplicated logic.
+  grounding: { label: 'EGC / GEC Calculator',
+    open: function () {
+      switchTabMore('coderef');
+      if (typeof codeSubTab === 'function') codeSubTab('grounding');
+      if (typeof groundingSelectTopic === 'function') groundingSelectTopic('calc');
+    } },
+  outlets:   { label: 'NEMA Plugs & Receptacles',
+    open: function () { switchTabMore('outlets'); } },
+
+  bender:    { label: 'Conduit Bender',
+    open: function () { switchTabMore('bender'); } },
+  converter: { label: 'Electrical Converter',
+    open: function () { switchTabMore('converter'); } },
+
+  // Reached from the bottom nav, not shown as a Home tile.
+  coderef:   { label: 'Code Reference', navOnly: true,
+    open: function () { switchTabMore('coderef'); } }
+};
+
+/** The single entry point for opening any tool. */
+function openTool(toolId) {
+  var t = TOOLS[toolId];
+  if (!t) return false;
+  t.open();
+  // Home stays the parent section for anything opened from Home; the Code
+  // bottom-nav item owns itself.
+  var parent = toolId === 'coderef' ? 'mnav-coderef' : 'mnav-home';
+  document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.remove('active'); });
+  var item = document.getElementById(parent);
+  if (item) item.classList.add('active');
+  return true;
+}
+
+function homeRender() {
+  var host = document.getElementById('homeGroups');
+  if (!host) return;
+  host.innerHTML = TOOL_GROUPS.map(function (g) {
+    return '<div style="margin-bottom:18px">' +
+      '<div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:10px;letter-spacing:0.5px;color:var(--accent);margin-bottom:8px;padding:0 2px">' + g.title + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+      g.tools.map(function (id) {
+        var t = TOOLS[id];
+        if (!t) return '';
+        return '<button data-tool="' + id + '" onclick="openTool(\'' + id + '\')" ' +
+          'style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);' +
+          'border-radius:4px;padding:14px 12px;text-align:left;cursor:pointer;' +
+          'font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;color:var(--text);line-height:1.3">' +
+          t.label + '</button>';
+      }).join('') +
+      '</div></div>';
+  }).join('');
+}
+
+window.addEventListener('DOMContentLoaded', homeRender);
+
 // ══ PINNED SHORTCUTS ══════════════════════════════════════
 // There are now a dozen tools across two nav rows. This lets an electrician
 // put the three or four they actually use on the home screen.
@@ -2711,18 +2801,12 @@ window.addEventListener('load', function() {
 var PIN_KEY = 'ec_pinned';
 
 // kind 'main' = primary bottom nav, 'more' = behind the › toggle
-var PIN_TOOLS = [
-  { id:'wiresizer', label:'Wire Sizer', kind:'main' },
-  { id:'conduit',   label:'Fill Calc',  kind:'main' },
-  { id:'ampacity',  label:'Ampacity',   kind:'main' },
-  { id:'boxfill',   label:'Box Fill',   kind:'main' },
-  { id:'loadcalc',  label:'Load Calc',  kind:'more' },
-  { id:'motor',     label:'Motor 430',  kind:'more' },
-  { id:'bender',    label:'Bender',     kind:'more' },
-  { id:'converter', label:'Converter',  kind:'more' },
-  { id:'coderef',   label:'Code Ref',   kind:'more' },
-  { id:'outlets',   label:'NEMA',       kind:'more' }
-];
+// The pinnable set. Labels and routing come from TOOLS, so a shortcut and a
+// Home tile can never disagree. The `kind: main/more` routing hint is gone —
+// openTool() is now the single mechanism.
+var PIN_TOOLS = ['wiresizer', 'conduit', 'wireway', 'ampacity', 'boxfill',
+  'loadcalc', 'motor', 'grounding', 'bender', 'converter', 'outlets']
+  .map(function (id) { return { id: id, label: (TOOLS[id] || {}).label || id }; });
 
 var pinEditing = false;
 
@@ -2741,14 +2825,7 @@ function pinSet(list) {
 }
 
 function pinGo(id) {
-  var tool = PIN_TOOLS.filter(function(t){ return t.id === id; })[0];
-  if (!tool) return;
-  if (tool.kind === 'main') {
-    switchTab(id, document.getElementById('mnav-' + id));
-  } else {
-    // sections under › live inside panel-more, so open that then the sub-tab
-    switchTabMore(id);
-  }
+  openTool(id);
 }
 
 function pinRender() {
@@ -2813,12 +2890,10 @@ function pinRemove(id) {
   pinRender();
 }
 
-function pinHide() {
-  ['pinnedWrap','pinnedPicker'].forEach(function(id){
-    var el = document.getElementById(id);
-    if (el) el.remove();
-  });
-}
+// PINNED now lives on Home, not inside the chat transcript, so starting a
+// conversation must leave it alone. Kept as a no-op so the existing call sites
+// in addMessage() and showTyping() stay valid.
+function pinHide() { /* intentionally does nothing — see UX-1 */ }
 
 function pinToggleEdit() {
   pinEditing = !pinEditing;
@@ -2887,45 +2962,13 @@ function switchTab(name, el) {
   var nav = document.getElementById('mnav-' + name);
   if (nav) { nav.classList.add('active'); }
   else if (el) { el.classList.add('active'); }
-  // Close secondary nav if switching to primary tab
-  var primaryTabs = ['chat','wiresizer','conduit','ampacity','boxfill'];
-  if (primaryTabs.indexOf(name) >= 0 && moreNavOpen) {
-    moreNavOpen = false;
-    var primary = document.querySelector('.bottom-nav:not(#secondary-nav)');
-    var secondary = document.getElementById('secondary-nav');
-    if (primary) primary.style.display = 'flex';
-    if (secondary) secondary.style.display = 'none';
-  }
 }
 
-// ── MORE NAV TOGGLE ──────────────────────────────────────
-function toggleMoreNav() {
-  moreNavOpen = !moreNavOpen;
-  var primary = document.querySelector('.bottom-nav:not(#secondary-nav)');
-  var secondary = document.getElementById('secondary-nav');
-  if (moreNavOpen) {
-    if (primary) primary.style.display = 'none';
-    if (secondary) secondary.style.display = 'flex';
-    syncMoreNav();
-  } else {
-    if (primary) primary.style.display = 'flex';
-    if (secondary) secondary.style.display = 'none';
-    document.querySelectorAll('#secondary-nav .nav-item').forEach(function(n){ n.classList.remove('active'); });
-  }
-}
+// The two-row / arrow navigation was removed in UX-1. Home is now the parent
+// section and openTool() is the single routing entry point.
 
 function switchTabMore(name) {
   switchTab('more', null);
-  // Reaching a "more" section from a pinned shortcut has to open the secondary
-  // row too, otherwise the bottom bar shows the primary tabs while a more
-  // section is on screen.
-  if (!moreNavOpen) {
-    var primary = document.querySelector('.bottom-nav:not(#secondary-nav)');
-    var secondary = document.getElementById('secondary-nav');
-    if (primary) primary.style.display = 'none';
-    if (secondary) secondary.style.display = 'flex';
-    moreNavOpen = true;
-  }
   moreTab(name);   // moreTab handles the nav highlight via syncMoreNav
 }
 
@@ -2950,16 +2993,8 @@ function moreTab(name) {
 
 // Keep the secondary bottom nav in step with whichever section is showing,
 // so re-opening it via › lands on a highlighted item rather than a blank row.
-function syncMoreNav() {
-  var onMore = document.getElementById('panel-more');
-  onMore = onMore && onMore.classList.contains('active');
-  document.querySelectorAll('#secondary-nav .nav-item').forEach(function(n){
-    n.classList.remove('active');
-  });
-  if (!onMore) return;
-  var item = document.getElementById('mnav-' + currentMoreTab);
-  if (item) item.classList.add('active');
-}
+// Home owns the highlight for anything opened from Home; openTool() sets it.
+function syncMoreNav() { /* no secondary row since UX-1 */ }
 
 // ── CHAT ─────────────────────────────────────────────────
 var API_KEY = localStorage.getItem('nec_ai_key') || '';
