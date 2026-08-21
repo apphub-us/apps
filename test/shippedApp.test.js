@@ -86,12 +86,21 @@ describe('Shipped app — known divergences from the verified core', { skip: ski
     assert.notStrictEqual(selectConductor({ load: 20, material: 'al' }).recommendedSize, '12');
   });
 
-  test('P0-3: Wire Sizer has no continuous-load input',
-    { todo: 'NEC 210.19(A)(1) requires 125% of continuous load; no such input exists' },
-    () => {
-      assert.ok(/wsContinuous|continuousLoad/.test(html),
-        'no continuous-load field found in the Wire Sizer panel');
-    });
+  test('P0-3: continuous loads are sized per 210.19(A)(1) / 215.2(A)(1)', () => {
+    // Promoted from `todo`.
+    for (const id of ['wsContinuous', 'wsCircuitType', 'wsHundredPct']) {
+      assert.ok(html.includes(`id="${id}"`), `missing input: ${id}`);
+    }
+    const s2 = html.lastIndexOf('function wsCalc');
+    const body = html.slice(s2, html.indexOf('function wsGoToFillCalc', s2));
+    assert.ok(/continuousTestOK/.test(body), 'the continuous-load test is missing');
+    assert.ok(/conditionsTestOK/.test(body), 'the conditions-of-use test is missing');
+    assert.ok(/contMult\s*=\s*\(hundredPct/.test(body),
+      'the 100% exception must be explicit, never assumed');
+    const { selectConductor } = require('../src/calc/wireSizing');
+    assert.strictEqual(selectConductor({ continuousLoadA: 20 }).continuousLoadMultiplier, 1.25);
+    assert.strictEqual(selectConductor({ continuousLoadA: 20 }).hundredPercentRatedExceptionApplied, false);
+  });
 
   test('P1-1: conduit fill floors instead of applying Chapter 9 Note 7',
     { todo: 'Note 7 rounds up when the decimal is 0.8 or larger' },
