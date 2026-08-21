@@ -1,6 +1,11 @@
-// AUTO-EXTRACTED from mobile.html — do not hand-edit.
-// Regenerate with: npm run extract
-// These are the NEC/NYCEC data tables as they exist in the shipped app.
+// NEC/NYCEC data tables — the single source of truth.
+//
+// Bootstrapped by extraction from mobile.html, now maintained HERE. The app
+// aliases these via the injected engine, so a change lands in production by
+// running `npm run build`.
+//
+// AMP_TEMP_LOOKUP was corrected against the complete NEC 2020
+// Table 310.15(B)(1); the extracted original was missing 7 of its 16 bands.
 
 const AMP_CU = {
   '14':  {t60:15,  t75:20,  t90:25},
@@ -50,17 +55,30 @@ const AMP_AL = {
 };
 
 const AMP_TEMP_LOOKUP = {
-  50:  {f60:1.29,f75:1.20,f90:1.15},
-  60:  {f60:1.22,f75:1.15,f90:1.12},
-  70:  {f60:1.15,f75:1.11,f90:1.08},
-  77:  {f60:1.08,f75:1.05,f90:1.04},
-  86:  {f60:1.00,f75:1.00,f90:1.00},
-  95:  {f60:0.91,f75:0.94,f90:0.96},
-  104: {f60:0.82,f75:0.88,f90:0.91},
-  113: {f60:0.71,f75:0.82,f90:0.87},
-  122: {f60:0.58,f75:0.75,f90:0.82},
-  131: {f60:0.41,f75:0.67,f90:0.76},
-  140: {f60:0,   f75:0.58,f90:0.71}
+  // NEC 2020 Table 310.15(B)(1) — Ambient Temperature Correction Factors
+  // based on 30°C (86°F). COMPLETE table, 5°C bands.
+  // Key = INCLUSIVE UPPER BOUND of the band, °F. Lookup must select the first
+  // band whose bound >= ambient, never the nearest key.
+  // null = no factor published for that conductor rating at that ambient:
+  // the conductor rating is not permitted there. This is NOT the same as the
+  // ambient being off the end of the table.
+  // Values verified against NEC Equation 310.15(B): sqrt((Tc - Ta) / (Tc - 30)).
+  50:  { c: 10, band: '10°C or less / 50°F or less', f60: 1.29, f75: 1.20, f90: 1.15 },
+  59:  { c: 15, band: '11-15°C / 51-59°F',   f60: 1.22, f75: 1.15, f90: 1.12 },
+  68:  { c: 20, band: '16-20°C / 60-68°F',   f60: 1.15, f75: 1.11, f90: 1.08 },
+  77:  { c: 25, band: '21-25°C / 69-77°F',   f60: 1.08, f75: 1.05, f90: 1.04 },
+  86:  { c: 30, band: '26-30°C / 78-86°F',   f60: 1.00, f75: 1.00, f90: 1.00 },
+  95:  { c: 35, band: '31-35°C / 87-95°F',   f60: 0.91, f75: 0.94, f90: 0.96 },
+  104: { c: 40, band: '36-40°C / 96-104°F',  f60: 0.82, f75: 0.88, f90: 0.91 },
+  113: { c: 45, band: '41-45°C / 105-113°F', f60: 0.71, f75: 0.82, f90: 0.87 },
+  122: { c: 50, band: '46-50°C / 114-122°F', f60: 0.58, f75: 0.75, f90: 0.82 },
+  131: { c: 55, band: '51-55°C / 123-131°F', f60: 0.41, f75: 0.67, f90: 0.76 },
+  140: { c: 60, band: '56-60°C / 132-140°F', f60: null, f75: 0.58, f90: 0.71 },
+  149: { c: 65, band: '61-65°C / 141-149°F', f60: null, f75: 0.47, f90: 0.65 },
+  158: { c: 70, band: '66-70°C / 150-158°F', f60: null, f75: 0.33, f90: 0.58 },
+  167: { c: 75, band: '71-75°C / 159-167°F', f60: null, f75: null, f90: 0.50 },
+  176: { c: 80, band: '76-80°C / 168-176°F', f60: null, f75: null, f90: 0.41 },
+  185: { c: 85, band: '81-85°C / 177-185°F', f60: null, f75: null, f90: 0.29 }
 };
 
 const CF_AREA = {

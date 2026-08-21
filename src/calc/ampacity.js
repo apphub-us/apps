@@ -22,11 +22,13 @@ const STANDARD_OCPD = [15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 110,
 const SMALL_CONDUCTOR_MAX = { '14': 15, '12': 20, '10': 30 };
 
 /**
- * NEC Table 310.15(B)(1) is a RANGE table in °F:
- *   70-77, 78-86, 87-95, 96-104, 105-113, 114-122, 123-131, 132-140
- * The correct lookup is "first band whose upper bound >= ambient", NOT nearest.
+ * NEC 2020 Table 310.15(B)(1) band upper bounds, °F. Ascending.
+ * The correct lookup is "first band whose bound >= ambient", never nearest.
  */
-const TEMP_BANDS = [50, 60, 70, 77, 86, 95, 104, 113, 122, 131, 140];
+const TEMP_BANDS = [50, 59, 68, 77, 86, 95, 104, 113, 122, 131, 140, 149, 158, 167, 176, 185];
+
+/** Highest ambient the table covers at all. */
+const MAX_TABLE_AMBIENT_F = 185;
 
 function insulationColumn(insulType) {
   if (insulType === 'tw') return 't60';
@@ -40,44 +42,130 @@ function insulationFactorKey(insulType) {
   return 'f90';
 }
 
-/**
- * Ambient temperature correction factor.
- *
- * DIVERGENCE (P0-1) from mobile.html: the shipped app picks the NEAREST band,
- * which rounds an ambient of 88°F down to the 86°F row (factor 1.00) when NEC
- * places 88°F in the 87-95°F band (factor 0.96 at 90°C). Nearest-match
- * OVERSTATES ampacity. This implementation uses band containment.
- * Evidence: NEC Table 310.15(B)(1)(b), ranges as listed above.
- *
- * @param {number} ambientF ambient temperature, °F
- * @param {string} insulType 'tw' | 'thw' | 'thhn' | 'xhhw'
- * @returns {number|null} correction factor, or null if above the table
- */
-function tempCorrectionFactor(ambientF, insulType) {
-  if (!Number.isFinite(ambientF)) return null;
-  const key = insulationFactorKey(insulType);
-  for (const band of TEMP_BANDS) {
-    if (ambientF <= band) {
-      const row = AMP_TEMP_LOOKUP[band];
-      return row ? row[key] : null;
-    }
-  }
-  // Above 140°F the table does not extend — conductor not permitted.
-  return null;
+/** Conductor temperature rating implied by the insulation, °C. */
+function insulationRatingC(insulType) {
+  if (insulType === 'tw') return 60;
+  if (insulType === 'thw') return 75;
+  return 90;
 }
 
 /**
- * Faithful port of the shipped nearest-band lookup. Kept ONLY so tests can
- * demonstrate the divergence. Do not use in production paths.
+ * Ambient temperature correction factor, NEC Table 310.15(B)(1).
+ *
+ * Returns a structured outcome rather than a bare number, because three
+ * different things can happen and they are NOT interchangeable:
+ *
+ *   ok: true                          a table factor applies
+ *   AMBIENT_ABOVE_TABLE               ambient exceeds 185°F — past the end of
+ *                                     the table for every conductor rating
+ *   TABLE_FACTOR_UNAVAILABLE_FOR_RATING
+ *                                     the band exists but the table prints "—"
+ *                                     for this conductor rating, e.g. a 60°C
+ *                                     conductor at 140°F.
+ *
+ * The second condition reports ONLY what the table says. NEC 2020 310.15(B)
+ * permits correction by the table OR by the equation given in that section, so
+ * a dash does not by itself make the installation non-compliant: within a band
+ * the equation can still yield a usable factor (a 60°C conductor at 133°F
+ * computes to ~0.36 where the table prints "—", because the table publishes the
+ * worst case of each 5°C band). This module does not implement the equation
+ * method, so it says what the table does and stops there.
+ *
+ * @param {number} ambientF
+ * @param {string} insulType 'tw' | 'thw' | 'thhn' | 'xhhw'
+ * @returns {{ok:boolean, factor?:number, band?:string, reason?:string, conductorRatingC?:number}}
  */
-function tempCorrectionFactorLegacy(ambientF, insulType) {
-  let closest = TEMP_BANDS[0];
-  for (const band of TEMP_BANDS) {
-    if (Math.abs(band - ambientF) < Math.abs(closest - ambientF)) closest = band;
+function lookupTempCorrection(ambientF, insulType) {
+  if (!Number.isFinite(ambientF)) {
+    return { ok: false, reason: 'INVALID_AMBIENT' };
   }
-  const row = AMP_TEMP_LOOKUP[closest];
-  if (!row) return 1.0;
-  return row[insulationFactorKey(insulType)];
+  const key = insulationFactorKey(insulType);
+  const ratingC = insulationRatingC(insulType);
+
+  for (const bound of TEMP_BANDS) {
+    if (ambientF <= bound) {
+      const row = AMP_TEMP_LOOKUP[bound];
+      if (!row) return { ok: false, reason: 'BAND_MISSING_FROM_TABLE' };
+      const factor = row[key];
+      if (factor === null || factor === undefined) {
+        return {
+          ok: false,
+          reason: 'TABLE_FACTOR_UNAVAILABLE_FOR_RATING',
+          band: row.band,
+          conductorRatingC: ratingC,
+        };
+      }
+      return { ok: true, factor, band: row.band, conductorRatingC: ratingC };
+    }
+  }
+  return { ok: false, reason: 'AMBIENT_ABOVE_TABLE', maxTableAmbientF: MAX_TABLE_AMBIENT_F };
+}
+
+/**
+ * Convenience wrapper returning just the number, or null when no factor
+ * applies for any reason. Prefer lookupTempCorrection() where the caller
+ * needs to tell the two failure modes apart.
+ */
+function tempCorrectionFactor(ambientF, insulType) {
+  const r = lookupTempCorrection(ambientF, insulType);
+  return r.ok ? r.factor : null;
+}
+
+/**
+ * NEC 2020 310.15(B)(2) "Rooftop" — structured rule metadata.
+ *
+ * Provenance
+ *   NEC 2020 §310.15(B)(2). Renumbered from 2017 §310.15(B)(3)(c); the tiered
+ *   adder Table 310.15(B)(3)(c) of the 2014 NEC was deleted in 2017 and the
+ *   single 33°C (60°F) adder retained.
+ *   NYC: NYCEC 2025 adopts the 2020 NEC. Its amendment list (§ 28-1101.3)
+ *   touches Article 310 only at Tables 310.16, 310.17 and 310.20 (deleting
+ *   Type XHWN from the 90°C columns). 310.15(B)(2) is NOT amended, so the
+ *   national rule applies unchanged in New York City.
+ *   Forward note: the 2023 NEC lowers the threshold to 3/4 in. NYC is on the
+ *   2020 NEC, so 7/8 in. is correct here until NYC adopts a later edition.
+ */
+const ROOFTOP_RULE = {
+  code: 'NEC 2020 310.15(B)(2)',
+  adderF: 60,              // 33°C
+  minClearanceInches: 0.875, // 7/8 in. (23 mm)
+  exceptInsulation: ['xhhw'], // Type XHHW-2
+  nycAmended: false,
+};
+
+/**
+ * Decide whether the rooftop temperature adder applies.
+ *
+ * All four conditions must hold: on or above a roof, exposed to direct
+ * sunlight, clearance below the minimum, and a conductor type not excepted.
+ * The reason code is returned either way so the UI can explain itself.
+ *
+ * @param {object} [rooftop]
+ * @param {boolean} [rooftop.onOrAboveRoof]
+ * @param {boolean} [rooftop.directSunlight]
+ * @param {number}  [rooftop.clearanceInches] roof surface to bottom of raceway
+ * @param {string} insulation
+ * @returns {{applied:boolean, adderF:number, reason:string}}
+ */
+function evaluateRooftopAdjustment(rooftop, insulation) {
+  if (!rooftop || !rooftop.onOrAboveRoof) {
+    return { applied: false, adderF: 0, reason: 'NOT_ON_ROOF' };
+  }
+  if (!rooftop.directSunlight) {
+    return { applied: false, adderF: 0, reason: 'NO_DIRECT_SUNLIGHT' };
+  }
+  const clearance = Number(rooftop.clearanceInches);
+  if (!Number.isFinite(clearance)) {
+    return { applied: false, adderF: 0, reason: 'CLEARANCE_UNKNOWN' };
+  }
+  if (clearance >= ROOFTOP_RULE.minClearanceInches) {
+    // "less than 7/8 in." — exactly 7/8 is compliant clearance.
+    return { applied: false, adderF: 0, reason: 'CLEARANCE_AT_OR_ABOVE_MINIMUM' };
+  }
+  if (ROOFTOP_RULE.exceptInsulation.indexOf(insulation) !== -1) {
+    return { applied: false, adderF: 0, reason: 'XHHW2_EXCEPTION' };
+  }
+  return { applied: true, adderF: ROOFTOP_RULE.adderF, reason: 'APPLIED' };
 }
 
 /**
@@ -100,21 +188,13 @@ function calculateAmpacity(input) {
     insulation = 'thhn',
     ambientF = 86,
     adjustmentFactor = 1.0,
-    rooftopAdderF = 0,
     terminalRatingC = 75,
     /**
-     * COMPATIBILITY SHIM — remove once P0-1 is approved.
-     *
-     * 'band'    NEC-correct: the first band whose upper bound >= ambient.
-     * 'nearest' Reproduces the numerically-closest lookup shipping in
-     *           mobile.html, which returns 1.00 at 88 °F where the code
-     *           requires 0.96.
-     *
-     * Default is the correct behaviour. The production adapter opts INTO
-     * 'nearest' explicitly, so the divergence is one visible argument rather
-     * than a silent difference, and fixing P0-1 is a one-line change there.
+     * Rooftop conditions per NEC 310.15(B)(2). The adder is DERIVED from these,
+     * never passed in — there is exactly one implementation of the rule.
+     * Omit entirely for a non-rooftop installation.
      */
-    tempLookupMode = 'band',
+    rooftop = null,
   } = input || {};
 
   const table = material === 'al' ? AMP_AL : AMP_CU;
@@ -124,20 +204,32 @@ function calculateAmpacity(input) {
   }
 
   const baseAmpacity = row[insulationColumn(insulation)];
-  const effectiveAmbientF = ambientF + rooftopAdderF;
-  const correction = tempLookupMode === 'nearest'
-    ? tempCorrectionFactorLegacy(effectiveAmbientF, insulation)
-    : tempCorrectionFactor(effectiveAmbientF, insulation);
+  const roof = evaluateRooftopAdjustment(rooftop, insulation);
+  const effectiveAmbientF = ambientF + roof.adderF;
+  const temp = lookupTempCorrection(effectiveAmbientF, insulation);
 
-  if (correction === null) {
+  if (!temp.ok) {
     return {
       ok: false,
-      reason: 'AMBIENT_ABOVE_TABLE',
+      reason: temp.reason,
+      conductorRatingC: temp.conductorRatingC,
+      temperatureBand: temp.band,
+      ambientF,
+      rooftopAdjustmentApplied: roof.applied,
+      rooftopAdderF: roof.adderF,
+      rooftopAdjustmentReason: roof.reason,
+      rooftopRule: ROOFTOP_RULE.code,
       effectiveAmbientF,
-      note: 'NEC Table 310.15(B)(1) does not extend above 140°F.',
+      note: temp.reason === 'AMBIENT_ABOVE_TABLE'
+        ? 'Above ' + MAX_TABLE_AMBIENT_F + '°F, NEC Table 310.15(B)(1) publishes no factor for any conductor rating.'
+        : 'No correction factor is provided in Table 310.15(B)(1) for a '
+          + temp.conductorRatingC + '°C conductor at the calculated ambient temperature ('
+          + temp.band + '). NEC 310.15(B) also permits correction by equation; this tool '
+          + 'reports the table only.',
     };
   }
 
+  const correction = temp.factor;
   const afterCorrection = baseAmpacity * correction;
   const afterAdjustment = afterCorrection * adjustmentFactor;
 
@@ -153,7 +245,14 @@ function calculateAmpacity(input) {
     insulation,
     baseAmpacity,
     correctionFactor: correction,
+    temperatureBand: temp.band,
+    conductorRatingC: temp.conductorRatingC,
     adjustmentFactor,
+    ambientF,
+    rooftopAdjustmentApplied: roof.applied,
+    rooftopAdderF: roof.adderF,
+    rooftopAdjustmentReason: roof.reason,
+    rooftopRule: ROOFTOP_RULE.code,
     effectiveAmbientF,
     afterCorrection: round2(afterCorrection),
     afterAdjustment: round2(afterAdjustment),
@@ -167,7 +266,6 @@ function calculateAmpacity(input) {
      * behaviour must floor THIS field. Tracked as P1-9.
      */
     finalAmpacityRaw: finalAmpacity,
-    tempLookupMode,
     derated: correction < 1.0 || adjustmentFactor < 1.0,
   };
 }
@@ -217,8 +315,12 @@ function round2(n) {
 module.exports = {
   calculateAmpacity,
   tempCorrectionFactor,
-  tempCorrectionFactorLegacy,
+  lookupTempCorrection,
+  TEMP_BANDS,
+  MAX_TABLE_AMBIENT_F,
   maxOvercurrentDevice,
+  evaluateRooftopAdjustment,
+  ROOFTOP_RULE,
   insulationColumn,
   STANDARD_OCPD,
   SMALL_CONDUCTOR_MAX,

@@ -129,10 +129,11 @@ describe('Ampacity migration — production adapter', { skip: skipAll }, () => {
       'the legacy nearest-match loop is still hand-coded in mobile.html');
   });
 
-  test('the migration explicitly opts into legacy behaviour rather than silently changing it', () => {
+  test('no legacy nearest-match escape hatch remains in the adapter', () => {
+    // P0-1 is fixed: the engine has one lookup, the true NEC band lookup.
     const s = html().indexOf('function ampUpdateCalc');
     const body = html().slice(s, html().indexOf('function ampRenderRefTable'));
-    assert.ok(/tempLookupMode:\s*'nearest'/.test(body),
-      'adapter must pass tempLookupMode explicitly so P0-1 is visible, not implicit');
+    assert.ok(!/tempLookupMode/.test(body), 'a temperature-lookup mode switch is back');
+    assert.ok(!/nearest/.test(body), 'nearest-match wording is back in the adapter');
   });
 });

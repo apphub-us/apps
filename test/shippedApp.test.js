@@ -61,23 +61,19 @@ describe('Shipped app — data integrity guards', { skip: skipAll }, () => {
 });
 
 describe('Shipped app — known divergences from the verified core', { skip: skipAll }, () => {
-  test('P0-1: production still opts into the nearest-band lookup',
-    { todo: 'adapter passes tempLookupMode:"nearest"; NEC Table 310.15(B)(1) requires band containment. Flip to "band" in the P0-1 fix.' },
-    () => {
-      // Post-migration the divergence lives in ONE argument in the adapter,
-      // not in a hand-coded loop. This asserts the fixed state so the todo
-      // clears the moment P0-1 is applied.
-      const s2 = html.indexOf('function ampUpdateCalc');
-      const body = html.slice(s2, html.indexOf('function ampRenderRefTable'));
-      assert.ok(/tempLookupMode:\s*'band'/.test(body),
-        'adapter still uses tempLookupMode:"nearest"');
-    });
-
-  test('P0-4: the rooftop adder is offered as +33F where NEC 310.15(B)(2) requires +60F',
-    { todo: '33 is the Celsius figure (33C = 60F); the app applies it as Fahrenheit' },
-    () => {
-      assert.ok(!/\+33°F adder/.test(html), 'app still offers a +33F rooftop adder');
-    });
+  test('P0-1: production uses true band lookup against the COMPLETE table', () => {
+    // Promoted from `todo`. Two defects were fixed: nearest-row matching, and
+    // a table missing 7 of the 16 NEC bands.
+    const s2 = html.indexOf('function ampUpdateCalc');
+    const body = html.slice(s2, html.indexOf('function ampRenderRefTable'));
+    assert.ok(!/tempLookupMode/.test(body), 'the legacy nearest-match escape hatch is back');
+    const t = require('../src/calc/tables');
+    assert.strictEqual(Object.keys(t.AMP_TEMP_LOOKUP).length, 16,
+      'AMP_TEMP_LOOKUP must carry all 16 NEC bands');
+    const { tempCorrectionFactor } = require('../src/calc/ampacity');
+    assert.strictEqual(tempCorrectionFactor(88, 'thhn'), 0.96, 'nearest-match regression');
+    assert.strictEqual(tempCorrectionFactor(146, 'thhn'), 0.65, 'truncated-table regression');
+  });
 
   test('P0-2: Wire Sizer omits the NEC 240.4(D) small-conductor limit',
     { todo: 'wsCalc accepts #14 for a 20 A load; 240.4(D) caps #14 at 15 A' },
