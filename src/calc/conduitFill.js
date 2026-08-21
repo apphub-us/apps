@@ -34,10 +34,18 @@ function calculateConduitFill(input) {
   const usedArea = wireArea * numConductors;
   const rawMax = allowedArea / wireArea;
 
-  // NEC Chapter 9, Note 7: for conductors all of the same size, a calculation
-  // resulting in a decimal of 0.8 or larger rounds UP to the next whole conductor.
+  // NEC 2020 Chapter 9, Note 7: for conductors or cables ALL OF THE SAME SIZE,
+  // a calculation resulting in a decimal greater than or equal to 0.8 rounds UP
+  // to the next whole conductor. The note's second sentence extends the same
+  // threshold to the single-conductor case, so 0.87 permits one conductor.
+  //
+  // The epsilon matters: 6.8 - 6 evaluates to 0.7999999999999998 in IEEE-754,
+  // so a bare `>= 0.8` would reject a value that is exactly on the threshold.
+  const NOTE7_THRESHOLD = 0.8;
+  const NOTE7_EPSILON = 1e-9;
   const frac = rawMax - Math.floor(rawMax);
-  const maxConductors = frac >= 0.8 ? Math.ceil(rawMax) : Math.floor(rawMax);
+  const note7Applies = frac >= NOTE7_THRESHOLD - NOTE7_EPSILON;
+  const maxConductors = note7Applies ? Math.ceil(rawMax) : Math.floor(rawMax);
 
   return {
     ok: true,
@@ -49,7 +57,8 @@ function calculateConduitFill(input) {
     fillPercentUsed: round1((usedArea / conduit.t) * 100),
     maxConductors,
     maxConductorsRaw: round2(rawMax),
-    note7Applied: frac >= 0.8,
+    note7Applied: note7Applies,
+    note7Fraction: Math.round(frac * 100) / 100,
     fits: usedArea <= allowedArea,
   };
 }

@@ -102,11 +102,18 @@ describe('Shipped app — known divergences from the verified core', { skip: ski
     assert.strictEqual(selectConductor({ continuousLoadA: 20 }).hundredPercentRatedExceptionApplied, false);
   });
 
-  test('P1-1: conduit fill floors instead of applying Chapter 9 Note 7',
-    { todo: 'Note 7 rounds up when the decimal is 0.8 or larger' },
-    () => {
-      const s = html.indexOf('function cfUpdateCalc');
-      const body = html.slice(s, html.indexOf('function cfGoToAmpacity'));
-      assert.ok(/0\.8|Note 7/.test(body), 'no Note 7 handling found in cfUpdateCalc');
+  test('P1-1: conduit fill applies Chapter 9 Note 7 via the shared engine', () => {
+    // Promoted from `todo`: production delegates instead of flooring.
+    assert.ok(!/Math\.floor\(avail \/ wa\)/.test(html),
+      'the unconditional floor is back in cfUpdateCalc');
+    assert.ok(/EC\.conduitFill\.calculateConduitFill/.test(html),
+      'cfUpdateCalc must call the shared engine');
+    assert.ok(/note7Applied/.test(html),
+      'the UI must be able to explain when Note 7 changed the count');
+    const { calculateConduitFill } = require('../src/calc/conduitFill');
+    const r = calculateConduitFill({
+      conduitType: 'emt', conduitSize: '1', wireType: 'thhn', wireSize: '6', numConductors: 3,
     });
+    assert.strictEqual(r.maxConductors, 7, '6.82 must round up to 7');
+  });
 });

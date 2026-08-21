@@ -2013,10 +2013,18 @@ window.EC = (function () {
       const usedArea = wireArea * numConductors;
       const rawMax = allowedArea / wireArea;
 
-      // NEC Chapter 9, Note 7: for conductors all of the same size, a calculation
-      // resulting in a decimal of 0.8 or larger rounds UP to the next whole conductor.
+      // NEC 2020 Chapter 9, Note 7: for conductors or cables ALL OF THE SAME SIZE,
+      // a calculation resulting in a decimal greater than or equal to 0.8 rounds UP
+      // to the next whole conductor. The note's second sentence extends the same
+      // threshold to the single-conductor case, so 0.87 permits one conductor.
+      //
+      // The epsilon matters: 6.8 - 6 evaluates to 0.7999999999999998 in IEEE-754,
+      // so a bare `>= 0.8` would reject a value that is exactly on the threshold.
+      const NOTE7_THRESHOLD = 0.8;
+      const NOTE7_EPSILON = 1e-9;
       const frac = rawMax - Math.floor(rawMax);
-      const maxConductors = frac >= 0.8 ? Math.ceil(rawMax) : Math.floor(rawMax);
+      const note7Applies = frac >= NOTE7_THRESHOLD - NOTE7_EPSILON;
+      const maxConductors = note7Applies ? Math.ceil(rawMax) : Math.floor(rawMax);
 
       return {
         ok: true,
@@ -2028,7 +2036,8 @@ window.EC = (function () {
         fillPercentUsed: round1((usedArea / conduit.t) * 100),
         maxConductors,
         maxConductorsRaw: round2(rawMax),
-        note7Applied: frac >= 0.8,
+        note7Applied: note7Applies,
+        note7Fraction: Math.round(frac * 100) / 100,
         fits: usedArea <= allowedArea,
       };
     }
@@ -3333,19 +3342,22 @@ function cfUpdateCalc() {
     cfRenderTable(ct);
   }
 
-  var cdd = CF_AREA[ct] && CF_AREA[ct][cs];
-  var wa = CF_WIRE[wt][ws];
-  var box = document.getElementById('cfResultBox');
-  if (!cdd || !wa) { box.classList.remove('show'); return; }
+  // ── Shared calculation engine — src/calc/conduitFill.js ──
+    // One implementation of Chapter 9 Table 1 and Note 7.
+    var box = document.getElementById('cfResultBox');
+    var __cf = EC.conduitFill.calculateConduitFill({
+      conduitType: ct, conduitSize: cs, wireType: wt, wireSize: ws, numConductors: nw
+    });
+    if (!__cf.ok) { box.classList.remove('show'); return; }
 
-  var fKey = nw===1?'f53':nw===2?'f31':'f40';
-  var fPct = nw===1?53:nw===2?31:40;
-  var avail = cdd[fKey];
-  var used = wa * nw;
-  var pct = (used / cdd.t * 100).toFixed(1);
-  var maxN = Math.floor(avail / wa);
-  var fits = used <= avail;
-  var sc = fits ? 'result-ok' : 'result-over';
+    var cdd = CF_AREA[ct][cs];
+    var fPct  = __cf.fillRulePercent;
+    var avail = __cf.allowedArea;
+    var used  = __cf.usedArea;
+    var pct   = __cf.fillPercentUsed.toFixed(1);
+    var maxN  = __cf.maxConductors;
+    var fits  = __cf.fits;
+    var sc = fits ? 'result-ok' : 'result-over';
   box.classList.toggle('ready', fits);
   box.classList.toggle('fail', !fits);
 
@@ -3353,9 +3365,13 @@ function cfUpdateCalc() {
     '<div class="result-item"><div class="result-item-label">Status</div><div class="result-item-value '+sc+'">'+(fits?'✓ FITS':'✗ OVER')+'</div></div>'+
     '<div class="result-item"><div class="result-item-label">Fill Used</div><div class="result-item-value '+sc+'">'+pct+'%</div></div>'+
     '<div class="result-item"><div class="result-item-label">Max Wires ('+fPct+'% rule)</div><div class="result-item-value result-ok">'+maxN+'</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Each Wire Area</div><div class="result-item-value">'+wa.toFixed(4)+' in²</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Each Wire Area</div><div class="result-item-value">'+__cf.eachWireArea.toFixed(4)+' in²</div></div>'+
     '<div class="result-item"><div class="result-item-label">Total Wire Area</div><div class="result-item-value">'+used.toFixed(4)+' in²</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Allowed Area</div><div class="result-item-value">'+avail.toFixed(4)+' in²</div></div>';
+    '<div class="result-item"><div class="result-item-label">Allowed Area</div><div class="result-item-value">'+avail.toFixed(4)+' in²</div></div>'+
+      (__cf.note7Applied
+        ? '<div class="result-item" style="grid-column:1/-1"><div class="result-item-label">NEC Ch.9 Note 7</div>'+
+          '<div class="result-item-value" style="font-size:12px;color:var(--text-dim)">Calculated '+__cf.maxConductorsRaw.toFixed(2)+' rounds up to '+maxN+' \u2014 decimal is 0.8 or larger and all conductors are the same size.</div></div>'
+        : '');
   box.classList.add('show');
 }
 
