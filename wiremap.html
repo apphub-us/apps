@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Wire Map — Empire Code</title>
+
+<!--
+  WM-1 prototype shell.
+
+  Deliberately standalone. Empire Code's mobile.html carries the verified
+  calculator engine and 265 tests that read its structure; keeping Wire Map on
+  its own page means an experimental editor cannot put that at risk.
+
+  This page renders the stage structure and nothing else. No IndexedDB, no image
+  import, no gestures, no annotations — those arrive in WM-2 onwards. The visual
+  language is borrowed from Empire Code rather than copied wholesale: only the
+  tokens and chrome needed for a recognisable shell.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #0A0A0A;
+    --surface: #1a1a1a;
+    --surface2: #222222;
+    --border: #2e2e2e;
+    --accent: #FFC700;
+    --text: #e8e8e8;
+    --text-dim: #a8a8a8;
+    --text-dimmer: #9a9a9a;
+    --header-h: 52px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  body { display: flex; flex-direction: column; }
+
+  /* ── Header ── */
+  header {
+    flex-shrink: 0; height: var(--header-h);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 14px;
+    background: var(--surface); border-bottom: 1px solid var(--accent);
+  }
+  .logo {
+    font-family: 'Montserrat', sans-serif; font-weight: 800;
+    font-size: 15px; letter-spacing: 0.5px; text-transform: uppercase;
+    color: var(--accent);
+  }
+  .module {
+    font-family: 'Montserrat', sans-serif; font-weight: 800;
+    font-size: 9px; letter-spacing: 0.4px; text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 3px 7px; border-radius: 3px;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  }
+
+  /* ── Viewport and stage ──────────────────────────────────────────────
+     The viewport is the fixed window. The stage is the transformed content:
+     background image and SVG overlay move together under ONE transform, so
+     the plan and its annotations can never drift apart. WM-4 will write that
+     transform; WM-1 only establishes the structure. */
+  .viewport {
+    position: relative; flex: 1; min-height: 0; overflow: hidden;
+    background: var(--bg);
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
+    touch-action: none;   /* the stage owns its gestures, not the browser */
+  }
+
+  .stage {
+    position: absolute; top: 0; left: 0;
+    transform-origin: 0 0;
+    /* transform is applied by viewport.js from WM-4 onwards */
+  }
+  .stage-bg { display: block; max-width: none; }
+  .stage-svg { position: absolute; top: 0; left: 0; overflow: visible; }
+
+  /* ── Empty state ── */
+  .empty {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; pointer-events: none; padding: 24px; text-align: center;
+  }
+  .empty-title {
+    font-family: 'Montserrat', sans-serif; font-weight: 700;
+    font-size: 13px; color: var(--text-dim);
+  }
+  .empty-hint { font-size: 11px; color: var(--text-dimmer); line-height: 1.5; }
+</style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">Empire Code</div>
+    <span class="module">Wire Map</span>
+  </header>
+
+  <!-- Fixed window onto the plan -->
+  <div class="viewport" id="wm-viewport">
+
+    <!-- Transformed content. Background and overlay share this one element. -->
+    <div class="stage" id="wm-stage">
+      <!-- WM-3 replaces this with the imported plan -->
+      <img class="stage-bg" id="wm-background" alt="" hidden>
+
+      <!-- Overlay group order is fixed and meaningful: a label always sits
+           above the route that reaches it, and selection always sits on top.
+           The selection layer is transient and is never persisted or exported. -->
+      <svg class="stage-svg" id="wm-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g id="wm-sketch"></g>
+        <g id="wm-routes"></g>
+        <g id="wm-labels"></g>
+        <g id="wm-selection"></g>
+      </svg>
+    </div>
+
+    <div class="empty" id="wm-empty">
+      <div class="empty-title">No sheet loaded</div>
+      <div class="empty-hint">WM-1 foundation &mdash; model, geometry and viewport maths only.</div>
+    </div>
+  </div>
+
+</body>
+</html>
