@@ -311,7 +311,9 @@ describe('WM-2 store — cascade delete', () => {
     await db.putSheet(sheet('s1', 'j1', { order: 0 }));
     await db.putSheet(sheet('s2', 'j1', { order: 1, kind: 'photo', imageId: 'img2' }));
     await db.putSheet(sheet('s9', 'j2', { order: 0 }));  // bystander
-    await db._putImageRecord({ id: 'img2', mime: 'image/jpeg', bytes: 1, createdAt: NOW });
+    // putImage now requires a blob — WM-3 made the contract explicit.
+    await db.putImage({ id: 'img2', blob: { size: 1, type: 'image/jpeg' },
+      mime: 'image/jpeg', width: 10, height: 10, bytes: 1, createdAt: NOW });
     await db.putAnnotation(label('a1', 's1', 'HR-7'));
     await db.putAnnotation(label('a2', 's1', 'HR-8', { createdAt: NOW + 1 }));
     await db.putAnnotation(label('a3', 's2', 'HR-9'));
@@ -327,10 +329,10 @@ describe('WM-2 store — cascade delete', () => {
   });
 
   test('deleting a sheet removes its referenced image', async () => {
-    assert.ok(await db._getImageRecord('img2'));
+    assert.ok(await db.getImage('img2'));
     const r = await db.deleteSheet('s2');
     assert.strictEqual(r.images, 1);
-    assert.strictEqual(await db._getImageRecord('img2'), null);
+    assert.strictEqual(await db.getImage('img2'), null);
   });
 
   test('deleting a sheet leaves other sheets and their annotations intact', async () => {
@@ -347,7 +349,7 @@ describe('WM-2 store — cascade delete', () => {
     assert.strictEqual(await db.getJob('j1'), null);
     for (const id of ['s1', 's2']) assert.strictEqual(await db.getSheet(id), null, id);
     for (const id of ['a1', 'a2', 'a3']) assert.strictEqual(await db.getAnnotation(id), null, id);
-    assert.strictEqual(await db._getImageRecord('img2'), null);
+    assert.strictEqual(await db.getImage('img2'), null);
   });
 
   test('an unrelated job survives the cascade untouched', async () => {

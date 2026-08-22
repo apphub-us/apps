@@ -400,17 +400,30 @@ function createStore(options) {
     return tx(['meta'], 'readwrite', (s) => s.meta.put({ key, value })).then(() => value);
   }
 
-  // ── Images: infrastructure only ─────────────────────────────────────
-  // Deliberately narrow. WM-2 reads no files and processes no pixels; these
-  // exist so cascade deletion has something real to remove.
-  function _putImageRecord(record) {
+  // ── Images ──────────────────────────────────────────────────────────
+  // Persistence only. Decoding, resizing and encoding belong to image.js and
+  // must never leak in here.
+  //
+  // A record looks like:
+  //   { id, blob, mime, width, height, bytes, createdAt }
+  function putImage(record) {
     if (!record || !record.id) return reject(ERR.BAD_ARGUMENT, 'an image record requires an id');
+    if (!record.blob) return reject(ERR.BAD_ARGUMENT, 'an image record requires a blob');
     return tx(['images'], 'readwrite', (s) => s.images.put(record));
   }
 
-  function _getImageRecord(id) {
-    if (!id) return reject(ERR.BAD_ARGUMENT, 'an image record requires an id');
+  function getImage(id) {
+    if (!id) return reject(ERR.BAD_ARGUMENT, 'getImage requires an id');
     return tx(['images'], 'readonly', (s) => s.images.get(id)).then((v) => v || null);
+  }
+
+  /**
+   * Delete an image record directly. Cascades from deleteSheet/deleteJob remove
+   * images too; this is for replacing a sheet's background.
+   */
+  function deleteImage(id) {
+    if (!id) return reject(ERR.BAD_ARGUMENT, 'deleteImage requires an id');
+    return tx(['images'], 'readwrite', (s) => s.images.delete(id));
   }
 
   return {
@@ -421,7 +434,10 @@ function createStore(options) {
     putSheet, getSheet, listSheets, deleteSheet,
     putAnnotation, getAnnotation, listAnnotations, deleteAnnotation,
     getMeta, setMeta,
-    _putImageRecord, _getImageRecord,
+    putImage, getImage, deleteImage,
+    // Retained so WM-2 tests and any existing caller keep working.
+    _putImageRecord: putImage,
+    _getImageRecord: getImage,
   };
 }
 

@@ -53,6 +53,7 @@ const src = {
   geometry: require('../src/wiremap/geometry'),
   viewport: require('../src/wiremap/viewport'),
   store: require('../src/wiremap/store'),
+  image: require('../src/wiremap/image'),
 };
 
 describe('Wire Map build — generated block', { skip: skipAll }, () => {
@@ -97,8 +98,8 @@ describe('Wire Map build — window.WM in an isolated context', { skip: skipAll 
     assert.strictEqual(typeof WM, 'object');
   });
 
-  test('WM exposes model, geometry, viewport and store', () => {
-    for (const key of ['model', 'geometry', 'viewport', 'store']) {
+  test('WM exposes model, geometry, viewport, store and image', () => {
+    for (const key of ['model', 'geometry', 'viewport', 'store', 'image']) {
       assert.ok(WM[key], `WM.${key} is missing`);
       assert.strictEqual(typeof WM[key], 'object');
     }
@@ -198,10 +199,21 @@ describe('Wire Map build — browser and Node agree', { skip: skipAll }, () => {
   });
 
   test('every exported name in the sources is present in the bundle', () => {
-    for (const mod of ['model', 'geometry', 'viewport', 'store']) {
+    for (const mod of ['model', 'geometry', 'viewport', 'store', 'image']) {
       const expected = Object.keys(src[mod]).sort();
       const actual = Object.keys(WM[mod]).sort();
       assert.deepStrictEqual(actual, expected, `export drift in ${mod}`);
+    }
+  });
+
+  test('WM.image comes from the same source module as the Node tests', () => {
+    assert.strictEqual(WM.image.MAX_IMAGE_DIMENSION, src.image.MAX_IMAGE_DIMENSION);
+    assert.strictEqual(WM.image.JPEG_QUALITY, src.image.JPEG_QUALITY);
+    assert.deepStrictEqual(plain(WM.image.SUPPORTED_INPUT_MIME), src.image.SUPPORTED_INPUT_MIME);
+    // Pure policy must agree exactly through both paths.
+    for (const [w, h] of [[4032, 3024], [1200, 900], [2001, 1000]]) {
+      assert.deepStrictEqual(plain(WM.image.computeTargetDimensions(w, h)),
+        src.image.computeTargetDimensions(w, h));
     }
   });
 
@@ -254,6 +266,60 @@ describe('Wire Map build — browser and Node agree', { skip: skipAll }, () => {
 });
 
 describe('Wire Map build — the WM-1 shell is still inert', { skip: skipAll }, () => {
+  test('BEHAVIOUR: loading the page touches neither IndexedDB nor storage', () => {
+    // Executed, not grepped. The probe registers a listener and stops; the
+    // database must not be opened until the electrician picks a file.
+    const core = html.slice(html.indexOf(START), html.indexOf(END));
+    const coreJs = core.slice(core.indexOf('<script>') + 8, core.lastIndexOf('</script>'));
+    const tail = html.slice(html.indexOf(END));
+    const probeJs = tail.slice(tail.indexOf('<script>') + 8, tail.lastIndexOf('</script>'));
+
+    let idbTouched = false;
+    let storageTouched = false;
+    let listeners = 0;
+    const el = {
+      files: null,
+      addEventListener() { listeners += 1; },
+      set textContent(_) { /* status line */ },
+    };
+    const sandbox = {
+      window: {},
+      document: { getElementById: () => el },
+      indexedDB: new Proxy({}, { get() { idbTouched = true; return () => {}; } }),
+      navigator: { storage: new Proxy({}, { get() { storageTouched = true; return () => {}; } }) },
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(coreJs, sandbox, { filename: 'core.js' });
+    vm.runInContext(probeJs, sandbox, { filename: 'probe.js' });
+
+    assert.strictEqual(idbTouched, false, 'the page opened IndexedDB on load');
+    assert.strictEqual(storageTouched, false, 'the page queried storage on load');
+    // Two: the file input and the "Load stored test image" button. Both are
+    // part of the temporary WM-3 probe and both are inert until tapped.
+    assert.strictEqual(listeners, 2, 'expected exactly two probe listeners');
+    assert.ok(sandbox.window.WM, 'window.WM should still be created');
+  });
+
+  test('the probe previews the STORED blob, never the source file', () => {
+    const tail = html.slice(html.indexOf(END));
+    assert.ok(/showPreview\(back\.blob\)/.test(tail),
+      'after import the preview must come from the record read back out of storage');
+    assert.ok(/showPreview\(rec\.blob\)/.test(tail),
+      'after load the preview must come from the stored record');
+    assert.ok(!/showPreview\(f\)|showPreview\(file/.test(tail),
+      'the preview must not use the source File');
+  });
+
+  test('the probe uses a fixed id so a reload can find the image again', () => {
+    const tail = html.slice(html.indexOf(END));
+    assert.ok(/PROBE_ID = 'wm3-probe-image'/.test(tail), 'a deterministic id is required');
+  });
+
+  test('the probe revokes its preview URL before creating another', () => {
+    const tail = html.slice(html.indexOf(END));
+    assert.ok(/revokeObjectURL\(previewUrl\)/.test(tail), 'preview URLs would leak');
+  });
+
   test('the visible shell is unchanged', () => {
     for (const marker of ['id="wm-viewport"', 'id="wm-stage"', 'id="wm-background"',
       'id="wm-overlay"', 'id="wm-sketch"', 'id="wm-routes"', 'id="wm-labels"',
@@ -268,22 +334,28 @@ describe('Wire Map build — the WM-1 shell is still inert', { skip: skipAll }, 
   });
 
   test('the only script on the page is the generated core', () => {
+    // Two now: the generated core, plus the WM-3 development import probe.
     const scripts = html.match(/<script[^>]*>/g) || [];
-    assert.strictEqual(scripts.length, 1, `expected one script tag, found ${scripts.length}`);
-    const s = html.indexOf('<script');
-    assert.ok(s > html.indexOf(START) && s < html.indexOf(END),
-      'the script tag should sit inside the generated block');
+    assert.strictEqual(scripts.length, 2, `expected two script tags, found ${scripts.length}`);
+    const first = html.indexOf('<script');
+    assert.ok(first > html.indexOf(START) && first < html.indexOf(END),
+      'the core script should sit inside the generated block');
+    assert.ok(html.lastIndexOf('<script') > html.indexOf(END),
+      'the dev probe must come after the core so window.WM exists');
   });
 
   test('no editor behaviour was added — no listeners, no storage, no fetch', () => {
     const handWritten = html.slice(0, html.indexOf(START)) + html.slice(html.indexOf(END));
     // indexedDB now appears inside the GENERATED block via store.js; the
     // hand-written page must still not touch it.
-    for (const forbidden of ['addEventListener', 'indexedDB', 'localStorage', 'fetch(',
-      'PointerEvent', 'onclick']) {
+    // The WM-3 probe legitimately adds one change listener. Everything else
+    // the editor will need is still absent.
+    for (const forbidden of ['localStorage', 'fetch(', 'PointerEvent', 'onclick']) {
       assert.ok(!handWritten.includes(forbidden),
-        `WM-1.5 must not introduce ${forbidden}`);
+        `WM-3 must not introduce ${forbidden}`);
     }
+    assert.strictEqual((handWritten.match(/addEventListener/g) || []).length, 2,
+      'only the two dev-probe controls may listen for events');
   });
 
   test('no external dependency was pulled in', () => {
