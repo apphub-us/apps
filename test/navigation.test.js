@@ -161,13 +161,43 @@ describe('UX-1 — Home tiles', { skip: skipAll }, () => {
     assert.strictEqual(new Set(rendered).size, rendered.length, 'a tile is duplicated');
   });
 
-  test('tiles carry full readable labels, not truncated ones', () => {
+  test('tiles carry the approved UX-2 presentation labels', () => {
     const { api } = bootRouter();
-    assert.strictEqual(api.TOOLS.loadcalc.label, 'Load Calculator');
-    assert.strictEqual(api.TOOLS.bender.label, 'Conduit Bender');
-    assert.strictEqual(api.TOOLS.converter.label, 'Electrical Converter');
-    assert.strictEqual(api.TOOLS.outlets.label, 'NEMA Plugs & Receptacles');
-    assert.strictEqual(api.TOOLS.grounding.label, 'EGC / GEC Calculator');
+    const expected = {
+      wiresizer: 'Wire Sizer', ampacity: 'Ampacity', loadcalc: 'Load Calc',
+      conduit: 'Conduit Fill', wireway: 'Wireway Fill', boxfill: 'Box Fill',
+      motor: 'Motor 430', grounding: 'Grounding', outlets: 'NEMA',
+      bender: 'Conduit Bender', converter: 'Converter',
+    };
+    for (const [id, label] of Object.entries(expected)) {
+      assert.strictEqual(api.TOOLS[id].label, label, `label for ${id}`);
+    }
+  });
+
+  test('NEMA is not relabelled "Outlets" — an outlet is not a plug or receptacle', () => {
+    const { api } = bootRouter();
+    assert.strictEqual(api.TOOLS.outlets.label, 'NEMA');
+    // Check the rendered tile, not the file: the phrase also appears in a
+    // source comment explaining why it is wrong.
+    const { api: a2, elements } = bootRouter();
+    a2.homeRender();
+    assert.ok(!/NEMA Outlets/.test(elements.homeGroups.innerHTML),
+      'the inaccurate label is rendered to the user');
+  });
+
+  test('every Home tile carries a one-line description', () => {
+    const { api } = bootRouter();
+    const expected = {
+      wiresizer: 'Ampacity + voltage drop', ampacity: 'Derating + terminal limits',
+      loadcalc: 'Service & feeder demand', conduit: 'NEC Ch. 9 fill',
+      wireway: '20% raceway fill', boxfill: 'NEC 314.16 volume',
+      motor: 'Conductors + protection', grounding: 'EGC & GEC sizing',
+      outlets: 'Plugs & receptacles', bender: '90s, offsets & saddles',
+      converter: 'Power, torque & units',
+    };
+    for (const [id, desc] of Object.entries(expected)) {
+      assert.strictEqual(api.TOOLS[id].desc, desc, `description for ${id}`);
+    }
   });
 
   test('groups render without any expand or category page', () => {
@@ -342,5 +372,112 @@ describe('UX-1 — exclusions and preservation', { skip: skipAll }, () => {
     assert.ok(html.includes('<!-- EC-CALC:START'), 'the engine block is gone');
     assert.ok(/EC\.ampacity\.calculateAmpacity/.test(html));
     assert.ok(/EC\.conduitFill\.calculateConduitFill/.test(html));
+  });
+});
+
+describe('UX-2 — presentation', { skip: skipAll }, () => {
+  test('the header is a single row with two edition badges and no status dots', () => {
+    const h = appMarkup().match(/<header>([\s\S]*?)<\/header>/);
+    assert.ok(h, 'header not found');
+    assert.ok(/class="edition edition-nycec">NYCEC 2025</.test(h[1]), 'NYCEC badge missing');
+    assert.ok(/class="edition edition-nec">NEC 2020</.test(h[1]), 'NEC badge missing');
+    assert.ok(!/status-dot/.test(h[1]), 'a decorative status dot is back in the header');
+  });
+
+  test('both code editions keep their blue and orange identity', () => {
+    assert.ok(/\.edition-nycec\s*\{[^}]*var\(--nycec\)/.test(html));
+    assert.ok(/\.edition-nec\s*\{[^}]*var\(--nec\)/.test(html));
+  });
+
+  test('secondary text meets AA on the darkest surface it sits on', () => {
+    const m = html.match(/--text-dimmer:\s*(#[0-9a-fA-F]{6})/);
+    assert.ok(m, '--text-dimmer not found');
+    const lum = (hex) => {
+      const c = [1, 3, 5].map((i) => parseInt(hex.substr(i, 2), 16) / 255)
+        .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    };
+    const ratio = (a, b) => {
+      const l1 = lum(a); const l2 = lum(b);
+      return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+    };
+    assert.ok(ratio(m[1], '#222222') >= 4.5,
+      `--text-dimmer ${m[1]} is ${ratio(m[1], '#222222').toFixed(2)}:1 on --surface2`);
+  });
+
+  test('tiles are at least a 56px touch target with a two-line anatomy', () => {
+    assert.ok(/\.tile\s*\{[^}]*min-height:\s*56px/.test(html), 'tile min-height is not 56px');
+    assert.ok(/\.tile-name\s*\{[^}]*font-size:\s*14px/.test(html), 'tile name is not 14px');
+    assert.ok(/\.tile-desc\s*\{[^}]*font-size:\s*10px/.test(html), 'tile description is not 10px');
+    assert.ok(/\.tile-desc\s*\{[^}]*IBM Plex Mono/.test(html), 'descriptions should be monospace');
+  });
+
+  test('PINNED is visually distinct: bright heading, tinted tiles, divider', () => {
+    assert.ok(/\.home-pinned-label\s*\{[^}]*var\(--text\)/.test(html),
+      'the PINNED heading must not use the category accent');
+    assert.ok(/\.home-section-label\s*\{[^}]*var\(--accent\)/.test(html),
+      'category headings should keep the accent');
+    assert.ok(/\.tile-pinned\s*\{[^}]*rgba\(255,199,0/.test(html), 'pinned tint missing');
+    assert.ok(/id="pinnedDivider"/.test(appMarkup()), 'divider below PINNED missing');
+  });
+
+  test('the PINNED heading shows a count', () => {
+    assert.ok(/heading\.textContent = pinned\.length \? 'PINNED/.test(html),
+      'the heading does not render a count');
+  });
+
+  test('NO per-category colour coding was introduced', () => {
+    // The brief rejected green/blue/grey category accents: they imply
+    // conductor and grounding semantics.
+    const groups = html.slice(html.indexOf('var TOOL_GROUPS'), html.indexOf('var TOOLS = {'));
+    assert.ok(!/color|#[0-9a-fA-F]{6}|rgba\(/.test(groups),
+      'a per-category colour leaked into the group definitions');
+    assert.ok(!/tile-conductors|tile-raceways|tile-grounding|tile-fieldtools/.test(html),
+      'per-category tile classes were introduced');
+  });
+
+  test('bottom nav has one local inline SVG icon per item and no network request', () => {
+    const m = appMarkup().match(/<nav class="bottom-nav">([\s\S]*?)<\/nav>/);
+    assert.strictEqual((m[1].match(/<svg /g) || []).length, 3, 'expected exactly three icons');
+    assert.ok(!/https?:|<img|url\(/.test(m[1]), 'the nav must not fetch anything');
+    assert.ok(/\.nav-item svg\s*\{[^}]*currentColor/.test(html),
+      'icons should inherit the active/inactive colour');
+  });
+
+  test('the Code icon reads as an open book, not a rectangle', () => {
+    const m = appMarkup().match(/id="mnav-coderef"[\s\S]*?<\/svg>/);
+    assert.ok(m, 'Code nav item not found');
+    const paths = m[0].match(/<path /g) || [];
+    assert.strictEqual(paths.length, 2,
+      'an open book needs two page shapes; one path renders as a plain rectangle');
+    assert.ok(!/M5 3h11a3 3/.test(m[0]), 'the old phone-like rounded rectangle is back');
+    assert.ok(!/<rect/.test(m[0]), 'the Code icon must not be a bare rectangle');
+  });
+
+  test('Home and AI Chat icons were not touched', () => {
+    const nav = appMarkup().match(/<nav class="bottom-nav">([\s\S]*?)<\/nav>/)[1];
+    assert.ok(/id="mnav-home"[\s\S]*?M3 11\.2 12 4l9 7\.2/.test(nav), 'Home icon changed');
+    assert.ok(/id="mnav-chat"[\s\S]*?M4 4h16a1 1 0 0 1 1 1v11/.test(nav), 'AI Chat icon changed');
+  });
+
+  test('the active yellow state and top indicator survive', () => {
+    assert.ok(/\.nav-item\.active\s*\{[^}]*var\(--accent\)/.test(html));
+    assert.ok(/\.nav-item\.active\s*\{[^}]*border-top-color/.test(html));
+  });
+
+  test('spacing follows the compact system', () => {
+    assert.ok(/\.home-grid\s*\{[^}]*gap:\s*8px/.test(html), 'tile gap should be 8px');
+    assert.ok(/\.home-group \+ \.home-group\s*\{\s*margin-top:\s*20px/.test(html),
+      'groups should be 20px apart');
+    assert.ok(/id="panel-home"[\s\S]{0,200}padding:14px/.test(html),
+      'page padding should be 14px');
+  });
+
+  test('Home keeps two columns — no three-column grid', () => {
+    // Scoped to the Home styles and renderer. Other calculators have their own
+    // grids and are out of scope for UX-2.
+    assert.ok(/\.home-grid\s*\{[^}]*grid-template-columns:\s*1fr 1fr[;\s}]/.test(html));
+    const render = html.slice(html.indexOf('function tileMarkup'), html.indexOf('window.addEventListener(\'DOMContentLoaded\', homeRender)'));
+    assert.ok(!/1fr 1fr 1fr/.test(render), 'Home renderer introduced a third column');
   });
 });
