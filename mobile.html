@@ -7908,6 +7908,10 @@ function wsCalc() {
   if (dwellWrap) dwellWrap.style.display = (circuitType === 'FEEDER') ? '' : 'none';
   // NYCEC 215.2(A)(1) minimum feeder size. A separate size floor, not an
   // ampacity or OCPD rule. Never assumed — only applied on an explicit Yes.
+  // `mat` is read here, not further down: it is used immediately below to pick
+  // the NYC dwelling-feeder floor. With `var` hoisting a later assignment left
+  // it undefined at this point, silently giving aluminium the copper floor.
+  var mat     = document.getElementById('wsMaterial').value;
   var nycMinApplies = (circuitType === 'FEEDER') && (dwellingRaw === 'yes');
   var nycMinSize = nycMinApplies ? (mat === 'al' ? '6' : '8') : null;
   var hundredPct = (document.getElementById('wsHundredPct') || {}).value === 'yes';
@@ -7919,7 +7923,6 @@ function wsCalc() {
   var feet    = parseFloat(document.getElementById('wsFeet').value) || 0;
   var voltage = parseFloat(document.getElementById('wsVoltage').value) || 208;
   var phase   = document.getElementById('wsPhase').value;
-  var mat     = document.getElementById('wsMaterial').value;
   var bundle  = parseFloat(document.getElementById('wsBundle').value) || 1.0;
   var temp    = parseInt(document.getElementById('wsTemp').value) || 86;
   var maxVD   = parseFloat(document.getElementById('wsMaxVD').value) || 5;
