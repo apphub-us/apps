@@ -52,6 +52,7 @@ const src = {
   model: require('../src/wiremap/model'),
   geometry: require('../src/wiremap/geometry'),
   viewport: require('../src/wiremap/viewport'),
+  store: require('../src/wiremap/store'),
 };
 
 describe('Wire Map build — generated block', { skip: skipAll }, () => {
@@ -96,8 +97,8 @@ describe('Wire Map build — window.WM in an isolated context', { skip: skipAll 
     assert.strictEqual(typeof WM, 'object');
   });
 
-  test('WM exposes model, geometry and viewport', () => {
-    for (const key of ['model', 'geometry', 'viewport']) {
+  test('WM exposes model, geometry, viewport and store', () => {
+    for (const key of ['model', 'geometry', 'viewport', 'store']) {
       assert.ok(WM[key], `WM.${key} is missing`);
       assert.strictEqual(typeof WM[key], 'object');
     }
@@ -197,11 +198,44 @@ describe('Wire Map build — browser and Node agree', { skip: skipAll }, () => {
   });
 
   test('every exported name in the sources is present in the bundle', () => {
-    for (const mod of ['model', 'geometry', 'viewport']) {
+    for (const mod of ['model', 'geometry', 'viewport', 'store']) {
       const expected = Object.keys(src[mod]).sort();
       const actual = Object.keys(WM[mod]).sort();
       assert.deepStrictEqual(actual, expected, `export drift in ${mod}`);
     }
+  });
+
+  test('WM.store comes from the same source module as the Node tests', () => {
+    // Same constants, same schema shape, same error codes — one source of truth.
+    assert.strictEqual(WM.store.DB_NAME, src.store.DB_NAME);
+    assert.strictEqual(WM.store.DB_VERSION, src.store.DB_VERSION);
+    assert.deepStrictEqual(plain(WM.store.STORE_NAMES), src.store.STORE_NAMES);
+    assert.deepStrictEqual(plain(WM.store.ERR), src.store.ERR);
+    assert.deepStrictEqual(plain(WM.store.STORES), src.store.STORES);
+  });
+
+  test('the bundled store requires the bundled model, not a copy', () => {
+    // store.js does require('./model'); if the shim resolved it to a second
+    // copy, validation and labelKey normalisation could drift apart.
+    const s2 = WM.store.createStore({ driver: null, factory: null });
+    assert.strictEqual(typeof s2.putJob, 'function');
+    // A model-invalid job must be refused by the bundled store too.
+    return s2.openDatabase().then(
+      () => assert.fail('opening without IndexedDB should reject'),
+      (e) => assert.strictEqual(e.code, WM.store.ERR.UNAVAILABLE),
+    );
+  });
+
+  test('the bundled store enforces model validation end to end', async () => {
+    const { createMemoryDriver } = require('./wiremapMemoryDriver');
+    const s2 = WM.store.createStore({ driver: createMemoryDriver() });
+    await s2.openDatabase();
+    const good = src.model.createJob({ id: 'j1', name: 'Baylander', now: 1 });
+    await s2.putJob(good);
+    assert.strictEqual(plain(await s2.getJob('j1')).name, 'Baylander');
+    await assert.rejects(() => s2.putJob({ ...good, name: '' }),
+      (e) => e.code === WM.store.ERR.INVALID);
+    s2.closeDatabase();
   });
 
   test('validation agrees on a realistic annotation through both paths', () => {
@@ -243,6 +277,8 @@ describe('Wire Map build — the WM-1 shell is still inert', { skip: skipAll }, 
 
   test('no editor behaviour was added — no listeners, no storage, no fetch', () => {
     const handWritten = html.slice(0, html.indexOf(START)) + html.slice(html.indexOf(END));
+    // indexedDB now appears inside the GENERATED block via store.js; the
+    // hand-written page must still not touch it.
     for (const forbidden of ['addEventListener', 'indexedDB', 'localStorage', 'fetch(',
       'PointerEvent', 'onclick']) {
       assert.ok(!handWritten.includes(forbidden),

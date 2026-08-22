@@ -45,6 +45,7 @@ const MODULES = [
   'model',
   'geometry',
   'viewport',
+  'store',
 ];
 
 function readModule(name) {
