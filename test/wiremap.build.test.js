@@ -54,6 +54,7 @@ const src = {
   viewport: require('../src/wiremap/viewport'),
   store: require('../src/wiremap/store'),
   image: require('../src/wiremap/image'),
+  labelInteraction: require('../src/wiremap/labelInteraction'),
 };
 
 describe('Wire Map build — generated block', { skip: skipAll }, () => {
@@ -98,8 +99,8 @@ describe('Wire Map build — window.WM in an isolated context', { skip: skipAll 
     assert.strictEqual(typeof WM, 'object');
   });
 
-  test('WM exposes model, geometry, viewport, store and image', () => {
-    for (const key of ['model', 'geometry', 'viewport', 'store', 'image']) {
+  test('WM exposes every Wire Map module', () => {
+    for (const key of ['model', 'geometry', 'viewport', 'store', 'image', 'labelInteraction']) {
       assert.ok(WM[key], `WM.${key} is missing`);
       assert.strictEqual(typeof WM[key], 'object');
     }
@@ -199,7 +200,7 @@ describe('Wire Map build — browser and Node agree', { skip: skipAll }, () => {
   });
 
   test('every exported name in the sources is present in the bundle', () => {
-    for (const mod of ['model', 'geometry', 'viewport', 'store', 'image']) {
+    for (const mod of ['model', 'geometry', 'viewport', 'store', 'image', 'labelInteraction']) {
       const expected = Object.keys(src[mod]).sort();
       const actual = Object.keys(WM[mod]).sort();
       assert.deepStrictEqual(actual, expected, `export drift in ${mod}`);
@@ -302,24 +303,60 @@ describe('Wire Map build — the WM-1 shell is still inert', { skip: skipAll }, 
     // Listeners are registered — two probe controls plus the stage controller's
     // pointer and resize handlers. What matters is that NONE of them fire on
     // load: no database, no storage query until the electrician acts.
-    assert.ok(listeners >= 2, 'the probe controls should be wired');
+    assert.ok(listeners >= 3, 'the probe controls should be wired');
     assert.ok(sandbox.window.WM, 'window.WM should still be created');
+  });
+
+  test('WM-5: labels render only inside wm-labels', () => {
+    const app = fs.readFileSync(path.join(ROOT, 'src', 'wiremap', 'app.js'), 'utf8');
+    assert.ok(/el\.labels\.appendChild/.test(app), 'labels must be appended to wm-labels');
+    for (const other of ['wm-sketch', 'wm-routes', 'wm-selection']) {
+      assert.ok(!new RegExp(other).test(app), `WM-5 must not draw into ${other}`);
+    }
+  });
+
+  test('WM-5: the label counter-scale is local, not a second viewport transform', () => {
+    const app = fs.readFileSync(path.join(ROOT, 'src', 'wiremap', 'app.js'), 'utf8');
+    // Still exactly one element carries a style transform: the stage.
+    assert.strictEqual((app.match(/\.style\.transform\s*=/g) || []).length, 1);
+    // Labels use an SVG transform ATTRIBUTE inside that stage.
+    assert.ok(/setAttribute\('transform',\s*\n?\s*'translate\(/.test(app),
+      'label groups should carry their own local transform attribute');
   });
 
   test('the stage shows the STORED blob, never the source file', () => {
     const tail = html.slice(html.indexOf(END));
-    assert.ok(/stage\.showImage\(back\.blob, back\.width, back\.height\)/.test(tail),
-      'after import the stage must render the record read back out of storage');
+    // Both paths read the record back out of IndexedDB before displaying it.
     assert.ok(/stage\.showImage\(rec\.blob, rec\.width, rec\.height\)/.test(tail),
+      'after import the stage must render the record read back out of storage');
+    assert.ok(/stage\.showImage\(r\.image\.blob, r\.image\.width, r\.image\.height\)/.test(tail),
       'after load the stage must render the stored record');
     assert.ok(!/showImage\(f[,)]|showImage\(file/.test(tail),
       'the stage must not render the source File');
     assert.ok(!/wm-dev-preview/.test(html), 'the separate thumbnail should be gone');
   });
 
-  test('the probe uses a fixed id so a reload can find the image again', () => {
+  test('WM-5: each import gets a UNIQUE image and sheet id', () => {
+    // WM-3 reused one fixed image id. That would now let a new sheet inherit
+    // the previous sheet's annotations, so identity is generated per import.
     const tail = html.slice(html.indexOf(END));
-    assert.ok(/PROBE_ID = 'wm3-probe-image'/.test(tail), 'a deterministic id is required');
+    assert.ok(!/wm3-probe-image/.test(tail), 'the fixed shared image id is back');
+    assert.ok(/imageId = uid\('img'\)/.test(tail), 'each import needs a unique image id');
+    assert.ok(/sheetId = uid\('sheet'\)/.test(tail), 'each import needs a unique sheet id');
+    assert.ok(/randomUUID/.test(tail), 'use crypto.randomUUID where available');
+  });
+
+  test('WM-5: the current sheet is tracked in the meta store, not localStorage', () => {
+    const tail = html.slice(html.indexOf(END));
+    assert.ok(/setMeta\(META_CURRENT_SHEET/.test(tail));
+    assert.ok(/getMeta\(META_CURRENT_SHEET\)/.test(tail));
+    assert.ok(!/localStorage/.test(html), 'localStorage must not be used');
+  });
+
+  test('WM-5: a new sheet never inherits the previous sheet\'s labels', () => {
+    const tail = html.slice(html.indexOf(END));
+    assert.ok(/stage\.setAnnotations\(\[\]\)/.test(tail),
+      'an imported sheet must start with no labels');
   });
 
   test('the controller revokes the previous object URL before creating another', () => {
@@ -375,8 +412,9 @@ describe('Wire Map build — the WM-1 shell is still inert', { skip: skipAll }, 
       assert.ok(!handWritten.includes(forbidden),
         `WM-3 must not introduce ${forbidden}`);
     }
-    assert.strictEqual((handWritten.match(/addEventListener/g) || []).length, 2,
-      'only the two dev-probe controls may listen for events');
+    // Probe controls plus the WM-5 editor buttons. None fire on load.
+    const count = (handWritten.match(/addEventListener/g) || []).length;
+    assert.ok(count >= 3 && count <= 12, `unexpected listener count: ${count}`);
   });
 
   test('no external dependency was pulled in', () => {

@@ -48,6 +48,7 @@ const MODULES = [
   'store',
   'image',
   'interaction',
+  'labelInteraction',
   'app',
 ];
 

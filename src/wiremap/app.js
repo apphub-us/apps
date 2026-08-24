@@ -16,6 +16,8 @@
 
 const viewportMath = require('./viewport');
 const interaction = require('./interaction');
+const labelInteraction = require('./labelInteraction');
+const geometry = require('./geometry');
 
 function createStageController(options) {
   const opts = options || {};
@@ -29,7 +31,9 @@ function createStageController(options) {
     image: doc.getElementById(opts.imageId || 'wm-background'),
     svg: doc.getElementById(opts.svgId || 'wm-overlay'),
     empty: doc.getElementById(opts.emptyId || 'wm-empty'),
+    labels: doc.getElementById(opts.labelsId || 'wm-labels'),
   };
+  const SVG_NS = 'http://www.w3.org/2000/svg';
 
   /** Logical stage size, always the stored image's displayed dimensions. */
   let stageSize = null;
@@ -37,6 +41,16 @@ function createStageController(options) {
   let objectUrl = null;
   let gesture = interaction.createGestureState();
   let lastViewSize = null;
+  /** wireLabel annotations currently on the sheet, keyed by id. */
+  let annotations = new Map();
+  let labelState = labelInteraction.createLabelState();
+  /** Called by the controller; the page supplies the editor and persistence. */
+  const hooks = {
+    onPlaceRequested: opts.onPlaceRequested || null,   // (normalized) => void
+    onEditRequested: opts.onEditRequested || null,     // (annotation) => void
+    onMoved: opts.onMoved || null,                     // (annotation) => Promise
+    onModeChange: opts.onModeChange || null,           // (armed) => void
+  };
 
   function viewSize() {
     if (opts.measure) return opts.measure();
@@ -67,6 +81,7 @@ function createStageController(options) {
     if (!stageSize) return;
     lastViewSize = viewSize();
     setViewport(viewportMath.fitToViewport(stageSize, lastViewSize));
+    rescaleLabels();
   }
 
   /**
@@ -92,6 +107,9 @@ function createStageController(options) {
     view = viewportMath.identity();
     applyTransform();
     interaction.cancelAll(gesture);
+    labelState = labelInteraction.createLabelState();
+    annotations = new Map();
+    if (el.labels) { while (el.labels.firstChild) el.labels.removeChild(el.labels.firstChild); }
     setPlaceholderVisible(true);
   }
 
@@ -141,6 +159,121 @@ function createStageController(options) {
     });
   }
 
+  // ── Label rendering ─────────────────────────────────────────────────
+
+  /**
+   * Draw one wire label.
+   *
+   * The group is translated to the anchor in STAGE coordinates, so it rides the
+   * single stage transform and stays glued to the plan. A local inverse scale
+   * then keeps the body a constant size on screen. That local transform is not
+   * a second viewport — the anchor is still governed by the stage.
+   */
+  function renderLabel(annotation) {
+    const g = doc.createElementNS(SVG_NS, 'g');
+    g.setAttribute('class', 'wm-label');
+    g.setAttribute('data-annotation-id', annotation.id);
+
+    const anchor = geometry.denormalizePoint(annotation.at, stageSize);
+    const inverse = labelInteraction.labelCounterScale(view.scale);
+    g.setAttribute('transform',
+      'translate(' + anchor.x + ',' + anchor.y + ') scale(' + inverse + ')');
+
+    const text = String((annotation.data && annotation.data.label) || '');
+    const width = Math.max(44, 12 + text.length * 8);
+
+    // Body geometry in one place. The text position is DERIVED from it, so the
+    // two cannot drift apart: the old code hard-coded y = -17 against a body
+    // whose centre was -22, leaving every label about 4px low.
+    const BODY_TOP = -34;
+    const BODY_HEIGHT = 24;
+    const BODY_CENTRE_Y = BODY_TOP + BODY_HEIGHT / 2;
+
+    // A dot marks the exact stored point; the body sits above it.
+    const dot = doc.createElementNS(SVG_NS, 'circle');
+    dot.setAttribute('r', '4');
+    dot.setAttribute('class', 'wm-label-anchor');
+
+    const box = doc.createElementNS(SVG_NS, 'rect');
+    box.setAttribute('x', String(-width / 2));
+    box.setAttribute('y', String(BODY_TOP));
+    box.setAttribute('width', String(width));
+    box.setAttribute('height', String(BODY_HEIGHT));
+    box.setAttribute('rx', '4');
+    box.setAttribute('class', 'wm-label-box');
+
+    const t = doc.createElementNS(SVG_NS, 'text');
+    t.setAttribute('x', '0');
+    t.setAttribute('y', String(BODY_CENTRE_Y));
+    // Horizontal centring is text-anchor, which every engine gets right.
+    // Vertical uses dy 0.35em from the body centre rather than
+    // dominant-baseline: middle, which WebKit renders inconsistently — that
+    // was the other half of the iPhone offset.
+    t.setAttribute('dy', '0.35em');
+    t.setAttribute('class', 'wm-label-text');
+    t.textContent = text;
+
+    g.appendChild(dot);
+    g.appendChild(box);
+    g.appendChild(t);
+    return g;
+  }
+
+  /** Redraw every label. Cheap at MVP scale and keeps state in one place. */
+  function renderLabels() {
+    if (!el.labels || !stageSize) return;
+    while (el.labels.firstChild) el.labels.removeChild(el.labels.firstChild);
+    annotations.forEach((a) => el.labels.appendChild(renderLabel(a)));
+  }
+
+  /** Keep label bodies a constant screen size as the plan zooms. */
+  function rescaleLabels() {
+    if (!el.labels || !stageSize) return;
+    const inverse = labelInteraction.labelCounterScale(view.scale);
+    const nodes = el.labels.childNodes;
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      const id = node.getAttribute && node.getAttribute('data-annotation-id');
+      const a = id && annotations.get(id);
+      if (!a) continue;
+      const anchor = geometry.denormalizePoint(a.at, stageSize);
+      node.setAttribute('transform',
+        'translate(' + anchor.x + ',' + anchor.y + ') scale(' + inverse + ')');
+    }
+  }
+
+  function setAnnotations(list) {
+    annotations = new Map();
+    (list || []).forEach((a) => { if (a && a.id) annotations.set(a.id, a); });
+    renderLabels();
+  }
+
+  function upsertAnnotation(a) {
+    if (!a || !a.id) return;
+    annotations.set(a.id, a);
+    renderLabels();
+  }
+
+  function removeAnnotation(id) {
+    annotations.delete(id);
+    renderLabels();
+  }
+
+  function getAnnotation(id) {
+    return annotations.get(id) || null;
+  }
+
+  // ── Add Label mode ──────────────────────────────────────────────────
+  function armPlacement() {
+    labelInteraction.armPlacement(labelState);
+    if (hooks.onModeChange) hooks.onModeChange(true);
+  }
+
+  function disarmPlacement() {
+    labelInteraction.disarmPlacement(labelState);
+    if (hooks.onModeChange) hooks.onModeChange(false);
+  }
+
   // ── Pointer handling ────────────────────────────────────────────────
   // Pointer Events only. No parallel mouse and touch paths.
 
@@ -149,9 +282,45 @@ function createStageController(options) {
     return { id: e.pointerId, x: e.clientX - r.left, y: e.clientY - r.top };
   }
 
+  /** The annotation id under this event, if the press landed on a label. */
+  function labelIdFrom(target) {
+    let node = target;
+    while (node && node !== el.viewport) {
+      if (node.getAttribute && node.getAttribute('data-annotation-id')) {
+        return node.getAttribute('data-annotation-id');
+      }
+      node = node.parentNode;
+    }
+    return null;
+  }
+
+  function nowMs() {
+    return (win && win.performance && win.performance.now) ? win.performance.now() : Date.now();
+  }
+
   function onPointerDown(e) {
     if (!stageSize) return;
+    const point = localPoint(e);
+    const type = e.pointerType || 'mouse';
+
+    // One physical iOS touch also emits a synthesised mouse pair. Ignoring the
+    // duplicate here is what stops a single tap creating two labels.
+    if (labelInteraction.isCompatibilityDuplicate(labelState, type, point, nowMs())) return;
+    labelInteraction.noteInput(labelState, type, point, nowMs());
+
     lastViewSize = viewSize();
+
+    const labelId = labelIdFrom(e.target);
+    if (labelId && annotations.has(labelId)) {
+      // The label owns this pointer: the plan must not pan underneath it.
+      if (el.viewport.setPointerCapture) {
+        try { el.viewport.setPointerCapture(e.pointerId); } catch (_) { /* already captured */ }
+      }
+      labelInteraction.labelPointerDown(labelState, labelId, point, annotations.get(labelId).at);
+      if (e.stopPropagation) e.stopPropagation();
+      return;
+    }
+
     if (el.viewport.setPointerCapture) {
       try { el.viewport.setPointerCapture(e.pointerId); } catch (_) { /* already captured */ }
     }
@@ -159,13 +328,56 @@ function createStageController(options) {
   }
 
   function onPointerMove(e) {
-    if (!stageSize || interaction.activeCount(gesture) === 0) return;
+    if (!stageSize) return;
+
+    if (labelInteraction.hasPressedLabel(labelState)) {
+      const r = labelInteraction.labelPointerMove(labelState, localPoint(e), view, stageSize);
+      if (r.moved && r.normalized) {
+        const id = labelState.drag.id;
+        const a = annotations.get(id);
+        if (a) {
+          // Live visual only. Nothing is written to IndexedDB until the drag ends.
+          annotations.set(id, { ...a, at: r.normalized });
+          renderLabels();
+        }
+      }
+      return;   // a label drag never pans the plan
+    }
+
+    if (interaction.activeCount(gesture) === 0) return;
     const r = interaction.pointerMove(gesture, localPoint(e), view, bounds());
-    if (r.changed) setViewport(r.viewport);
+    if (r.changed) { setViewport(r.viewport); rescaleLabels(); }
   }
 
   function onPointerUp(e) {
     if (!stageSize) return;
+    const point = localPoint(e);
+
+    if (labelInteraction.hasPressedLabel(labelState)) {
+      const outcome = labelInteraction.labelPointerUp(labelState);
+      if (el.viewport.releasePointerCapture) {
+        try { el.viewport.releasePointerCapture(e.pointerId); } catch (_) { /* not captured */ }
+      }
+      if (outcome.action === 'tap' && hooks.onEditRequested) {
+        hooks.onEditRequested(annotations.get(outcome.id));
+      } else if (outcome.action === 'move' && hooks.onMoved) {
+        const a = annotations.get(outcome.id);
+        if (a) hooks.onMoved({ ...a, at: outcome.normalized });   // one write, at the end
+      }
+      return;
+    }
+
+    // Placement: an armed tap on empty plan opens a draft at that point.
+    if (labelInteraction.isArmed(labelState)
+      && gesture.mode !== 'pan' && gesture.mode !== 'pinch'
+      && interaction.activeCount(gesture) === 1) {
+      const normalized = labelInteraction.screenToNormalized(point, view, stageSize);
+      interaction.pointerUp(gesture, e.pointerId, view);
+      disarmPlacement();
+      if (normalized && hooks.onPlaceRequested) hooks.onPlaceRequested(normalized);
+      return;
+    }
+
     interaction.pointerUp(gesture, e.pointerId, view);
     if (el.viewport.releasePointerCapture) {
       try { el.viewport.releasePointerCapture(e.pointerId); } catch (_) { /* not captured */ }
@@ -176,6 +388,14 @@ function createStageController(options) {
   }
 
   function onPointerCancel() {
+    if (labelInteraction.hasPressedLabel(labelState)) {
+      const outcome = labelInteraction.labelPointerCancel(labelState);
+      if (outcome.action === 'revert' && outcome.id) {
+        const a = annotations.get(outcome.id);
+        // Put it back where it was stored: never leave a half-moved label.
+        if (a) { annotations.set(outcome.id, { ...a, at: outcome.normalized }); renderLabels(); }
+      }
+    }
     interaction.cancelAll(gesture);
   }
 
@@ -187,6 +407,7 @@ function createStageController(options) {
     const wasAtFit = interaction.isAtFit(view, stageSize, previous);
     lastViewSize = next;
     setViewport(interaction.reflowForViewportChange(view, stageSize, previous, next, wasAtFit));
+    rescaleLabels();
   }
 
   /**
@@ -232,6 +453,15 @@ function createStageController(options) {
     destroy,
     showImage,
     clear,
+    setAnnotations,
+    upsertAnnotation,
+    removeAnnotation,
+    getAnnotation,
+    getAnnotationCount: () => annotations.size,
+    armPlacement,
+    disarmPlacement,
+    isArmed: () => labelInteraction.isArmed(labelState),
+    renderLabels,
     hasImage: () => stageSize !== null,
     isPlaceholderVisible: () => !!(el.empty && !el.empty.hidden),
     fit,

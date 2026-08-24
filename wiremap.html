@@ -135,6 +135,66 @@
   }
   #wm-dev-status b { color: var(--text); font-weight: 600; }
 
+  /* ── Wire labels ── */
+  .wm-label { cursor: pointer; }
+  .wm-label-anchor { fill: var(--accent); stroke: #000; stroke-width: 1.5; }
+  .wm-label-box { fill: #14181d; stroke: var(--accent); stroke-width: 1.5; }
+  .wm-label-text {
+    fill: var(--text); font-family: 'Montserrat', sans-serif; font-weight: 700;
+    /* text-anchor centres horizontally and is reliable everywhere.
+       Vertical centring comes from dy=0.35em on the element, not from
+       dominant-baseline, which WebKit does not honour consistently. */
+    font-size: 13px; text-anchor: middle;
+    pointer-events: none; user-select: none;
+  }
+  .viewport.armed { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .arm-hint {
+    position: absolute; left: 50%; top: 10px; transform: translateX(-50%);
+    background: rgba(255,199,0,0.14); border: 1px solid var(--accent);
+    color: var(--accent); border-radius: 4px; padding: 6px 12px;
+    font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 11px;
+    pointer-events: none; z-index: 5; white-space: nowrap;
+  }
+
+  /* ── Label editor (temporary WM-5 UI) ── */
+  .sheet-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 20;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .sheet-panel {
+    width: 100%; max-width: 520px; max-height: 88dvh; overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--surface); border-top: 2px solid var(--accent);
+    border-radius: 10px 10px 0 0; padding: 16px 14px calc(16px + env(safe-area-inset-bottom));
+  }
+  .sheet-title {
+    font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 12px;
+    letter-spacing: 0.5px; color: var(--accent); margin-bottom: 12px;
+  }
+  .field { margin-bottom: 10px; }
+  .field label {
+    display: block; font-family: 'Montserrat', sans-serif; font-weight: 700;
+    font-size: 10px; letter-spacing: 0.4px; color: var(--text-dim); margin-bottom: 4px;
+  }
+  .field input, .field textarea {
+    width: 100%; background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 11px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 15px;
+  }
+  .field textarea { min-height: 60px; resize: vertical; }
+  .field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+  .sheet-error {
+    color: var(--danger, #ff5f56); font-size: 11px; margin-bottom: 10px; min-height: 14px;
+  }
+  .sheet-actions { display: flex; gap: 8px; margin-top: 6px; }
+  .sheet-actions button {
+    flex: 1; padding: 13px 10px; border-radius: 4px; cursor: pointer;
+    font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 12px;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  }
+  .sheet-actions .primary { background: rgba(255,199,0,0.14); border-color: var(--accent); color: var(--accent); }
+  .sheet-actions .danger { color: var(--danger, #ff5f56); border-color: rgba(255,95,86,0.4); flex: 0 0 auto; padding: 13px 16px; }
+
   /* ── Empty state ── */
   .empty {
     position: absolute; inset: 0;
@@ -174,6 +234,7 @@
       </svg>
     </div>
 
+    <div class="arm-hint" id="wm-arm-hint" hidden>Tap plan to place label</div>
     <div class="empty" id="wm-empty">
       <div class="empty-title">No sheet loaded</div>
       <div class="empty-hint">WM-1 foundation &mdash; model, geometry and viewport maths only.</div>
@@ -189,7 +250,8 @@
       <label for="wm-dev-file">Choose Image / Take Photo
         <input type="file" id="wm-dev-file" accept="image/*">
       </label>
-      <button type="button" id="wm-dev-load">Load stored test image</button>
+      <button type="button" id="wm-dev-load">Load current test sheet</button>
+      <button type="button" id="wm-add-label">Add Label</button>
     </div>
     <div class="devbar-row">
       <div id="wm-dev-status">Idle &mdash; nothing has been read or written.</div>
@@ -2048,6 +2110,254 @@ window.WM = (function () {
     };
   };
 
+  // ---- src/wiremap/labelInteraction.js ----
+  __reg["labelInteraction"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Wire Map — label interaction state.
+     *
+     * Pure. No DOM, no IndexedDB, no rendering. The controller feeds it pointer
+     * positions and the current viewport; it decides whether a touch is a tap or a
+     * drag, where a label should land in normalized sheet coordinates, and whether
+     * an input event is a duplicate synthesised by iOS.
+     *
+     * Kept separate from interaction.js on purpose: that module owns the viewport
+     * gesture, this one owns the annotation gesture, and the controller decides
+     * which is in charge. Merging them would make the "is the plan moving or is the
+     * label moving?" question implicit rather than explicit.
+     */
+
+    const geometry = require('./geometry');
+    const viewportMath = require('./viewport');
+
+    /** Movement before a press on a label becomes a drag rather than a tap. */
+    const LABEL_DRAG_THRESHOLD_PX = 8;
+
+    /**
+     * How long a synthesised mouse event may follow a touch and still be treated
+     * as the same physical gesture.
+     *
+     * WM-4 was defeated by this: one finger on iOS produces a touch pointer pair
+     * and then, roughly 300 ms later, a compatibility mouse pair at the same
+     * coordinates. 700 ms leaves margin without swallowing a deliberate second tap
+     * from a real mouse.
+     */
+    const COMPAT_SUPPRESS_MS = 700;
+    const COMPAT_SUPPRESS_PX = 30;
+
+    function isFiniteNumber(v) {
+      return typeof v === 'number' && Number.isFinite(v);
+    }
+
+    function isPoint(p) {
+      return !!p && isFiniteNumber(p.x) && isFiniteNumber(p.y);
+    }
+
+    function distance(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function createLabelState() {
+      return {
+        /** 'idle' | 'armed' — armed means the next plan tap places a label. */
+        placementMode: 'idle',
+        /** Active label drag, if any. */
+        drag: null,
+        /** Last touch-originated input, for compatibility-event suppression. */
+        lastTouch: null,
+      };
+    }
+
+    // ── Placement mode ────────────────────────────────────────────────────────
+
+    function armPlacement(state) {
+      state.placementMode = 'armed';
+      return state;
+    }
+
+    function disarmPlacement(state) {
+      state.placementMode = 'idle';
+      return state;
+    }
+
+    function isArmed(state) {
+      return state.placementMode === 'armed';
+    }
+
+    // ── iOS compatibility-event suppression ───────────────────────────────────
+
+    /**
+     * Record a touch-originated event so the mouse pair WebKit synthesises after
+     * it can be recognised and ignored.
+     */
+    function noteInput(state, pointerType, point, now) {
+      if (pointerType === 'touch' || pointerType === 'pen') {
+        state.lastTouch = { x: point.x, y: point.y, time: now };
+      }
+      return state;
+    }
+
+    /**
+     * Whether this event is a synthesised duplicate of a touch that just happened.
+     *
+     * Only mouse events are ever suppressed, so a desktop mouse still works: on
+     * desktop there is no preceding touch, so `lastTouch` stays null.
+     */
+    function isCompatibilityDuplicate(state, pointerType, point, now) {
+      if (pointerType !== 'mouse') return false;
+      const last = state.lastTouch;
+      if (!last || !isPoint(point) || !isFiniteNumber(now)) return false;
+      return (now - last.time) <= COMPAT_SUPPRESS_MS
+        && distance(last, point) <= COMPAT_SUPPRESS_PX;
+    }
+
+    // ── Placement geometry ────────────────────────────────────────────────────
+
+    /**
+     * Screen point -> normalized sheet coordinate.
+     *
+     * Goes through the existing viewport and geometry helpers, so placement can
+     * never disagree with rendering. Clamped, because a tap can land just off the
+     * plan and the label should sit on the edge rather than be rejected.
+     */
+    function screenToNormalized(screenPoint, viewport, stageSize) {
+      if (!isPoint(screenPoint) || !stageSize) return null;
+      const stagePoint = viewportMath.screenToStage(screenPoint, viewport);
+      if (!stagePoint) return null;
+      return geometry.normalizePoint(stagePoint, stageSize);
+    }
+
+    /** Normalized sheet coordinate -> screen point. The exact inverse. */
+    function normalizedToScreen(normalized, viewport, stageSize) {
+      if (!normalized || !stageSize) return null;
+      const stagePoint = geometry.denormalizePoint(normalized, stageSize);
+      if (!stagePoint) return null;
+      return viewportMath.stageToScreen(stagePoint, viewport);
+    }
+
+    // ── Label drag ────────────────────────────────────────────────────────────
+
+    /**
+     * A pointer went down on a label. Nothing moves yet: a press under the
+     * threshold is a tap, which opens the editor.
+     */
+    function labelPointerDown(state, annotationId, screenPoint, originalNormalized) {
+      if (!annotationId || !isPoint(screenPoint) || !originalNormalized) return state;
+      state.drag = {
+        id: annotationId,
+        startScreen: { x: screenPoint.x, y: screenPoint.y },
+        original: { x: originalNormalized.x, y: originalNormalized.y },
+        current: { x: originalNormalized.x, y: originalNormalized.y },
+        moved: false,
+      };
+      return state;
+    }
+
+    /**
+     * A pointer moved while pressing a label.
+     *
+     * The screen delta is converted through the CURRENT viewport, so a drag tracks
+     * the finger identically at every zoom level. Position is clamped to the sheet.
+     *
+     * @returns {{moved:boolean, normalized:object|null}}
+     */
+    function labelPointerMove(state, screenPoint, viewport, stageSize) {
+      const d = state.drag;
+      if (!d || !isPoint(screenPoint) || !stageSize || !viewport) {
+        return { moved: false, normalized: null };
+      }
+      if (!d.moved && distance(d.startScreen, screenPoint) < LABEL_DRAG_THRESHOLD_PX) {
+        return { moved: false, normalized: null };
+      }
+      if (!d.moved) {
+        // Re-anchor at the moment the drag commits, so the label does not jump by
+        // the threshold distance on the first committed move.
+        d.moved = true;
+        d.startScreen = { x: screenPoint.x, y: screenPoint.y };
+        d.anchorAtCommit = { x: d.current.x, y: d.current.y };
+      }
+      const scale = viewport.scale > 0 ? viewport.scale : 1;
+      const base = d.anchorAtCommit || d.original;
+      const stageDx = (screenPoint.x - d.startScreen.x) / scale;
+      const stageDy = (screenPoint.y - d.startScreen.y) / scale;
+      const next = geometry.clampNormalized({
+        x: base.x + stageDx / stageSize.width,
+        y: base.y + stageDy / stageSize.height,
+      });
+      d.current = next;
+      return { moved: true, normalized: next };
+    }
+
+    /**
+     * The pointer was released.
+     * A drag that moved should be persisted; a press that did not is a tap.
+     * @returns {{action:'move'|'tap'|'none', id:string|null, normalized:object|null}}
+     */
+    function labelPointerUp(state) {
+      const d = state.drag;
+      state.drag = null;
+      if (!d) return { action: 'none', id: null, normalized: null };
+      if (!d.moved) return { action: 'tap', id: d.id, normalized: d.original };
+      return { action: 'move', id: d.id, normalized: d.current };
+    }
+
+    /**
+     * The gesture was cancelled. The label returns to where it was stored; a
+     * half-moved label must never be left behind, saved or not.
+     */
+    function labelPointerCancel(state) {
+      const d = state.drag;
+      state.drag = null;
+      if (!d) return { action: 'none', id: null, normalized: null };
+      return { action: 'revert', id: d.id, normalized: d.original };
+    }
+
+    function isDraggingLabel(state) {
+      return !!(state.drag && state.drag.moved);
+    }
+
+    function hasPressedLabel(state) {
+      return !!state.drag;
+    }
+
+    /**
+     * Inverse scale for a label group.
+     *
+     * The anchor lives in stage coordinates and rides the single stage transform,
+     * but the label body must stay legible and tappable at every zoom. Dividing by
+     * the stage scale keeps its rendered size constant. This is a LOCAL transform
+     * inside the stage — it is not a second viewport transform.
+     */
+    function labelCounterScale(viewportScale) {
+      if (!isFiniteNumber(viewportScale) || viewportScale <= 0) return 1;
+      return 1 / viewportScale;
+    }
+
+    module.exports = {
+      LABEL_DRAG_THRESHOLD_PX,
+      COMPAT_SUPPRESS_MS,
+      COMPAT_SUPPRESS_PX,
+      createLabelState,
+      armPlacement,
+      disarmPlacement,
+      isArmed,
+      noteInput,
+      isCompatibilityDuplicate,
+      screenToNormalized,
+      normalizedToScreen,
+      labelPointerDown,
+      labelPointerMove,
+      labelPointerUp,
+      labelPointerCancel,
+      isDraggingLabel,
+      hasPressedLabel,
+      labelCounterScale,
+      distance,
+    };
+  };
+
   // ---- src/wiremap/app.js ----
   __reg["app"] = function (module, exports, require) {
     'use strict';
@@ -2068,6 +2378,8 @@ window.WM = (function () {
 
     const viewportMath = require('./viewport');
     const interaction = require('./interaction');
+    const labelInteraction = require('./labelInteraction');
+    const geometry = require('./geometry');
 
     function createStageController(options) {
       const opts = options || {};
@@ -2081,7 +2393,9 @@ window.WM = (function () {
         image: doc.getElementById(opts.imageId || 'wm-background'),
         svg: doc.getElementById(opts.svgId || 'wm-overlay'),
         empty: doc.getElementById(opts.emptyId || 'wm-empty'),
+        labels: doc.getElementById(opts.labelsId || 'wm-labels'),
       };
+      const SVG_NS = 'http://www.w3.org/2000/svg';
 
       /** Logical stage size, always the stored image's displayed dimensions. */
       let stageSize = null;
@@ -2089,6 +2403,16 @@ window.WM = (function () {
       let objectUrl = null;
       let gesture = interaction.createGestureState();
       let lastViewSize = null;
+      /** wireLabel annotations currently on the sheet, keyed by id. */
+      let annotations = new Map();
+      let labelState = labelInteraction.createLabelState();
+      /** Called by the controller; the page supplies the editor and persistence. */
+      const hooks = {
+        onPlaceRequested: opts.onPlaceRequested || null,   // (normalized) => void
+        onEditRequested: opts.onEditRequested || null,     // (annotation) => void
+        onMoved: opts.onMoved || null,                     // (annotation) => Promise
+        onModeChange: opts.onModeChange || null,           // (armed) => void
+      };
 
       function viewSize() {
         if (opts.measure) return opts.measure();
@@ -2119,6 +2443,7 @@ window.WM = (function () {
         if (!stageSize) return;
         lastViewSize = viewSize();
         setViewport(viewportMath.fitToViewport(stageSize, lastViewSize));
+        rescaleLabels();
       }
 
       /**
@@ -2144,6 +2469,9 @@ window.WM = (function () {
         view = viewportMath.identity();
         applyTransform();
         interaction.cancelAll(gesture);
+        labelState = labelInteraction.createLabelState();
+        annotations = new Map();
+        if (el.labels) { while (el.labels.firstChild) el.labels.removeChild(el.labels.firstChild); }
         setPlaceholderVisible(true);
       }
 
@@ -2193,6 +2521,121 @@ window.WM = (function () {
         });
       }
 
+      // ── Label rendering ─────────────────────────────────────────────────
+
+      /**
+       * Draw one wire label.
+       *
+       * The group is translated to the anchor in STAGE coordinates, so it rides the
+       * single stage transform and stays glued to the plan. A local inverse scale
+       * then keeps the body a constant size on screen. That local transform is not
+       * a second viewport — the anchor is still governed by the stage.
+       */
+      function renderLabel(annotation) {
+        const g = doc.createElementNS(SVG_NS, 'g');
+        g.setAttribute('class', 'wm-label');
+        g.setAttribute('data-annotation-id', annotation.id);
+
+        const anchor = geometry.denormalizePoint(annotation.at, stageSize);
+        const inverse = labelInteraction.labelCounterScale(view.scale);
+        g.setAttribute('transform',
+          'translate(' + anchor.x + ',' + anchor.y + ') scale(' + inverse + ')');
+
+        const text = String((annotation.data && annotation.data.label) || '');
+        const width = Math.max(44, 12 + text.length * 8);
+
+        // Body geometry in one place. The text position is DERIVED from it, so the
+        // two cannot drift apart: the old code hard-coded y = -17 against a body
+        // whose centre was -22, leaving every label about 4px low.
+        const BODY_TOP = -34;
+        const BODY_HEIGHT = 24;
+        const BODY_CENTRE_Y = BODY_TOP + BODY_HEIGHT / 2;
+
+        // A dot marks the exact stored point; the body sits above it.
+        const dot = doc.createElementNS(SVG_NS, 'circle');
+        dot.setAttribute('r', '4');
+        dot.setAttribute('class', 'wm-label-anchor');
+
+        const box = doc.createElementNS(SVG_NS, 'rect');
+        box.setAttribute('x', String(-width / 2));
+        box.setAttribute('y', String(BODY_TOP));
+        box.setAttribute('width', String(width));
+        box.setAttribute('height', String(BODY_HEIGHT));
+        box.setAttribute('rx', '4');
+        box.setAttribute('class', 'wm-label-box');
+
+        const t = doc.createElementNS(SVG_NS, 'text');
+        t.setAttribute('x', '0');
+        t.setAttribute('y', String(BODY_CENTRE_Y));
+        // Horizontal centring is text-anchor, which every engine gets right.
+        // Vertical uses dy 0.35em from the body centre rather than
+        // dominant-baseline: middle, which WebKit renders inconsistently — that
+        // was the other half of the iPhone offset.
+        t.setAttribute('dy', '0.35em');
+        t.setAttribute('class', 'wm-label-text');
+        t.textContent = text;
+
+        g.appendChild(dot);
+        g.appendChild(box);
+        g.appendChild(t);
+        return g;
+      }
+
+      /** Redraw every label. Cheap at MVP scale and keeps state in one place. */
+      function renderLabels() {
+        if (!el.labels || !stageSize) return;
+        while (el.labels.firstChild) el.labels.removeChild(el.labels.firstChild);
+        annotations.forEach((a) => el.labels.appendChild(renderLabel(a)));
+      }
+
+      /** Keep label bodies a constant screen size as the plan zooms. */
+      function rescaleLabels() {
+        if (!el.labels || !stageSize) return;
+        const inverse = labelInteraction.labelCounterScale(view.scale);
+        const nodes = el.labels.childNodes;
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+          const id = node.getAttribute && node.getAttribute('data-annotation-id');
+          const a = id && annotations.get(id);
+          if (!a) continue;
+          const anchor = geometry.denormalizePoint(a.at, stageSize);
+          node.setAttribute('transform',
+            'translate(' + anchor.x + ',' + anchor.y + ') scale(' + inverse + ')');
+        }
+      }
+
+      function setAnnotations(list) {
+        annotations = new Map();
+        (list || []).forEach((a) => { if (a && a.id) annotations.set(a.id, a); });
+        renderLabels();
+      }
+
+      function upsertAnnotation(a) {
+        if (!a || !a.id) return;
+        annotations.set(a.id, a);
+        renderLabels();
+      }
+
+      function removeAnnotation(id) {
+        annotations.delete(id);
+        renderLabels();
+      }
+
+      function getAnnotation(id) {
+        return annotations.get(id) || null;
+      }
+
+      // ── Add Label mode ──────────────────────────────────────────────────
+      function armPlacement() {
+        labelInteraction.armPlacement(labelState);
+        if (hooks.onModeChange) hooks.onModeChange(true);
+      }
+
+      function disarmPlacement() {
+        labelInteraction.disarmPlacement(labelState);
+        if (hooks.onModeChange) hooks.onModeChange(false);
+      }
+
       // ── Pointer handling ────────────────────────────────────────────────
       // Pointer Events only. No parallel mouse and touch paths.
 
@@ -2201,9 +2644,45 @@ window.WM = (function () {
         return { id: e.pointerId, x: e.clientX - r.left, y: e.clientY - r.top };
       }
 
+      /** The annotation id under this event, if the press landed on a label. */
+      function labelIdFrom(target) {
+        let node = target;
+        while (node && node !== el.viewport) {
+          if (node.getAttribute && node.getAttribute('data-annotation-id')) {
+            return node.getAttribute('data-annotation-id');
+          }
+          node = node.parentNode;
+        }
+        return null;
+      }
+
+      function nowMs() {
+        return (win && win.performance && win.performance.now) ? win.performance.now() : Date.now();
+      }
+
       function onPointerDown(e) {
         if (!stageSize) return;
+        const point = localPoint(e);
+        const type = e.pointerType || 'mouse';
+
+        // One physical iOS touch also emits a synthesised mouse pair. Ignoring the
+        // duplicate here is what stops a single tap creating two labels.
+        if (labelInteraction.isCompatibilityDuplicate(labelState, type, point, nowMs())) return;
+        labelInteraction.noteInput(labelState, type, point, nowMs());
+
         lastViewSize = viewSize();
+
+        const labelId = labelIdFrom(e.target);
+        if (labelId && annotations.has(labelId)) {
+          // The label owns this pointer: the plan must not pan underneath it.
+          if (el.viewport.setPointerCapture) {
+            try { el.viewport.setPointerCapture(e.pointerId); } catch (_) { /* already captured */ }
+          }
+          labelInteraction.labelPointerDown(labelState, labelId, point, annotations.get(labelId).at);
+          if (e.stopPropagation) e.stopPropagation();
+          return;
+        }
+
         if (el.viewport.setPointerCapture) {
           try { el.viewport.setPointerCapture(e.pointerId); } catch (_) { /* already captured */ }
         }
@@ -2211,13 +2690,56 @@ window.WM = (function () {
       }
 
       function onPointerMove(e) {
-        if (!stageSize || interaction.activeCount(gesture) === 0) return;
+        if (!stageSize) return;
+
+        if (labelInteraction.hasPressedLabel(labelState)) {
+          const r = labelInteraction.labelPointerMove(labelState, localPoint(e), view, stageSize);
+          if (r.moved && r.normalized) {
+            const id = labelState.drag.id;
+            const a = annotations.get(id);
+            if (a) {
+              // Live visual only. Nothing is written to IndexedDB until the drag ends.
+              annotations.set(id, { ...a, at: r.normalized });
+              renderLabels();
+            }
+          }
+          return;   // a label drag never pans the plan
+        }
+
+        if (interaction.activeCount(gesture) === 0) return;
         const r = interaction.pointerMove(gesture, localPoint(e), view, bounds());
-        if (r.changed) setViewport(r.viewport);
+        if (r.changed) { setViewport(r.viewport); rescaleLabels(); }
       }
 
       function onPointerUp(e) {
         if (!stageSize) return;
+        const point = localPoint(e);
+
+        if (labelInteraction.hasPressedLabel(labelState)) {
+          const outcome = labelInteraction.labelPointerUp(labelState);
+          if (el.viewport.releasePointerCapture) {
+            try { el.viewport.releasePointerCapture(e.pointerId); } catch (_) { /* not captured */ }
+          }
+          if (outcome.action === 'tap' && hooks.onEditRequested) {
+            hooks.onEditRequested(annotations.get(outcome.id));
+          } else if (outcome.action === 'move' && hooks.onMoved) {
+            const a = annotations.get(outcome.id);
+            if (a) hooks.onMoved({ ...a, at: outcome.normalized });   // one write, at the end
+          }
+          return;
+        }
+
+        // Placement: an armed tap on empty plan opens a draft at that point.
+        if (labelInteraction.isArmed(labelState)
+          && gesture.mode !== 'pan' && gesture.mode !== 'pinch'
+          && interaction.activeCount(gesture) === 1) {
+          const normalized = labelInteraction.screenToNormalized(point, view, stageSize);
+          interaction.pointerUp(gesture, e.pointerId, view);
+          disarmPlacement();
+          if (normalized && hooks.onPlaceRequested) hooks.onPlaceRequested(normalized);
+          return;
+        }
+
         interaction.pointerUp(gesture, e.pointerId, view);
         if (el.viewport.releasePointerCapture) {
           try { el.viewport.releasePointerCapture(e.pointerId); } catch (_) { /* not captured */ }
@@ -2228,6 +2750,14 @@ window.WM = (function () {
       }
 
       function onPointerCancel() {
+        if (labelInteraction.hasPressedLabel(labelState)) {
+          const outcome = labelInteraction.labelPointerCancel(labelState);
+          if (outcome.action === 'revert' && outcome.id) {
+            const a = annotations.get(outcome.id);
+            // Put it back where it was stored: never leave a half-moved label.
+            if (a) { annotations.set(outcome.id, { ...a, at: outcome.normalized }); renderLabels(); }
+          }
+        }
         interaction.cancelAll(gesture);
       }
 
@@ -2239,6 +2769,7 @@ window.WM = (function () {
         const wasAtFit = interaction.isAtFit(view, stageSize, previous);
         lastViewSize = next;
         setViewport(interaction.reflowForViewportChange(view, stageSize, previous, next, wasAtFit));
+        rescaleLabels();
       }
 
       /**
@@ -2284,6 +2815,15 @@ window.WM = (function () {
         destroy,
         showImage,
         clear,
+        setAnnotations,
+        upsertAnnotation,
+        removeAnnotation,
+        getAnnotation,
+        getAnnotationCount: () => annotations.size,
+        armPlacement,
+        disarmPlacement,
+        isArmed: () => labelInteraction.isArmed(labelState),
+        renderLabels,
         hasImage: () => stageSize !== null,
         isPlaceholderVisible: () => !!(el.empty && !el.empty.hidden),
         fit,
@@ -2308,97 +2848,255 @@ window.WM = (function () {
   api["store"] = __require("store");
   api["image"] = __require("image");
   api["interaction"] = __require("interaction");
+  api["labelInteraction"] = __require("labelInteraction");
   api["app"] = __require("app");
   return api;
 })();
 </script>
 <!-- WM-CORE:END -->
 
+  <!-- WM-5 label editor. Temporary alongside the probe; replaced by the real
+       Jobs/Sheets UI later. -->
+  <div class="sheet-backdrop" id="wm-editor" hidden>
+    <div class="sheet-panel" role="dialog" aria-label="Wire label">
+      <div class="sheet-title" id="wm-editor-title">NEW WIRE LABEL</div>
+      <div class="field"><label for="wm-f-label">Label *</label>
+        <input id="wm-f-label" type="text" autocomplete="off" placeholder="HR-7"></div>
+      <div class="field"><label for="wm-f-from">From</label>
+        <input id="wm-f-from" type="text" autocomplete="off" placeholder="Panel A / Ckt 18"></div>
+      <div class="field"><label for="wm-f-to">To</label>
+        <input id="wm-f-to" type="text" autocomplete="off" placeholder="Master Bedroom receptacles"></div>
+      <div class="field"><label for="wm-f-cable">Cable</label>
+        <input id="wm-f-cable" type="text" autocomplete="off" placeholder="12/2 MC"></div>
+      <div class="field"><label for="wm-f-room">Room</label>
+        <input id="wm-f-room" type="text" autocomplete="off" placeholder="Master Bedroom"></div>
+      <div class="field"><label for="wm-f-notes">Notes</label>
+        <textarea id="wm-f-notes" placeholder="Home run"></textarea></div>
+      <div class="sheet-error" id="wm-editor-error"></div>
+      <div class="sheet-actions">
+        <button type="button" class="primary" id="wm-editor-save">Save</button>
+        <button type="button" id="wm-editor-cancel">Cancel</button>
+        <button type="button" class="danger" id="wm-editor-delete" hidden>Delete</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-  /* WM-3/WM-4 development probe. TEMPORARY — removed when the editor lands.
-     It is the only way to get a plan onto the stage until Jobs/Sheets UI
-     exists. All real work happens in the bundled modules; this is wiring. */
+  /* WM-3/4/5 development probe. TEMPORARY — replaced by the real Jobs/Sheets UI.
+     It exists so the pipeline can be exercised on a physical iPhone. All real
+     work lives in the bundled modules; this is wiring and a form. */
   (function () {
-    var PROBE_ID = 'wm3-probe-image';
-    var file = document.getElementById('wm-dev-file');
+    var DEV_JOB_ID = 'wm-dev-job';
+    var META_CURRENT_SHEET = 'currentSheetId';
+
+    var fileInput = document.getElementById('wm-dev-file');
     var loadBtn = document.getElementById('wm-dev-load');
+    var addBtn = document.getElementById('wm-add-label');
     var status = document.getElementById('wm-dev-status');
-    if (!file || !loadBtn || !status) return;
+    var hint = document.getElementById('wm-arm-hint');
+    var vpEl = document.getElementById('wm-viewport');
+    var editor = document.getElementById('wm-editor');
+    if (!fileInput || !loadBtn || !addBtn || !status || !editor) return;
 
-    // One controller for the page. Nothing touches storage until a tap.
-    var stage = WM.app.createStageController({});
-    stage.attach();
-    window.__wmStage = stage;   // browser-check hook only
+    var F = {
+      label: document.getElementById('wm-f-label'), from: document.getElementById('wm-f-from'),
+      to: document.getElementById('wm-f-to'), cable: document.getElementById('wm-f-cable'),
+      room: document.getElementById('wm-f-room'), notes: document.getElementById('wm-f-notes'),
+    };
+    var titleEl = document.getElementById('wm-editor-title');
+    var errorEl = document.getElementById('wm-editor-error');
+    var deleteBtn = document.getElementById('wm-editor-delete');
 
-    function line(label, value) { return '<b>' + label + ':</b> ' + value + '<br>'; }
-    function fail(err) {
-      status.innerHTML = '<b>Error:</b> ' + ((err && err.code) || '') + ' '
-        + ((err && err.message) || String(err));
+    var currentSheetId = null;
+    var draft = null;      // { at } for a new label
+    var editing = null;    // the annotation being edited
+
+    function uid(prefix) {
+      var r = (window.crypto && window.crypto.randomUUID)
+        ? window.crypto.randomUUID()
+        : (Date.now().toString(36) + Math.random().toString(36).slice(2));
+      return prefix + '-' + r;
     }
-    function describeView() {
-      var v = stage.getViewport(); var sz = stage.getStageSize();
-      return line('Stage', sz ? sz.width + '\u00D7' + sz.height : 'none')
-        + line('Scale', v.scale.toFixed(4));
+    function line(k, v) { return '<b>' + k + ':</b> ' + v + '<br>'; }
+    function fail(e) {
+      status.innerHTML = '<b>Error:</b> ' + ((e && e.code) || '') + ' ' + ((e && e.message) || String(e));
     }
-
-    file.addEventListener('change', function () {
-      var f = file.files && file.files[0];
-      if (!f) return;
-      status.textContent = 'Processing\u2026';
+    function withDb(work) {
       var db = WM.store.createStore();
-      var p;
-      WM.image.processImage(f)
-        .then(function (res) { p = res; return WM.image.assertQuotaFor(p.bytes); })
-        .then(function () { return db.openDatabase(); })
+      return db.openDatabase()
+        .then(function () { return work(db); })
+        .then(function (r) { db.closeDatabase(); return r; },
+              function (e) { try { db.closeDatabase(); } catch (x) {} throw e; });
+    }
+
+    var stage = WM.app.createStageController({
+      onPlaceRequested: function (normalized) { openEditor(null, normalized); },
+      onEditRequested: function (a) { if (a) openEditor(a, null); },
+      onMoved: function (a) { persistMove(a); },
+      onModeChange: function (armed) {
+        if (hint) hint.hidden = !armed;
+        vpEl.classList.toggle('armed', armed);
+        addBtn.textContent = armed ? 'Cancel Placement' : 'Add Label';
+      },
+    });
+    stage.attach();
+    window.__wmStage = stage;
+
+    // ── editor ──
+    function openEditor(annotation, normalized) {
+      editing = annotation || null;
+      draft = annotation ? null : { at: normalized };
+      var d = (annotation && annotation.data) || {};
+      F.label.value = d.label || ''; F.from.value = d.from || ''; F.to.value = d.to || '';
+      F.cable.value = d.cable || ''; F.room.value = d.room || ''; F.notes.value = d.notes || '';
+      titleEl.textContent = annotation ? 'EDIT WIRE LABEL' : 'NEW WIRE LABEL';
+      deleteBtn.hidden = !annotation;
+      errorEl.textContent = '';
+      editor.hidden = false;
+      F.label.focus();
+    }
+    function closeEditor() { editor.hidden = true; editing = null; draft = null; }
+
+    document.getElementById('wm-editor-cancel').addEventListener('click', closeEditor);
+
+    document.getElementById('wm-editor-save').addEventListener('click', function () {
+      var text = (F.label.value || '').trim();
+      if (!text) { errorEl.textContent = 'Label is required.'; F.label.focus(); return; }
+      if (!currentSheetId) { errorEl.textContent = 'No sheet loaded.'; return; }
+      var now = Date.now();
+      var data = { label: text, from: (F.from.value || '').trim(), to: (F.to.value || '').trim(),
+                   cable: (F.cable.value || '').trim(), room: (F.room.value || '').trim(),
+                   notes: (F.notes.value || '').trim() };
+      // labelKey is derived by the model — never set here.
+      var annotation = editing
+        ? WM.model.createAnnotation({ id: editing.id, sheetId: editing.sheetId, type: 'wireLabel',
+            at: editing.at, now: editing.createdAt, data: data })
+        : WM.model.createAnnotation({ id: uid('ann'), sheetId: currentSheetId, type: 'wireLabel',
+            at: draft.at, now: now, data: data });
+      if (editing) annotation.updatedAt = now;
+
+      var check = WM.model.validateAnnotation(annotation);
+      if (!check.valid) { errorEl.textContent = check.problems.join('; '); return; }
+
+      withDb(function (db) { return db.putAnnotation(annotation); })
         .then(function () {
-          return db.putImage(WM.image.buildImageRecord({
-            id: PROBE_ID, blob: p.blob, mime: p.mime, width: p.width,
-            height: p.height, bytes: p.bytes, createdAt: Date.now()
-          }));
+          stage.upsertAnnotation(annotation);
+          closeEditor();
+          report('Saved ' + annotation.data.label);
         })
-        .then(function () { return db.getImage(PROBE_ID); })
-        .then(function (back) {
-          db.closeDatabase();
-          // The STORED blob goes on the stage — never the source file.
-          return stage.showImage(back.blob, back.width, back.height).then(function () {
-            status.innerHTML =
-              line('Original', p.originalWidth + '\u00D7' + p.originalHeight) +
-              line('Processed', p.width + '\u00D7' + p.height + (p.resized ? ' (resized)' : ' (unchanged)')) +
-              line('MIME', p.mime) +
-              line('Stored bytes', back.bytes + ' (' + Math.round(back.bytes / 1024) + ' KB)') +
-              line('decodePath', p.decodePath) +
-              describeView();
-          });
-        })
-        .catch(function (e) { fail(e); try { db.closeDatabase(); } catch (x) {} });
+        .catch(function (e) { errorEl.textContent = (e.code || '') + ' ' + e.message; });
     });
 
-    loadBtn.addEventListener('click', function () {
-      status.textContent = 'Reading from IndexedDB\u2026';
-      var db = WM.store.createStore();
-      db.openDatabase()
-        .then(function () { return db.getImage(PROBE_ID); })
-        .then(function (rec) {
-          db.closeDatabase();
-          if (!rec) {
-            status.innerHTML = '<b>No stored image.</b> Import one first, then reload '
-              + 'and tap this again.';
-            return;
-          }
-          return stage.showImage(rec.blob, rec.width, rec.height).then(function () {
-            status.innerHTML =
-              line('LOADED FROM STORAGE', PROBE_ID) +
-              line('Stored size', rec.width + '\u00D7' + rec.height) +
-              line('MIME', rec.mime) +
-              line('Stored bytes', rec.bytes + ' (' + Math.round(rec.bytes / 1024) + ' KB)') +
-              line('Saved', new Date(rec.createdAt).toLocaleString()) +
-              describeView();
+    deleteBtn.addEventListener('click', function () {
+      if (!editing) return;
+      var id = editing.id;
+      withDb(function (db) { return db.deleteAnnotation(id); })
+        .then(function () { stage.removeAnnotation(id); closeEditor(); report('Deleted'); })
+        .catch(function (e) { errorEl.textContent = (e.code || '') + ' ' + e.message; });
+    });
+
+    function persistMove(a) {
+      var moved = WM.model.createAnnotation({ id: a.id, sheetId: a.sheetId, type: 'wireLabel',
+        at: a.at, now: a.createdAt, data: a.data });
+      moved.updatedAt = Date.now();
+      withDb(function (db) { return db.putAnnotation(moved); })
+        .then(function () { stage.upsertAnnotation(moved); report('Moved ' + moved.data.label); })
+        .catch(fail);
+    }
+
+    addBtn.addEventListener('click', function () {
+      if (stage.isArmed()) stage.disarmPlacement(); else stage.armPlacement();
+    });
+
+    function report(extra) {
+      status.innerHTML =
+        line('Sheet', currentSheetId || 'none') +
+        line('Labels', stage.getAnnotationCount()) +
+        (extra ? line('Last', extra) : '');
+    }
+
+    // ── import: new image AND a new sheet every time ──
+    fileInput.addEventListener('change', function () {
+      var f = fileInput.files && fileInput.files[0];
+      if (!f) return;
+      status.textContent = 'Processing\u2026';
+      var p, imageId = uid('img'), sheetId = uid('sheet');
+      WM.image.processImage(f)
+        .then(function (res) { p = res; return WM.image.assertQuotaFor(p.bytes); })
+        .then(function () {
+          return withDb(function (db) {
+            var now = Date.now();
+            return db.getJob(DEV_JOB_ID)
+              .then(function (job) {
+                if (job) return job;
+                return db.putJob(WM.model.createJob({ id: DEV_JOB_ID,
+                  name: 'Wire Map Development', now: now }));
+              })
+              .then(function () {
+                return db.putImage(WM.image.buildImageRecord({ id: imageId, blob: p.blob,
+                  mime: p.mime, width: p.width, height: p.height, bytes: p.bytes, createdAt: now }));
+              })
+              .then(function () {
+                return db.putSheet(WM.model.createSheet({ id: sheetId, jobId: DEV_JOB_ID,
+                  name: 'Imported ' + new Date(now).toLocaleTimeString(), kind: 'photo',
+                  imageId: imageId, width: p.width, height: p.height, order: 0, now: now }));
+              })
+              .then(function () { return db.setMeta(META_CURRENT_SHEET, sheetId); })
+              .then(function () { return db.getImage(imageId); });
           });
         })
-        .catch(function (e) { fail(e); try { db.closeDatabase(); } catch (x) {} });
+        .then(function (rec) {
+          currentSheetId = sheetId;
+          // A brand new sheet starts with no labels — never inherit the previous one's.
+          stage.setAnnotations([]);
+          return stage.showImage(rec.blob, rec.width, rec.height).then(function () {
+            status.innerHTML =
+              line('Sheet', sheetId) + line('Image', imageId) +
+              line('Original', p.originalWidth + '\u00D7' + p.originalHeight) +
+              line('Processed', p.width + '\u00D7' + p.height) +
+              line('Stored bytes', rec.bytes) + line('decodePath', p.decodePath) +
+              line('Labels', 0);
+          });
+        })
+        .catch(fail);
+    });
+
+    // ── load the current sheet, its image and its annotations ──
+    loadBtn.addEventListener('click', function () {
+      status.textContent = 'Reading from IndexedDB\u2026';
+      withDb(function (db) {
+        return db.getMeta(META_CURRENT_SHEET).then(function (sheetId) {
+          if (!sheetId) return null;
+          return db.getSheet(sheetId).then(function (sheet) {
+            if (!sheet) return null;
+            return db.getImage(sheet.imageId).then(function (image) {
+              return db.listAnnotations(sheet.id).then(function (anns) {
+                return { sheet: sheet, image: image, annotations: anns };
+              });
+            });
+          });
+        });
+      })
+        .then(function (r) {
+          if (!r || !r.image) {
+            status.innerHTML = '<b>No stored sheet.</b> Import an image first.';
+            return;
+          }
+          currentSheetId = r.sheet.id;
+          return stage.showImage(r.image.blob, r.image.width, r.image.height).then(function () {
+            stage.setAnnotations(r.annotations);
+            status.innerHTML =
+              line('LOADED SHEET', r.sheet.id) +
+              line('Image', r.sheet.imageId + ' \u00B7 ' + r.image.width + '\u00D7' + r.image.height) +
+              line('Stored bytes', r.image.bytes) +
+              line('Labels', r.annotations.length);
+          });
+        })
+        .catch(fail);
     });
   })();
   </script>
+
 
 </body>
 </html>
