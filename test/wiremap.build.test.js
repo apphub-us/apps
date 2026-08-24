@@ -278,36 +278,43 @@ describe('Wire Map build — the WM-1 shell is still inert', { skip: skipAll }, 
     let storageTouched = false;
     let listeners = 0;
     const el = {
-      files: null,
+      files: null, style: {}, hidden: false,
       addEventListener() { listeners += 1; },
+      getBoundingClientRect: () => ({ width: 390, height: 700, left: 0, top: 0 }),
+      setAttribute() {}, removeAttribute() {},
       set textContent(_) { /* status line */ },
+      set innerHTML(_) {},
     };
     const sandbox = {
-      window: {},
+      window: { addEventListener() { listeners += 1; }, URL: { createObjectURL: () => 'blob:x', revokeObjectURL() {} } },
       document: { getElementById: () => el },
       indexedDB: new Proxy({}, { get() { idbTouched = true; return () => {}; } }),
       navigator: { storage: new Proxy({}, { get() { storageTouched = true; return () => {}; } }) },
     };
     vm.createContext(sandbox);
     vm.runInContext(coreJs, sandbox, { filename: 'core.js' });
+    // In a browser `window` IS the global, so `WM` resolves bare. Mirror that.
+    sandbox.WM = sandbox.window.WM;
     vm.runInContext(probeJs, sandbox, { filename: 'probe.js' });
 
     assert.strictEqual(idbTouched, false, 'the page opened IndexedDB on load');
     assert.strictEqual(storageTouched, false, 'the page queried storage on load');
-    // Two: the file input and the "Load stored test image" button. Both are
-    // part of the temporary WM-3 probe and both are inert until tapped.
-    assert.strictEqual(listeners, 2, 'expected exactly two probe listeners');
+    // Listeners are registered — two probe controls plus the stage controller's
+    // pointer and resize handlers. What matters is that NONE of them fire on
+    // load: no database, no storage query until the electrician acts.
+    assert.ok(listeners >= 2, 'the probe controls should be wired');
     assert.ok(sandbox.window.WM, 'window.WM should still be created');
   });
 
-  test('the probe previews the STORED blob, never the source file', () => {
+  test('the stage shows the STORED blob, never the source file', () => {
     const tail = html.slice(html.indexOf(END));
-    assert.ok(/showPreview\(back\.blob\)/.test(tail),
-      'after import the preview must come from the record read back out of storage');
-    assert.ok(/showPreview\(rec\.blob\)/.test(tail),
-      'after load the preview must come from the stored record');
-    assert.ok(!/showPreview\(f\)|showPreview\(file/.test(tail),
-      'the preview must not use the source File');
+    assert.ok(/stage\.showImage\(back\.blob, back\.width, back\.height\)/.test(tail),
+      'after import the stage must render the record read back out of storage');
+    assert.ok(/stage\.showImage\(rec\.blob, rec\.width, rec\.height\)/.test(tail),
+      'after load the stage must render the stored record');
+    assert.ok(!/showImage\(f[,)]|showImage\(file/.test(tail),
+      'the stage must not render the source File');
+    assert.ok(!/wm-dev-preview/.test(html), 'the separate thumbnail should be gone');
   });
 
   test('the probe uses a fixed id so a reload can find the image again', () => {
@@ -315,9 +322,23 @@ describe('Wire Map build — the WM-1 shell is still inert', { skip: skipAll }, 
     assert.ok(/PROBE_ID = 'wm3-probe-image'/.test(tail), 'a deterministic id is required');
   });
 
-  test('the probe revokes its preview URL before creating another', () => {
-    const tail = html.slice(html.indexOf(END));
-    assert.ok(/revokeObjectURL\(previewUrl\)/.test(tail), 'preview URLs would leak');
+  test('the controller revokes the previous object URL before creating another', () => {
+    const app = fs.readFileSync(path.join(ROOT, 'src', 'wiremap', 'app.js'), 'utf8');
+    assert.ok(/function releaseImage\(\)[\s\S]{0,240}revokeObjectURL/.test(app),
+      'object URLs would accumulate');
+    assert.ok(/releaseImage\(\);\s*\n\s*objectUrl = win\.URL\.createObjectURL/.test(app),
+      'the previous URL must be released before the next is created');
+  });
+
+  test('ARCHITECTURAL INVARIANT: image and SVG share one stage transform', () => {
+    const app = fs.readFileSync(path.join(ROOT, 'src', 'wiremap', 'app.js'), 'utf8');
+    // Only .stage is transformed. Transforming the img or svg separately would
+    // let the plan and its annotations drift apart under zoom.
+    const transforms = app.match(/\.style\.transform\s*=/g) || [];
+    assert.strictEqual(transforms.length, 1, 'exactly one element may be transformed');
+    assert.ok(/el\.stage\.style\.transform\s*=/.test(app), 'the transform must be on .stage');
+    assert.ok(!/el\.image\.style\.transform|el\.svg\.style\.transform/.test(app),
+      'the image and SVG must never carry their own transform');
   });
 
   test('the visible shell is unchanged', () => {

@@ -47,6 +47,8 @@ const MODULES = [
   'viewport',
   'store',
   'image',
+  'interaction',
+  'app',
 ];
 
 function readModule(name) {

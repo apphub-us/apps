@@ -38,8 +38,16 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+  /* The `hidden` attribute must win over author display rules.
+     A browser's own [hidden] rule is weaker than any class selector, so
+     `.empty { display: flex }` kept the placeholder on screen even after the
+     controller had set hidden = true. This is the standard normalisation. */
+  [hidden] { display: none !important; }
+
   html, body {
-    height: 100%; overflow: hidden;
+    height: 100%;            /* fallback for engines without dvh */
+    height: 100dvh;          /* the height actually usable once Safari's chrome is counted */
+    overflow: hidden;
     background: var(--bg); color: var(--text);
     font-family: 'IBM Plex Mono', monospace;
   }
@@ -72,7 +80,9 @@
      the plan and its annotations can never drift apart. WM-4 will write that
      transform; WM-1 only establishes the structure. */
   .viewport {
-    position: relative; flex: 1; min-height: 0; overflow: hidden;
+    /* The editor owns the remaining space and never drops below half of it,
+       whatever the probe below wants. */
+    position: relative; flex: 1 1 auto; min-height: 50%; overflow: hidden;
     background: var(--bg);
     background-image:
       linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
@@ -86,16 +96,30 @@
     transform-origin: 0 0;
     /* transform is applied by viewport.js from WM-4 onwards */
   }
-  .stage-bg { display: block; max-width: none; }
+  .stage-bg { display: block; max-width: none; user-select: none; -webkit-user-drag: none; }
   .stage-svg { position: absolute; top: 0; left: 0; overflow: visible; }
 
   /* ── WM-3 development-only probe ─────────────────────────────────────
      Present solely so the pipeline can be exercised on a physical iPhone.
      Not the editor, not the final UI; WM-4 replaces it. */
+  /* The probe is a temporary diagnostic, not part of the editor. It was
+     flex-shrink: 0 with a 45vh cap, which in landscape meant 176px of a 390px
+     window — the canvas collapsed to a 163px strip. It may now shrink, is
+     capped at a small share of the viewport, and scrolls internally. */
   .devbar {
-    flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;
+    flex: 0 1 auto; min-height: 0;
+    display: flex; flex-direction: column; gap: 8px;
     padding: 10px 14px; background: var(--surface);
-    border-top: 1px solid var(--border); max-height: 45vh; overflow-y: auto;
+    border-top: 1px solid var(--border);
+    max-height: 30vh; max-height: 30dvh;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  /* Landscape on a phone is short: shrink the probe further so the plan keeps
+     the majority of the height. Keyed to shape, not to a device. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .devbar { max-height: 26vh; max-height: 26dvh; padding: 6px 14px; gap: 6px; }
+    .devbar label, .devbar button { padding: 6px 10px; }
+    #wm-dev-status { font-size: 10px; line-height: 1.45; }
   }
   .devbar-row { display: flex; align-items: flex-start; gap: 10px; }
   .devbar label, .devbar button {
@@ -105,10 +129,6 @@
     padding: 9px 12px; cursor: pointer; white-space: nowrap;
   }
   .devbar input[type="file"] { display: none; }
-  #wm-dev-preview {
-    width: 96px; height: 96px; object-fit: contain; flex-shrink: 0;
-    background: #000; border: 1px solid var(--border); border-radius: 4px;
-  }
   #wm-dev-status {
     font-size: 11px; line-height: 1.6; color: var(--text-dim);
     word-break: break-word; flex: 1; min-width: 0;
@@ -172,7 +192,6 @@
       <button type="button" id="wm-dev-load">Load stored test image</button>
     </div>
     <div class="devbar-row">
-      <img id="wm-dev-preview" alt="processed image preview" hidden>
       <div id="wm-dev-status">Idle &mdash; nothing has been read or written.</div>
     </div>
   </div>
@@ -694,13 +713,19 @@ window.WM = (function () {
      *
      * Returns an unclamped translation; apply clampTranslation() separately so the
      * caller decides when bounds matter.
+     *
+     * `minScale` overrides the nominal MIN_SCALE floor. It exists because a large
+     * plan fits a phone below MIN_SCALE: without it a pinch-out could never reach
+     * fit, because this function would quietly raise the scale back to 0.5. Pass
+     * minScaleFor(stageSize, viewSize) whenever a specific sheet is on screen.
      */
-    function zoomAt(viewport, focalScreenPoint, nextScaleRaw) {
+    function zoomAt(viewport, focalScreenPoint, nextScaleRaw, minScale) {
       if (!isValidViewport(viewport)) return identity();
       const focal = focalScreenPoint || { x: 0, y: 0 };
       if (!isFiniteNumber(focal.x) || !isFiniteNumber(focal.y)) return { ...viewport };
 
-      const nextScale = clampScale(nextScaleRaw);
+      const floor = isFiniteNumber(minScale) && minScale > 0 ? minScale : MIN_SCALE;
+      const nextScale = Math.min(MAX_SCALE, Math.max(floor, isFiniteNumber(nextScaleRaw) ? nextScaleRaw : 1));
       // The stage point currently beneath the focus.
       const stagePoint = screenToStage(focal, viewport);
       if (!stagePoint) return { ...viewport };
@@ -714,11 +739,11 @@ window.WM = (function () {
     }
 
     /** Multiply the current scale, keeping the focal point fixed. */
-    function zoomBy(viewport, focalScreenPoint, factor) {
+    function zoomBy(viewport, focalScreenPoint, factor, minScale) {
       if (!isValidViewport(viewport) || !isFiniteNumber(factor) || factor <= 0) {
         return isValidViewport(viewport) ? { ...viewport } : identity();
       }
-      return zoomAt(viewport, focalScreenPoint, viewport.scale * factor);
+      return zoomAt(viewport, focalScreenPoint, viewport.scale * factor, minScale);
     }
 
     /**
@@ -1732,46 +1757,588 @@ window.WM = (function () {
     };
   };
 
+  // ---- src/wiremap/interaction.js ----
+  __reg["interaction"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Wire Map — pointer gesture state.
+     *
+     * Pure. No DOM, no events, no storage, no image decoding. The controller feeds
+     * it pointer positions and it returns the next viewport transform.
+     *
+     * Everything that can be got wrong in a gesture — the drag threshold, focal
+     * stability under pinch, and the hand-off when one finger leaves a pinch — is
+     * arithmetic, and arithmetic can be tested in Node. Only the plumbing needs a
+     * browser.
+     */
+
+    const viewportMath = require('./viewport');
+
+    /**
+     * Movement before a press becomes a drag, in CSS pixels.
+     *
+     * Below this a tap is a tap. Without it every touch nudges the plan a few
+     * pixels, which on site with gloves makes the plan feel like it is sliding
+     * away from you.
+     */
+    const DRAG_THRESHOLD_PX = 8;
+
+    /*
+     * There is deliberately NO tap gesture here.
+     *
+     * A double-tap zoom was implemented and then removed after physical iPhone
+     * testing. One physical tap on iOS produces a pointerdown/pointerup pair with
+     * pointerType 'touch' and then, roughly 300 ms later, a synthesised
+     * compatibility pair with pointerType 'mouse' at the same coordinates. Any
+     * time-and-distance based double-tap detector counts that single tap as two
+     * and zooms. Filtering by pointerType would paper over it while leaving the
+     * same trap for the next tap-based gesture.
+     *
+     * WM-4 therefore manipulates the viewport with one-finger pan and two-finger
+     * pinch only. A tap changes nothing.
+     */
+
+    /** A pinch is only meaningful once the fingers are measurably apart. */
+    const MIN_PINCH_DISTANCE_PX = 12;
+
+    function isFiniteNumber(v) {
+      return typeof v === 'number' && Number.isFinite(v);
+    }
+
+    function isPoint(p) {
+      return !!p && isFiniteNumber(p.x) && isFiniteNumber(p.y);
+    }
+
+    function distance(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function midpoint(a, b) {
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    }
+
+    /**
+     * Create gesture state.
+     *
+     * Pointers are tracked by pointerId in insertion order, so the surviving
+     * pointer after a lift is unambiguous.
+     */
+    function createGestureState() {
+      return {
+        /** Map-like: ordered list of { id, x, y }. */
+        pointers: [],
+        mode: 'idle',            // 'idle' | 'pending' | 'pan' | 'pinch'
+        /** Where the press began, for the drag threshold. */
+        startPoint: null,
+        /** Anchor for incremental panning; reset on every mode change. */
+        panFrom: null,
+        panFromViewport: null,
+        /** Pinch baseline. */
+        pinchStartDistance: 0,
+        pinchStartScale: 1,
+      };
+    }
+
+    function findIndex(state, id) {
+      for (let i = 0; i < state.pointers.length; i++) {
+        if (state.pointers[i].id === id) return i;
+      }
+      return -1;
+    }
+
+    function activeCount(state) {
+      return state.pointers.length;
+    }
+
+    /** Begin a pinch from the current two pointers. */
+    function beginPinch(state, viewport) {
+      const [a, b] = state.pointers;
+      state.mode = 'pinch';
+      state.pinchStartDistance = Math.max(MIN_PINCH_DISTANCE_PX, distance(a, b));
+      state.pinchStartScale = viewport.scale;
+      state.panFrom = midpoint(a, b);
+      state.panFromViewport = { ...viewport };
+    }
+
+    /** Begin (or re-anchor) a one-finger pan from a given screen point. */
+    function beginPan(state, point, viewport) {
+      state.mode = 'pan';
+      state.panFrom = { x: point.x, y: point.y };
+      state.panFromViewport = { ...viewport };
+    }
+
+    /**
+     * A pointer went down.
+     * @returns {{state, viewport, changed:boolean}}
+     */
+    function pointerDown(state, pointer, viewport) {
+      if (!pointer || !isFiniteNumber(pointer.id) || !isPoint(pointer)) {
+        return { state, viewport, changed: false };
+      }
+      const existing = findIndex(state, pointer.id);
+      if (existing !== -1) state.pointers.splice(existing, 1);
+      state.pointers.push({ id: pointer.id, x: pointer.x, y: pointer.y });
+
+      if (activeCount(state) === 1) {
+        // Not a drag yet — wait for the threshold so a tap stays a tap.
+        state.mode = 'pending';
+        state.startPoint = { x: pointer.x, y: pointer.y };
+        state.panFrom = { x: pointer.x, y: pointer.y };
+        state.panFromViewport = { ...viewport };
+      } else if (activeCount(state) >= 2) {
+        beginPinch(state, viewport);
+      }
+      return { state, viewport, changed: false };
+    }
+
+    /**
+     * A pointer moved.
+     * @returns {{state, viewport, changed:boolean}} viewport is the NEW transform
+     */
+    function pointerMove(state, pointer, viewport, bounds) {
+      if (!pointer || !isPoint(pointer)) return { state, viewport, changed: false };
+      const idx = findIndex(state, pointer.id);
+      if (idx === -1) return { state, viewport, changed: false };
+      state.pointers[idx].x = pointer.x;
+      state.pointers[idx].y = pointer.y;
+
+      const clamp = (v) => (bounds && bounds.stageSize && bounds.viewSize
+        ? viewportMath.clampTranslation(v, bounds.stageSize, bounds.viewSize)
+        : v);
+
+      if (state.mode === 'pending') {
+        if (distance(state.startPoint, pointer) < DRAG_THRESHOLD_PX) {
+          return { state, viewport, changed: false };
+        }
+        // Re-anchor at the moment the drag commits so the plan does not lurch by
+        // the threshold distance on the first committed move.
+        beginPan(state, pointer, viewport);
+        return { state, viewport, changed: false };
+      }
+
+      if (state.mode === 'pan' && activeCount(state) === 1) {
+        const p = state.pointers[0];
+        const next = clamp({
+          scale: state.panFromViewport.scale,
+          translateX: state.panFromViewport.translateX + (p.x - state.panFrom.x),
+          translateY: state.panFromViewport.translateY + (p.y - state.panFrom.y),
+        });
+        return { state, viewport: next, changed: true };
+      }
+
+      if (state.mode === 'pinch' && activeCount(state) >= 2) {
+        const [a, b] = state.pointers;
+        const dist = Math.max(MIN_PINCH_DISTANCE_PX, distance(a, b));
+        const mid = midpoint(a, b);
+
+        // Scale relative to the pinch baseline, clamped to what this sheet allows.
+        const desired = state.pinchStartScale * (dist / state.pinchStartDistance);
+        const hasBounds = !!(bounds && bounds.stageSize && bounds.viewSize);
+        // The floor for THIS sheet, which on a large plan is below MIN_SCALE.
+        const floor = hasBounds
+          ? viewportMath.minScaleFor(bounds.stageSize, bounds.viewSize)
+          : viewportMath.MIN_SCALE;
+        const target = hasBounds
+          ? viewportMath.clampScaleFor(desired, bounds.stageSize, bounds.viewSize)
+          : viewportMath.clampScale(desired);
+
+        // Zoom about the ORIGINAL midpoint against the ORIGINAL transform, then
+        // translate by however far the midpoint has travelled. Doing it in this
+        // order keeps the content under the fingers while still letting a moving
+        // midpoint pan, which a naive per-frame zoom does not.
+        // Pass the floor through: zoomAt would otherwise re-clamp to MIN_SCALE and
+        // make pinching back out to fit impossible on a large plan.
+        const zoomed = viewportMath.zoomAt(state.panFromViewport, state.panFrom, target, floor);
+        const next = clamp({
+          scale: zoomed.scale,
+          translateX: zoomed.translateX + (mid.x - state.panFrom.x),
+          translateY: zoomed.translateY + (mid.y - state.panFrom.y),
+        });
+        return { state, viewport: next, changed: true };
+      }
+
+      return { state, viewport, changed: false };
+    }
+
+    /**
+     * A pointer went up or was cancelled.
+     *
+     * The hand-off matters: lifting one finger mid-pinch must continue as a pan
+     * from wherever the surviving finger is, against the CURRENT transform. Anchor
+     * it anywhere else and the plan jumps.
+     */
+    function pointerUp(state, pointerId, viewport) {
+      const idx = findIndex(state, pointerId);
+      if (idx !== -1) state.pointers.splice(idx, 1);
+
+      if (activeCount(state) === 0) {
+        state.mode = 'idle';
+        state.startPoint = null;
+        state.panFrom = null;
+        state.panFromViewport = null;
+        state.pinchStartDistance = 0;
+        return { state, viewport, changed: false };
+      }
+
+      if (activeCount(state) === 1) {
+        beginPan(state, state.pointers[0], viewport);
+        return { state, viewport, changed: false };
+      }
+
+      // Three fingers down to two: restart the pinch from the current pair.
+      beginPinch(state, viewport);
+      return { state, viewport, changed: false };
+    }
+
+    /** Drop every pointer. Used for pointercancel storms and lost capture. */
+    function cancelAll(state) {
+      state.pointers = [];
+      state.mode = 'idle';
+      state.startPoint = null;
+      state.panFrom = null;
+      state.panFromViewport = null;
+      state.pinchStartDistance = 0;
+      return state;
+    }
+
+    /**
+     * Keep the sheet point under the viewport centre after a viewport resize.
+     *
+     * A rotation must not dump the electrician back at the top-left corner. Stored
+     * normalized coordinates are never touched — only the transform is recomputed.
+     */
+    function reflowForViewportChange(viewport, stageSize, oldViewSize, newViewSize, wasAtFit) {
+      if (!stageSize || !newViewSize) return viewport;
+      if (wasAtFit) return viewportMath.fitToViewport(stageSize, newViewSize);
+
+      const centre = { x: oldViewSize.width / 2, y: oldViewSize.height / 2 };
+      const stagePoint = viewportMath.screenToStage(centre, viewport);
+      if (!stagePoint) return viewportMath.fitToViewport(stageSize, newViewSize);
+
+      const scale = viewportMath.clampScaleFor(viewport.scale, stageSize, newViewSize);
+      return viewportMath.clampTranslation({
+        scale,
+        translateX: newViewSize.width / 2 - stagePoint.x * scale,
+        translateY: newViewSize.height / 2 - stagePoint.y * scale,
+      }, stageSize, newViewSize);
+    }
+
+    /** Whether a transform is at (or effectively at) fit for this viewport. */
+    function isAtFit(viewport, stageSize, viewSize, tolerance) {
+      const fit = viewportMath.fitToViewport(stageSize, viewSize);
+      const tol = isFiniteNumber(tolerance) ? tolerance : 0.01;
+      return Math.abs(viewport.scale - fit.scale) / fit.scale <= tol;
+    }
+
+    module.exports = {
+      DRAG_THRESHOLD_PX,
+      MIN_PINCH_DISTANCE_PX,
+      createGestureState,
+      activeCount,
+      distance,
+      midpoint,
+      pointerDown,
+      pointerMove,
+      pointerUp,
+      cancelAll,
+      reflowForViewportChange,
+      isAtFit,
+    };
+  };
+
+  // ---- src/wiremap/app.js ----
+  __reg["app"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Wire Map — stage controller.
+     *
+     * The thin browser layer. It owns no arithmetic: gesture state comes from
+     * interaction.js, transforms from viewport.js, image bytes from image.js and
+     * persistence from store.js. Its whole job is DOM plumbing.
+     *
+     * THE INVARIANT THIS FILE EXISTS TO PROTECT
+     * -----------------------------------------
+     * The background <img> and the SVG overlay are children of one .stage element
+     * and share exactly ONE transform. Transforming them separately would let the
+     * plan and its future annotations drift apart under zoom — a defect that would
+     * be invisible at fit scale and glaring at 8x.
+     */
+
+    const viewportMath = require('./viewport');
+    const interaction = require('./interaction');
+
+    function createStageController(options) {
+      const opts = options || {};
+      const doc = opts.document || (typeof document !== 'undefined' ? document : null);
+      const win = opts.window || (typeof window !== 'undefined' ? window : null);
+      if (!doc) throw new Error('createStageController needs a document');
+
+      const el = {
+        viewport: doc.getElementById(opts.viewportId || 'wm-viewport'),
+        stage: doc.getElementById(opts.stageId || 'wm-stage'),
+        image: doc.getElementById(opts.imageId || 'wm-background'),
+        svg: doc.getElementById(opts.svgId || 'wm-overlay'),
+        empty: doc.getElementById(opts.emptyId || 'wm-empty'),
+      };
+
+      /** Logical stage size, always the stored image's displayed dimensions. */
+      let stageSize = null;
+      let view = viewportMath.identity();
+      let objectUrl = null;
+      let gesture = interaction.createGestureState();
+      let lastViewSize = null;
+
+      function viewSize() {
+        if (opts.measure) return opts.measure();
+        const r = el.viewport.getBoundingClientRect();
+        return { width: r.width, height: r.height };
+      }
+
+      /** Write the single transform. Nothing else moves the stage. */
+      function applyTransform() {
+        if (!el.stage) return;
+        el.stage.style.transformOrigin = '0 0';
+        el.stage.style.transform =
+          'translate(' + view.translateX + 'px,' + view.translateY + 'px) scale(' + view.scale + ')';
+      }
+
+      function bounds() {
+        return { stageSize, viewSize: lastViewSize || viewSize() };
+      }
+
+      function setViewport(next) {
+        if (!next || !Number.isFinite(next.scale)
+          || !Number.isFinite(next.translateX) || !Number.isFinite(next.translateY)) return;
+        view = next;
+        applyTransform();
+      }
+
+      function fit() {
+        if (!stageSize) return;
+        lastViewSize = viewSize();
+        setViewport(viewportMath.fitToViewport(stageSize, lastViewSize));
+      }
+
+      /**
+       * The controller owns this state. The placeholder is visible exactly when no
+       * image is on the stage; nothing else may toggle it, so the two can never
+       * disagree.
+       */
+      function setPlaceholderVisible(visible) {
+        if (el.empty) el.empty.hidden = !visible;
+      }
+
+      /**
+       * Remove the displayed image and return the stage to its empty state.
+       * Releases the object URL rather than leaving it dangling.
+       */
+      function clear() {
+        releaseImage();
+        if (el.image) {
+          el.image.removeAttribute('src');
+          el.image.hidden = true;
+        }
+        stageSize = null;
+        view = viewportMath.identity();
+        applyTransform();
+        interaction.cancelAll(gesture);
+        setPlaceholderVisible(true);
+      }
+
+      /** Free the URL backing the current background before replacing it. */
+      function releaseImage() {
+        if (objectUrl && win && win.URL && typeof win.URL.revokeObjectURL === 'function') {
+          win.URL.revokeObjectURL(objectUrl);
+        }
+        objectUrl = null;
+      }
+
+      /**
+       * Show a processed/stored image as the stage background.
+       *
+       * `width`/`height` come from the stored record, not from the element: they
+       * are the dimensions the user actually sees, already corrected for EXIF
+       * orientation upstream.
+       */
+      function showImage(blob, width, height) {
+        if (!el.image || !el.svg || !el.stage) return Promise.resolve(false);
+        if (!blob || !(width > 0) || !(height > 0)) return Promise.resolve(false);
+
+        releaseImage();
+        objectUrl = win.URL.createObjectURL(blob);
+
+        stageSize = { width, height };
+
+        // Stage, image and SVG all take the SAME logical dimensions, so a point at
+        // stage coordinate (x, y) is the same point in every layer.
+        el.stage.style.width = width + 'px';
+        el.stage.style.height = height + 'px';
+        el.image.width = width;
+        el.image.height = height;
+        el.image.style.width = width + 'px';
+        el.image.style.height = height + 'px';
+        el.svg.setAttribute('width', String(width));
+        el.svg.setAttribute('height', String(height));
+        el.svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+
+        setPlaceholderVisible(false);
+        el.image.hidden = false;
+
+        return new Promise((resolve) => {
+          el.image.onload = () => { fit(); resolve(true); };
+          el.image.onerror = () => { fit(); resolve(false); };
+          el.image.src = objectUrl;
+        });
+      }
+
+      // ── Pointer handling ────────────────────────────────────────────────
+      // Pointer Events only. No parallel mouse and touch paths.
+
+      function localPoint(e) {
+        const r = el.viewport.getBoundingClientRect();
+        return { id: e.pointerId, x: e.clientX - r.left, y: e.clientY - r.top };
+      }
+
+      function onPointerDown(e) {
+        if (!stageSize) return;
+        lastViewSize = viewSize();
+        if (el.viewport.setPointerCapture) {
+          try { el.viewport.setPointerCapture(e.pointerId); } catch (_) { /* already captured */ }
+        }
+        interaction.pointerDown(gesture, localPoint(e), view);
+      }
+
+      function onPointerMove(e) {
+        if (!stageSize || interaction.activeCount(gesture) === 0) return;
+        const r = interaction.pointerMove(gesture, localPoint(e), view, bounds());
+        if (r.changed) setViewport(r.viewport);
+      }
+
+      function onPointerUp(e) {
+        if (!stageSize) return;
+        interaction.pointerUp(gesture, e.pointerId, view);
+        if (el.viewport.releasePointerCapture) {
+          try { el.viewport.releasePointerCapture(e.pointerId); } catch (_) { /* not captured */ }
+        }
+        // Nothing else happens on release. A tap must never change the transform:
+        // iOS synthesises a second pointer pair after a touch tap, so any tap
+        // gesture here fires twice for one finger. See interaction.js.
+      }
+
+      function onPointerCancel() {
+        interaction.cancelAll(gesture);
+      }
+
+      function onResize() {
+        if (!stageSize) return;
+        const previous = lastViewSize || viewSize();
+        const next = viewSize();
+        if (!(next.width > 0) || !(next.height > 0)) return;
+        const wasAtFit = interaction.isAtFit(view, stageSize, previous);
+        lastViewSize = next;
+        setViewport(interaction.reflowForViewportChange(view, stageSize, previous, next, wasAtFit));
+      }
+
+      /**
+       * The viewport ELEMENT can change size without the window doing so — the
+       * status line growing, Safari's chrome collapsing, a sibling reflowing.
+       * A window resize listener never sees those, which left the plan fitted to a
+       * viewport that no longer existed. ResizeObserver watches the element itself.
+       */
+      function observeElement() {
+        const RO = (win && win.ResizeObserver) || (typeof ResizeObserver !== 'undefined' ? ResizeObserver : null);
+        if (!RO || !el.viewport) return null;
+        const ro = new RO(() => onResize());
+        ro.observe(el.viewport);
+        return ro;
+      }
+
+      let resizeObserver = null;
+
+      function attach() {
+        if (!el.viewport) return;
+        resizeObserver = observeElement();
+        el.viewport.addEventListener('pointerdown', onPointerDown);
+        el.viewport.addEventListener('pointermove', onPointerMove);
+        el.viewport.addEventListener('pointerup', onPointerUp);
+        el.viewport.addEventListener('pointercancel', onPointerCancel);
+        el.viewport.addEventListener('lostpointercapture', onPointerCancel);
+        if (win && win.addEventListener) {
+          win.addEventListener('resize', onResize);
+          if (win.visualViewport && win.visualViewport.addEventListener) {
+            // Safari changes the usable height when its chrome shows or hides.
+            win.visualViewport.addEventListener('resize', onResize);
+          }
+        }
+      }
+
+      function destroy() {
+        clear();
+        if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
+      }
+
+      return {
+        attach,
+        destroy,
+        showImage,
+        clear,
+        hasImage: () => stageSize !== null,
+        isPlaceholderVisible: () => !!(el.empty && !el.empty.hidden),
+        fit,
+        onResize,
+        getViewport: () => ({ ...view }),
+        getStageSize: () => (stageSize ? { ...stageSize } : null),
+        getObjectUrl: () => objectUrl,
+        getGestureMode: () => gesture.mode,
+        getActivePointers: () => interaction.activeCount(gesture),
+        // Exposed for the browser check; not used by the page itself.
+        _setViewport: setViewport,
+      };
+    }
+
+    module.exports = { createStageController };
+  };
+
   var api = {};
   api["model"] = __require("model");
   api["geometry"] = __require("geometry");
   api["viewport"] = __require("viewport");
   api["store"] = __require("store");
   api["image"] = __require("image");
+  api["interaction"] = __require("interaction");
+  api["app"] = __require("app");
   return api;
 })();
 </script>
 <!-- WM-CORE:END -->
 
   <script>
-  /* WM-3 development probe. TEMPORARY — removed in WM-4.
-     No editor, no projects. It processes one image, stores it under a fixed id
-     so it can be retrieved after a reload, and reports what happened.
-     Nothing runs on load: the database is touched only after a tap. */
+  /* WM-3/WM-4 development probe. TEMPORARY — removed when the editor lands.
+     It is the only way to get a plan onto the stage until Jobs/Sheets UI
+     exists. All real work happens in the bundled modules; this is wiring. */
   (function () {
-    var PROBE_ID = 'wm3-probe-image';   // fixed, so a reload can find it again
+    var PROBE_ID = 'wm3-probe-image';
     var file = document.getElementById('wm-dev-file');
     var loadBtn = document.getElementById('wm-dev-load');
     var status = document.getElementById('wm-dev-status');
-    var preview = document.getElementById('wm-dev-preview');
-    if (!file || !loadBtn || !status || !preview) return;
+    if (!file || !loadBtn || !status) return;
 
-    var previewUrl = null;
-    function showPreview(blob) {
-      // Always the PROCESSED/STORED blob, never the source file — that is the
-      // whole point: it shows what was actually saved.
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      previewUrl = URL.createObjectURL(blob);
-      preview.src = previewUrl;
-      preview.hidden = false;
-    }
-    function line(label, value) {
-      return '<b>' + label + ':</b> ' + value + '<br>';
-    }
+    // One controller for the page. Nothing touches storage until a tap.
+    var stage = WM.app.createStageController({});
+    stage.attach();
+    window.__wmStage = stage;   // browser-check hook only
+
+    function line(label, value) { return '<b>' + label + ':</b> ' + value + '<br>'; }
     function fail(err) {
-      preview.hidden = true;
       status.innerHTML = '<b>Error:</b> ' + ((err && err.code) || '') + ' '
         + ((err && err.message) || String(err));
+    }
+    function describeView() {
+      var v = stage.getViewport(); var sz = stage.getStageSize();
+      return line('Stage', sz ? sz.width + '\u00D7' + sz.height : 'none')
+        + line('Scale', v.scale.toFixed(4));
     }
 
     file.addEventListener('change', function () {
@@ -1791,15 +2358,17 @@ window.WM = (function () {
         })
         .then(function () { return db.getImage(PROBE_ID); })
         .then(function (back) {
-          showPreview(back.blob);
-          status.innerHTML =
-            line('Original', p.originalWidth + '\u00D7' + p.originalHeight) +
-            line('Processed', p.width + '\u00D7' + p.height + (p.resized ? ' (resized)' : ' (unchanged)')) +
-            line('MIME', p.mime) +
-            line('Stored bytes', back.bytes + ' (' + Math.round(back.bytes / 1024) + ' KB)') +
-            line('decodePath', p.decodePath) +
-            line('Stored id', PROBE_ID + ' \u2014 ' + (back.blob instanceof Blob ? 'OK' : 'FAILED'));
           db.closeDatabase();
+          // The STORED blob goes on the stage — never the source file.
+          return stage.showImage(back.blob, back.width, back.height).then(function () {
+            status.innerHTML =
+              line('Original', p.originalWidth + '\u00D7' + p.originalHeight) +
+              line('Processed', p.width + '\u00D7' + p.height + (p.resized ? ' (resized)' : ' (unchanged)')) +
+              line('MIME', p.mime) +
+              line('Stored bytes', back.bytes + ' (' + Math.round(back.bytes / 1024) + ' KB)') +
+              line('decodePath', p.decodePath) +
+              describeView();
+          });
         })
         .catch(function (e) { fail(e); try { db.closeDatabase(); } catch (x) {} });
     });
@@ -1810,22 +2379,21 @@ window.WM = (function () {
       db.openDatabase()
         .then(function () { return db.getImage(PROBE_ID); })
         .then(function (rec) {
+          db.closeDatabase();
           if (!rec) {
-            preview.hidden = true;
-            status.innerHTML = '<b>No stored image.</b> Import one first, '
-              + 'then reload and tap this again.';
-            db.closeDatabase();
+            status.innerHTML = '<b>No stored image.</b> Import one first, then reload '
+              + 'and tap this again.';
             return;
           }
-          showPreview(rec.blob);
-          status.innerHTML =
-            line('LOADED FROM STORAGE', PROBE_ID) +
-            line('Stored size', rec.width + '\u00D7' + rec.height) +
-            line('MIME', rec.mime) +
-            line('Stored bytes', rec.bytes + ' (' + Math.round(rec.bytes / 1024) + ' KB)') +
-            line('Blob recovered', (rec.blob instanceof Blob) + ', ' + rec.blob.size + ' bytes') +
-            line('Saved', new Date(rec.createdAt).toLocaleString());
-          db.closeDatabase();
+          return stage.showImage(rec.blob, rec.width, rec.height).then(function () {
+            status.innerHTML =
+              line('LOADED FROM STORAGE', PROBE_ID) +
+              line('Stored size', rec.width + '\u00D7' + rec.height) +
+              line('MIME', rec.mime) +
+              line('Stored bytes', rec.bytes + ' (' + Math.round(rec.bytes / 1024) + ' KB)') +
+              line('Saved', new Date(rec.createdAt).toLocaleString()) +
+              describeView();
+          });
         })
         .catch(function (e) { fail(e); try { db.closeDatabase(); } catch (x) {} });
     });

@@ -109,6 +109,34 @@ describe('Wire Map viewport — focal-point zoom', () => {
     assert.deepStrictEqual(beyond, atMax);
   });
 
+  test('REGRESSION: zoomAt accepts a per-sheet floor below MIN_SCALE', () => {
+    // Without this, pinching out on a large plan could never reach fit: zoomAt
+    // silently raised the scale back to MIN_SCALE 0.5 even though the fit scale
+    // for a 2000x1500 plan on a phone is 0.195.
+    const stage = { width: 2000, height: 1500 };
+    const view = { width: 390, height: 700 };
+    const floor = v.minScaleFor(stage, view);
+    assert.ok(floor < v.MIN_SCALE, 'this sheet should fit below MIN_SCALE');
+
+    const withoutFloor = v.zoomAt(v.identity(), { x: 195, y: 350 }, floor);
+    assert.strictEqual(withoutFloor.scale, v.MIN_SCALE, 'documents the default behaviour');
+
+    const withFloor = v.zoomAt(v.identity(), { x: 195, y: 350 }, floor, floor);
+    assert.strictEqual(withFloor.scale, floor, 'the sheet floor was ignored');
+  });
+
+  test('the floor override never lets the scale exceed MAX_SCALE', () => {
+    assert.strictEqual(v.zoomAt(v.identity(), { x: 0, y: 0 }, 9999, 0.1).scale, v.MAX_SCALE);
+  });
+
+  test('zoomBy passes the floor through as well', () => {
+    const stage = { width: 2000, height: 1500 };
+    const view = { width: 390, height: 700 };
+    const floor = v.minScaleFor(stage, view);
+    const start = { scale: floor * 4, translateX: 0, translateY: 0 };
+    assert.strictEqual(v.zoomBy(start, { x: 100, y: 100 }, 0.001, floor).scale, floor);
+  });
+
   test('a zero or negative factor is ignored', () => {
     const vp = { scale: 2, translateX: 5, translateY: 5 };
     assert.deepStrictEqual(v.zoomBy(vp, { x: 0, y: 0 }, 0), vp);

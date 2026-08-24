@@ -116,13 +116,19 @@ function clampTranslation(viewport, stageSize, viewSize) {
  *
  * Returns an unclamped translation; apply clampTranslation() separately so the
  * caller decides when bounds matter.
+ *
+ * `minScale` overrides the nominal MIN_SCALE floor. It exists because a large
+ * plan fits a phone below MIN_SCALE: without it a pinch-out could never reach
+ * fit, because this function would quietly raise the scale back to 0.5. Pass
+ * minScaleFor(stageSize, viewSize) whenever a specific sheet is on screen.
  */
-function zoomAt(viewport, focalScreenPoint, nextScaleRaw) {
+function zoomAt(viewport, focalScreenPoint, nextScaleRaw, minScale) {
   if (!isValidViewport(viewport)) return identity();
   const focal = focalScreenPoint || { x: 0, y: 0 };
   if (!isFiniteNumber(focal.x) || !isFiniteNumber(focal.y)) return { ...viewport };
 
-  const nextScale = clampScale(nextScaleRaw);
+  const floor = isFiniteNumber(minScale) && minScale > 0 ? minScale : MIN_SCALE;
+  const nextScale = Math.min(MAX_SCALE, Math.max(floor, isFiniteNumber(nextScaleRaw) ? nextScaleRaw : 1));
   // The stage point currently beneath the focus.
   const stagePoint = screenToStage(focal, viewport);
   if (!stagePoint) return { ...viewport };
@@ -136,11 +142,11 @@ function zoomAt(viewport, focalScreenPoint, nextScaleRaw) {
 }
 
 /** Multiply the current scale, keeping the focal point fixed. */
-function zoomBy(viewport, focalScreenPoint, factor) {
+function zoomBy(viewport, focalScreenPoint, factor, minScale) {
   if (!isValidViewport(viewport) || !isFiniteNumber(factor) || factor <= 0) {
     return isValidViewport(viewport) ? { ...viewport } : identity();
   }
-  return zoomAt(viewport, focalScreenPoint, viewport.scale * factor);
+  return zoomAt(viewport, focalScreenPoint, viewport.scale * factor, minScale);
 }
 
 /**
