@@ -55,6 +55,7 @@ const src = {
   store: require('../src/wiremap/store'),
   image: require('../src/wiremap/image'),
   labelInteraction: require('../src/wiremap/labelInteraction'),
+  routeInteraction: require('../src/wiremap/routeInteraction'),
 };
 
 describe('Wire Map build — generated block', { skip: skipAll }, () => {
@@ -100,7 +101,7 @@ describe('Wire Map build — window.WM in an isolated context', { skip: skipAll 
   });
 
   test('WM exposes every Wire Map module', () => {
-    for (const key of ['model', 'geometry', 'viewport', 'store', 'image', 'labelInteraction']) {
+    for (const key of ['model', 'geometry', 'viewport', 'store', 'image', 'labelInteraction', 'routeInteraction']) {
       assert.ok(WM[key], `WM.${key} is missing`);
       assert.strictEqual(typeof WM[key], 'object');
     }
@@ -200,7 +201,7 @@ describe('Wire Map build — browser and Node agree', { skip: skipAll }, () => {
   });
 
   test('every exported name in the sources is present in the bundle', () => {
-    for (const mod of ['model', 'geometry', 'viewport', 'store', 'image', 'labelInteraction']) {
+    for (const mod of ['model', 'geometry', 'viewport', 'store', 'image', 'labelInteraction', 'routeInteraction']) {
       const expected = Object.keys(src[mod]).sort();
       const actual = Object.keys(WM[mod]).sort();
       assert.deepStrictEqual(actual, expected, `export drift in ${mod}`);
@@ -307,12 +308,62 @@ describe('Wire Map build — the WM-1 shell is still inert', { skip: skipAll }, 
     assert.ok(sandbox.window.WM, 'window.WM should still be created');
   });
 
-  test('WM-5: labels render only inside wm-labels', () => {
+  test('WM-5/6A: each annotation type renders into its own layer', () => {
     const app = fs.readFileSync(path.join(ROOT, 'src', 'wiremap', 'app.js'), 'utf8');
-    assert.ok(/el\.labels\.appendChild/.test(app), 'labels must be appended to wm-labels');
-    for (const other of ['wm-sketch', 'wm-routes', 'wm-selection']) {
-      assert.ok(!new RegExp(other).test(app), `WM-5 must not draw into ${other}`);
-    }
+    assert.ok(/el\.labels\.appendChild\(renderLabel/.test(app), 'labels belong in wm-labels');
+    assert.ok(/el\.routes\.appendChild\(renderArrow/.test(app), 'arrows belong in wm-routes');
+    // Selection visuals are transient; the sketch layer is untouched until WM-6B.
+    assert.ok(!/wm-sketch|el\.sketch/.test(app), 'WM-6A must not draw into the sketch layer');
+    assert.ok(/el\.selection\.appendChild/.test(app), 'handles belong in wm-selection');
+  });
+
+  test('WM-6A: the arrowhead is computed geometry, not a marker or a transform', () => {
+    const app = fs.readFileSync(path.join(ROOT, 'src', 'wiremap', 'app.js'), 'utf8');
+    // A <marker> rides the stage transform; a nested inverse transform passed
+    // in Blink but rendered invisibly at fit on physical iOS Safari. The path
+    // data itself now carries the size, which every engine renders alike.
+    assert.ok(!/<marker id="wm-arrowhead"/.test(html), 'the marker approach is back');
+    assert.ok(/function arrowHeadPath/.test(app), 'the head must be computed geometry');
+    assert.ok(/HEAD_LENGTH_PX \/ scale/.test(app), 'screen size must be divided by the stage scale');
+    assert.ok(!/arrowHeadTransform/.test(app), 'the nested transform helper is back');
+    // The line no longer uses vector-effect either: Blink honours it under a
+    // transformed parent, physical iOS Safari does not, and the stroke grew to
+    // tens of pixels at high zoom. Width is now computed per zoom.
+    // Match declarations, not the explanatory comment inside the same block.
+    const lineRule = (html.match(/\.wm-arrow-line\s*\{([\s\S]*?)\}/) || [])[1] || '';
+    const declarations = lineRule.replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.ok(!/vector-effect\s*:/.test(declarations),
+      'vector-effect must not compete with the explicit compensation');
+    assert.ok(!/stroke-width\s*:/.test(declarations),
+      'a CSS stroke-width would override the presentation attribute');
+    assert.ok(/const VISIBLE_ARROW_STROKE_PX = 1\.5;/.test(app),
+      'the unselected width must be a named screen-pixel constant');
+    assert.ok(/const SELECTED_ARROW_STROKE_PX = 2\.5;/.test(app),
+      'the selected width must be a named screen-pixel constant too');
+    assert.ok(/px \/ scale/.test(app),
+      'the visible stroke must be divided by the stage scale');
+    assert.ok(/const SHAFT_NECK_OFFSET_PX/.test(app),
+      'the shaft must stop short of B so its round cap cannot protrude');
+    assert.ok(/line\.setAttribute\('x2', neck\.x\)/.test(app),
+      'the visible shaft must be drawn to the shortened endpoint');
+    assert.ok(!/\.wm-arrow\.selected \.wm-arrow-line\s*\{[^}]*stroke-width/.test(html),
+      'a CSS stroke-width for the selected state would override the attribute');
+    assert.ok(/\.wm-arrow-hit\s*\{[^}]*stroke:\s*transparent/.test(html),
+      'a thin arrow needs a wide invisible hit stroke');
+  });
+
+  test('WM-6A: empty plan is an explicit interaction surface', () => {
+    const app = fs.readFileSync(path.join(ROOT, 'src', 'wiremap', 'app.js'), 'utf8');
+    assert.ok(/id="wm-background-hit"/.test(html), 'the background surface is missing');
+    assert.ok(/#wm-background-hit\s*\{[^}]*pointer-events:\s*all/.test(html),
+      'a transparent fill is ignored without an explicit pointer-events');
+    // It must sit behind every annotation layer in the SVG.
+    assert.ok(html.indexOf('wm-background-hit') < html.indexOf('id="wm-sketch"'),
+      'the surface must be behind the annotation layers');
+    // The flag is set where the press provably matched no annotation, which
+    // also covers the letterboxing beside the sheet at fit scale.
+    assert.ok(/pressedBackground = true;/.test(app), 'empty-space presses must be marked');
+    assert.ok(/pressedBackground = false;/.test(app), 'the flag must reset on each press');
   });
 
   test('WM-5: the label counter-scale is local, not a second viewport transform', () => {

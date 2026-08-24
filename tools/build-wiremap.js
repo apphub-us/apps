@@ -49,6 +49,7 @@ const MODULES = [
   'image',
   'interaction',
   'labelInteraction',
+  'routeInteraction',
   'app',
 ];
 

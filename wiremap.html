@@ -135,6 +135,37 @@
   }
   #wm-dev-status b { color: var(--text); font-weight: 600; }
 
+  /* The background surface must receive pointer events despite being invisible;
+     a transparent fill is ignored by the default visiblePainted. */
+  #wm-background-hit { fill: transparent; pointer-events: all; }
+
+  /* ── Arrows (routes) ── */
+  .wm-arrow-line {
+    /* No stroke-width here and NO vector-effect. A CSS stroke-width would beat
+       the presentation attribute the controller sets, and non-scaling-stroke is
+       honoured by Blink but not by physical iOS Safari under a transformed
+       parent — the line grew to tens of pixels at high zoom. Width is computed
+       per zoom in app.js as VISIBLE_ARROW_STROKE_PX / stageScale. */
+    stroke: var(--accent); fill: none; stroke-linecap: round;
+    pointer-events: none;
+  }
+  /* A wide invisible stroke makes a thin arrow practical to hit with a finger. */
+  .wm-arrow-hit {
+    stroke: transparent; fill: none; stroke-linecap: round; cursor: pointer;
+    /* Essential: the default visiblePainted ignores a transparent stroke, so
+       without this only the zero-width geometry responds and the wide touch
+       target does nothing at all. */
+    pointer-events: stroke;
+  }
+  .wm-arrow-head { fill: var(--accent); pointer-events: none; }
+  /* The selected width is applied in app.js as a multiple of the computed
+     stage-unit value. A CSS stroke-width here would beat the presentation
+     attribute and reintroduce a fixed stage-unit stroke that scales with zoom. */
+  .wm-arrow-head { stroke-linejoin: miter; }
+  .wm-arrow-draft { opacity: 0.75; pointer-events: none; }
+  .wm-endpoint-target { fill: transparent; cursor: pointer; }
+  .wm-endpoint-dot { fill: var(--accent); stroke: #000; stroke-width: 1.5; pointer-events: none; }
+
   /* ── Wire labels ── */
   .wm-label { cursor: pointer; }
   .wm-label-anchor { fill: var(--accent); stroke: #000; stroke-width: 1.5; }
@@ -227,6 +258,12 @@
            above the route that reaches it, and selection always sits on top.
            The selection layer is transient and is never persisted or exported. -->
       <svg class="stage-svg" id="wm-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <!-- Explicit empty-plan interaction surface. Behind every annotation
+             layer, so arrows and labels are hit first, but a real element in
+             its own right: a tap on blank plan must not depend on incidental
+             targeting through the image or the SVG root, which WebKit and
+             Blink resolve differently. -->
+        <rect id="wm-background-hit" x="0" y="0" width="0" height="0"></rect>
         <g id="wm-sketch"></g>
         <g id="wm-routes"></g>
         <g id="wm-labels"></g>
@@ -235,6 +272,7 @@
     </div>
 
     <div class="arm-hint" id="wm-arm-hint" hidden>Tap plan to place label</div>
+    <div class="arm-hint" id="wm-arrow-hint" hidden>Drag on plan to draw arrow</div>
     <div class="empty" id="wm-empty">
       <div class="empty-title">No sheet loaded</div>
       <div class="empty-hint">WM-1 foundation &mdash; model, geometry and viewport maths only.</div>
@@ -252,6 +290,8 @@
       </label>
       <button type="button" id="wm-dev-load">Load current test sheet</button>
       <button type="button" id="wm-add-label">Add Label</button>
+      <button type="button" id="wm-add-arrow">Add Arrow</button>
+      <button type="button" id="wm-delete-arrow" hidden>Delete Arrow</button>
     </div>
     <div class="devbar-row">
       <div id="wm-dev-status">Idle &mdash; nothing has been read or written.</div>
@@ -2358,6 +2398,249 @@ window.WM = (function () {
     };
   };
 
+  // ---- src/wiremap/routeInteraction.js ----
+  __reg["routeInteraction"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Wire Map — arrow (route) interaction state.
+     *
+     * Pure. No DOM, no IndexedDB, no rendering.
+     *
+     * The model already carries `arrow` as a two-point annotation with normalized
+     * endpoints `a` and `b`, so nothing here invents a second schema. This module
+     * only decides when a drag becomes an arrow, where its endpoints land, and
+     * which endpoint a drag is moving.
+     *
+     * iOS compatibility-event suppression is NOT reimplemented here: WM-5 already
+     * solved that in labelInteraction, and the controller shares one input state
+     * for the whole page. Two suppression clocks would drift apart.
+     */
+
+    const geometry = require('./geometry');
+    const viewportMath = require('./viewport');
+
+    /**
+     * How far a finger must travel before a drag becomes an arrow.
+     *
+     * Larger than the label threshold on purpose: an arrow of a few pixels is
+     * never intentional, and a stray tap while Arrow mode is armed should leave
+     * nothing behind rather than litter the plan with specks.
+     */
+    const ARROW_MIN_DRAW_PX = 16;
+
+    /** Endpoint drag commits at the ordinary threshold. */
+    const ENDPOINT_DRAG_THRESHOLD_PX = 8;
+
+    function isFiniteNumber(v) {
+      return typeof v === 'number' && Number.isFinite(v);
+    }
+
+    function isPoint(p) {
+      return !!p && isFiniteNumber(p.x) && isFiniteNumber(p.y);
+    }
+
+    function distance(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function createRouteState() {
+      return {
+        /** 'idle' | 'armed' — armed means the next plan drag draws an arrow. */
+        drawMode: 'idle',
+        /** In-flight draw: { startScreen, startNormalized, endNormalized, exceeded }. */
+        draft: null,
+        /** In-flight endpoint drag: { id, which, original, current, moved }. */
+        endpointDrag: null,
+        /** Currently selected arrow id, for showing handles. */
+        selectedId: null,
+      };
+    }
+
+    // ── Draw mode ─────────────────────────────────────────────────────────────
+
+    function armDraw(state) { state.drawMode = 'armed'; return state; }
+    function disarmDraw(state) { state.drawMode = 'idle'; state.draft = null; return state; }
+    function isArmed(state) { return state.drawMode === 'armed'; }
+
+    // ── Coordinate conversion — shared helpers only, never a second formula ───
+
+    function screenToNormalized(screenPoint, viewport, stageSize) {
+      if (!isPoint(screenPoint) || !stageSize) return null;
+      const stagePoint = viewportMath.screenToStage(screenPoint, viewport);
+      if (!stagePoint) return null;
+      return geometry.normalizePoint(stagePoint, stageSize);
+    }
+
+    function normalizedToScreen(normalized, viewport, stageSize) {
+      if (!normalized || !stageSize) return null;
+      const stagePoint = geometry.denormalizePoint(normalized, stageSize);
+      if (!stagePoint) return null;
+      return viewportMath.stageToScreen(stagePoint, viewport);
+    }
+
+    // ── Drawing an arrow ──────────────────────────────────────────────────────
+
+    /** Begin a draft at the press point. Nothing is created yet. */
+    function drawStart(state, screenPoint, viewport, stageSize) {
+      if (!isArmed(state)) return { started: false };
+      const normalized = screenToNormalized(screenPoint, viewport, stageSize);
+      if (!normalized) return { started: false };
+      state.draft = {
+        startScreen: { x: screenPoint.x, y: screenPoint.y },
+        startNormalized: normalized,
+        endNormalized: normalized,
+        exceeded: false,
+      };
+      return { started: true, start: normalized };
+    }
+
+    /**
+     * Extend the draft. The preview follows the finger from the first move; only
+     * `exceeded` decides whether it will survive the release.
+     */
+    function drawMove(state, screenPoint, viewport, stageSize) {
+      const d = state.draft;
+      if (!d || !isPoint(screenPoint)) return { drawing: false, start: null, end: null };
+      const normalized = screenToNormalized(screenPoint, viewport, stageSize);
+      if (!normalized) return { drawing: false, start: null, end: null };
+      d.endNormalized = normalized;
+      if (distance(d.startScreen, screenPoint) >= ARROW_MIN_DRAW_PX) d.exceeded = true;
+      return { drawing: true, start: d.startNormalized, end: normalized, exceeded: d.exceeded };
+    }
+
+    /**
+     * Release.
+     * A drag that never travelled far enough commits nothing — a tap in Arrow mode
+     * must not leave a zero-length arrow on the plan.
+     */
+    function drawEnd(state) {
+      const d = state.draft;
+      state.draft = null;
+      if (!d) return { action: 'none', start: null, end: null };
+      if (!d.exceeded) return { action: 'discarded', start: null, end: null };
+      return { action: 'commit', start: d.startNormalized, end: d.endNormalized };
+    }
+
+    function drawCancel(state) {
+      const had = !!state.draft;
+      state.draft = null;
+      return { action: had ? 'cancelled' : 'none' };
+    }
+
+    function isDrawing(state) { return !!state.draft; }
+
+    // ── Endpoint dragging ─────────────────────────────────────────────────────
+
+    /**
+     * A pointer went down on an endpoint handle.
+     * @param {'a'|'b'} which
+     */
+    function endpointDown(state, annotationId, which, screenPoint, originalNormalized) {
+      if (!annotationId || (which !== 'a' && which !== 'b')) return state;
+      if (!isPoint(screenPoint) || !originalNormalized) return state;
+      state.endpointDrag = {
+        id: annotationId,
+        which,
+        startScreen: { x: screenPoint.x, y: screenPoint.y },
+        original: { x: originalNormalized.x, y: originalNormalized.y },
+        current: { x: originalNormalized.x, y: originalNormalized.y },
+        moved: false,
+      };
+      return state;
+    }
+
+    /**
+     * Move the endpoint under the finger.
+     *
+     * Uses the absolute pointer position rather than an accumulated delta: an
+     * endpoint should sit exactly where the finger is, which is also what makes it
+     * behave identically at every zoom.
+     */
+    function endpointMove(state, screenPoint, viewport, stageSize) {
+      const d = state.endpointDrag;
+      if (!d || !isPoint(screenPoint) || !stageSize) return { moved: false, normalized: null };
+      if (!d.moved && distance(d.startScreen, screenPoint) < ENDPOINT_DRAG_THRESHOLD_PX) {
+        return { moved: false, normalized: null };
+      }
+      d.moved = true;
+      const normalized = screenToNormalized(screenPoint, viewport, stageSize);
+      if (!normalized) return { moved: false, normalized: null };
+      d.current = normalized;
+      return { moved: true, which: d.which, normalized };
+    }
+
+    /** @returns {{action:'move'|'tap'|'none', id, which, normalized}} */
+    function endpointUp(state) {
+      const d = state.endpointDrag;
+      state.endpointDrag = null;
+      if (!d) return { action: 'none', id: null, which: null, normalized: null };
+      if (!d.moved) return { action: 'tap', id: d.id, which: d.which, normalized: d.original };
+      return { action: 'move', id: d.id, which: d.which, normalized: d.current };
+    }
+
+    /** Cancel restores the stored endpoint: never leave a half-moved arrow. */
+    function endpointCancel(state) {
+      const d = state.endpointDrag;
+      state.endpointDrag = null;
+      if (!d) return { action: 'none', id: null, which: null, normalized: null };
+      return { action: 'revert', id: d.id, which: d.which, normalized: d.original };
+    }
+
+    function isDraggingEndpoint(state) {
+      return !!(state.endpointDrag && state.endpointDrag.moved);
+    }
+
+    function hasPressedEndpoint(state) {
+      return !!state.endpointDrag;
+    }
+
+    // ── Selection ─────────────────────────────────────────────────────────────
+
+    function select(state, id) { state.selectedId = id || null; return state; }
+    function clearSelection(state) { state.selectedId = null; return state; }
+    function getSelected(state) { return state.selectedId; }
+
+    /**
+     * Apply an endpoint change to an annotation without mutating the original.
+     * The caller persists the result; nothing here touches storage.
+     */
+    function withEndpoint(annotation, which, normalized) {
+      if (!annotation || (which !== 'a' && which !== 'b') || !normalized) return annotation;
+      const next = { ...annotation };
+      next[which] = geometry.clampNormalized(normalized);
+      return next;
+    }
+
+    module.exports = {
+      ARROW_MIN_DRAW_PX,
+      ENDPOINT_DRAG_THRESHOLD_PX,
+      createRouteState,
+      armDraw,
+      disarmDraw,
+      isArmed,
+      screenToNormalized,
+      normalizedToScreen,
+      drawStart,
+      drawMove,
+      drawEnd,
+      drawCancel,
+      isDrawing,
+      endpointDown,
+      endpointMove,
+      endpointUp,
+      endpointCancel,
+      isDraggingEndpoint,
+      hasPressedEndpoint,
+      select,
+      clearSelection,
+      getSelected,
+      withEndpoint,
+      distance,
+    };
+  };
+
   // ---- src/wiremap/app.js ----
   __reg["app"] = function (module, exports, require) {
     'use strict';
@@ -2379,6 +2662,7 @@ window.WM = (function () {
     const viewportMath = require('./viewport');
     const interaction = require('./interaction');
     const labelInteraction = require('./labelInteraction');
+    const routeInteraction = require('./routeInteraction');
     const geometry = require('./geometry');
 
     function createStageController(options) {
@@ -2394,6 +2678,9 @@ window.WM = (function () {
         svg: doc.getElementById(opts.svgId || 'wm-overlay'),
         empty: doc.getElementById(opts.emptyId || 'wm-empty'),
         labels: doc.getElementById(opts.labelsId || 'wm-labels'),
+        routes: doc.getElementById(opts.routesId || 'wm-routes'),
+        selection: doc.getElementById(opts.selectionId || 'wm-selection'),
+        background: doc.getElementById(opts.backgroundHitId || 'wm-background-hit'),
       };
       const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -2406,12 +2693,19 @@ window.WM = (function () {
       /** wireLabel annotations currently on the sheet, keyed by id. */
       let annotations = new Map();
       let labelState = labelInteraction.createLabelState();
+      let routeState = routeInteraction.createRouteState();
+      /** Whether the current press began on the explicit empty-plan surface. */
+      let pressedBackground = false;
       /** Called by the controller; the page supplies the editor and persistence. */
       const hooks = {
         onPlaceRequested: opts.onPlaceRequested || null,   // (normalized) => void
         onEditRequested: opts.onEditRequested || null,     // (annotation) => void
         onMoved: opts.onMoved || null,                     // (annotation) => Promise
         onModeChange: opts.onModeChange || null,           // (armed) => void
+        onArrowDrawn: opts.onArrowDrawn || null,           // ({start,end}) => void
+        onArrowMoved: opts.onArrowMoved || null,           // (annotation) => void
+        onArrowSelected: opts.onArrowSelected || null,     // (annotation|null) => void
+        onArrowModeChange: opts.onArrowModeChange || null, // (armed) => void
       };
 
       function viewSize() {
@@ -2470,8 +2764,11 @@ window.WM = (function () {
         applyTransform();
         interaction.cancelAll(gesture);
         labelState = labelInteraction.createLabelState();
+        routeState = routeInteraction.createRouteState();
         annotations = new Map();
-        if (el.labels) { while (el.labels.firstChild) el.labels.removeChild(el.labels.firstChild); }
+        [el.labels, el.routes, el.selection].forEach(function (layer) {
+          if (layer) { while (layer.firstChild) layer.removeChild(layer.firstChild); }
+        });
         setPlaceholderVisible(true);
       }
 
@@ -2510,6 +2807,10 @@ window.WM = (function () {
         el.svg.setAttribute('width', String(width));
         el.svg.setAttribute('height', String(height));
         el.svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+        if (el.background) {
+          el.background.setAttribute('width', String(width));
+          el.background.setAttribute('height', String(height));
+        }
 
         setPlaceholderVisible(false);
         el.image.hidden = false;
@@ -2581,15 +2882,294 @@ window.WM = (function () {
         return g;
       }
 
+      /**
+       * Draw one arrow.
+       *
+       * Endpoints live in stage coordinates and ride the single stage transform,
+       * so they stay glued to the plan. `vector-effect: non-scaling-stroke` keeps
+       * the line a constant weight on screen without a second transform — the
+       * SVG-native answer to the same problem the labels solve with inverse scale.
+       *
+       * A wide transparent stroke sits under the visible one so a thin arrow is
+       * still practical to hit with a finger.
+       */
+      /**
+       * Arrowhead outline, in screen pixels, pointing along +x with its tip at the
+       * origin so translate+rotate places it exactly on endpoint B.
+       */
+      /** Arrowhead size in SCREEN pixels, converted to stage units at render time. */
+      const HEAD_LENGTH_PX = 13;
+      const HEAD_WIDTH_PX = 11;
+      const HEAD_NOTCH = 0.25;
+
+      /**
+       * Visible arrow line width in SCREEN pixels.
+       *
+       * Applied as an explicit stage-unit stroke-width, NOT via
+       * vector-effect: non-scaling-stroke. Blink honours that property under a
+       * CSS-transformed parent; physical iOS Safari does not, and the line grew to
+       * tens of pixels at high zoom. Dividing by the stage scale is engine
+       * independent — the same principle already proven for the arrowhead and the
+       * hit stroke.
+       */
+      const VISIBLE_ARROW_STROKE_PX = 1.5;
+
+      /**
+       * How far short of endpoint B the VISIBLE shaft stops, in screen pixels.
+       *
+       * The shaft used to run to B with a round linecap, which paints a semicircle
+       * half a stroke-width PAST the endpoint — a small yellow blob beyond the
+       * arrow tip. Stopping short buries the cap inside the head's fill instead.
+       * B itself is untouched: it remains the logical tip, the hit segment and the
+       * handle anchor.
+       */
+      const SHAFT_NECK_OFFSET_PX = 4;
+
+      /**
+       * Selected arrows draw a heavier shaft. An explicit screen-pixel target
+       * rather than a multiplier: both weights are then stated outright and a
+       * change to one cannot silently move the other.
+       */
+      const SELECTED_ARROW_STROKE_PX = 2.5;
+
+      /** Effective touch width for an arrow, in stage units. */
+      const HIT_TARGET_PX = 40;
+      /** Visible line width in stage units for the current zoom. */
+      function lineWidthForScale(selected) {
+        const scale = view.scale > 0 ? view.scale : 1;
+        const px = selected ? SELECTED_ARROW_STROKE_PX : VISIBLE_ARROW_STROKE_PX;
+        return px / scale;
+      }
+
+      /**
+       * Where the visible shaft stops: short of B along the A->B bearing, so the
+       * round cap cannot protrude past the tip. Rendering only.
+       */
+      function shaftEnd(a, b) {
+        const scale = view.scale > 0 ? view.scale : 1;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const back = SHAFT_NECK_OFFSET_PX / scale;
+        // Never invert a very short arrow: clamp the shortening to its length.
+        if (!(len > 1e-9) || back >= len) return { x: a.x, y: a.y };
+        return { x: b.x - (dx / len) * back, y: b.y - (dy / len) * back };
+      }
+
+      function hitWidthForScale() {
+        const scale = view.scale > 0 ? view.scale : 1;
+        return HIT_TARGET_PX / scale;
+      }
+
+      function renderArrow(annotation) {
+        const g = doc.createElementNS(SVG_NS, 'g');
+        g.setAttribute('class', 'wm-arrow'
+          + (routeInteraction.getSelected(routeState) === annotation.id ? ' selected' : ''));
+        g.setAttribute('data-annotation-id', annotation.id);
+
+        const a = geometry.denormalizePoint(annotation.a, stageSize);
+        const b = geometry.denormalizePoint(annotation.b, stageSize);
+
+        const hit = doc.createElementNS(SVG_NS, 'line');
+        hit.setAttribute('x1', a.x); hit.setAttribute('y1', a.y);
+        hit.setAttribute('x2', b.x); hit.setAttribute('y2', b.y);
+        hit.setAttribute('class', 'wm-arrow-hit');
+        // Width is set in user units, not left to non-scaling-stroke: Chromium
+        // hit-tests a non-scaling stroke against its UNSCALED width, so at fit
+        // scale the touch target silently shrank to a few pixels. Dividing by the
+        // stage scale keeps roughly HIT_TARGET_PX of finger room at every zoom.
+        hit.setAttribute('stroke-width', String(hitWidthForScale()));
+
+        const selected = routeInteraction.getSelected(routeState) === annotation.id;
+        const neck = shaftEnd(a, b);
+        const line = doc.createElementNS(SVG_NS, 'line');
+        line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+        // Stops SHORT of B so the round cap cannot protrude past the tip; the
+        // arrowhead covers the remainder. B itself is unchanged.
+        line.setAttribute('x2', neck.x); line.setAttribute('y2', neck.y);
+        line.setAttribute('class', 'wm-arrow-line');
+        // Explicit stage-unit width, recomputed on zoom. See VISIBLE_ARROW_STROKE_PX.
+        line.setAttribute('stroke-width', String(lineWidthForScale(selected)));
+
+        g.appendChild(hit);
+        g.appendChild(line);
+        g.appendChild(renderArrowHead(a, b));
+        return g;
+      }
+
+      /**
+       * The arrowhead, as geometry rather than an SVG <marker>.
+       *
+       * A marker sizes itself in markerUnits, which defaults to strokeWidth — so
+       * the head was 7 x 2.5 = 17.5 USER units and rode the stage transform,
+       * measuring 3.4px at fit and 70px at 4x. `non-scaling-stroke` does not help:
+       * it changes how the stroke is painted, not the user-space width a marker
+       * multiplies by. No marker configuration gives constant screen size here.
+       *
+       * Instead the head is a path translated to endpoint B, rotated to the A->B
+       * bearing and scaled by 1/stageScale — the same local compensation the wire
+       * labels use. It is a LOCAL transform inside the one stage transform, not a
+       * second viewport.
+       */
+      function renderArrowHead(a, b) {
+        const head = doc.createElementNS(SVG_NS, 'path');
+        head.setAttribute('class', 'wm-arrow-head');
+          head.setAttribute('d', arrowHeadPath(a, b));
+          // No transform: the computed path data already carries the size.
+        return head;
+      }
+
+      /**
+       * Arrowhead as explicit stage-space geometry.
+       *
+       * Two earlier approaches failed. An SVG <marker> sizes itself in markerUnits
+       * and rides the stage transform. A nested scale(1/stageScale) transform
+       * measures correctly in Blink but does NOT render equivalently in physical
+       * iOS Safari, where the head was invisible at fit.
+       *
+       * Nothing here relies on a nested transform: the desired screen size is
+       * divided by the stage scale and the triangle's points are computed around
+       * endpoint B from the A->B unit vector and its perpendicular. The path DATA
+       * changes with zoom, which every engine renders identically.
+       */
+      function arrowHeadPath(a, b, scaleOverride) {
+        const scale = Number.isFinite(scaleOverride) && scaleOverride > 0
+          ? scaleOverride : (view.scale > 0 ? view.scale : 1);
+        const length = HEAD_LENGTH_PX / scale;
+        const halfWidth = (HEAD_WIDTH_PX / scale) / 2;
+
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        // A zero-length arrow has no bearing; point it along +x rather than NaN.
+        const ux = len > 1e-9 ? dx / len : 1;
+        const uy = len > 1e-9 ? dy / len : 0;
+        const px = -uy;
+        const py = ux;
+
+        const baseX = b.x - ux * length;
+        const baseY = b.y - uy * length;
+        const notchX = b.x - ux * length * (1 - HEAD_NOTCH);
+        const notchY = b.y - uy * length * (1 - HEAD_NOTCH);
+
+        const f = (x, y) => x.toFixed(3) + ',' + y.toFixed(3);
+        return 'M' + f(b.x, b.y)                                      // tip IS endpoint B
+          + ' L' + f(baseX + px * halfWidth, baseY + py * halfWidth)
+          + ' L' + f(notchX, notchY)
+          + ' L' + f(baseX - px * halfWidth, baseY - py * halfWidth)
+          + ' Z';
+      }
+
+      /**
+       * Endpoint handles for the selected arrow, drawn in the selection layer so
+       * they are visibly transient and never persisted or exported.
+       *
+       * The visible handle stays small; a larger transparent circle behind it
+       * provides a finger-sized target.
+       */
+      function renderSelection() {
+        if (!el.selection || !stageSize) return;
+        while (el.selection.firstChild) el.selection.removeChild(el.selection.firstChild);
+        const id = routeInteraction.getSelected(routeState);
+        if (!id) return;
+        const arrow = annotations.get(id);
+        if (!arrow || arrow.type !== 'arrow') return;
+
+        const inverse = labelInteraction.labelCounterScale(view.scale);
+        [['a', arrow.a], ['b', arrow.b]].forEach(([which, normalized]) => {
+          const point = geometry.denormalizePoint(normalized, stageSize);
+          const g = doc.createElementNS(SVG_NS, 'g');
+          g.setAttribute('class', 'wm-endpoint');
+          g.setAttribute('data-annotation-id', id);
+          g.setAttribute('data-endpoint', which);
+          g.setAttribute('transform',
+            'translate(' + point.x + ',' + point.y + ') scale(' + inverse + ')');
+          const target = doc.createElementNS(SVG_NS, 'circle');
+          target.setAttribute('r', '22');            // ~44px effective touch target
+          target.setAttribute('class', 'wm-endpoint-target');
+          const dot = doc.createElementNS(SVG_NS, 'circle');
+          dot.setAttribute('r', '7');
+          dot.setAttribute('class', 'wm-endpoint-dot');
+          g.appendChild(target);
+          g.appendChild(dot);
+          el.selection.appendChild(g);
+        });
+      }
+
+      /** Live preview while an arrow is being drawn. Never persisted. */
+      function renderDraft(start, end) {
+        if (!el.selection || !stageSize) return;
+        let draft = doc.getElementById('wm-draft-arrow');
+        if (!start || !end) {
+          if (draft && draft.parentNode) draft.parentNode.removeChild(draft);
+          return;
+        }
+        const a = geometry.denormalizePoint(start, stageSize);
+        const b = geometry.denormalizePoint(end, stageSize);
+        if (!draft) {
+          draft = doc.createElementNS(SVG_NS, 'line');
+          draft.setAttribute('id', 'wm-draft-arrow');
+          draft.setAttribute('class', 'wm-arrow-line wm-arrow-draft');
+          el.selection.appendChild(draft);
+        }
+        draft.setAttribute('x1', a.x); draft.setAttribute('y1', a.y);
+        draft.setAttribute('x2', b.x); draft.setAttribute('y2', b.y);
+      }
+
+      function renderRoutes() {
+        if (!el.routes || !stageSize) return;
+        while (el.routes.firstChild) el.routes.removeChild(el.routes.firstChild);
+        annotations.forEach((a) => {
+          if (a.type === 'arrow') el.routes.appendChild(renderArrow(a));
+        });
+        renderSelection();
+      }
+
       /** Redraw every label. Cheap at MVP scale and keeps state in one place. */
       function renderLabels() {
         if (!el.labels || !stageSize) return;
         while (el.labels.firstChild) el.labels.removeChild(el.labels.firstChild);
-        annotations.forEach((a) => el.labels.appendChild(renderLabel(a)));
+        annotations.forEach((a) => {
+          if (a.type === 'wireLabel') el.labels.appendChild(renderLabel(a));
+        });
+        renderRoutes();
       }
 
       /** Keep label bodies a constant screen size as the plan zooms. */
       function rescaleLabels() {
+        renderSelection();   // endpoint handles are inverse-scaled too
+        if (el.routes) {
+          // Keep the arrow touch target a constant screen size as the plan zooms.
+          const w = String(hitWidthForScale());
+          const hits = el.routes.querySelectorAll ? el.routes.querySelectorAll('.wm-arrow-hit') : [];
+          for (let i = 0; i < hits.length; i++) hits[i].setAttribute('stroke-width', w);
+          const groups = el.routes.querySelectorAll ? el.routes.querySelectorAll('.wm-arrow') : [];
+          for (let i = 0; i < groups.length; i++) {
+            const group = groups[i];
+            const arrow = annotations.get(group.getAttribute('data-annotation-id'));
+            const line = group.querySelector && group.querySelector('.wm-arrow-line');
+            if (!arrow || !line) continue;
+            const selected = routeInteraction.getSelected(routeState) === arrow.id;
+            line.setAttribute('stroke-width', String(lineWidthForScale(selected)));
+            // The neck is a screen-space offset, so it must be recomputed too.
+            const neck = shaftEnd(geometry.denormalizePoint(arrow.a, stageSize),
+              geometry.denormalizePoint(arrow.b, stageSize));
+            line.setAttribute('x2', neck.x);
+            line.setAttribute('y2', neck.y);
+          }
+
+          // The head is inverse-scaled, so it must be re-emitted on every zoom.
+          const heads = el.routes.querySelectorAll ? el.routes.querySelectorAll('.wm-arrow') : [];
+          for (let j = 0; j < heads.length; j++) {
+            const group = heads[j];
+            const arrow = annotations.get(group.getAttribute('data-annotation-id'));
+            const head = group.querySelector && group.querySelector('.wm-arrow-head');
+            if (!arrow || !head) continue;
+              head.setAttribute('d', arrowHeadPath(
+              geometry.denormalizePoint(arrow.a, stageSize),
+              geometry.denormalizePoint(arrow.b, stageSize)));
+          }
+        }
         if (!el.labels || !stageSize) return;
         const inverse = labelInteraction.labelCounterScale(view.scale);
         const nodes = el.labels.childNodes;
@@ -2597,7 +3177,7 @@ window.WM = (function () {
           const node = nodes[i];
           const id = node.getAttribute && node.getAttribute('data-annotation-id');
           const a = id && annotations.get(id);
-          if (!a) continue;
+          if (!a || a.type !== 'wireLabel') continue;
           const anchor = geometry.denormalizePoint(a.at, stageSize);
           node.setAttribute('transform',
             'translate(' + anchor.x + ',' + anchor.y + ') scale(' + inverse + ')');
@@ -2636,6 +3216,26 @@ window.WM = (function () {
         if (hooks.onModeChange) hooks.onModeChange(false);
       }
 
+      // ── Arrow mode ──────────────────────────────────────────────────────
+      function armArrow() {
+        labelInteraction.disarmPlacement(labelState);
+        if (hooks.onModeChange) hooks.onModeChange(false);
+        routeInteraction.armDraw(routeState);
+        if (hooks.onArrowModeChange) hooks.onArrowModeChange(true);
+      }
+
+      function disarmArrow() {
+        routeInteraction.disarmDraw(routeState);
+        renderDraft(null, null);
+        if (hooks.onArrowModeChange) hooks.onArrowModeChange(false);
+      }
+
+      function selectArrow(id) {
+        routeInteraction.select(routeState, id);
+        renderRoutes();
+        if (hooks.onArrowSelected) hooks.onArrowSelected(id ? annotations.get(id) : null);
+      }
+
       // ── Pointer handling ────────────────────────────────────────────────
       // Pointer Events only. No parallel mouse and touch paths.
 
@@ -2644,16 +3244,39 @@ window.WM = (function () {
         return { id: e.pointerId, x: e.clientX - r.left, y: e.clientY - r.top };
       }
 
-      /** The annotation id under this event, if the press landed on a label. */
-      function labelIdFrom(target) {
+      /** Walk up to the nearest ancestor carrying an attribute. */
+      function attrFrom(target, name) {
         let node = target;
         while (node && node !== el.viewport) {
-          if (node.getAttribute && node.getAttribute('data-annotation-id')) {
-            return node.getAttribute('data-annotation-id');
-          }
+          if (node.getAttribute && node.getAttribute(name)) return node.getAttribute(name);
           node = node.parentNode;
         }
         return null;
+      }
+
+      /** The annotation id under this event, if any. */
+      function labelIdFrom(target) {
+        return attrFrom(target, 'data-annotation-id');
+      }
+
+      /** The id only when the press landed on an arrow group. */
+      function arrowIdFrom(target) {
+        let node = target;
+        while (node && node !== el.viewport) {
+          const cls = node.getAttribute && node.getAttribute('class');
+          // Match the GROUP, whose class is exactly "wm-arrow" (plus an optional
+          // "selected"). A prefix test would also match the child line's
+          // "wm-arrow-hit", which carries no id — the press would then be lost.
+          if (cls && /(^|\s)wm-arrow(\s|$)/.test(cls)) return node.getAttribute('data-annotation-id');
+          node = node.parentNode;
+        }
+        return null;
+      }
+
+      function capture(e) {
+        if (el.viewport.setPointerCapture) {
+          try { el.viewport.setPointerCapture(e.pointerId); } catch (_) { /* already captured */ }
+        }
       }
 
       function nowMs() {
@@ -2668,9 +3291,39 @@ window.WM = (function () {
         // One physical iOS touch also emits a synthesised mouse pair. Ignoring the
         // duplicate here is what stops a single tap creating two labels.
         if (labelInteraction.isCompatibilityDuplicate(labelState, type, point, nowMs())) return;
+        pressedBackground = false;   // reset before any branch can return
         labelInteraction.noteInput(labelState, type, point, nowMs());
 
         lastViewSize = viewSize();
+
+        // Endpoint handles win over everything: they sit on top and are small.
+        const handle = attrFrom(e.target, 'data-endpoint');
+        if (handle) {
+          const arrowId = labelIdFrom(e.target);
+          const arrow = arrowId && annotations.get(arrowId);
+          if (arrow) {
+            capture(e);
+            routeInteraction.endpointDown(routeState, arrowId, handle, point, arrow[handle]);
+            if (e.stopPropagation) e.stopPropagation();
+            return;
+          }
+        }
+
+        // Arrow mode: a drag on the plan draws.
+        if (routeInteraction.isArmed(routeState)) {
+          capture(e);
+          routeInteraction.drawStart(routeState, point, view, stageSize);
+          if (e.stopPropagation) e.stopPropagation();
+          return;
+        }
+
+        const arrowId = arrowIdFrom(e.target);
+        if (arrowId && annotations.has(arrowId)) {
+          capture(e);
+          selectArrow(arrowId);
+          if (e.stopPropagation) e.stopPropagation();
+          return;
+        }
 
         const labelId = labelIdFrom(e.target);
         if (labelId && annotations.has(labelId)) {
@@ -2683,6 +3336,14 @@ window.WM = (function () {
           return;
         }
 
+        // Nothing above claimed the press, so it landed on empty space: the
+        // background surface, the letterboxing beside the sheet, or the image.
+        // Deciding it HERE rather than by element identity matters — at fit the
+        // plan occupies only part of the viewport, so a tap "well away from the
+        // arrow" often lands outside the sheet rect entirely. That is exactly
+        // where the iPhone deselect failed.
+        pressedBackground = true;
+
         if (el.viewport.setPointerCapture) {
           try { el.viewport.setPointerCapture(e.pointerId); } catch (_) { /* already captured */ }
         }
@@ -2691,6 +3352,26 @@ window.WM = (function () {
 
       function onPointerMove(e) {
         if (!stageSize) return;
+
+        if (routeInteraction.hasPressedEndpoint(routeState)) {
+          const r = routeInteraction.endpointMove(routeState, localPoint(e), view, stageSize);
+          if (r.moved && r.normalized) {
+            const d = routeState.endpointDrag;
+            const arrow = annotations.get(d.id);
+            // Live visual only; the write happens once, on release.
+            if (arrow) {
+              annotations.set(d.id, routeInteraction.withEndpoint(arrow, r.which, r.normalized));
+              renderRoutes();
+            }
+          }
+          return;   // an endpoint drag never pans the plan
+        }
+
+        if (routeInteraction.isDrawing(routeState)) {
+          const r = routeInteraction.drawMove(routeState, localPoint(e), view, stageSize);
+          if (r.drawing) renderDraft(r.start, r.end);
+          return;
+        }
 
         if (labelInteraction.hasPressedLabel(labelState)) {
           const r = labelInteraction.labelPointerMove(labelState, localPoint(e), view, stageSize);
@@ -2715,6 +3396,33 @@ window.WM = (function () {
         if (!stageSize) return;
         const point = localPoint(e);
 
+        // Record where the touch ENDED, not only where it began. WebKit's
+        // synthesised mouse pair follows the release point, so after a drag the
+        // suppression window has to track that — otherwise the compatibility click
+        // lands somewhere new and is treated as a fresh gesture.
+        labelInteraction.noteInput(labelState, e.pointerType || 'mouse', point, nowMs());
+
+        if (routeInteraction.hasPressedEndpoint(routeState)) {
+          const outcome = routeInteraction.endpointUp(routeState);
+          release(e);
+          if (outcome.action === 'move' && hooks.onArrowMoved) {
+            const arrow = annotations.get(outcome.id);
+            if (arrow) hooks.onArrowMoved(routeInteraction.withEndpoint(arrow, outcome.which, outcome.normalized));
+          }
+          return;
+        }
+
+        if (routeInteraction.isDrawing(routeState)) {
+          const outcome = routeInteraction.drawEnd(routeState);
+          release(e);
+          renderDraft(null, null);
+          disarmArrow();
+          if (outcome.action === 'commit' && hooks.onArrowDrawn) {
+            hooks.onArrowDrawn({ start: outcome.start, end: outcome.end });
+          }
+          return;
+        }
+
         if (labelInteraction.hasPressedLabel(labelState)) {
           const outcome = labelInteraction.labelPointerUp(labelState);
           if (el.viewport.releasePointerCapture) {
@@ -2726,6 +3434,23 @@ window.WM = (function () {
             const a = annotations.get(outcome.id);
             if (a) hooks.onMoved({ ...a, at: outcome.normalized });   // one write, at the end
           }
+          return;
+        }
+
+        // A tap on the explicit background surface clears the selection.
+        //
+        // Driven by where the press LANDED, not by inferring that nothing else
+        // handled it. Inference passed in Blink but failed on physical iOS Safari.
+        // Still gated so a real drag cannot deselect, and it runs after the
+        // compatibility check, so the synthesised iOS pair cannot double-fire.
+        if (pressedBackground
+          && !labelInteraction.isArmed(labelState)
+          && !routeInteraction.isArmed(routeState)
+          && gesture.mode !== 'pan' && gesture.mode !== 'pinch'
+          && routeInteraction.getSelected(routeState)) {
+          interaction.pointerUp(gesture, e.pointerId, view);
+          pressedBackground = false;
+          selectArrow(null);
           return;
         }
 
@@ -2749,7 +3474,30 @@ window.WM = (function () {
         // gesture here fires twice for one finger. See interaction.js.
       }
 
+      function release(e) {
+        if (el.viewport.releasePointerCapture) {
+          try { el.viewport.releasePointerCapture(e.pointerId); } catch (_) { /* not captured */ }
+        }
+      }
+
       function onPointerCancel() {
+        pressedBackground = false;
+        if (routeInteraction.hasPressedEndpoint(routeState)) {
+          const outcome = routeInteraction.endpointCancel(routeState);
+          if (outcome.action === 'revert' && outcome.id) {
+            const arrow = annotations.get(outcome.id);
+            if (arrow) {
+              annotations.set(outcome.id,
+                routeInteraction.withEndpoint(arrow, outcome.which, outcome.normalized));
+              renderRoutes();
+            }
+          }
+        }
+        if (routeInteraction.isDrawing(routeState)) {
+          routeInteraction.drawCancel(routeState);
+          renderDraft(null, null);
+          disarmArrow();
+        }
         if (labelInteraction.hasPressedLabel(labelState)) {
           const outcome = labelInteraction.labelPointerCancel(labelState);
           if (outcome.action === 'revert' && outcome.id) {
@@ -2823,6 +3571,15 @@ window.WM = (function () {
         armPlacement,
         disarmPlacement,
         isArmed: () => labelInteraction.isArmed(labelState),
+        armArrow,
+        disarmArrow,
+        isArrowArmed: () => routeInteraction.isArmed(routeState),
+        selectArrow,
+        getSelectedArrow: () => routeInteraction.getSelected(routeState),
+        // Temporary WM-6A diagnostics for physical-device testing.
+        getScale: () => view.scale,
+        getHeadTargetPx: () => ({ length: HEAD_LENGTH_PX, width: HEAD_WIDTH_PX }),
+        getHeadStageLength: () => HEAD_LENGTH_PX / (view.scale > 0 ? view.scale : 1),
         renderLabels,
         hasImage: () => stageSize !== null,
         isPlaceholderVisible: () => !!(el.empty && !el.empty.hidden),
@@ -2833,8 +3590,11 @@ window.WM = (function () {
         getObjectUrl: () => objectUrl,
         getGestureMode: () => gesture.mode,
         getActivePointers: () => interaction.activeCount(gesture),
-        // Exposed for the browser check; not used by the page itself.
-        _setViewport: setViewport,
+        // Exposed for the browser check; not used by the page itself. It rescales
+        // too, so the hook mirrors the production zoom path exactly — otherwise
+        // derived visuals (hit widths, arrowheads, handles) go stale and the
+        // browser tests measure a state the app never actually reaches.
+        _setViewport: function (v) { setViewport(v); rescaleLabels(); },
       };
     }
 
@@ -2849,6 +3609,7 @@ window.WM = (function () {
   api["image"] = __require("image");
   api["interaction"] = __require("interaction");
   api["labelInteraction"] = __require("labelInteraction");
+  api["routeInteraction"] = __require("routeInteraction");
   api["app"] = __require("app");
   return api;
 })();
@@ -2892,6 +3653,9 @@ window.WM = (function () {
     var fileInput = document.getElementById('wm-dev-file');
     var loadBtn = document.getElementById('wm-dev-load');
     var addBtn = document.getElementById('wm-add-label');
+    var arrowBtn = document.getElementById('wm-add-arrow');
+    var delArrowBtn = document.getElementById('wm-delete-arrow');
+    var arrowHint = document.getElementById('wm-arrow-hint');
     var status = document.getElementById('wm-dev-status');
     var hint = document.getElementById('wm-arm-hint');
     var vpEl = document.getElementById('wm-viewport');
@@ -2933,6 +3697,17 @@ window.WM = (function () {
       onPlaceRequested: function (normalized) { openEditor(null, normalized); },
       onEditRequested: function (a) { if (a) openEditor(a, null); },
       onMoved: function (a) { persistMove(a); },
+      onArrowModeChange: function (armed) {
+        if (arrowHint) arrowHint.hidden = !armed;
+        vpEl.classList.toggle('armed', armed);
+        arrowBtn.textContent = armed ? 'Cancel Arrow' : 'Add Arrow';
+      },
+      onArrowSelected: function (a) {
+        delArrowBtn.hidden = !a;
+        report(a ? 'Selected arrow' : 'Deselected');
+      },
+      onArrowDrawn: function (ends) { createArrow(ends); },
+      onArrowMoved: function (a) { persistArrow(a, 'Moved endpoint'); },
       onModeChange: function (armed) {
         if (hint) hint.hidden = !armed;
         vpEl.classList.toggle('armed', armed);
@@ -3004,6 +3779,44 @@ window.WM = (function () {
         .catch(fail);
     }
 
+    function createArrow(ends) {
+      if (!currentSheetId) { fail({ message: 'No sheet loaded.' }); return; }
+      var now = Date.now();
+      var arrow = WM.model.createAnnotation({ id: uid('arw'), sheetId: currentSheetId,
+        type: 'arrow', a: ends.start, b: ends.end, now: now });
+      var check = WM.model.validateAnnotation(arrow);
+      if (!check.valid) { fail({ message: check.problems.join('; ') }); return; }
+      withDb(function (db) { return db.putAnnotation(arrow); })
+        .then(function () { stage.upsertAnnotation(arrow); report('Arrow created'); })
+        .catch(fail);
+    }
+
+    function persistArrow(a, what) {
+      var next = WM.model.createAnnotation({ id: a.id, sheetId: a.sheetId, type: 'arrow',
+        a: a.a, b: a.b, now: a.createdAt });
+      next.updatedAt = Date.now();
+      withDb(function (db) { return db.putAnnotation(next); })
+        .then(function () { stage.upsertAnnotation(next); report(what); })
+        .catch(fail);
+    }
+
+    arrowBtn.addEventListener('click', function () {
+      if (stage.isArrowArmed()) stage.disarmArrow(); else stage.armArrow();
+    });
+
+    delArrowBtn.addEventListener('click', function () {
+      var id = stage.getSelectedArrow();
+      if (!id) return;
+      withDb(function (db) { return db.deleteAnnotation(id); })
+        .then(function () {
+          stage.selectArrow(null);
+          stage.removeAnnotation(id);
+          delArrowBtn.hidden = true;
+          report('Arrow deleted');
+        })
+        .catch(fail);
+    });
+
     addBtn.addEventListener('click', function () {
       if (stage.isArmed()) stage.disarmPlacement(); else stage.armPlacement();
     });
@@ -3011,7 +3824,13 @@ window.WM = (function () {
     function report(extra) {
       status.innerHTML =
         line('Sheet', currentSheetId || 'none') +
-        line('Labels', stage.getAnnotationCount()) +
+        line('Annotations', stage.getAnnotationCount()) +
+        // TEMPORARY WM-6A diagnostics — removed with the probe.
+        line('Selected arrow', stage.getSelectedArrow() || 'none') +
+        line('Stage scale', stage.getScale().toFixed(4)) +
+        line('Arrowhead target', stage.getHeadTargetPx().length + '\u00D7'
+          + stage.getHeadTargetPx().width + ' px \u2192 '
+          + stage.getHeadStageLength().toFixed(1) + ' stage units') +
         (extra ? line('Last', extra) : '');
     }
 
