@@ -2825,12 +2825,646 @@ async function runText(engineName, engine) {
   return { engine: engineName, available: true, detail: R, checks, errs };
 }
 
+// ── WM-7: wire lookup ───────────────────────────────────────────────────────
+async function runLookup(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  const dialogs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  page.on('dialog', async (d) => { dialogs.push(d.message()); await d.dismiss(); });
+  await page.goto(APP);
+
+  const R = {};
+  const closeLookup = () => page.evaluate(() => {
+    document.getElementById('wm-lookup').hidden = true;
+  });
+
+  // Seed one job with three sheets and labels, through the real store.
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    await db.putJob(WM.model.createJob({ id: 'wm-dev-job', name: 'Wire Map Development', now }));
+    const sheets = [
+      { id: 'sh1', name: 'Kitchen Plan', order: 0 },
+      { id: 'sh2', name: 'Bedroom Plan', order: 1 },
+      { id: 'sh3', name: 'Roof Plan', order: 2 },
+    ];
+    for (const s of sheets) {
+      await db.putSheet(WM.model.createSheet({ id: s.id, jobId: 'wm-dev-job', name: s.name,
+        kind: 'blank', width: 2000, height: 1500, order: s.order, now }));
+    }
+    const mk = (id, sheetId, at, data) => WM.model.createAnnotation({ id, sheetId,
+      type: 'wireLabel', at, now, data });
+    await db.putAnnotation(mk('l1', 'sh1', { x: 0.30, y: 0.40 }, { label: 'HR-07',
+      from: 'Panel A', to: 'Kitchen', cable: '12/2 MC', room: 'Kitchen',
+      notes: 'home run above ceiling' }));
+    await db.putAnnotation(mk('l2', 'sh2', { x: 0.55, y: 0.60 }, { label: 'HR-08',
+      from: 'Panel A', to: 'Bedroom', cable: '12/2 MC', room: 'Bedroom' }));
+    await db.putAnnotation(mk('l3', 'sh3', { x: 0.02, y: 0.98 }, { label: 'HR-07',
+      from: 'Panel B', to: 'Roof', cable: '10/2 MC', room: 'Roof',
+      notes: '<script>alert(1)</script>' }));
+    // A second job that must never leak into results.
+    await db.putJob(WM.model.createJob({ id: 'other-job', name: 'Other', now }));
+    await db.putSheet(WM.model.createSheet({ id: 'shX', jobId: 'other-job', name: 'Other Plan',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    await db.putAnnotation(mk('lx', 'shX', { x: 0.5, y: 0.5 }, { label: 'HR-99', room: 'Kitchen' }));
+    await db.setMeta('currentSheetId', 'sh1');
+    db.closeDatabase();
+  });
+  await closeLookup(); await page.click('#wm-dev-load');
+  await page.waitForFunction(() => window.__wmStage.getAnnotationCount() > 0, { timeout: 20000 });
+  await page.waitForTimeout(300);
+
+  const doSearch = async (q) => {
+    await page.evaluate(() => { document.getElementById('wm-lookup').hidden = true; });
+    await page.click('#wm-lookup-open');
+    await page.fill('#wm-lookup-query', q);
+    await page.click('#wm-lookup-search');
+    await page.waitForTimeout(350);
+    return page.evaluate(() => ({
+      count: document.getElementById('wm-lookup-count').textContent,
+      cards: Array.from(document.querySelectorAll('.result')).map(c => ({
+        label: c.querySelector('.result-label').textContent,
+        sheet: c.querySelector('.result-sheet').textContent,
+        sheetId: c.getAttribute('data-sheet-id'),
+        annId: c.getAttribute('data-annotation-id'),
+        text: c.textContent })),
+      scriptNodes: document.querySelectorAll('#wm-lookup script').length,
+      modalInView: (() => { const r = document.querySelector('#wm-lookup .sheet-panel').getBoundingClientRect();
+        return r.left >= -1 && r.right <= window.innerWidth + 1 && r.width > 0; })(),
+    }));
+  };
+
+  R.exact = await doSearch('HR-07');
+  R.spaced = await doSearch('hr 07');
+  R.underscore = await doSearch('HR_07');
+  R.room = await doSearch('Kitchen');
+  R.cable = await doSearch('12/2');
+  R.none = await doSearch('nonexistent-value');
+  R.xss = await doSearch('<script>');
+  R.empty = await doSearch('   ');
+
+  // navigate to a result on another sheet
+  R.beforeNav = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const cur = await db.getMeta('currentSheetId'); db.closeDatabase();
+    return { current: cur, labels: document.querySelectorAll('.wm-label').length };
+  });
+  await doSearch('HR-08');
+  await page.click('.result[data-annotation-id="l2"]');
+  await page.waitForTimeout(600);
+  R.afterNav = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const cur = await db.getMeta('currentSheetId'); db.closeDatabase();
+    const s = window.__wmStage;
+    const a = s.getAnnotation('l2');
+    const sz = s.getStageSize();
+    const scr = a ? WM.viewport.stageToScreen(WM.geometry.denormalizePoint(a.at, sz), s.getViewport()) : null;
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    return { current: cur, lookupClosed: document.getElementById('wm-lookup').hidden,
+      editorClosed: document.getElementById('wm-editor').hidden,
+      labels: document.querySelectorAll('.wm-label').length,
+      hasL2: !!a, anchor: a ? a.at : null,
+      offCentre: scr ? Math.round(Math.hypot(scr.x - el.width / 2, scr.y - el.height / 2)) : null,
+      finite: Number.isFinite(s.getViewport().translateX) && Number.isFinite(s.getViewport().scale) };
+  });
+
+  // same-sheet focus must preserve zoom
+  await page.evaluate(() => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    s._setViewport(WM.viewport.centerOnNormalized({ x: 0.5, y: 0.5 }, sz,
+      { width: el.width, height: el.height }, s.getViewport(), 4));
+    s.renderLabels();
+  });
+  const zoomBefore = await page.evaluate(() => window.__wmStage.getViewport().scale);
+  await doSearch('HR-08');
+  await page.click('.result[data-annotation-id="l2"]');
+  await page.waitForTimeout(400);
+  R.sameSheet = await page.evaluate((z) => ({
+    scaleKept: Math.abs(window.__wmStage.getViewport().scale - z) < 1e-6,
+    scale: window.__wmStage.getViewport().scale }), zoomBefore);
+
+  // edge label focus must clamp legally
+  await doSearch('Roof');
+  await page.click('.result[data-annotation-id="l3"]');
+  await page.waitForTimeout(600);
+  R.edge = await page.evaluate(() => {
+    const s = window.__wmStage, v = s.getViewport();
+    const a = s.getAnnotation('l3');
+    return { finite: Number.isFinite(v.translateX) && Number.isFinite(v.translateY) && Number.isFinite(v.scale),
+      anchorUnchanged: a && a.at.x === 0.02 && a.at.y === 0.98,
+      current: document.querySelectorAll('.wm-label').length };
+  });
+
+  // edit then search: no stale results
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    await db.setMeta('currentSheetId', 'sh1'); db.closeDatabase();
+  });
+  await closeLookup(); await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const a = await db.getAnnotation('l1');
+    const next = WM.model.createAnnotation({ id: a.id, sheetId: a.sheetId, type: 'wireLabel',
+      at: a.at, now: a.createdAt, data: Object.assign({}, a.data, { label: 'HR-21' }) });
+    await db.putAnnotation(next); db.closeDatabase();
+  });
+  R.afterEdit = { old: (await doSearch('HR-07')).cards.length,
+    neu: (await doSearch('HR-21')).cards.length };
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    await db.deleteAnnotation('l1'); db.closeDatabase();
+  });
+  R.afterDelete = (await doSearch('HR-21')).cards.length;
+
+  // cross-job isolation
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    await db.setMeta('currentSheetId', 'shX'); db.closeDatabase();
+  });
+  await closeLookup(); await page.click('#wm-dev-load'); await page.waitForTimeout(500);
+  R.otherJob = (await doSearch('HR')).cards.map(c => c.label);
+
+
+  // ── responsive: the Lookup control and modal must fit every target width ──
+  R.responsive = [];
+  for (const vp of [{ width: 390, height: 844 }, { width: 375, height: 667 },
+    { width: 844, height: 390 }]) {
+    await page.setViewportSize(vp);
+    await page.waitForTimeout(250);
+    await page.evaluate(() => { document.getElementById('wm-lookup').hidden = false; });
+    await page.waitForTimeout(150);
+    R.responsive.push(await page.evaluate((w) => {
+      const inView = (el) => { if (!el) return false; const r = el.getBoundingClientRect();
+        return r.left >= -1 && r.right <= w + 1 && r.width > 0 && r.height > 0; };
+      const bar = document.querySelector('.devbar');
+      const panel = document.querySelector('#wm-lookup .sheet-panel');
+      const results = document.getElementById('wm-lookup-results');
+      return { width: w,
+        docOverflows: document.documentElement.scrollWidth > w,
+        barOverflows: bar.scrollWidth > bar.clientWidth + 1,
+        openBtn: inView(document.getElementById('wm-lookup-open')),
+        panel: inView(panel),
+        input: inView(document.getElementById('wm-lookup-query')),
+        searchBtn: inView(document.getElementById('wm-lookup-search')),
+        closeBtn: inView(document.getElementById('wm-lookup-close')),
+        resultsScroll: getComputedStyle(results).overflowY === 'auto',
+        cardsFit: Array.from(document.querySelectorAll('.result'))
+          .every((c) => c.getBoundingClientRect().right <= w + 1) };
+    }, vp.width));
+    await page.evaluate(() => { document.getElementById('wm-lookup').hidden = true; });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  await browser.close();
+
+  const exactIds = R.exact.cards.map((c) => c.annId);
+  const checks = [
+    ['an exact label search finds both sheets, exact first',
+      R.exact.cards.length === 2 && exactIds[0] === 'l1' && exactIds[1] === 'l3'],
+    ['results name the real sheets, not database ids',
+      R.exact.cards[0].sheet === 'Kitchen Plan' && R.exact.cards[1].sheet === 'Roof Plan'],
+    ['"hr 07" normalizes to the same two results',
+      R.spaced.cards.map((c) => c.annId).join() === exactIds.join()],
+    ['"HR_07" normalizes to the same two results',
+      R.underscore.cards.map((c) => c.annId).join() === exactIds.join()],
+    ['DUPLICATE labels on two sheets are both shown',
+      R.exact.cards.length === 2 && R.exact.cards[0].sheetId !== R.exact.cards[1].sheetId],
+    ['room metadata finds the wire', R.room.cards.length === 1 && R.room.cards[0].annId === 'l1'],
+    ['cable metadata finds both 12/2 wires', R.cable.cards.length === 2],
+    ['a miss gives a clean zero state',
+      R.none.cards.length === 0 && /No matching/.test(R.none.count)],
+    ['an empty query prompts instead of searching',
+      R.empty.cards.length === 0 && /Enter a wire label/.test(R.empty.count)],
+    ['XSS: HTML-looking metadata renders literally, no script node',
+      R.xss.cards.length === 1
+      && R.xss.cards[0].text.indexOf('<script>alert(1)</script>') !== -1
+      && R.xss.scriptNodes === 0],
+    ['XSS: no dialog fired', dialogs.length === 0],
+    ['tapping a result switches the current sheet in meta',
+      R.beforeNav.current === 'sh1' && R.afterNav.current === 'sh2'],
+    ['navigation closes Lookup and does NOT open the label editor',
+      R.afterNav.lookupClosed && R.afterNav.editorClosed],
+    ['only the target sheet\'s annotations are rendered',
+      R.afterNav.labels === 1 && R.afterNav.hasL2],
+    ['the matched label is brought near the viewport centre',
+      R.afterNav.offCentre !== null && R.afterNav.offCentre < 60 && R.afterNav.finite],
+    ['navigation does not mutate the stored anchor',
+      R.afterNav.anchor.x === 0.55 && R.afterNav.anchor.y === 0.6],
+    ['a same-sheet result PRESERVES the current zoom', R.sameSheet.scaleKept],
+    ['an edge label clamps legally with no NaN transform',
+      R.edge.finite && R.edge.anchorUnchanged],
+    ['editing a label updates search results with no stale cache',
+      R.afterEdit.old === 1 && R.afterEdit.neu === 1],
+    ['deleting a label removes it from search', R.afterDelete === 0],
+    ['NO CROSS-JOB LEAKAGE: another job sees only its own labels',
+      R.otherJob.length === 1 && R.otherJob[0] === 'HR-99'],
+    ['no horizontal overflow at any tested width',
+      R.responsive.every((r) => !r.docOverflows && !r.barOverflows)],
+    ['Lookup control and modal are reachable at every width',
+      R.responsive.every((r) => r.openBtn && r.panel)],
+    ['input, Search and Close are reachable at every width',
+      R.responsive.every((r) => r.input && r.searchBtn && r.closeBtn)],
+    ['the results area scrolls and cards do not overflow',
+      R.responsive.every((r) => r.resultsScroll && r.cardsFit)],
+    ['no page errors during the whole lookup flow', errs.length === 0],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
+// ── WM-7: normal interaction after Lookup closes ────────────────────────────
+async function runLookupAftermath(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  await page.goto(APP);
+
+  const fire = (t, id, x, y, pt) => page.evaluate(({ t, id, x, y, pt }) => {
+    const el = document.getElementById('wm-viewport'); const r = el.getBoundingClientRect();
+    const tg = document.elementFromPoint(r.left + x, r.top + y) || el;
+    tg.dispatchEvent(new PointerEvent(t, { pointerId: id, clientX: r.left + x,
+      clientY: r.top + y, bubbles: true, pointerType: pt || 'touch' }));
+  }, { t, id, x, y, pt });
+  const tap = async (x, y, id, pt) => {
+    await fire('pointerdown', id, x, y, pt); await fire('pointerup', id, x, y, pt);
+    await page.waitForTimeout(180);
+  };
+  const drag = async (id, from, to) => {
+    await fire('pointerdown', id, from.x, from.y);
+    for (const f of [0.4, 0.8, 1]) {
+      await fire('pointermove', id, from.x + (to.x - from.x) * f, from.y + (to.y - from.y) * f);
+    }
+    await fire('pointerup', id, to.x, to.y);
+    await page.waitForTimeout(300);
+  };
+  const at = (n) => page.evaluate((nn) => {
+    const s = window.__wmStage;
+    return WM.viewport.stageToScreen(WM.geometry.denormalizePoint(nn, s.getStageSize()), s.getViewport());
+  }, n);
+
+  // Two sheets in one job, the first carrying every annotation type.
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    await db.putJob(WM.model.createJob({ id: 'wm-dev-job', name: 'Wire Map Development', now }));
+    for (const [id, name, order] of [['ah1', 'Main Plan', 0], ['ah2', 'Second Plan', 1]]) {
+      await db.putSheet(WM.model.createSheet({ id, jobId: 'wm-dev-job', name, kind: 'blank',
+        width: 2000, height: 1500, order, now }));
+    }
+    const ann = (o) => WM.model.createAnnotation(Object.assign({ sheetId: 'ah1', now }, o));
+    await db.putAnnotation(ann({ id: 'k-label', type: 'wireLabel', at: { x: 0.70, y: 0.20 },
+      data: { label: 'HR-07', from: 'Panel A', to: 'Kitchen' } }));
+    await db.putAnnotation(ann({ id: 'k-arrow', type: 'arrow',
+      a: { x: 0.20, y: 0.48 }, b: { x: 0.60, y: 0.48 } }));
+    await db.putAnnotation(ann({ id: 'k-line', type: 'line',
+      a: { x: 0.20, y: 0.72 }, b: { x: 0.60, y: 0.72 } }));
+    await db.putAnnotation(ann({ id: 'k-rect', type: 'rect',
+      a: { x: 0.25, y: 0.88 }, b: { x: 0.65, y: 0.97 } }));
+    await db.putAnnotation(ann({ id: 'k-text', type: 'text', at: { x: 0.30, y: 0.30 },
+      data: { text: 'Panel A' } }));
+    await db.putAnnotation(ann({ id: 'k-far', sheetId: 'ah2', type: 'wireLabel',
+      at: { x: 0.55, y: 0.60 }, data: { label: 'HR-42', from: 'Panel B', to: 'Roof' } }));
+    await db.setMeta('currentSheetId', 'ah1');
+    db.closeDatabase();
+  });
+  await page.click('#wm-dev-load');
+  await page.waitForFunction(() => window.__wmStage.getAnnotationCount() >= 5, { timeout: 20000 });
+  await page.waitForTimeout(300);
+
+  const R = {};
+  const openAndSearch = async (q) => {
+    await page.click('#wm-lookup-open');
+    await page.fill('#wm-lookup-query', q);
+    await page.click('#wm-lookup-search');
+    await page.waitForTimeout(350);
+    return page.evaluate(() => document.querySelectorAll('.result').length);
+  };
+
+  // ── 1. close leaves a clean, non-blocking state ──
+  R.resultsRendered = await openAndSearch('HR');
+  await page.click('#wm-lookup-close');
+  await page.waitForTimeout(200);
+  R.afterClose = await page.evaluate(() => {
+    const modal = document.getElementById('wm-lookup');
+    const s = window.__wmStage;
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    // What actually sits at the centre of the plan now? If the backdrop is
+    // still there it will answer here, and every gesture below would fail.
+    const mid = document.elementFromPoint(el.left + el.width / 2, el.top + el.height / 2);
+    return { hidden: modal.hidden, display: getComputedStyle(modal).display,
+      painted: modal.getBoundingClientRect().width > 0,
+      elementAtPlanCentre: mid ? (mid.id || mid.getAttribute('class') || mid.tagName) : 'null',
+      backdropIntercepts: !!(mid && mid.closest && mid.closest('#wm-lookup')),
+      tool: s.activeSketchTool(), gesture: s.getGestureMode(),
+      pointers: s.getActivePointers(),
+      selectedSketch: s.getSelectedSketch(), selectedArrow: s.getSelectedArrow(),
+      labelEditor: !document.getElementById('wm-editor').hidden,
+      textEditor: !document.getElementById('wm-text-editor').hidden,
+      annotations: s.getAnnotationCount() };
+  });
+
+  // ── 2. pan, then pinch ──
+  await page.evaluate(() => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    s._setViewport(WM.viewport.centerOnNormalized({ x: 0.5, y: 0.5 }, sz,
+      { width: el.width, height: el.height }, s.getViewport(), 3));
+    s.renderLabels();
+  });
+  await page.waitForTimeout(150);
+  const beforePan = await page.evaluate(() => window.__wmStage.getViewport());
+  const empty = await at({ x: 0.5, y: 0.12 });
+  await drag(60, empty, { x: empty.x + 90, y: empty.y + 20 });
+  R.pan = await page.evaluate((b) => {
+    const v = window.__wmStage.getViewport();
+    return { panned: Math.abs(v.translateX - b.translateX) > 20,
+      scaleKept: v.scale === b.scale,
+      lookupStillClosed: document.getElementById('wm-lookup').hidden,
+      annotations: window.__wmStage.getAnnotationCount() };
+  }, beforePan);
+
+  R.pinch = await page.evaluate(() => {
+    const vpEl = document.getElementById('wm-viewport');
+    const el = vpEl.getBoundingClientRect();
+    const s = window.__wmStage;
+    const before = s.getViewport().scale;
+    const send = (t, id, x, y) => vpEl.dispatchEvent(new PointerEvent(t, { pointerId: id,
+      clientX: el.left + x, clientY: el.top + y, bubbles: true, pointerType: 'touch' }));
+    send('pointerdown', 71, 150, 300); send('pointerdown', 72, 250, 300);
+    send('pointermove', 72, 360, 300);
+    const zoomed = s.getViewport().scale;
+    send('pointerup', 71, 150, 300); send('pointerup', 72, 360, 300);
+    return { changed: zoomed > before, pointers: s.getActivePointers(),
+      gesture: s.getGestureMode() };
+  });
+
+  await page.evaluate(() => window.__wmStage.fit());
+  await page.waitForTimeout(200);
+
+  // ── 3. label: tap to edit, cancel, then drag ──
+  let p = await at({ x: 0.70, y: 0.20 });
+  await tap(p.x, p.y, 61);
+  R.labelTap = await page.evaluate(() => ({
+    open: !document.getElementById('wm-editor').hidden,
+    value: document.getElementById('wm-f-label').value,
+    lookupClosed: document.getElementById('wm-lookup').hidden }));
+  await page.click('#wm-editor-cancel');
+  await page.waitForTimeout(200);
+  const beforeLabelDrag = await page.evaluate(() => ({
+    at: window.__wmStage.getAnnotation('k-label').at,
+    view: JSON.stringify(window.__wmStage.getViewport()) }));
+  p = await at(beforeLabelDrag.at);
+  // Run the gesture and read the transform inside ONE evaluate. Waiting for the
+  // async persist would span the status-line update, whose height change
+  // triggers a legitimate ResizeObserver refit that has nothing to do with the
+  // drag — the same trap that once made an endpoint drag look like a pan.
+  R.labelDrag = await page.evaluate((arg) => {
+    const s = window.__wmStage;
+    const vpEl = document.getElementById('wm-viewport');
+    const el = vpEl.getBoundingClientRect();
+    const send = (t, x, y) => {
+      const tg = document.elementFromPoint(el.left + x, el.top + y) || vpEl;
+      tg.dispatchEvent(new PointerEvent(t, { pointerId: 62, clientX: el.left + x,
+        clientY: el.top + y, bubbles: true, pointerType: 'touch' }));
+    };
+    const before = JSON.stringify(s.getViewport());
+    send('pointerdown', arg.p.x, arg.p.y);
+    [25, 50, 70].forEach((d) => send('pointermove', arg.p.x + d, arg.p.y + d * 0.64));
+    send('pointerup', arg.p.x + 70, arg.p.y + 45);
+    const after = JSON.stringify(s.getViewport());
+    const a = s.getAnnotation('k-label');
+    return { moved: JSON.stringify(a.at) !== JSON.stringify(arg.at),
+      stageStill: after === before,
+      normalized: a.at.x >= 0 && a.at.x <= 1 && a.at.y >= 0 && a.at.y <= 1 };
+  }, { p, at: beforeLabelDrag.at });
+  await page.waitForTimeout(300);
+
+  // ── 4. arrow: select, then endpoint drag ──
+  p = await at({ x: 0.40, y: 0.48 });
+  await tap(p.x, p.y, 63);
+  R.arrowSelect = await page.evaluate(() => ({ id: window.__wmStage.getSelectedArrow(),
+    handles: document.querySelectorAll('.wm-endpoint').length }));
+  const handleA = await page.evaluate(() => {
+    const t = document.querySelector('.wm-endpoint[data-endpoint="a"] .wm-endpoint-target');
+    if (!t) return null;
+    const r = t.getBoundingClientRect();
+    const vp = document.getElementById('wm-viewport').getBoundingClientRect();
+    return { x: r.left + r.width / 2 - vp.left, y: r.top + r.height / 2 - vp.top };
+  });
+  const beforeEndpoint = await page.evaluate(() => ({
+    a: window.__wmStage.getAnnotation('k-arrow').a,
+    view: window.__wmStage.getViewport() }));
+  if (handleA) await drag(64, handleA, { x: handleA.x + 60, y: handleA.y + 35 });
+  R.arrowEndpoint = await page.evaluate((b) => {
+    const s = window.__wmStage; const a = s.getAnnotation('k-arrow');
+    const v = s.getViewport();
+    return { moved: JSON.stringify(a.a) !== JSON.stringify(b.a),
+      stageDelta: { dx: v.translateX - b.view.translateX, dy: v.translateY - b.view.translateY } };
+  }, beforeEndpoint);
+  await page.evaluate(() => window.__wmStage.selectArrow(null));
+
+  // ── 5. sketch: line, rectangle, text ──
+  p = await at({ x: 0.40, y: 0.72 });
+  await tap(p.x, p.y, 65);
+  R.lineSelect = await page.evaluate(() => ({ id: window.__wmStage.getSelectedSketch(),
+    handles: document.querySelectorAll('.wm-sketch-handle').length }));
+  const lineHandle = await page.evaluate(() => {
+    const t = document.querySelector('.wm-sketch-handle[data-handle="a"] .wm-endpoint-target');
+    if (!t) return null;
+    const r = t.getBoundingClientRect();
+    const vp = document.getElementById('wm-viewport').getBoundingClientRect();
+    return { x: r.left + r.width / 2 - vp.left, y: r.top + r.height / 2 - vp.top };
+  });
+  const beforeLine = await page.evaluate(() => ({ a: window.__wmStage.getAnnotation('k-line').a,
+    view: window.__wmStage.getViewport() }));
+  if (lineHandle) await drag(66, lineHandle, { x: lineHandle.x + 55, y: lineHandle.y + 30 });
+  R.lineDrag = await page.evaluate((b) => {
+    const s = window.__wmStage; const v = s.getViewport();
+    return { moved: JSON.stringify(s.getAnnotation('k-line').a) !== JSON.stringify(b.a),
+      stageDelta: { dx: v.translateX - b.view.translateX, dy: v.translateY - b.view.translateY } };
+  }, beforeLine);
+
+  p = await at({ x: 0.45, y: 0.88 });
+  await tap(p.x, p.y, 67);
+  R.rectSelect = await page.evaluate(() => ({ id: window.__wmStage.getSelectedSketch(),
+    handles: document.querySelectorAll('.wm-sketch-handle').length }));
+  const corner = await page.evaluate(() => {
+    const t = document.querySelector('.wm-sketch-handle[data-handle="nw"] .wm-endpoint-target');
+    if (!t) return null;
+    const r = t.getBoundingClientRect();
+    const vp = document.getElementById('wm-viewport').getBoundingClientRect();
+    return { x: r.left + r.width / 2 - vp.left, y: r.top + r.height / 2 - vp.top };
+  });
+  const beforeRect = await page.evaluate(() => ({
+    geom: JSON.stringify({ a: window.__wmStage.getAnnotation('k-rect').a,
+      b: window.__wmStage.getAnnotation('k-rect').b }),
+    view: window.__wmStage.getViewport() }));
+  if (corner) await drag(68, corner, { x: corner.x + 40, y: corner.y + 25 });
+  R.rectDrag = await page.evaluate((b) => {
+    const s = window.__wmStage; const a = s.getAnnotation('k-rect'); const v = s.getViewport();
+    return { moved: JSON.stringify({ a: a.a, b: a.b }) !== b.geom,
+      stageDelta: { dx: v.translateX - b.view.translateX, dy: v.translateY - b.view.translateY } };
+  }, beforeRect);
+  await page.evaluate(() => window.__wmStage.selectSketch(null));
+
+  p = await at({ x: 0.30, y: 0.30 });
+  await tap(p.x + 20, p.y - 8, 69);
+  R.textTap = await page.evaluate(() => ({ open: !document.getElementById('wm-text-editor').hidden,
+    value: document.getElementById('wm-text-value').value }));
+  await page.click('#wm-text-cancel');
+  await page.waitForTimeout(200);
+  const beforeText = await page.evaluate(() => ({ at: window.__wmStage.getAnnotation('k-text').at,
+    view: JSON.stringify(window.__wmStage.getViewport()) }));
+  p = await at(beforeText.at);
+  await drag(70, { x: p.x + 20, y: p.y - 8 }, { x: p.x + 95, y: p.y + 35 });
+  R.textDrag = await page.evaluate((b) => {
+    const s = window.__wmStage;
+    return { moved: JSON.stringify(s.getAnnotation('k-text').at) !== JSON.stringify(b.at),
+      stageStill: JSON.stringify(s.getViewport()) === b.view,
+      editorClosed: document.getElementById('wm-text-editor').hidden };
+  }, beforeText);
+
+  // ── 6. cross-sheet navigation, then normal interaction on the target ──
+  await openAndSearch('HR-42');
+  await page.click('.result[data-annotation-id="k-far"]');
+  await page.waitForTimeout(700);
+  R.afterNav = await page.evaluate(() => {
+    const modal = document.getElementById('wm-lookup');
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    const mid = document.elementFromPoint(el.left + el.width / 2, el.top + el.height / 2);
+    const s = window.__wmStage;
+    return { lookupHidden: modal.hidden,
+      backdropIntercepts: !!(mid && mid.closest && mid.closest('#wm-lookup')),
+      labelEditor: !document.getElementById('wm-editor').hidden,
+      annotations: s.getAnnotationCount(), hasFar: !!s.getAnnotation('k-far'),
+      pointers: s.getActivePointers(), gesture: s.getGestureMode() };
+  });
+  const navPanBefore = await page.evaluate(() => window.__wmStage.getViewport());
+  const navEmpty = await at({ x: 0.15, y: 0.15 });
+  await drag(80, navEmpty, { x: navEmpty.x + 80, y: navEmpty.y + 30 });
+  R.navPan = await page.evaluate((b) => {
+    const v = window.__wmStage.getViewport();
+    return { panned: Math.abs(v.translateX - b.translateX) > 10
+      || Math.abs(v.translateY - b.translateY) > 10 };
+  }, navPanBefore);
+  p = await at(await page.evaluate(() => window.__wmStage.getAnnotation('k-far').at));
+  await tap(p.x, p.y, 81);
+  R.navLabelTap = await page.evaluate(() => ({
+    open: !document.getElementById('wm-editor').hidden,
+    value: document.getElementById('wm-f-label').value }));
+  await page.click('#wm-editor-cancel');
+  await page.waitForTimeout(200);
+
+  // ── 7. iOS: touch close followed by the synthesised mouse pair ──
+  await openAndSearch('HR');
+  const beforeIos = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const cur = await db.getMeta('currentSheetId'); db.closeDatabase();
+    return { current: cur, annotations: window.__wmStage.getAnnotationCount() };
+  });
+  await page.evaluate(() => {
+    const btn = document.getElementById('wm-lookup-close');
+    ['pointerdown', 'pointerup', 'click'].forEach((t) => btn.dispatchEvent(
+      t === 'click' ? new MouseEvent(t, { bubbles: true })
+        : new PointerEvent(t, { pointerId: 91, bubbles: true, pointerType: 'touch' })));
+    // WebKit's synthesised pair on the same spot.
+    ['pointerdown', 'pointerup', 'click'].forEach((t) => btn.dispatchEvent(
+      t === 'click' ? new MouseEvent(t, { bubbles: true })
+        : new PointerEvent(t, { pointerId: 92, bubbles: true, pointerType: 'mouse' })));
+  });
+  await page.waitForTimeout(400);
+  R.ios = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const cur = await db.getMeta('currentSheetId'); db.closeDatabase();
+    const s = window.__wmStage;
+    return { current: cur, lookupHidden: document.getElementById('wm-lookup').hidden,
+      labelEditor: !document.getElementById('wm-editor').hidden,
+      annotations: s.getAnnotationCount(), pointers: s.getActivePointers() };
+  });
+  // A genuine touch on the plan must still work right afterwards.
+  p = await at(await page.evaluate(() => window.__wmStage.getAnnotation('k-far').at));
+  await tap(p.x, p.y, 93, 'touch');
+  R.touchAfterIos = await page.evaluate(() => !document.getElementById('wm-editor').hidden);
+
+  await browser.close();
+
+  const zeroDelta = (d) => d && d.dx === 0 && d.dy === 0;
+  const checks = [
+    ['closing Lookup hides the modal and its backdrop',
+      R.resultsRendered > 0 && R.afterClose.hidden && R.afterClose.display === 'none'
+      && !R.afterClose.painted],
+    ['the closed modal does not intercept pointer events over the plan',
+      !R.afterClose.backdropIntercepts],
+    ['closing Lookup leaves tool, gesture and pointer state clean',
+      R.afterClose.tool === 'none' && R.afterClose.gesture === 'idle'
+      && R.afterClose.pointers === 0 && !R.afterClose.labelEditor && !R.afterClose.textEditor],
+    ['closing Lookup leaves no stale selection', R.afterClose.selectedSketch === null
+      && R.afterClose.selectedArrow === null],
+    ['panning works immediately after closing Lookup',
+      R.pan.panned && R.pan.scaleKept && R.pan.lookupStillClosed],
+    ['panning after close moves no annotation', R.pan.annotations === R.afterClose.annotations],
+    ['pinch works after closing Lookup',
+      R.pinch.changed && R.pinch.pointers === 0 && R.pinch.gesture === 'idle'],
+    ['tapping a Wire Label after close opens its editor',
+      R.labelTap.open && R.labelTap.value === 'HR-07' && R.labelTap.lookupClosed],
+    ['dragging a Wire Label after close moves only the label',
+      R.labelDrag.moved && R.labelDrag.stageStill && R.labelDrag.normalized],
+    ['selecting an Arrow after close still works',
+      R.arrowSelect.id === 'k-arrow' && R.arrowSelect.handles === 2],
+    ['an Arrow endpoint drag after close leaves the stage delta at zero',
+      R.arrowEndpoint.moved && zeroDelta(R.arrowEndpoint.stageDelta)],
+    ['selecting a sketch Line after close still works',
+      R.lineSelect.id === 'k-line' && R.lineSelect.handles === 2],
+    ['a Line endpoint drag after close leaves the stage delta at zero',
+      R.lineDrag.moved && zeroDelta(R.lineDrag.stageDelta)],
+    ['selecting a Rectangle after close shows four corner handles',
+      R.rectSelect.id === 'k-rect' && R.rectSelect.handles === 4],
+    ['a Rectangle corner drag after close leaves the stage delta at zero',
+      R.rectDrag.moved && zeroDelta(R.rectDrag.stageDelta)],
+    ['tapping Text after close opens its editor',
+      R.textTap.open && R.textTap.value === 'Panel A'],
+    ['dragging Text after close moves it without panning',
+      R.textDrag.moved && R.textDrag.stageStill && R.textDrag.editorClosed],
+    ['result navigation leaves no invisible modal over the plan',
+      R.afterNav.lookupHidden && !R.afterNav.backdropIntercepts && !R.afterNav.labelEditor],
+    ['the target sheet loads with only its own annotations',
+      R.afterNav.hasFar && R.afterNav.annotations === 1
+      && R.afterNav.pointers === 0 && R.afterNav.gesture === 'idle'],
+    ['panning works immediately after result navigation', R.navPan.panned],
+    ['tapping the focused label after navigation opens its editor',
+      R.navLabelTap.open && R.navLabelTap.value === 'HR-42'],
+    ['iOS: a touch close plus its compatibility pair closes once, loads nothing twice',
+      R.ios.lookupHidden && R.ios.current === beforeIos.current
+      && R.ios.annotations === beforeIos.annotations && !R.ios.labelEditor
+      && R.ios.pointers === 0],
+    ['iOS: a genuine touch on the plan works right after', R.touchAfterIos],
+    ['no page errors through the whole aftermath sequence', errs.length === 0],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
 (async () => {
   const engines = [['chromium', playwright.chromium], ['webkit', playwright.webkit]];
   let failures = 0;
 
   for (const [name, engine] of engines) {
-    for (const [suite, fn] of [['image + EXIF', run], ['viewport + pointers', runViewport], ['wire labels', runLabels], ['label text', runLabelText], ['arrows', runArrows], ['arrow tip', runArrowTip], ['sketch', runSketch], ['hit priority', runPriority], ['control layout', runControlLayout], ['sketch text', runText]]) {
+    for (const [suite, fn] of [['image + EXIF', run], ['viewport + pointers', runViewport], ['wire labels', runLabels], ['label text', runLabelText], ['arrows', runArrows], ['arrow tip', runArrowTip], ['sketch', runSketch], ['hit priority', runPriority], ['control layout', runControlLayout], ['sketch text', runText], ['wire lookup', runLookup], ['lookup aftermath', runLookupAftermath]]) {
     const result = await fn(name, engine);
     console.log(`\n=== ${name.toUpperCase()} — ${suite} ===`);
     if (!result.available) {

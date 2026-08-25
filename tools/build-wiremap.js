@@ -52,6 +52,7 @@ const MODULES = [
   'routeInteraction',
   'sketchInteraction',
   'undoStack',
+  'search',
   'app',
 ];
 

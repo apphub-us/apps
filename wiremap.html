@@ -182,6 +182,28 @@
     vector-effect: non-scaling-stroke; pointer-events: none;
   }
 
+  /* ── Wire Lookup (temporary dev UI) ── */
+  .lookup-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .lookup-row input { flex: 1; min-width: 0; }
+  .results { max-height: 46dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .result {
+    width: 100%; text-align: left; display: block;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer;
+  }
+  .result:active { border-color: var(--accent); }
+  .result-label {
+    font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 14px;
+    color: var(--accent); margin-bottom: 2px;
+  }
+  .result-sheet { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+  .result-line {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text);
+    overflow-wrap: anywhere;
+  }
+  .result-notes { font-size: 11px; color: var(--text-dim); margin-top: 4px; overflow-wrap: anywhere; }
+  .result-count { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
+
   /* ── Sketch tray (temporary dev UI) ── */
   .tray {
     /* Full width on its own row when open. */
@@ -346,6 +368,7 @@
       <button type="button" id="wm-add-arrow">Add Arrow</button>
       <button type="button" id="wm-delete-arrow" hidden>Delete Arrow</button>
       <button type="button" id="wm-sketch-toggle">Sketch</button>
+      <button type="button" id="wm-lookup-open">Lookup</button>
     </div>
     <div class="tray" id="wm-sketch-tray">
       <button type="button" id="wm-blank-sheet">New Blank Sheet</button>
@@ -3342,6 +3365,187 @@ window.WM = (function () {
     };
   };
 
+  // ---- src/wiremap/search.js ----
+  __reg["search"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Wire Map — wire label search (WM-7).
+     *
+     * Pure. No DOM, no IndexedDB, no viewport.
+     *
+     * Takes plain wire-label annotations plus their sheet metadata and returns
+     * ranked, stably ordered results. The caller does the store reads and the
+     * navigation; nothing here knows how either works.
+     *
+     * Label normalization is NOT reimplemented: model.toLabelKey owns it, so a
+     * query typed as "hr 07", "HR_07" or "HR-07" matches the same labels the model
+     * already considers equivalent.
+     */
+
+    const model = require('./model');
+
+    /** How many results the caller should render. The total is reported separately. */
+    const MAX_VISIBLE_RESULTS = 50;
+
+    /**
+     * Match tiers, highest first. Exact label identity always outranks anything
+     * found in metadata — an electrician searching HR-07 wants HR-07, not every
+     * wire that happens to run to the same room.
+     */
+    const RANK = {
+      EXACT_LABEL: 100,
+      LABEL_PREFIX: 80,
+      LABEL_SUBSTRING: 60,
+      FROM: 40,
+      TO: 38,
+      CABLE: 36,
+      ROOM: 34,
+      NOTES: 20,
+    };
+
+    /** Fields searched beyond the label itself, in descending priority. */
+    const METADATA_FIELDS = [
+      { key: 'from', rank: RANK.FROM },
+      { key: 'to', rank: RANK.TO },
+      { key: 'cable', rank: RANK.CABLE },
+      { key: 'room', rank: RANK.ROOM },
+      { key: 'notes', rank: RANK.NOTES },
+    ];
+
+    function asText(value) {
+      return typeof value === 'string' ? value : '';
+    }
+
+    /** Case-insensitive comparison form for free-text fields. */
+    function fold(value) {
+      return asText(value).trim().toLowerCase();
+    }
+
+    /**
+     * Normalize a raw query.
+     * @returns {{raw:string, folded:string, labelKey:string}|null} null when empty.
+     */
+    function normalizeQuery(raw) {
+      const text = asText(raw).trim();
+      if (!text) return null;
+      return { raw: text, folded: text.toLowerCase(), labelKey: model.toLabelKey(text) };
+    }
+
+    /**
+     * Classify one wire label against a normalized query.
+     * @returns {{rank:number, field:string}|null}
+     */
+    function classify(annotation, query) {
+      if (!annotation || annotation.type !== 'wireLabel' || !query) return null;
+      const data = annotation.data || {};
+
+      // The stored labelKey is model-derived; fall back to deriving it so a record
+      // written before that guarantee still matches.
+      const labelKey = asText(data.labelKey) || model.toLabelKey(asText(data.label));
+      const labelFolded = fold(data.label);
+
+      if (labelKey && query.labelKey && labelKey === query.labelKey) {
+        return { rank: RANK.EXACT_LABEL, field: 'label' };
+      }
+      if (labelFolded && query.folded) {
+        if (labelFolded.indexOf(query.folded) === 0) return { rank: RANK.LABEL_PREFIX, field: 'label' };
+        if (labelFolded.indexOf(query.folded) > 0) return { rank: RANK.LABEL_SUBSTRING, field: 'label' };
+      }
+      // A normalized-key prefix catches "hr 0" against "HR-07" too.
+      if (query.labelKey && labelKey && labelKey.indexOf(query.labelKey) === 0) {
+        return { rank: RANK.LABEL_PREFIX, field: 'label' };
+      }
+
+      for (const spec of METADATA_FIELDS) {
+        const value = fold(data[spec.key]);
+        if (value && query.folded && value.indexOf(query.folded) !== -1) {
+          return { rank: spec.rank, field: spec.key };
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Rank wire labels against a query.
+     *
+     * @param {string} rawQuery
+     * @param {Array} annotations wire-label annotations, any sheet
+     * @param {Array} sheets [{id, name, order}] providing display names and order
+     * @param {object} [options] { limit }
+     * @returns {{query:object|null, results:Array, total:number, truncated:boolean}}
+     */
+    function search(rawQuery, annotations, sheets, options) {
+      const limit = (options && Number.isFinite(options.limit) && options.limit > 0)
+        ? options.limit : MAX_VISIBLE_RESULTS;
+      const query = normalizeQuery(rawQuery);
+      if (!query) return { query: null, results: [], total: 0, truncated: false };
+
+      const sheetById = new Map();
+      (sheets || []).forEach((s, i) => {
+        if (s && s.id) sheetById.set(s.id, { name: asText(s.name), order: Number.isFinite(s.order) ? s.order : i });
+      });
+
+      const matched = [];
+      (annotations || []).forEach((a) => {
+        const hit = classify(a, query);
+        if (!hit) return;
+        const sheet = sheetById.get(a.sheetId) || { name: '', order: Number.MAX_SAFE_INTEGER };
+        const data = a.data || {};
+        matched.push({
+          annotationId: a.id,
+          sheetId: a.sheetId,
+          sheetName: sheet.name,
+          sheetOrder: sheet.order,
+          label: asText(data.label),
+          labelKey: asText(data.labelKey) || model.toLabelKey(asText(data.label)),
+          from: asText(data.from),
+          to: asText(data.to),
+          cable: asText(data.cable),
+          room: asText(data.room),
+          notes: asText(data.notes),
+          at: a.at,
+          rank: hit.rank,
+          matchedField: hit.field,
+        });
+      });
+
+      // Deterministic: score, then sheet order, then label, then id. Two genuine
+      // labels sharing a name are BOTH kept — HR-07 can legitimately exist on two
+      // sheets and hiding one would be a lie about the job.
+      matched.sort((a, b) => (b.rank - a.rank)
+        || (a.sheetOrder - b.sheetOrder)
+        || (a.labelKey < b.labelKey ? -1 : a.labelKey > b.labelKey ? 1 : 0)
+        || (a.annotationId < b.annotationId ? -1 : a.annotationId > b.annotationId ? 1 : 0));
+
+      return {
+        query,
+        results: matched.slice(0, limit),
+        total: matched.length,
+        truncated: matched.length > limit,
+      };
+    }
+
+    /** Short human summary of the result count, for the caller to display. */
+    function summarize(outcome, limit) {
+      const cap = Number.isFinite(limit) && limit > 0 ? limit : MAX_VISIBLE_RESULTS;
+      if (!outcome || !outcome.query) return 'Enter a wire label or related term.';
+      if (outcome.total === 0) return 'No matching wire labels.';
+      if (outcome.truncated) return cap + '+ results \u2014 refine your search';
+      return outcome.total === 1 ? '1 result' : outcome.total + ' results';
+    }
+
+    module.exports = {
+      MAX_VISIBLE_RESULTS,
+      RANK,
+      METADATA_FIELDS,
+      normalizeQuery,
+      classify,
+      search,
+      summarize,
+      fold,
+    };
+  };
+
   // ---- src/wiremap/app.js ----
   __reg["app"] = function (module, exports, require) {
     'use strict';
@@ -4274,7 +4478,30 @@ window.WM = (function () {
         if (hooks.onSketchToolChange) hooks.onSketchToolChange('none');
       }
 
-      function selectSketch(id) {
+      /**
+       * Bring a normalized sheet point as close to the viewport centre as the
+       * existing pan bounds legally allow.
+       *
+       * Delegates to viewport.centerOnNormalized, which already clamps — search
+       * must not weaken pan bounds to achieve perfect centering, and a label near
+       * an edge simply lands at the nearest legal position.
+       *
+       * @param {object} at normalized point
+       * @param {number} [scale] target scale; omit to keep the current zoom.
+       */
+      function focusOn(at, scale) {
+        if (!stageSize || !at) return false;
+        const size = viewSize();
+        if (!size || !(size.width > 0) || !(size.height > 0)) return false;
+        const next = viewportMath.centerOnNormalized(at, stageSize, size, view,
+          Number.isFinite(scale) && scale > 0 ? scale : view.scale);
+        if (!next || !Number.isFinite(next.scale)) return false;
+        setViewport(next);
+        rescaleLabels();
+        return true;
+      }
+
+        function selectSketch(id) {
         sketchInteraction.select(sketchState, id);
         renderSketch();
         renderSelection();
@@ -4869,6 +5096,7 @@ window.WM = (function () {
         selectSketch,
         getSelectedSketch: () => sketchInteraction.getSelected(sketchState),
         setSheet,
+        focusOn,
         isGridVisible: () => showGrid,
         recordCreate,
         recordContent: (before) => undoStack.pushContent(undo, before),
@@ -4914,11 +5142,29 @@ window.WM = (function () {
   api["routeInteraction"] = __require("routeInteraction");
   api["sketchInteraction"] = __require("sketchInteraction");
   api["undoStack"] = __require("undoStack");
+  api["search"] = __require("search");
   api["app"] = __require("app");
   return api;
 })();
 </script>
 <!-- WM-CORE:END -->
+
+  <!-- WM-7 Wire Lookup. Temporary dev UI alongside the probe. -->
+  <div class="sheet-backdrop" id="wm-lookup" hidden>
+    <div class="sheet-panel" role="dialog" aria-label="Wire Lookup">
+      <div class="sheet-title">WIRE LOOKUP</div>
+      <div class="lookup-row">
+        <input id="wm-lookup-query" type="text" autocomplete="off"
+               placeholder="HR-07, Kitchen, 12/2 MC">
+        <button type="button" class="primary" id="wm-lookup-search">Search</button>
+      </div>
+      <div class="result-count" id="wm-lookup-count">Enter a wire label or related term.</div>
+      <div class="results" id="wm-lookup-results"></div>
+      <div class="sheet-actions">
+        <button type="button" id="wm-lookup-close">Close</button>
+      </div>
+    </div>
+  </div>
 
   <!-- WM-6B2 sketch-text editor. Separate from the Wire Label editor on
        purpose: a caption is free text on the plan, a wire label is a
@@ -5427,9 +5673,16 @@ window.WM = (function () {
     });
 
     // ── load the current sheet, its image and its annotations ──
-    loadBtn.addEventListener('click', function () {
+    /**
+     * Load whichever sheet the meta store points at, render it and its
+     * annotations. Wire Lookup reuses this exact path — a second loader would
+     * be a second place for cross-sheet leakage to appear.
+     *
+     * @param {object} [focus] { at, scale } to centre after loading.
+     */
+    function loadCurrentSheet(focus) {
       status.textContent = 'Reading from IndexedDB\u2026';
-      withDb(function (db) {
+      return withDb(function (db) {
         return db.getMeta(META_CURRENT_SHEET).then(function (sheetId) {
           if (!sheetId) return null;
           return db.getSheet(sheetId).then(function (sheet) {
@@ -5471,7 +5724,149 @@ window.WM = (function () {
               line('Labels', r.annotations.length);
           });
         })
+        .then(function () {
+          if (!focus || !focus.at) return;
+          // Centre through the existing viewport helper, which already clamps
+          // to the legal pan bounds. No new transform, no anchor mutation.
+          stage.focusOn(focus.at, focus.scale);
+        })
         .catch(fail);
+    }
+
+    loadBtn.addEventListener('click', function () { loadCurrentSheet(null); });
+
+    // ── Wire Lookup ──
+    var lookup = document.getElementById('wm-lookup');
+    var lookupQuery = document.getElementById('wm-lookup-query');
+    var lookupCount = document.getElementById('wm-lookup-count');
+    var lookupResults = document.getElementById('wm-lookup-results');
+
+    function clearResults() {
+      while (lookupResults.firstChild) lookupResults.removeChild(lookupResults.firstChild);
+    }
+
+    /** Build one result card. Every value is user data, so textContent only. */
+    function resultCard(r) {
+      var card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'result';
+      card.setAttribute('data-sheet-id', r.sheetId);
+      card.setAttribute('data-annotation-id', r.annotationId);
+
+      var lbl = document.createElement('div');
+      lbl.className = 'result-label';
+      lbl.textContent = r.label;
+      card.appendChild(lbl);
+
+      var sheet = document.createElement('div');
+      sheet.className = 'result-sheet';
+      sheet.textContent = r.sheetName || 'Untitled sheet';
+      card.appendChild(sheet);
+
+      if (r.from || r.to) {
+        var route = document.createElement('div');
+        route.className = 'result-line';
+        route.textContent = (r.from || '?') + ' \u2192 ' + (r.to || '?');
+        card.appendChild(route);
+      }
+      if (r.cable || r.room) {
+        var meta = document.createElement('div');
+        meta.className = 'result-line';
+        meta.textContent = [r.cable, r.room].filter(Boolean).join(' \u00B7 ');
+        card.appendChild(meta);
+      }
+      if (r.notes) {
+        var notes = document.createElement('div');
+        notes.className = 'result-notes';
+        notes.textContent = r.notes;
+        card.appendChild(notes);
+      }
+      card.addEventListener('click', function () { navigateToResult(r); });
+      return card;
+    }
+
+    /**
+     * Read the CURRENT state of the store every time. Results are ephemeral:
+     * nothing is cached, so an edited or deleted label cannot linger.
+     */
+    function runLookup() {
+      var q = lookupQuery.value;
+      clearResults();
+      if (!WM.search.normalizeQuery(q)) {
+        lookupCount.textContent = WM.search.summarize({ query: null });
+        return Promise.resolve();
+      }
+      lookupCount.textContent = 'Searching\u2026';
+      return withDb(function (db) {
+        return db.getMeta(META_CURRENT_SHEET).then(function (sheetId) {
+          if (!sheetId) return null;
+          return db.getSheet(sheetId).then(function (sheet) {
+            if (!sheet) return null;
+            // Scope is the Job owning the current sheet. One listSheets read
+            // plus one listAnnotations read per sheet.
+            return db.listSheets(sheet.jobId).then(function (sheets) {
+              var ordered = sheets.slice().sort(function (a, b) {
+                return (a.order || 0) - (b.order || 0);
+              });
+              return Promise.all(ordered.map(function (sh) {
+                return db.listAnnotations(sh.id);
+              })).then(function (lists) {
+                var labels = [];
+                lists.forEach(function (list) {
+                  list.forEach(function (a) { if (a.type === 'wireLabel') labels.push(a); });
+                });
+                return { sheets: ordered, labels: labels };
+              });
+            });
+          });
+        });
+      })
+        .then(function (data) {
+          if (!data) {
+            lookupCount.textContent = 'No current job \u2014 import a plan or create a blank sheet.';
+            return;
+          }
+          var outcome = WM.search.search(q, data.labels, data.sheets);
+          lookupCount.textContent = WM.search.summarize(outcome);
+          outcome.results.forEach(function (r) { lookupResults.appendChild(resultCard(r)); });
+        })
+        .catch(function (e) {
+          lookupCount.textContent = 'Search failed: ' + ((e && e.message) || String(e));
+        });
+    }
+
+    /**
+     * Locating a wire is not editing it: this centres the label and stops.
+     * The label editor stays closed and normal tap-to-edit still works after.
+     */
+    function navigateToResult(r) {
+      lookup.hidden = true;
+      if (r.sheetId === currentSheetId) {
+        // Already here: keep the user's zoom and just pan to the label.
+        stage.focusOn(r.at, null);
+        report('Focused ' + r.label);
+        return;
+      }
+      withDb(function (db) { return db.setMeta(META_CURRENT_SHEET, r.sheetId); })
+        .then(function () { return loadCurrentSheet({ at: r.at, scale: null }); })
+        .then(function () { report('Focused ' + r.label); })
+        .catch(fail);
+    }
+
+    document.getElementById('wm-lookup-open').addEventListener('click', function () {
+      lookup.hidden = false;
+      lookupQuery.focus();
+    });
+    document.getElementById('wm-lookup-close').addEventListener('click', function () {
+      lookup.hidden = true;
+    });
+    document.getElementById('wm-lookup-search').addEventListener('click', function () {
+      runLookup();
+    });
+    lookupQuery.addEventListener('keydown', function (e) {
+      // Explicit Search or Enter only: searching per keystroke would invite
+      // stale async results for no benefit here.
+      if (e.key === 'Enter') { e.preventDefault(); runLookup(); }
     });
   })();
   </script>

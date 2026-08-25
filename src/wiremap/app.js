@@ -928,7 +928,30 @@ function createStageController(options) {
     if (hooks.onSketchToolChange) hooks.onSketchToolChange('none');
   }
 
-  function selectSketch(id) {
+  /**
+   * Bring a normalized sheet point as close to the viewport centre as the
+   * existing pan bounds legally allow.
+   *
+   * Delegates to viewport.centerOnNormalized, which already clamps — search
+   * must not weaken pan bounds to achieve perfect centering, and a label near
+   * an edge simply lands at the nearest legal position.
+   *
+   * @param {object} at normalized point
+   * @param {number} [scale] target scale; omit to keep the current zoom.
+   */
+  function focusOn(at, scale) {
+    if (!stageSize || !at) return false;
+    const size = viewSize();
+    if (!size || !(size.width > 0) || !(size.height > 0)) return false;
+    const next = viewportMath.centerOnNormalized(at, stageSize, size, view,
+      Number.isFinite(scale) && scale > 0 ? scale : view.scale);
+    if (!next || !Number.isFinite(next.scale)) return false;
+    setViewport(next);
+    rescaleLabels();
+    return true;
+  }
+
+    function selectSketch(id) {
     sketchInteraction.select(sketchState, id);
     renderSketch();
     renderSelection();
@@ -1523,6 +1546,7 @@ function createStageController(options) {
     selectSketch,
     getSelectedSketch: () => sketchInteraction.getSelected(sketchState),
     setSheet,
+    focusOn,
     isGridVisible: () => showGrid,
     recordCreate,
     recordContent: (before) => undoStack.pushContent(undo, before),
