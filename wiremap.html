@@ -167,6 +167,21 @@
   .wm-sketch-draft { opacity: 0.8; pointer-events: none; stroke: var(--accent); }
   .wm-sketch-handle-dot { fill: var(--accent); stroke: #000; stroke-width: 1.5; pointer-events: none; }
 
+  /* ── Sketch text ── */
+  .wm-text-body {
+    /* No font-size here: the controller sets it per zoom in stage units. */
+    fill: var(--text); font-family: 'IBM Plex Mono', monospace;
+    dominant-baseline: alphabetic; pointer-events: none; user-select: none;
+  }
+  .wm-text-shape.selected .wm-text-body { fill: var(--accent); }
+  /* A glyph outline is far too thin to tap; the backing rect is the target. */
+  .wm-text-hit { fill: transparent; pointer-events: all; cursor: pointer; }
+  /* The hit rect is never painted — it is a touch target, not decoration. */
+  .wm-text-outline {
+    fill: none; stroke: var(--accent); stroke-dasharray: 4 3; stroke-width: 1;
+    vector-effect: non-scaling-stroke; pointer-events: none;
+  }
+
   /* ── Sketch tray (temporary dev UI) ── */
   .tray {
     /* Full width on its own row when open. */
@@ -336,6 +351,7 @@
       <button type="button" id="wm-blank-sheet">New Blank Sheet</button>
       <button type="button" id="wm-tool-line">Line</button>
       <button type="button" id="wm-tool-rect">Rectangle</button>
+      <button type="button" id="wm-tool-text">Text</button>
       <button type="button" id="wm-sketch-delete" hidden>Delete Shape</button>
       <button type="button" id="wm-undo">Undo</button>
       <button type="button" id="wm-sketch-close">Close</button>
@@ -2721,7 +2737,13 @@ window.WM = (function () {
     /** Movement before a handle press becomes a drag rather than a tap. */
     const HANDLE_DRAG_THRESHOLD_PX = 8;
 
-    const TOOLS = ['none', 'line', 'rect'];
+    const TOOLS = ['none', 'line', 'rect', 'text'];
+
+    /** Single-line sketch text. Long enough for "Feed from 3F", short by design. */
+    const TEXT_MAX_LENGTH = 120;
+
+    /** Movement before a press on text becomes a drag rather than a tap. */
+    const TEXT_DRAG_THRESHOLD_PX = 8;
 
     function isFiniteNumber(v) {
       return typeof v === 'number' && Number.isFinite(v);
@@ -2737,6 +2759,21 @@ window.WM = (function () {
       return Math.sqrt(dx * dx + dy * dy);
     }
 
+    /**
+     * Normalise text for storage: trimmed and length-capped.
+     * Returns null when nothing meaningful remains, so callers cannot save blanks.
+     */
+    function normalizeText(value) {
+      if (typeof value !== 'string') return null;
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      return trimmed.slice(0, TEXT_MAX_LENGTH);
+    }
+
+    function isValidText(value) {
+      return normalizeText(value) !== null;
+    }
+
     function createSketchState() {
       return {
         /** 'none' | 'line' | 'rect' — only ever one. */
@@ -2747,6 +2784,8 @@ window.WM = (function () {
         handleDrag: null,
         /** Currently selected sketch shape id. */
         selectedId: null,
+        /** In-flight text move. */
+        textDrag: null,
       };
     }
 
@@ -2976,6 +3015,104 @@ window.WM = (function () {
       };
     }
 
+    // ── Text ──────────────────────────────────────────────────────────────────
+
+    /**
+     * Where an armed Text tool would place a new annotation.
+     * Returns the normalized anchor, or null if the point is unusable.
+     */
+    function textPlacementAt(state, screenPoint, viewport, stageSize) {
+      if (activeTool(state) !== 'text') return null;
+      return screenToNormalized(screenPoint, viewport, stageSize);
+    }
+
+    /**
+     * A pointer went down on existing text.
+     *
+     * The grab offset between the pointer and the anchor is recorded in STAGE
+     * units, so the text keeps the point the finger grabbed instead of snapping
+     * its anchor under the finger.
+     */
+    function textPointerDown(state, annotation, screenPoint, viewport, stageSize) {
+      if (!annotation || !isPoint(screenPoint) || !stageSize || !viewport) return state;
+      const pointerStage = viewportMath.screenToStage(screenPoint, viewport);
+      const anchorStage = geometry.denormalizePoint(annotation.at, stageSize);
+      if (!pointerStage || !anchorStage) return state;
+      state.textDrag = {
+        id: annotation.id,
+        startScreen: { x: screenPoint.x, y: screenPoint.y },
+        grabOffset: { x: pointerStage.x - anchorStage.x, y: pointerStage.y - anchorStage.y },
+        original: { x: annotation.at.x, y: annotation.at.y },
+        current: { x: annotation.at.x, y: annotation.at.y },
+        moved: false,
+      };
+      return state;
+    }
+
+    /**
+     * Move the text.
+     * newAnchor = pointerStage - grabOffset, then normalized and clamped.
+     */
+    function textPointerMove(state, screenPoint, viewport, stageSize) {
+      const d = state.textDrag;
+      if (!d || !isPoint(screenPoint) || !stageSize) return { moved: false, normalized: null };
+      if (!d.moved && distance(d.startScreen, screenPoint) < TEXT_DRAG_THRESHOLD_PX) {
+        return { moved: false, normalized: null };
+      }
+      const pointerStage = viewportMath.screenToStage(screenPoint, viewport);
+      if (!pointerStage) return { moved: false, normalized: null };
+      d.moved = true;
+      const next = geometry.normalizePoint({
+        x: pointerStage.x - d.grabOffset.x,
+        y: pointerStage.y - d.grabOffset.y,
+      }, stageSize);
+      if (!next) return { moved: false, normalized: null };
+      d.current = next;
+      return { moved: true, id: d.id, normalized: next };
+    }
+
+    /** @returns {{action:'move'|'tap'|'none', id, normalized, before}} */
+    function textPointerUp(state) {
+      const d = state.textDrag;
+      state.textDrag = null;
+      if (!d) return { action: 'none', id: null, normalized: null };
+      if (!d.moved) return { action: 'tap', id: d.id, normalized: d.original };
+      return { action: 'move', id: d.id, normalized: d.current, before: d.original };
+    }
+
+    /** Cancel restores the stored anchor. */
+    function textPointerCancel(state) {
+      const d = state.textDrag;
+      state.textDrag = null;
+      if (!d) return { action: 'none', id: null, normalized: null };
+      return { action: 'revert', id: d.id, normalized: d.original };
+    }
+
+    function isDraggingText(state) {
+      return !!(state.textDrag && state.textDrag.moved);
+    }
+
+    function hasPressedText(state) {
+      return !!state.textDrag;
+    }
+
+    /** Apply a new anchor without mutating the original. */
+    function withAnchor(annotation, normalized) {
+      if (!annotation || !normalized) return annotation;
+      return { ...annotation, at: geometry.clampNormalized(normalized) };
+    }
+
+    /**
+     * Font size in stage units for the current zoom.
+     * Explicit compensation, never vector-effect or a nested inverse transform —
+     * both proved unreliable in physical iOS Safari under a transformed stage.
+     */
+    function textFontForScale(screenPx, scale) {
+      const s = Number.isFinite(scale) && scale > 0 ? scale : 1;
+      const px = Number.isFinite(screenPx) && screenPx > 0 ? screenPx : 16;
+      return px / s;
+    }
+
     /** Axis-aligned bounds for rendering a rectangle, in normalized units. */
     function rectBounds(annotation) {
       return geometry.segmentBounds({ a: annotation.a, b: annotation.b });
@@ -2986,6 +3123,10 @@ window.WM = (function () {
       RECT_MIN_SIZE_PX,
       HANDLE_DRAG_THRESHOLD_PX,
       TOOLS,
+      TEXT_MAX_LENGTH,
+      TEXT_DRAG_THRESHOLD_PX,
+      normalizeText,
+      isValidText,
       createSketchState,
       armTool,
       disarmTool,
@@ -3010,6 +3151,15 @@ window.WM = (function () {
       clearSelection,
       getSelected,
       withGeometry,
+      withAnchor,
+      textPlacementAt,
+      textPointerDown,
+      textPointerMove,
+      textPointerUp,
+      textPointerCancel,
+      isDraggingText,
+      hasPressedText,
+      textFontForScale,
       rectBounds,
       distance,
     };
@@ -3035,7 +3185,7 @@ window.WM = (function () {
     const MAX_ENTRIES = 20;
 
     /** Kinds of mutation this stack can reverse. */
-    const KINDS = ['create', 'geometry', 'delete'];
+    const KINDS = ['create', 'geometry', 'delete', 'content', 'anchor'];
 
     function createUndoStack(options) {
       const limit = (options && Number.isFinite(options.limit) && options.limit > 0)
@@ -3096,6 +3246,28 @@ window.WM = (function () {
       });
     }
 
+    /** Text content changed: undoing restores the previous string. */
+    function pushContent(stack, annotationBefore) {
+      if (!annotationBefore || !annotationBefore.id) return stack;
+      return push(stack, {
+        kind: 'content',
+        annotationId: annotationBefore.id,
+        sheetId: annotationBefore.sheetId,
+        before: { text: (annotationBefore.data || {}).text },
+      });
+    }
+
+    /** Text moved: undoing restores the previous normalized anchor. */
+    function pushAnchor(stack, annotationBefore) {
+      if (!annotationBefore || !annotationBefore.id || !annotationBefore.at) return stack;
+      return push(stack, {
+        kind: 'anchor',
+        annotationId: annotationBefore.id,
+        sheetId: annotationBefore.sheetId,
+        before: { at: { ...annotationBefore.at } },
+      });
+    }
+
     /**
      * A shape was deleted: undoing restores the whole record, id included, so the
      * same annotation comes back rather than a copy under a new id.
@@ -3128,18 +3300,22 @@ window.WM = (function () {
         return { action: 'restore', annotationId: entry.annotationId, annotation: entry.snapshot };
       }
 
-      // geometry: rebuild the current record with the previous a/b.
+      // geometry / content / anchor: rebuild the current record with the old value.
       const current = typeof lookup === 'function' ? lookup(entry.annotationId) : null;
       if (!current) {
         // The shape is gone; there is nothing to restore. Fail quietly rather than
         // inventing a record and corrupting the sheet.
         return { action: 'none', annotationId: entry.annotationId, annotation: null };
       }
-      return {
-        action: 'restore',
-        annotationId: entry.annotationId,
-        annotation: { ...current, a: { ...entry.before.a }, b: { ...entry.before.b } },
-      };
+      let restored;
+      if (entry.kind === 'content') {
+        restored = { ...current, data: { ...(current.data || {}), text: entry.before.text } };
+      } else if (entry.kind === 'anchor') {
+        restored = { ...current, at: { ...entry.before.at } };
+      } else {
+        restored = { ...current, a: { ...entry.before.a }, b: { ...entry.before.b } };
+      }
+      return { action: 'restore', annotationId: entry.annotationId, annotation: restored };
     }
 
     /** Inspect the next entry without consuming it. */
@@ -3159,6 +3335,8 @@ window.WM = (function () {
       pushCreate,
       pushGeometry,
       pushDelete,
+      pushContent,
+      pushAnchor,
       undo,
       peek,
     };
@@ -3240,6 +3418,9 @@ window.WM = (function () {
         onSketchDrawn: opts.onSketchDrawn || null,       // ({tool,a,b}) => void
         onSketchChanged: opts.onSketchChanged || null,   // (annotation, before) => void
         onSketchSelected: opts.onSketchSelected || null, // (annotation|null) => void
+        onTextPlace: opts.onTextPlace || null,           // (normalized) => void
+        onTextEdit: opts.onTextEdit || null,             // (annotation) => void
+        onTextMoved: opts.onTextMoved || null,           // (after, before) => void
         onSketchToolChange: opts.onSketchToolChange || null, // (tool) => void
       };
 
@@ -3480,6 +3661,22 @@ window.WM = (function () {
       const SKETCH_SELECTED_STROKE_PX = 2.0;
       const SKETCH_HIT_PX = 40;
 
+      /**
+       * Sketch text size in SCREEN pixels, converted to stage units at render time.
+       * Same explicit compensation as every other screen-space target here.
+       */
+      const TEXT_FONT_PX = 16;
+      const TEXT_PAD_PX = 6;
+      /** Minimum touch height for text, in screen pixels. */
+      const TEXT_HIT_MIN_PX = 44;
+      /**
+       * Padding around the GLYPHS for the visible selection outline, in screen px.
+       * Separate from the touch target: the outline is decoration and must hug the
+       * text, while the hit rect stays finger-sized.
+       */
+      const TEXT_OUTLINE_PAD_X_PX = 6;
+      const TEXT_OUTLINE_PAD_Y_PX = 4;
+
       /** Drafting grid for blank sheets. Visual only; never stored. */
       const GRID_MINOR = 50;      // stage units
       const GRID_MAJOR = 250;
@@ -3661,6 +3858,12 @@ window.WM = (function () {
        */
       function renderSketchHandles(shape) {
         if (!el.selection || !stageSize) return;
+        // Text has no draggable geometry: it carries `at`, not `a`/`b`, and WM-6B2
+        // gives it a subtle outline instead of handles. Without this guard the
+        // handle loop dereferenced undefined endpoints and threw, aborting
+        // selection midway and leaving the gesture state inconsistent.
+        if (shape.type !== 'line' && shape.type !== 'rect') return;
+
         const inverse = labelInteraction.labelCounterScale(view.scale);
         const points = shape.type === 'rect'
           ? sketchInteraction.rectCorners(shape)
@@ -3831,13 +4034,113 @@ window.WM = (function () {
         }
       }
 
-      function renderSketch() {
+      /**
+       * One text annotation.
+       *
+       * The anchor rides the single stage transform; the font size is divided by
+       * the stage scale so the text keeps a constant screen size. A transparent
+       * backing rect gives it a finger-sized hit area, because a glyph outline is
+       * far too thin to tap reliably.
+       */
+      function renderTextShape(annotation) {
+        const g = doc.createElementNS(SVG_NS, 'g');
+        const selected = sketchInteraction.getSelected(sketchState) === annotation.id;
+        g.setAttribute('class', 'wm-text-shape' + (selected ? ' selected' : ''));
+        g.setAttribute('data-annotation-id', annotation.id);
+
+        const p = geometry.denormalizePoint(annotation.at, stageSize);
+        const scale = view.scale > 0 ? view.scale : 1;
+        const font = sketchInteraction.textFontForScale(TEXT_FONT_PX, scale);
+        const pad = TEXT_PAD_PX / scale;
+        const text = String((annotation.data && annotation.data.text) || '');
+
+        const t = doc.createElementNS(SVG_NS, 'text');
+        t.setAttribute('x', String(p.x));
+        t.setAttribute('y', String(p.y));
+        t.setAttribute('class', 'wm-text-body');
+        t.setAttribute('font-size', String(font));
+        t.textContent = text;   // textContent, never innerHTML: user text is data
+
+        const hit = doc.createElementNS(SVG_NS, 'rect');
+        hit.setAttribute('class', 'wm-text-hit');
+        // Decoration only, and only when selected. Drawn as its own element so the
+        // outline can hug the glyphs while the hit rect stays finger-sized — the
+        // two used to be the same rect, which left 24.5px of empty space above the
+        // text and 0.5px below it.
+        const outline = selected ? doc.createElementNS(SVG_NS, 'rect') : null;
+        if (outline) outline.setAttribute('class', 'wm-text-outline');
+        // The text must be in the document before it can be measured.
+        g.appendChild(hit);
+        if (outline) g.appendChild(outline);
+        g.appendChild(t);
+
+        /**
+         * Size the touch target from the REAL advance width once the glyphs exist,
+         * falling back to a character estimate if the engine reports nothing
+         * usable. A character estimate alone is wrong for Unicode and punctuation.
+         */
+        function sizeHit() {
+          let measured = 0;
+          try {
+            if (typeof t.getComputedTextLength === 'function') measured = t.getComputedTextLength();
+            if (!(measured > 0) && typeof t.getBBox === 'function') measured = t.getBBox().width;
+          } catch (_) { measured = 0; }
+          const estimated = Math.max(font * 1.2, text.length * font * 0.58);
+          const width = (measured > 0 ? measured : estimated) + pad * 2;
+          // Height is a screen-space minimum, converted like every other target.
+          const height = Math.max(TEXT_HIT_MIN_PX / scale, font * 1.35 + pad * 2);
+          hit.setAttribute('x', String(p.x - pad));
+          // Centre the box on the glyph band rather than hanging it off the baseline.
+          hit.setAttribute('y', String(p.y + font * 0.28 - height));
+          hit.setAttribute('width', String(width));
+          hit.setAttribute('height', String(height));
+
+          if (!outline) return;
+          // The outline comes from the REAL rendered bounds, so descenders in
+          // "gjpqy" and short strings like "A" are all enclosed symmetrically.
+          const padX = TEXT_OUTLINE_PAD_X_PX / scale;
+          const padY = TEXT_OUTLINE_PAD_Y_PX / scale;
+          let box = null;
+          try {
+            if (typeof t.getBBox === 'function') {
+              const bb = t.getBBox();
+              if (bb && bb.width > 0 && bb.height > 0) box = bb;
+            }
+          } catch (_) { box = null; }
+          if (!box) {
+            // Defensive fallback: approximate the glyph band from the font metrics.
+            box = { x: p.x, y: p.y - font * 0.78, width: measured > 0 ? measured : estimated,
+              height: font * 1.05 };
+          }
+          // getBBox and getComputedTextLength both report the ADVANCE width, which
+          // for glyph runs with overhang (">", en-dashes) is a shade narrower than
+          // what is actually painted. The client rect is the painted extent, so
+          // convert it back to stage units and take the widest of the three: the
+          // outline must never clip the text it is drawn around.
+          // Both getBBox and getComputedTextLength report the ADVANCE width. Glyph
+          // runs with overhang ('>', en-dashes) paint a couple of pixels past it,
+          // and the group is still detached here so the client rect reads zero.
+          // A small font-proportional allowance covers the overhang without
+          // loosening the outline noticeably.
+          const overhang = font * 0.2;
+          const boxWidth = Math.max(box.width, measured > 0 ? measured : 0) + overhang;
+          outline.setAttribute('x', String(box.x - padX));
+          outline.setAttribute('y', String(box.y - padY));
+          outline.setAttribute('width', String(boxWidth + padX * 2));
+          outline.setAttribute('height', String(box.height + padY * 2));
+        }
+        sizeHit();
+        return g;
+      }
+
+        function renderSketch() {
         if (!el.sketch || !stageSize) return;
         while (el.sketch.firstChild) el.sketch.removeChild(el.sketch.firstChild);
         const grid = renderGrid();
         if (grid) el.sketch.appendChild(grid);
         annotations.forEach((a) => {
           if (a.type === 'line' || a.type === 'rect') el.sketch.appendChild(renderSketchShape(a));
+          else if (a.type === 'text') el.sketch.appendChild(renderTextShape(a));
         });
       }
 
@@ -4077,6 +4380,17 @@ window.WM = (function () {
         return null;
       }
 
+      /** The id only when the press landed on a text group. */
+      function textIdFrom(target) {
+        let node = target;
+        while (node && node !== el.viewport) {
+          const cls = node.getAttribute && node.getAttribute('class');
+          if (cls && /(^|\s)wm-text-shape(\s|$)/.test(cls)) return node.getAttribute('data-annotation-id');
+          node = node.parentNode;
+        }
+        return null;
+      }
+
       /** The id only when the press landed on a sketch shape group. */
       function sketchShapeIdFrom(target) {
         let node = target;
@@ -4157,6 +4471,17 @@ window.WM = (function () {
         // Sketch shapes are below arrows and labels, matching the visual stacking:
         // wm-sketch renders beneath wm-routes and wm-labels, so a label on top of a
         // sketch line stays tappable.
+        // Existing text: press to drag, tap to edit. Above line/rect because a
+        // caption may sit on top of a shape and must stay reachable.
+        const textId = textIdFrom(e.target);
+        if (textId && annotations.has(textId)) {
+          capture(e);
+          sketchInteraction.textPointerDown(sketchState, annotations.get(textId), point, view, stageSize);
+          selectSketch(textId);
+          if (e.stopPropagation) e.stopPropagation();
+          return;
+        }
+
         const sketchId = sketchShapeIdFrom(e.target);
         if (sketchId && annotations.has(sketchId)) {
           capture(e);
@@ -4181,7 +4506,11 @@ window.WM = (function () {
         // label, an arrow or an existing shape into the start of a new line.
         if (sketchInteraction.isArmed(sketchState)) {
           capture(e);
-          sketchInteraction.drawStart(sketchState, point, view, stageSize);
+          // Text is placed by a TAP, so there is no draft to start; line and rect
+          // begin a drag draft here as before.
+          if (sketchInteraction.activeTool(sketchState) !== 'text') {
+            sketchInteraction.drawStart(sketchState, point, view, stageSize);
+          }
           if (e.stopPropagation) e.stopPropagation();
           return;
         }
@@ -4202,6 +4531,19 @@ window.WM = (function () {
 
       function onPointerMove(e) {
         if (!stageSize) return;
+
+        if (sketchInteraction.hasPressedText(sketchState)) {
+          const r = sketchInteraction.textPointerMove(sketchState, localPoint(e), view, stageSize);
+          if (r.moved && r.normalized) {
+            const t = annotations.get(r.id);
+            // Live visual only; one write at the end of the drag.
+            if (t) {
+              annotations.set(r.id, sketchInteraction.withAnchor(t, r.normalized));
+              renderSketch(); renderSelection();
+            }
+          }
+          return;   // a text drag never pans the plan
+        }
 
         if (sketchInteraction.hasPressedHandle(sketchState)) {
           const r = sketchInteraction.handleMove(sketchState, localPoint(e), view, stageSize);
@@ -4271,6 +4613,21 @@ window.WM = (function () {
         // lands somewhere new and is treated as a fresh gesture.
         labelInteraction.noteInput(labelState, e.pointerType || 'mouse', point, nowMs());
 
+        if (sketchInteraction.hasPressedText(sketchState)) {
+          const outcome = sketchInteraction.textPointerUp(sketchState);
+          release(e);
+          if (outcome.action === 'tap' && hooks.onTextEdit) {
+            hooks.onTextEdit(annotations.get(outcome.id));
+          } else if (outcome.action === 'move' && hooks.onTextMoved) {
+            const t = annotations.get(outcome.id);
+            if (t) {
+              hooks.onTextMoved(sketchInteraction.withAnchor(t, outcome.normalized),
+                sketchInteraction.withAnchor(t, outcome.before));
+            }
+          }
+          return;
+        }
+
         if (sketchInteraction.hasPressedHandle(sketchState)) {
           const outcome = sketchInteraction.handleUp(sketchState);
           release(e);
@@ -4281,6 +4638,14 @@ window.WM = (function () {
                 sketchInteraction.withGeometry(shape, outcome.before));
             }
           }
+          return;
+        }
+
+        if (sketchInteraction.activeTool(sketchState) === 'text') {
+          const normalized = sketchInteraction.textPlacementAt(sketchState, point, view, stageSize);
+          release(e);
+          disarmSketch();
+          if (normalized && hooks.onTextPlace) hooks.onTextPlace(normalized);
           return;
         }
 
@@ -4377,6 +4742,16 @@ window.WM = (function () {
 
       function onPointerCancel() {
         pressedBackground = false;
+        if (sketchInteraction.hasPressedText(sketchState)) {
+          const outcome = sketchInteraction.textPointerCancel(sketchState);
+          if (outcome.action === 'revert' && outcome.id) {
+            const t = annotations.get(outcome.id);
+            if (t) {
+              annotations.set(outcome.id, sketchInteraction.withAnchor(t, outcome.normalized));
+              renderSketch(); renderSelection();
+            }
+          }
+        }
         if (sketchInteraction.hasPressedHandle(sketchState)) {
           const outcome = sketchInteraction.handleCancel(sketchState);
           if (outcome.action === 'revert' && outcome.id) {
@@ -4496,6 +4871,8 @@ window.WM = (function () {
         setSheet,
         isGridVisible: () => showGrid,
         recordCreate,
+        recordContent: (before) => undoStack.pushContent(undo, before),
+        recordAnchor: (before) => undoStack.pushAnchor(undo, before),
         recordGeometry,
         recordDelete,
         planUndo,
@@ -4543,6 +4920,24 @@ window.WM = (function () {
 </script>
 <!-- WM-CORE:END -->
 
+  <!-- WM-6B2 sketch-text editor. Separate from the Wire Label editor on
+       purpose: a caption is free text on the plan, a wire label is a
+       structured record. Merging them would blur that. -->
+  <div class="sheet-backdrop" id="wm-text-editor" hidden>
+    <div class="sheet-panel" role="dialog" aria-label="Sketch text">
+      <div class="sheet-title" id="wm-text-title">NEW SKETCH TEXT</div>
+      <div class="field"><label for="wm-text-value">Text *</label>
+        <input id="wm-text-value" type="text" autocomplete="off" maxlength="120"
+               placeholder="Feed from 3F"></div>
+      <div class="sheet-error" id="wm-text-error"></div>
+      <div class="sheet-actions">
+        <button type="button" class="primary" id="wm-text-save">Save</button>
+        <button type="button" id="wm-text-cancel">Cancel</button>
+        <button type="button" class="danger" id="wm-text-delete" hidden>Delete</button>
+      </div>
+    </div>
+  </div>
+
   <!-- WM-5 label editor. Temporary alongside the probe; replaced by the real
        Jobs/Sheets UI later. -->
   <div class="sheet-backdrop" id="wm-editor" hidden>
@@ -4587,6 +4982,16 @@ window.WM = (function () {
     var sketchHint = document.getElementById('wm-sketch-hint');
     var btnLine = document.getElementById('wm-tool-line');
     var btnRect = document.getElementById('wm-tool-rect');
+    var btnText = document.getElementById('wm-tool-text');
+    var textEditor = document.getElementById('wm-text-editor');
+    var textValue = document.getElementById('wm-text-value');
+    var textTitle = document.getElementById('wm-text-title');
+    var textError = document.getElementById('wm-text-error');
+    var btnTextSave = document.getElementById('wm-text-save');
+    var btnTextCancel = document.getElementById('wm-text-cancel');
+    var btnTextDelete = document.getElementById('wm-text-delete');
+    var textDraftAt = null;
+    var textEditing = null;
     var btnUndo = document.getElementById('wm-undo');
     var btnBlank = document.getElementById('wm-blank-sheet');
     var btnDelShape = document.getElementById('wm-sketch-delete');
@@ -4651,12 +5056,20 @@ window.WM = (function () {
         vpEl.classList.toggle('armed', armed);
         btnLine.classList.toggle('active', tool === 'line');
         btnRect.classList.toggle('active', tool === 'rect');
+        btnText.classList.toggle('active', tool === 'text');
+        if (armed && sketchHint) {
+          sketchHint.textContent = tool === 'text' ? 'Tap plan to place text'
+            : sketchHint.textContent;
+        }
       },
       onSketchSelected: function (shape) {
         btnDelShape.hidden = !shape;
         report(shape ? 'Selected ' + shape.type : 'Deselected');
       },
       onSketchDrawn: function (d) { createSketch(d); },
+      onTextPlace: function (at) { openTextEditor(null, at); },
+      onTextEdit: function (t) { if (t) openTextEditor(t, null); },
+      onTextMoved: function (after, before) { persistTextMove(after, before); },
       onSketchChanged: function (after, before) { persistSketch(after, before); },
       onArrowMoved: function (a) { persistArrow(a, 'Moved endpoint'); },
       onModeChange: function (armed) {
@@ -4799,6 +5212,77 @@ window.WM = (function () {
         .catch(fail);
     }
 
+    // ── sketch text ──
+    function openTextEditor(annotation, at) {
+      textEditing = annotation || null;
+      textDraftAt = annotation ? null : at;
+      textValue.value = annotation ? ((annotation.data || {}).text || '') : '';
+      textTitle.textContent = annotation ? 'EDIT SKETCH TEXT' : 'NEW SKETCH TEXT';
+      btnTextDelete.hidden = !annotation;
+      textError.textContent = '';
+      textEditor.hidden = false;
+      textValue.focus();
+    }
+    function closeTextEditor() {
+      textEditor.hidden = true; textEditing = null; textDraftAt = null;
+    }
+    btnTextCancel.addEventListener('click', closeTextEditor);
+
+    btnTextSave.addEventListener('click', function () {
+      var clean = WM.sketchInteraction.normalizeText(textValue.value);
+      if (!clean) { textError.textContent = 'Text is required.'; textValue.focus(); return; }
+      if (!currentSheetId) { textError.textContent = 'No sheet loaded.'; return; }
+      var now = Date.now();
+      var ann = textEditing
+        ? WM.model.createAnnotation({ id: textEditing.id, sheetId: textEditing.sheetId,
+            type: 'text', at: textEditing.at, now: textEditing.createdAt, data: { text: clean } })
+        : WM.model.createAnnotation({ id: uid('text'), sheetId: currentSheetId,
+            type: 'text', at: textDraftAt, now: now, data: { text: clean } });
+      if (textEditing) ann.updatedAt = now;
+      var check = WM.model.validateAnnotation(ann);
+      if (!check.valid) { textError.textContent = check.problems.join('; '); return; }
+      var wasEditing = textEditing;
+      withDb(function (db) { return db.putAnnotation(ann); })
+        .then(function () {
+          stage.upsertAnnotation(ann);
+          if (wasEditing) stage.recordContent(wasEditing); else stage.recordCreate(ann);
+          closeTextEditor();
+          report(wasEditing ? 'Edited text' : 'Created text');
+        })
+        .catch(function (e) { textError.textContent = (e.code || '') + ' ' + e.message; });
+    });
+
+    btnTextDelete.addEventListener('click', function () {
+      if (!textEditing) return;
+      var doomed = textEditing;
+      withDb(function (db) { return db.deleteAnnotation(doomed.id); })
+        .then(function () {
+          stage.selectSketch(null);
+          stage.removeAnnotation(doomed.id);
+          stage.recordDelete(doomed);
+          closeTextEditor();
+          report('Deleted text');
+        })
+        .catch(function (e) { textError.textContent = (e.code || '') + ' ' + e.message; });
+    });
+
+    function persistTextMove(after, before) {
+      var next = WM.model.createAnnotation({ id: after.id, sheetId: after.sheetId,
+        type: 'text', at: after.at, now: after.createdAt, data: after.data });
+      next.updatedAt = Date.now();
+      withDb(function (db) { return db.putAnnotation(next); })
+        .then(function () {
+          stage.upsertAnnotation(next);
+          if (before) stage.recordAnchor(before);
+          report('Moved text');
+        })
+        .catch(fail);
+    }
+
+    btnText.addEventListener('click', function () {
+      if (stage.activeSketchTool() === 'text') stage.disarmSketch(); else stage.armSketch('text');
+    });
+
     document.getElementById('wm-sketch-toggle').addEventListener('click', function () {
       tray.classList.toggle('open');
     });
@@ -4817,6 +5301,7 @@ window.WM = (function () {
       var id = stage.getSelectedSketch();
       if (!id) return;
       var shape = stage.getAnnotation(id);
+      if (shape && shape.type === 'text') { openTextEditor(shape, null); return; }
       withDb(function (db) { return db.deleteAnnotation(id); })
         .then(function () {
           stage.selectSketch(null);

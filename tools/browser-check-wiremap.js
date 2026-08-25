@@ -2253,12 +2253,584 @@ async function runControlLayout(engineName, engine) {
   return { engine: engineName, available: true, detail: results, checks, errs };
 }
 
+// ── WM-6B2: sketch text ─────────────────────────────────────────────────────
+async function runText(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  const dialogs = [];
+  page.on('pageerror', (e) => errs.push(String(e)));
+  // Any alert() from user text is an XSS failure, not a passing test.
+  page.on('dialog', async (d) => { dialogs.push(d.message()); await d.dismiss(); });
+  await page.goto(APP);
+
+  const fire = (t, id, x, y, pt) => page.evaluate(({ t, id, x, y, pt }) => {
+    const el = document.getElementById('wm-viewport'); const r = el.getBoundingClientRect();
+    const tg = document.elementFromPoint(r.left + x, r.top + y) || el;
+    tg.dispatchEvent(new PointerEvent(t, { pointerId: id, clientX: r.left + x,
+      clientY: r.top + y, bubbles: true, pointerType: pt || 'touch' }));
+  }, { t, id, x, y, pt });
+  const tap = async (x, y, id, pt) => {
+    await fire('pointerdown', id, x, y, pt); await fire('pointerup', id, x, y, pt);
+    await page.waitForTimeout(180);
+  };
+  const at = (n) => page.evaluate((nn) => {
+    const s = window.__wmStage;
+    return WM.viewport.stageToScreen(WM.geometry.denormalizePoint(nn, s.getStageSize()), s.getViewport());
+  }, n);
+  const state = () => page.evaluate(async () => {
+    const s = window.__wmStage;
+    const db = WM.store.createStore(); await db.openDatabase();
+    const sheetId = await db.getMeta('currentSheetId');
+    const list = await db.listAnnotations(sheetId); db.closeDatabase();
+    const texts = list.filter((a) => a.type === 'text');
+    return { tool: s.activeSketchTool(), selected: s.getSelectedSketch(),
+      pointers: s.getActivePointers(), gesture: s.getGestureMode(),
+      editorOpen: !document.getElementById('wm-text-editor').hidden,
+      err: document.getElementById('wm-text-error').textContent,
+      undoDepth: s.undoSize(), storedTexts: texts.length,
+      first: texts[0] ? { id: texts[0].id, text: texts[0].data.text, at: texts[0].at } : null,
+      renderedTexts: document.querySelectorAll('#wm-sketch .wm-text-shape').length,
+      textsElsewhere: document.querySelectorAll('#wm-labels .wm-text-shape').length
+        + document.querySelectorAll('#wm-routes .wm-text-shape').length,
+      view: JSON.stringify(s.getViewport()) };
+  });
+  const openTray = async () => {
+    const open = await page.evaluate(() =>
+      document.getElementById('wm-sketch-tray').classList.contains('open'));
+    if (!open) await page.click('#wm-sketch-toggle');
+    await page.waitForTimeout(120);
+  };
+  /**
+   * Find a normalized point that is provably empty right now.
+   *
+   * Hard-coded coordinates go stale as the suite accumulates annotations: a
+   * point that was blank grid early on can sit under a moved Text later. This
+   * asks the DOM which candidate is actually unoccupied.
+   */
+  const emptyPoint = (preferred) => page.evaluate((want) => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    const vpEl = document.getElementById('wm-viewport');
+    const el = vpEl.getBoundingClientRect();
+    const occupied = (node) => {
+      let n = node;
+      while (n && n !== vpEl) {
+        const c = (n.getAttribute && n.getAttribute('class')) || '';
+        if (/wm-text-shape|wm-sketch-shape|wm-arrow|wm-label|wm-endpoint|wm-sketch-handle/.test(c)) return true;
+        n = n.parentNode;
+      }
+      return false;
+    };
+    const candidates = [want];
+    for (let gx = 1; gx <= 8; gx++) {
+      for (let gy = 1; gy <= 8; gy++) candidates.push({ x: gx / 9, y: gy / 9 });
+    }
+    for (const c of candidates) {
+      const scr = WM.viewport.stageToScreen(WM.geometry.denormalizePoint(c, sz), s.getViewport());
+      if (scr.x < 4 || scr.y < 4 || scr.x > el.width - 4 || scr.y > el.height - 4) continue;
+      const node = document.elementFromPoint(el.left + scr.x, el.top + scr.y);
+      if (node && !occupied(node)) return c;
+    }
+    return null;
+  }, preferred);
+
+  const place = async (n, value, action) => {
+    await openTray();
+    await page.click('#wm-tool-text');
+    const spot = (await emptyPoint(n)) || n;
+    const p = await at(spot);
+    await tap(p.x, p.y, Math.floor(Math.random() * 1e6));
+    if (value !== null) await page.fill('#wm-text-value', value);
+    if (action === 'save') await page.click('#wm-text-save');
+    else if (action === 'cancel') await page.click('#wm-text-cancel');
+    await page.waitForTimeout(300);
+  };
+
+  const R = {};
+  await page.click('#wm-sketch-toggle');
+  await page.click('#wm-blank-sheet');
+  await page.waitForFunction(() => window.__wmStage.isGridVisible(), { timeout: 15000 });
+  await page.waitForTimeout(250);
+
+  // ── create, trim, one undo entry ──
+  await place({ x: 0.4, y: 0.4 }, '  Panel A  ', 'save');
+  R.created = await state();
+
+  // ── cancel creates nothing ──
+  await place({ x: 0.7, y: 0.8 }, 'Discarded', 'cancel');
+  R.cancelled = await state();
+
+  // ── whitespace-only save is refused ──
+  await openTray();
+  await page.click('#wm-tool-text');
+  let pt = await at({ x: 0.2, y: 0.85 });
+  await tap(pt.x, pt.y, 900);
+  await page.fill('#wm-text-value', '      ');
+  await page.click('#wm-text-save'); await page.waitForTimeout(200);
+  R.blank = await state();
+  await page.click('#wm-text-cancel'); await page.waitForTimeout(150);
+
+  // ── constant font + hit target across zoom, several strings ──
+  R.sizes = await page.evaluate(() => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    const id = document.querySelector('.wm-text-shape').getAttribute('data-annotation-id');
+    const base = s.getAnnotation(id);
+    const rows = [];
+    for (const str of ['A', 'Panel A', 'Feed from 3F', 'Zasilanie \u2013 kuchnia \u00e7\u00f6']) {
+      s.upsertAnnotation({ ...base, data: { text: str } });
+      for (const sc of [null, 1, 4, 8]) {
+        if (sc) {
+          s._setViewport(WM.viewport.centerOnNormalized(base.at, sz,
+            { width: el.width, height: el.height }, s.getViewport(), sc));
+        } else {
+          s._setViewport(WM.viewport.fitToViewport(sz, { width: el.width, height: el.height }));
+        }
+        s.renderLabels();
+        const t = document.querySelector('.wm-text-body');
+        const hit = document.querySelector('.wm-text-hit');
+        const scale = s.getViewport().scale;
+        const hr = hit.getBoundingClientRect();
+        rows.push({ str, scale: +scale.toFixed(3),
+          stageFont: +parseFloat(t.getAttribute('font-size')).toFixed(4),
+          expectedStage: +(16 / scale).toFixed(4),
+          screenFont: +(parseFloat(t.getAttribute('font-size')) * scale).toFixed(2),
+          hitH: +hr.height.toFixed(1), hitW: +hr.width.toFixed(1),
+          cssFont: getComputedStyle(t).fontSize,
+          vectorEffect: getComputedStyle(t).vectorEffect,
+          hasTransform: !!t.getAttribute('transform') });
+      }
+    }
+    s.upsertAnnotation(base);
+    s._setViewport(WM.viewport.fitToViewport(sz, { width: el.width, height: el.height }));
+    s.renderLabels();
+    return rows;
+  });
+
+  // ── anchor never mutates under zoom ──
+  R.anchor = await page.evaluate(() => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    const id = document.querySelector('.wm-text-shape').getAttribute('data-annotation-id');
+    const before = JSON.stringify(s.getAnnotation(id).at);
+    const stagePoint = WM.geometry.denormalizePoint(s.getAnnotation(id).at, sz);
+    let drift = 0;
+    for (const sc of [0.195, 1, 4, 8]) {
+      s._setViewport(WM.viewport.centerOnNormalized({ x: 0.5, y: 0.5 }, sz,
+        { width: el.width, height: el.height }, s.getViewport(), sc));
+      s.renderLabels();
+      const v = s.getViewport();
+      const back = WM.viewport.screenToStage(WM.viewport.stageToScreen(stagePoint, v), v);
+      drift = Math.max(drift, Math.hypot(back.x - stagePoint.x, back.y - stagePoint.y));
+    }
+    s._setViewport(WM.viewport.fitToViewport(sz, { width: el.width, height: el.height }));
+    s.renderLabels();
+    return { unchanged: JSON.stringify(s.getAnnotation(id).at) === before, maxDrift: +drift.toFixed(9) };
+  });
+
+  // ── no-jump drag, measured ──
+  const anchor = (await state()).first.at;
+  let p = await at(anchor);
+  const grab = { x: p.x + 30, y: p.y - 8 };
+  const viewBefore = (await state()).view;
+  await fire('pointerdown', 10, grab.x, grab.y);
+  await fire('pointermove', 10, grab.x + 20, grab.y + 10);
+  const firstPreview = await page.evaluate((id) => window.__wmStage.getAnnotation(id).at,
+    (await state()).first.id);
+  const previewScreen = await at(firstPreview);
+  R.noJump = {
+    grabOffsetBefore: { x: +(grab.x - p.x).toFixed(2), y: +(grab.y - p.y).toFixed(2) },
+    grabOffsetAfter: { x: +(grab.x + 20 - previewScreen.x).toFixed(2),
+      y: +(grab.y + 10 - previewScreen.y).toFixed(2) } };
+  for (const d of [50, 90]) await fire('pointermove', 10, grab.x + d, grab.y + d * 0.5);
+  await fire('pointerup', 10, grab.x + 90, grab.y + 45);
+  await page.waitForTimeout(350);
+  const afterDrag = await state();
+  R.drag = { moved: JSON.stringify(afterDrag.first.at) !== JSON.stringify(anchor),
+    editorStayedClosed: !afterDrag.editorOpen,
+    stageDelta: afterDrag.view === viewBefore,
+    undoDepth: afterDrag.undoDepth, pointers: afterDrag.pointers, gesture: afterDrag.gesture,
+    textUnchanged: afterDrag.first.text === 'Panel A' };
+
+  // ── THE SEQUENCING CASE: tap immediately after a drag ──
+  p = await at(afterDrag.first.at);
+  await tap(p.x + 25, p.y - 8, 11);
+  R.tapAfterDrag = await page.evaluate(() => ({
+    open: !document.getElementById('wm-text-editor').hidden,
+    title: document.getElementById('wm-text-title').textContent,
+    value: document.getElementById('wm-text-value').value }));
+  await page.fill('#wm-text-value', 'Panel B');
+  await page.click('#wm-text-save'); await page.waitForTimeout(300);
+  const afterEdit = await state();
+  R.edit = { text: afterEdit.first.text, sameId: afterEdit.first.id === afterDrag.first.id,
+    anchorUnchanged: JSON.stringify(afterEdit.first.at) === JSON.stringify(afterDrag.first.at),
+    undoDepth: afterEdit.undoDepth };
+
+  // drag again, then tap again — the artifact would surface here
+  p = await at(afterEdit.first.at);
+  await fire('pointerdown', 12, p.x + 25, p.y - 8);
+  for (const d of [25, 60]) await fire('pointermove', 12, p.x + 25 + d, p.y - 8 - d * 0.4);
+  await fire('pointerup', 12, p.x + 85, p.y - 32);
+  await page.waitForTimeout(350);
+  const afterDrag2 = await state();
+  p = await at(afterDrag2.first.at);
+  await tap(p.x + 25, p.y - 8, 13);
+  R.secondCycle = { dragMoved: JSON.stringify(afterDrag2.first.at) !== JSON.stringify(afterEdit.first.at),
+    editorOpensAgain: await page.evaluate(() => !document.getElementById('wm-text-editor').hidden),
+    valueIsCurrent: await page.evaluate(() => document.getElementById('wm-text-value').value) === 'Panel B',
+    pointers: afterDrag2.pointers, gesture: afterDrag2.gesture };
+  await page.click('#wm-text-cancel'); await page.waitForTimeout(150);
+
+  // ── pointercancel restores ──
+  const beforeCancel = await state();
+  p = await at(beforeCancel.first.at);
+  await fire('pointerdown', 14, p.x + 25, p.y - 8);
+  for (const d of [30, 70]) await fire('pointermove', 14, p.x + 25 + d, p.y - 8 + d);
+  await page.evaluate(() => document.getElementById('wm-viewport')
+    .dispatchEvent(new PointerEvent('pointercancel', { pointerId: 14, bubbles: true })));
+  await page.waitForTimeout(250);
+  const afterCancelDrag = await state();
+  R.pointercancel = {
+    anchorRestored: JSON.stringify(afterCancelDrag.first.at) === JSON.stringify(beforeCancel.first.at),
+    undoUnchanged: afterCancelDrag.undoDepth === beforeCancel.undoDepth,
+    stageUnchanged: afterCancelDrag.view === beforeCancel.view,
+    pointers: afterCancelDrag.pointers };
+
+  // ── visible selection outline vs invisible hit target ──
+  R.outline = await page.evaluate(() => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    const id = document.querySelector('.wm-text-shape').getAttribute('data-annotation-id');
+    const base = s.getAnnotation(id);
+    const rows = [];
+    for (const str of ['Panel B', 'A', 'Feed from 3F', 'gjpqy', '12345',
+      '<script>alert(1)</script>', 'Zasilanie – kuchnia']) {
+      s.upsertAnnotation({ ...base, data: { text: str } });
+      for (const sc of [null, 1, 4, 8]) {
+        if (sc) {
+          s._setViewport(WM.viewport.centerOnNormalized(base.at, sz,
+            { width: el.width, height: el.height }, s.getViewport(), sc));
+        } else {
+          s._setViewport(WM.viewport.fitToViewport(sz, { width: el.width, height: el.height }));
+        }
+        s.renderLabels();
+        s.selectSketch(id);
+        const t = document.querySelector('.wm-text-body');
+        const hit = document.querySelector('.wm-text-hit');
+        const outline = document.querySelector('.wm-text-outline');
+        if (!t || !hit || !outline) { rows.push({ str, missing: true }); continue; }
+        const tb = t.getBoundingClientRect();
+        const hb = hit.getBoundingClientRect();
+        const ob = outline.getBoundingClientRect();
+        rows.push({ str: str.slice(0, 12), scale: +s.getViewport().scale.toFixed(3),
+          separateNodes: outline !== hit,
+          hitH: +hb.height.toFixed(1), outH: +ob.height.toFixed(1),
+          top: +(tb.top - ob.top).toFixed(1), bottom: +(ob.bottom - tb.bottom).toFixed(1),
+          left: +(tb.left - ob.left).toFixed(1), right: +(ob.right - tb.right).toFixed(1),
+          enclosesGlyphs: ob.top <= tb.top + 0.6 && ob.bottom >= tb.bottom - 0.6
+            && ob.left <= tb.left + 0.6 && ob.right >= tb.right - 0.6,
+          hitStroke: getComputedStyle(hit).stroke });
+      }
+    }
+    // Unselected text must show no outline at all.
+    s.selectSketch(null);
+    s.upsertAnnotation(base);
+    s.renderLabels();
+    const unselectedOutline = document.querySelectorAll('.wm-text-outline').length;
+    const hitStillThere = document.querySelectorAll('.wm-text-hit').length;
+    s._setViewport(WM.viewport.fitToViewport(sz, { width: el.width, height: el.height }));
+    s.renderLabels();
+    return { rows, unselectedOutline, hitStillThere };
+  });
+
+  // ── STATE-LEAK GUARD ──
+  // pointercancel once threw (a stray pointermove block referenced an `e` that
+  // does not exist in that handler). The exception aborted cleanup, left the
+  // text drag registered, and every later placement was swallowed by it. This
+  // proves the handler completes and that placement still works right after.
+  R.afterCancelPlacement = await page.evaluate(() => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    const vpEl = document.getElementById('wm-viewport');
+    const el = vpEl.getBoundingClientRect();
+    const occupied = (node) => { let n = node;
+      while (n && n !== vpEl) {
+        const c = (n.getAttribute && n.getAttribute('class')) || '';
+        if (/wm-text-shape|wm-sketch-shape|wm-arrow|wm-label|wm-endpoint|wm-sketch-handle/.test(c)) return true;
+        n = n.parentNode; }
+      return false; };
+    let spot = null;
+    for (let gx = 1; gx <= 8 && !spot; gx++) for (let gy = 1; gy <= 8 && !spot; gy++) {
+      const c = { x: gx / 9, y: gy / 9 };
+      const scr = WM.viewport.stageToScreen(WM.geometry.denormalizePoint(c, sz), s.getViewport());
+      if (scr.x < 4 || scr.y < 4 || scr.x > el.width - 4 || scr.y > el.height - 4) continue;
+      const node = document.elementFromPoint(el.left + scr.x, el.top + scr.y);
+      if (node && !occupied(node)) spot = scr;
+    }
+    if (!spot) return { probed: false };
+    s.armSketch('text');
+    const armed = s.activeSketchTool();
+    const send = (t) => {
+      const tg = document.elementFromPoint(el.left + spot.x, el.top + spot.y) || vpEl;
+      tg.dispatchEvent(new PointerEvent(t, { pointerId: 888, clientX: el.left + spot.x,
+        clientY: el.top + spot.y, bubbles: true, pointerType: 'touch' }));
+    };
+    send('pointerdown'); send('pointerup');
+    const opened = !document.getElementById('wm-text-editor').hidden;
+    if (opened) document.getElementById('wm-text-cancel').click();
+    s.disarmSketch();
+    return { probed: true, armed, opened, pointers: s.getActivePointers(),
+      gesture: s.getGestureMode() };
+  });
+
+  // ── undo move, then undo edit ──
+  await page.click('#wm-undo'); await page.waitForTimeout(300);
+  const u1 = await state();
+  await page.click('#wm-undo'); await page.waitForTimeout(300);
+  const u2 = await state();
+  R.undo = { afterFirst: u1.first.at, textAfterFirst: u1.first.text,
+    textAfterSecond: u2.first.text, backToPanelA: u2.first.text === 'Panel A' };
+
+  // ── XSS ──
+  await place({ x: 0.15, y: 0.15 }, '<script>alert(1)</script>', 'save');
+  R.xss = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const sheetId = await db.getMeta('currentSheetId');
+    const list = await db.listAnnotations(sheetId); db.closeDatabase();
+    const t = list.find((a) => a.data.text && a.data.text.indexOf('script') !== -1);
+    const nodes = Array.from(document.querySelectorAll('#wm-sketch .wm-text-body'));
+    const shown = nodes.map((n) => n.textContent);
+    return { stored: t ? t.data.text : null,
+      renderedLiterally: shown.indexOf('<script>alert(1)</script>') !== -1,
+      scriptElements: document.querySelectorAll('#wm-sketch script').length };
+  });
+
+  // ── armed Text must not hijack existing annotations ──
+  await openTray();
+  await page.click('#wm-tool-line');
+  await fire('pointerdown', 20, 120, 300);
+  await fire('pointermove', 20, 200, 320);
+  await fire('pointerup', 20, 280, 340);
+  await page.waitForTimeout(300);
+  await page.click('#wm-add-label');
+  let lp = await at({ x: 0.55, y: 0.2 });
+  await tap(lp.x, lp.y, 21);
+  await page.fill('#wm-f-label', 'HR-7');
+  await page.click('#wm-editor-save'); await page.waitForTimeout(300);
+
+  const before = await state();
+  const targets = await page.evaluate(() => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    const scr = (n) => WM.viewport.stageToScreen(WM.geometry.denormalizePoint(n, sz), s.getViewport());
+    const out = {};
+    const lb = document.querySelector('.wm-label');
+    if (lb) out.label = scr(s.getAnnotation(lb.getAttribute('data-annotation-id')).at);
+    const ln = document.querySelector('.wm-sketch-shape');
+    if (ln) { const a = s.getAnnotation(ln.getAttribute('data-annotation-id'));
+      out.line = scr({ x: (a.a.x + a.b.x) / 2, y: (a.a.y + a.b.y) / 2 }); }
+    const tx = document.querySelector('.wm-text-shape');
+    if (tx) out.text = scr(s.getAnnotation(tx.getAttribute('data-annotation-id')).at);
+    return out;
+  });
+  R.armedPriority = {};
+  for (const [name, pnt] of Object.entries(targets)) {
+    await openTray();
+    await page.click('#wm-tool-text');
+    await tap(pnt.x + (name === 'text' ? 20 : 0), pnt.y - (name === 'text' ? 6 : 0), 30);
+    const st = await state();
+    R.armedPriority[name] = { newTextCreated: st.storedTexts > before.storedTexts,
+      textEditorOpen: st.editorOpen };
+    await page.evaluate(() => {
+      document.getElementById('wm-text-editor').hidden = true;
+      document.getElementById('wm-editor').hidden = true;
+      window.__wmStage.disarmSketch();
+    });
+    await page.waitForTimeout(120);
+  }
+  await openTray();
+  await page.click('#wm-tool-text');
+  let empty = await at({ x: 0.05, y: 0.95 });
+  await tap(empty.x, empty.y, 31);
+  R.armedOnEmpty = await page.evaluate(() => !document.getElementById('wm-text-editor').hidden);
+  await page.click('#wm-text-cancel'); await page.waitForTimeout(150);
+
+  // ── iOS compatibility: touch then synthesised mouse ──
+  const preIos = await state();
+  p = await at(preIos.first.at);
+  await tap(p.x + 25, p.y - 8, 40, 'touch');
+  const iosTouch = await page.evaluate(() => !document.getElementById('wm-text-editor').hidden);
+  await tap(p.x + 25, p.y - 8, 41, 'mouse');
+  const iosCompat = await state();
+  R.ios = { editorAfterTouch: iosTouch, storedUnchanged: iosCompat.storedTexts === preIos.storedTexts,
+    undoUnchanged: iosCompat.undoDepth === preIos.undoDepth };
+  await page.click('#wm-text-cancel'); await page.waitForTimeout(150);
+  // a fresh legitimate touch afterwards must still work
+  await tap(p.x + 25, p.y - 8, 42, 'touch');
+  R.freshTouchAfterIos = await page.evaluate(() => !document.getElementById('wm-text-editor').hidden);
+  await page.click('#wm-text-cancel'); await page.waitForTimeout(150);
+
+  // ── delete then undo ──
+  const preDelete = await state();
+  p = await at(preDelete.first.at);
+  await tap(p.x + 25, p.y - 8, 50);
+  await page.click('#wm-text-delete'); await page.waitForTimeout(300);
+  const afterDelete = await state();
+  await page.click('#wm-undo'); await page.waitForTimeout(300);
+  const afterUndoDelete = await state();
+  R.deleteUndo = { removed: afterDelete.storedTexts === preDelete.storedTexts - 1,
+    restored: afterUndoDelete.storedTexts === preDelete.storedTexts,
+    sameId: !!afterUndoDelete.first && afterUndoDelete.first.id === preDelete.first.id,
+    sameText: !!afterUndoDelete.first && afterUndoDelete.first.text === preDelete.first.text,
+    sameAnchor: !!afterUndoDelete.first
+      && JSON.stringify(afterUndoDelete.first.at) === JSON.stringify(preDelete.first.at) };
+
+  // ── reload persistence, blank sheet ──
+  await page.reload(); await page.waitForTimeout(200);
+  await page.click('#wm-dev-load');
+  await page.waitForFunction(() => window.__wmStage.getAnnotationCount() > 0, { timeout: 20000 });
+  await page.waitForTimeout(300);
+  const reloaded = await state();
+  R.reload = { texts: reloaded.storedTexts, rendered: reloaded.renderedTexts,
+    inSketchOnly: reloaded.textsElsewhere === 0,
+    sameId: !!reloaded.first && reloaded.first.id === preDelete.first.id };
+
+  // ── image sheet: no cross-sheet leakage ──
+  // Start from a clean load. The blank-sheet section above ends after two
+  // reloads and a long gesture sequence; importing on top of that state made
+  // the section fragile for reasons unrelated to what it is meant to prove.
+  await page.reload();
+  await page.waitForTimeout(300);
+  await page.evaluate(async () => {
+    const c = document.createElement('canvas'); c.width = 2000; c.height = 1500;
+    c.getContext('2d').fillRect(0, 0, 2000, 1500);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
+    const dt = new DataTransfer(); dt.items.add(new File([blob], 'p.jpg', { type: 'image/jpeg' }));
+    const i = document.getElementById('wm-dev-file'); i.files = dt.files;
+    i.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.waitForFunction(() => window.__wmStage.hasImage(), { timeout: 20000 });
+  await page.waitForTimeout(300);
+  const freshSheet = await state();
+  await place({ x: 0.35, y: 0.55 }, 'On photo', 'save');
+  const onImage = await state();
+  await page.reload(); await page.waitForTimeout(200);
+  await page.click('#wm-dev-load');
+  await page.waitForFunction(() => window.__wmStage.getAnnotationCount() > 0, { timeout: 20000 });
+  await page.waitForTimeout(300);
+  const imageReloaded = await state();
+  R.imageSheet = { startedEmpty: freshSheet.storedTexts === 0,
+    created: onImage.storedTexts === 1 && onImage.first.text === 'On photo',
+    survivesReload: imageReloaded.storedTexts === 1
+      && imageReloaded.first.text === 'On photo'
+      && JSON.stringify(imageReloaded.first.at) === JSON.stringify(onImage.first.at) };
+
+  await browser.close();
+
+  const sz = R.sizes;
+  const checks = [
+    ['creating text stores the trimmed value and one undo entry',
+      R.created.storedTexts === 1 && R.created.first.text === 'Panel A'
+      && R.created.undoDepth === 1 && !R.created.editorOpen && R.created.tool === 'none'],
+    ['text renders only in wm-sketch',
+      R.created.renderedTexts === 1 && R.created.textsElsewhere === 0],
+    ['Cancel creates nothing and pushes no undo entry',
+      R.cancelled.storedTexts === 1 && R.cancelled.undoDepth === 1 && R.cancelled.tool === 'none'],
+    ['whitespace-only Save is refused with the editor still open',
+      R.blank.editorOpen && /required/i.test(R.blank.err)
+      && R.blank.storedTexts === 1 && R.blank.undoDepth === 1],
+    ['generated font-size equals 16 / scale for every string and zoom',
+      sz.every((r) => Math.abs(r.stageFont - r.expectedStage) < 1e-3)],
+    ['effective font stays ~16 screen px', sz.every((r) => Math.abs(r.screenFont - 16) < 0.2)],
+    ['no CSS font-size or vector-effect overrides the generated value',
+      sz.every((r) => r.vectorEffect === 'none' && !r.hasTransform
+        && Math.abs(parseFloat(r.cssFont) - r.stageFont) < 1e-3)],
+    ['the hit target is at least ~44 screen px tall for every string',
+      sz.every((r) => r.hitH >= 43.5)],
+    ['the hit target is wider than the shortest glyph run', sz.every((r) => r.hitW > 20)],
+    ['the stored anchor never changes under zoom and does not drift',
+      R.anchor.unchanged && R.anchor.maxDrift < 1e-6],
+    ['NO-JUMP: the grab offset survives the first move',
+      Math.abs(R.noJump.grabOffsetAfter.x - R.noJump.grabOffsetBefore.x) < 1.5
+      && Math.abs(R.noJump.grabOffsetAfter.y - R.noJump.grabOffsetBefore.y) < 1.5],
+    ['a drag moves the text without opening the editor',
+      R.drag.moved && R.drag.editorStayedClosed && R.drag.textUnchanged],
+    ['a drag does not pan the stage and leaves the gesture idle',
+      R.drag.stageDelta && R.drag.pointers === 0 && R.drag.gesture === 'idle'],
+    ['a completed move pushes exactly one undo entry', R.drag.undoDepth === 2],
+    ['SEQUENCING: a tap right after a drag opens the editor',
+      R.tapAfterDrag.open && R.tapAfterDrag.value === 'Panel A'
+      && /EDIT/.test(R.tapAfterDrag.title)],
+    ['editing keeps the id and anchor and pushes one undo entry',
+      R.edit.text === 'Panel B' && R.edit.sameId && R.edit.anchorUnchanged
+      && R.edit.undoDepth === 3],
+    ['SEQUENCING: drag, edit, drag, tap all keep working',
+      R.secondCycle.dragMoved && R.secondCycle.editorOpensAgain
+      && R.secondCycle.valueIsCurrent && R.secondCycle.pointers === 0
+      && R.secondCycle.gesture === 'idle'],
+    ['pointercancel restores the anchor and writes nothing',
+      R.pointercancel.anchorRestored && R.pointercancel.undoUnchanged
+      && R.pointercancel.stageUnchanged && R.pointercancel.pointers === 0],
+    ['the visible outline is a SEPARATE node from the touch target',
+      R.outline.rows.every((r) => r.separateNodes)],
+    ['the outline hugs the glyphs instead of the 44px touch target',
+      R.outline.rows.every((r) => r.outH < r.hitH - 8)],
+    ['the outline encloses the rendered glyphs for every string',
+      R.outline.rows.every((r) => r.enclosesGlyphs)],
+    ['outline padding is roughly symmetric top to bottom',
+      R.outline.rows.every((r) => Math.abs(r.top - r.bottom) <= 4)],
+    ['the outline keeps a constant screen size across zoom',
+      (() => { const byStr = {};
+        R.outline.rows.forEach((r) => { (byStr[r.str] = byStr[r.str] || []).push(r.outH); });
+        return Object.values(byStr).every((hs) => Math.max(...hs) - Math.min(...hs) < 1); })()],
+    ['the touch target stays >= 44 screen px regardless of the outline',
+      R.outline.rows.every((r) => r.hitH >= 43.5)],
+    ['the hit rect itself is never painted',
+      R.outline.rows.every((r) => r.hitStroke === 'none' || /rgba\(0, 0, 0, 0\)/.test(r.hitStroke))],
+    ['unselected text shows no outline but keeps its touch target',
+      R.outline.unselectedOutline === 0 && R.outline.hitStillThere === 1],
+    ['STATE LEAK: placement still works immediately after a pointercancel',
+      R.afterCancelPlacement.probed && R.afterCancelPlacement.armed === 'text'
+      && R.afterCancelPlacement.opened && R.afterCancelPlacement.pointers === 0
+      && R.afterCancelPlacement.gesture === 'idle'],
+    ['undo reverses the move, then the content edit',
+      R.undo.textAfterFirst === 'Panel B' && R.undo.backToPanelA],
+    ['XSS: script-like text is stored and rendered literally',
+      R.xss.stored === '<script>alert(1)</script>' && R.xss.renderedLiterally
+      && R.xss.scriptElements === 0],
+    ['XSS: no dialog was triggered', dialogs.length === 0],
+    ['armed Text creates nothing on a Wire Label',
+      !R.armedPriority.label || !R.armedPriority.label.newTextCreated],
+    ['armed Text creates nothing on a sketch line',
+      !R.armedPriority.line || !R.armedPriority.line.newTextCreated],
+    ['armed Text creates nothing on existing text',
+      !R.armedPriority.text || !R.armedPriority.text.newTextCreated],
+    ['armed Text on truly empty sheet opens a new draft', R.armedOnEmpty],
+    ['iOS: touch opens the editor and the compatibility pair adds nothing',
+      R.ios.editorAfterTouch && R.ios.storedUnchanged && R.ios.undoUnchanged],
+    ['iOS: a fresh touch after the compatibility pair still works', R.freshTouchAfterIos],
+    ['delete removes the text and undo restores id, content and anchor',
+      R.deleteUndo.removed && R.deleteUndo.restored && R.deleteUndo.sameId
+      && R.deleteUndo.sameText && R.deleteUndo.sameAnchor],
+    ['text survives a reload of the blank sheet',
+      R.reload.texts >= 1 && R.reload.rendered >= 1 && R.reload.inSketchOnly && R.reload.sameId],
+    ['a new image sheet inherits no text from the blank sheet', R.imageSheet.startedEmpty],
+    ['text works on an image sheet and survives its reload',
+      R.imageSheet.created && R.imageSheet.survivesReload],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
 (async () => {
   const engines = [['chromium', playwright.chromium], ['webkit', playwright.webkit]];
   let failures = 0;
 
   for (const [name, engine] of engines) {
-    for (const [suite, fn] of [['image + EXIF', run], ['viewport + pointers', runViewport], ['wire labels', runLabels], ['label text', runLabelText], ['arrows', runArrows], ['arrow tip', runArrowTip], ['sketch', runSketch], ['hit priority', runPriority], ['control layout', runControlLayout]]) {
+    for (const [suite, fn] of [['image + EXIF', run], ['viewport + pointers', runViewport], ['wire labels', runLabels], ['label text', runLabelText], ['arrows', runArrows], ['arrow tip', runArrowTip], ['sketch', runSketch], ['hit priority', runPriority], ['control layout', runControlLayout], ['sketch text', runText]]) {
     const result = await fn(name, engine);
     console.log(`\n=== ${name.toUpperCase()} — ${suite} ===`);
     if (!result.available) {

@@ -72,6 +72,9 @@ function createStageController(options) {
     onSketchDrawn: opts.onSketchDrawn || null,       // ({tool,a,b}) => void
     onSketchChanged: opts.onSketchChanged || null,   // (annotation, before) => void
     onSketchSelected: opts.onSketchSelected || null, // (annotation|null) => void
+    onTextPlace: opts.onTextPlace || null,           // (normalized) => void
+    onTextEdit: opts.onTextEdit || null,             // (annotation) => void
+    onTextMoved: opts.onTextMoved || null,           // (after, before) => void
     onSketchToolChange: opts.onSketchToolChange || null, // (tool) => void
   };
 
@@ -312,6 +315,22 @@ function createStageController(options) {
   const SKETCH_SELECTED_STROKE_PX = 2.0;
   const SKETCH_HIT_PX = 40;
 
+  /**
+   * Sketch text size in SCREEN pixels, converted to stage units at render time.
+   * Same explicit compensation as every other screen-space target here.
+   */
+  const TEXT_FONT_PX = 16;
+  const TEXT_PAD_PX = 6;
+  /** Minimum touch height for text, in screen pixels. */
+  const TEXT_HIT_MIN_PX = 44;
+  /**
+   * Padding around the GLYPHS for the visible selection outline, in screen px.
+   * Separate from the touch target: the outline is decoration and must hug the
+   * text, while the hit rect stays finger-sized.
+   */
+  const TEXT_OUTLINE_PAD_X_PX = 6;
+  const TEXT_OUTLINE_PAD_Y_PX = 4;
+
   /** Drafting grid for blank sheets. Visual only; never stored. */
   const GRID_MINOR = 50;      // stage units
   const GRID_MAJOR = 250;
@@ -493,6 +512,12 @@ function createStageController(options) {
    */
   function renderSketchHandles(shape) {
     if (!el.selection || !stageSize) return;
+    // Text has no draggable geometry: it carries `at`, not `a`/`b`, and WM-6B2
+    // gives it a subtle outline instead of handles. Without this guard the
+    // handle loop dereferenced undefined endpoints and threw, aborting
+    // selection midway and leaving the gesture state inconsistent.
+    if (shape.type !== 'line' && shape.type !== 'rect') return;
+
     const inverse = labelInteraction.labelCounterScale(view.scale);
     const points = shape.type === 'rect'
       ? sketchInteraction.rectCorners(shape)
@@ -663,13 +688,113 @@ function createStageController(options) {
     }
   }
 
-  function renderSketch() {
+  /**
+   * One text annotation.
+   *
+   * The anchor rides the single stage transform; the font size is divided by
+   * the stage scale so the text keeps a constant screen size. A transparent
+   * backing rect gives it a finger-sized hit area, because a glyph outline is
+   * far too thin to tap reliably.
+   */
+  function renderTextShape(annotation) {
+    const g = doc.createElementNS(SVG_NS, 'g');
+    const selected = sketchInteraction.getSelected(sketchState) === annotation.id;
+    g.setAttribute('class', 'wm-text-shape' + (selected ? ' selected' : ''));
+    g.setAttribute('data-annotation-id', annotation.id);
+
+    const p = geometry.denormalizePoint(annotation.at, stageSize);
+    const scale = view.scale > 0 ? view.scale : 1;
+    const font = sketchInteraction.textFontForScale(TEXT_FONT_PX, scale);
+    const pad = TEXT_PAD_PX / scale;
+    const text = String((annotation.data && annotation.data.text) || '');
+
+    const t = doc.createElementNS(SVG_NS, 'text');
+    t.setAttribute('x', String(p.x));
+    t.setAttribute('y', String(p.y));
+    t.setAttribute('class', 'wm-text-body');
+    t.setAttribute('font-size', String(font));
+    t.textContent = text;   // textContent, never innerHTML: user text is data
+
+    const hit = doc.createElementNS(SVG_NS, 'rect');
+    hit.setAttribute('class', 'wm-text-hit');
+    // Decoration only, and only when selected. Drawn as its own element so the
+    // outline can hug the glyphs while the hit rect stays finger-sized — the
+    // two used to be the same rect, which left 24.5px of empty space above the
+    // text and 0.5px below it.
+    const outline = selected ? doc.createElementNS(SVG_NS, 'rect') : null;
+    if (outline) outline.setAttribute('class', 'wm-text-outline');
+    // The text must be in the document before it can be measured.
+    g.appendChild(hit);
+    if (outline) g.appendChild(outline);
+    g.appendChild(t);
+
+    /**
+     * Size the touch target from the REAL advance width once the glyphs exist,
+     * falling back to a character estimate if the engine reports nothing
+     * usable. A character estimate alone is wrong for Unicode and punctuation.
+     */
+    function sizeHit() {
+      let measured = 0;
+      try {
+        if (typeof t.getComputedTextLength === 'function') measured = t.getComputedTextLength();
+        if (!(measured > 0) && typeof t.getBBox === 'function') measured = t.getBBox().width;
+      } catch (_) { measured = 0; }
+      const estimated = Math.max(font * 1.2, text.length * font * 0.58);
+      const width = (measured > 0 ? measured : estimated) + pad * 2;
+      // Height is a screen-space minimum, converted like every other target.
+      const height = Math.max(TEXT_HIT_MIN_PX / scale, font * 1.35 + pad * 2);
+      hit.setAttribute('x', String(p.x - pad));
+      // Centre the box on the glyph band rather than hanging it off the baseline.
+      hit.setAttribute('y', String(p.y + font * 0.28 - height));
+      hit.setAttribute('width', String(width));
+      hit.setAttribute('height', String(height));
+
+      if (!outline) return;
+      // The outline comes from the REAL rendered bounds, so descenders in
+      // "gjpqy" and short strings like "A" are all enclosed symmetrically.
+      const padX = TEXT_OUTLINE_PAD_X_PX / scale;
+      const padY = TEXT_OUTLINE_PAD_Y_PX / scale;
+      let box = null;
+      try {
+        if (typeof t.getBBox === 'function') {
+          const bb = t.getBBox();
+          if (bb && bb.width > 0 && bb.height > 0) box = bb;
+        }
+      } catch (_) { box = null; }
+      if (!box) {
+        // Defensive fallback: approximate the glyph band from the font metrics.
+        box = { x: p.x, y: p.y - font * 0.78, width: measured > 0 ? measured : estimated,
+          height: font * 1.05 };
+      }
+      // getBBox and getComputedTextLength both report the ADVANCE width, which
+      // for glyph runs with overhang (">", en-dashes) is a shade narrower than
+      // what is actually painted. The client rect is the painted extent, so
+      // convert it back to stage units and take the widest of the three: the
+      // outline must never clip the text it is drawn around.
+      // Both getBBox and getComputedTextLength report the ADVANCE width. Glyph
+      // runs with overhang ('>', en-dashes) paint a couple of pixels past it,
+      // and the group is still detached here so the client rect reads zero.
+      // A small font-proportional allowance covers the overhang without
+      // loosening the outline noticeably.
+      const overhang = font * 0.2;
+      const boxWidth = Math.max(box.width, measured > 0 ? measured : 0) + overhang;
+      outline.setAttribute('x', String(box.x - padX));
+      outline.setAttribute('y', String(box.y - padY));
+      outline.setAttribute('width', String(boxWidth + padX * 2));
+      outline.setAttribute('height', String(box.height + padY * 2));
+    }
+    sizeHit();
+    return g;
+  }
+
+    function renderSketch() {
     if (!el.sketch || !stageSize) return;
     while (el.sketch.firstChild) el.sketch.removeChild(el.sketch.firstChild);
     const grid = renderGrid();
     if (grid) el.sketch.appendChild(grid);
     annotations.forEach((a) => {
       if (a.type === 'line' || a.type === 'rect') el.sketch.appendChild(renderSketchShape(a));
+      else if (a.type === 'text') el.sketch.appendChild(renderTextShape(a));
     });
   }
 
@@ -909,6 +1034,17 @@ function createStageController(options) {
     return null;
   }
 
+  /** The id only when the press landed on a text group. */
+  function textIdFrom(target) {
+    let node = target;
+    while (node && node !== el.viewport) {
+      const cls = node.getAttribute && node.getAttribute('class');
+      if (cls && /(^|\s)wm-text-shape(\s|$)/.test(cls)) return node.getAttribute('data-annotation-id');
+      node = node.parentNode;
+    }
+    return null;
+  }
+
   /** The id only when the press landed on a sketch shape group. */
   function sketchShapeIdFrom(target) {
     let node = target;
@@ -989,6 +1125,17 @@ function createStageController(options) {
     // Sketch shapes are below arrows and labels, matching the visual stacking:
     // wm-sketch renders beneath wm-routes and wm-labels, so a label on top of a
     // sketch line stays tappable.
+    // Existing text: press to drag, tap to edit. Above line/rect because a
+    // caption may sit on top of a shape and must stay reachable.
+    const textId = textIdFrom(e.target);
+    if (textId && annotations.has(textId)) {
+      capture(e);
+      sketchInteraction.textPointerDown(sketchState, annotations.get(textId), point, view, stageSize);
+      selectSketch(textId);
+      if (e.stopPropagation) e.stopPropagation();
+      return;
+    }
+
     const sketchId = sketchShapeIdFrom(e.target);
     if (sketchId && annotations.has(sketchId)) {
       capture(e);
@@ -1013,7 +1160,11 @@ function createStageController(options) {
     // label, an arrow or an existing shape into the start of a new line.
     if (sketchInteraction.isArmed(sketchState)) {
       capture(e);
-      sketchInteraction.drawStart(sketchState, point, view, stageSize);
+      // Text is placed by a TAP, so there is no draft to start; line and rect
+      // begin a drag draft here as before.
+      if (sketchInteraction.activeTool(sketchState) !== 'text') {
+        sketchInteraction.drawStart(sketchState, point, view, stageSize);
+      }
       if (e.stopPropagation) e.stopPropagation();
       return;
     }
@@ -1034,6 +1185,19 @@ function createStageController(options) {
 
   function onPointerMove(e) {
     if (!stageSize) return;
+
+    if (sketchInteraction.hasPressedText(sketchState)) {
+      const r = sketchInteraction.textPointerMove(sketchState, localPoint(e), view, stageSize);
+      if (r.moved && r.normalized) {
+        const t = annotations.get(r.id);
+        // Live visual only; one write at the end of the drag.
+        if (t) {
+          annotations.set(r.id, sketchInteraction.withAnchor(t, r.normalized));
+          renderSketch(); renderSelection();
+        }
+      }
+      return;   // a text drag never pans the plan
+    }
 
     if (sketchInteraction.hasPressedHandle(sketchState)) {
       const r = sketchInteraction.handleMove(sketchState, localPoint(e), view, stageSize);
@@ -1103,6 +1267,21 @@ function createStageController(options) {
     // lands somewhere new and is treated as a fresh gesture.
     labelInteraction.noteInput(labelState, e.pointerType || 'mouse', point, nowMs());
 
+    if (sketchInteraction.hasPressedText(sketchState)) {
+      const outcome = sketchInteraction.textPointerUp(sketchState);
+      release(e);
+      if (outcome.action === 'tap' && hooks.onTextEdit) {
+        hooks.onTextEdit(annotations.get(outcome.id));
+      } else if (outcome.action === 'move' && hooks.onTextMoved) {
+        const t = annotations.get(outcome.id);
+        if (t) {
+          hooks.onTextMoved(sketchInteraction.withAnchor(t, outcome.normalized),
+            sketchInteraction.withAnchor(t, outcome.before));
+        }
+      }
+      return;
+    }
+
     if (sketchInteraction.hasPressedHandle(sketchState)) {
       const outcome = sketchInteraction.handleUp(sketchState);
       release(e);
@@ -1113,6 +1292,14 @@ function createStageController(options) {
             sketchInteraction.withGeometry(shape, outcome.before));
         }
       }
+      return;
+    }
+
+    if (sketchInteraction.activeTool(sketchState) === 'text') {
+      const normalized = sketchInteraction.textPlacementAt(sketchState, point, view, stageSize);
+      release(e);
+      disarmSketch();
+      if (normalized && hooks.onTextPlace) hooks.onTextPlace(normalized);
       return;
     }
 
@@ -1209,6 +1396,16 @@ function createStageController(options) {
 
   function onPointerCancel() {
     pressedBackground = false;
+    if (sketchInteraction.hasPressedText(sketchState)) {
+      const outcome = sketchInteraction.textPointerCancel(sketchState);
+      if (outcome.action === 'revert' && outcome.id) {
+        const t = annotations.get(outcome.id);
+        if (t) {
+          annotations.set(outcome.id, sketchInteraction.withAnchor(t, outcome.normalized));
+          renderSketch(); renderSelection();
+        }
+      }
+    }
     if (sketchInteraction.hasPressedHandle(sketchState)) {
       const outcome = sketchInteraction.handleCancel(sketchState);
       if (outcome.action === 'revert' && outcome.id) {
@@ -1328,6 +1525,8 @@ function createStageController(options) {
     setSheet,
     isGridVisible: () => showGrid,
     recordCreate,
+    recordContent: (before) => undoStack.pushContent(undo, before),
+    recordAnchor: (before) => undoStack.pushAnchor(undo, before),
     recordGeometry,
     recordDelete,
     planUndo,

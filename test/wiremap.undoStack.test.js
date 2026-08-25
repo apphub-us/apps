@@ -154,8 +154,9 @@ describe('WM-6B1 undo — sheet scope', () => {
 });
 
 describe('WM-6B1 undo — scope is sketch only', () => {
-  test('only the three sketch mutation kinds are recognised', () => {
-    assert.deepStrictEqual(U.KINDS, ['create', 'geometry', 'delete']);
+  test('only sketch mutation kinds are recognised', () => {
+    // WM-6B2 added content and anchor for text; line/rect still use the first three.
+    assert.deepStrictEqual(U.KINDS, ['create', 'geometry', 'delete', 'content', 'anchor']);
   });
 
   test('there is no redo', () => {

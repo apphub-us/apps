@@ -16,7 +16,7 @@
 const MAX_ENTRIES = 20;
 
 /** Kinds of mutation this stack can reverse. */
-const KINDS = ['create', 'geometry', 'delete'];
+const KINDS = ['create', 'geometry', 'delete', 'content', 'anchor'];
 
 function createUndoStack(options) {
   const limit = (options && Number.isFinite(options.limit) && options.limit > 0)
@@ -77,6 +77,28 @@ function pushGeometry(stack, annotationBefore) {
   });
 }
 
+/** Text content changed: undoing restores the previous string. */
+function pushContent(stack, annotationBefore) {
+  if (!annotationBefore || !annotationBefore.id) return stack;
+  return push(stack, {
+    kind: 'content',
+    annotationId: annotationBefore.id,
+    sheetId: annotationBefore.sheetId,
+    before: { text: (annotationBefore.data || {}).text },
+  });
+}
+
+/** Text moved: undoing restores the previous normalized anchor. */
+function pushAnchor(stack, annotationBefore) {
+  if (!annotationBefore || !annotationBefore.id || !annotationBefore.at) return stack;
+  return push(stack, {
+    kind: 'anchor',
+    annotationId: annotationBefore.id,
+    sheetId: annotationBefore.sheetId,
+    before: { at: { ...annotationBefore.at } },
+  });
+}
+
 /**
  * A shape was deleted: undoing restores the whole record, id included, so the
  * same annotation comes back rather than a copy under a new id.
@@ -109,18 +131,22 @@ function undo(stack, lookup) {
     return { action: 'restore', annotationId: entry.annotationId, annotation: entry.snapshot };
   }
 
-  // geometry: rebuild the current record with the previous a/b.
+  // geometry / content / anchor: rebuild the current record with the old value.
   const current = typeof lookup === 'function' ? lookup(entry.annotationId) : null;
   if (!current) {
     // The shape is gone; there is nothing to restore. Fail quietly rather than
     // inventing a record and corrupting the sheet.
     return { action: 'none', annotationId: entry.annotationId, annotation: null };
   }
-  return {
-    action: 'restore',
-    annotationId: entry.annotationId,
-    annotation: { ...current, a: { ...entry.before.a }, b: { ...entry.before.b } },
-  };
+  let restored;
+  if (entry.kind === 'content') {
+    restored = { ...current, data: { ...(current.data || {}), text: entry.before.text } };
+  } else if (entry.kind === 'anchor') {
+    restored = { ...current, at: { ...entry.before.at } };
+  } else {
+    restored = { ...current, a: { ...entry.before.a }, b: { ...entry.before.b } };
+  }
+  return { action: 'restore', annotationId: entry.annotationId, annotation: restored };
 }
 
 /** Inspect the next entry without consuming it. */
@@ -140,6 +166,8 @@ module.exports = {
   pushCreate,
   pushGeometry,
   pushDelete,
+  pushContent,
+  pushAnchor,
   undo,
   peek,
 };

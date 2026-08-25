@@ -29,7 +29,13 @@ const RECT_MIN_SIZE_PX = 16;
 /** Movement before a handle press becomes a drag rather than a tap. */
 const HANDLE_DRAG_THRESHOLD_PX = 8;
 
-const TOOLS = ['none', 'line', 'rect'];
+const TOOLS = ['none', 'line', 'rect', 'text'];
+
+/** Single-line sketch text. Long enough for "Feed from 3F", short by design. */
+const TEXT_MAX_LENGTH = 120;
+
+/** Movement before a press on text becomes a drag rather than a tap. */
+const TEXT_DRAG_THRESHOLD_PX = 8;
 
 function isFiniteNumber(v) {
   return typeof v === 'number' && Number.isFinite(v);
@@ -45,6 +51,21 @@ function distance(a, b) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+/**
+ * Normalise text for storage: trimmed and length-capped.
+ * Returns null when nothing meaningful remains, so callers cannot save blanks.
+ */
+function normalizeText(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, TEXT_MAX_LENGTH);
+}
+
+function isValidText(value) {
+  return normalizeText(value) !== null;
+}
+
 function createSketchState() {
   return {
     /** 'none' | 'line' | 'rect' — only ever one. */
@@ -55,6 +76,8 @@ function createSketchState() {
     handleDrag: null,
     /** Currently selected sketch shape id. */
     selectedId: null,
+    /** In-flight text move. */
+    textDrag: null,
   };
 }
 
@@ -284,6 +307,104 @@ function withGeometry(annotation, geo) {
   };
 }
 
+// ── Text ──────────────────────────────────────────────────────────────────
+
+/**
+ * Where an armed Text tool would place a new annotation.
+ * Returns the normalized anchor, or null if the point is unusable.
+ */
+function textPlacementAt(state, screenPoint, viewport, stageSize) {
+  if (activeTool(state) !== 'text') return null;
+  return screenToNormalized(screenPoint, viewport, stageSize);
+}
+
+/**
+ * A pointer went down on existing text.
+ *
+ * The grab offset between the pointer and the anchor is recorded in STAGE
+ * units, so the text keeps the point the finger grabbed instead of snapping
+ * its anchor under the finger.
+ */
+function textPointerDown(state, annotation, screenPoint, viewport, stageSize) {
+  if (!annotation || !isPoint(screenPoint) || !stageSize || !viewport) return state;
+  const pointerStage = viewportMath.screenToStage(screenPoint, viewport);
+  const anchorStage = geometry.denormalizePoint(annotation.at, stageSize);
+  if (!pointerStage || !anchorStage) return state;
+  state.textDrag = {
+    id: annotation.id,
+    startScreen: { x: screenPoint.x, y: screenPoint.y },
+    grabOffset: { x: pointerStage.x - anchorStage.x, y: pointerStage.y - anchorStage.y },
+    original: { x: annotation.at.x, y: annotation.at.y },
+    current: { x: annotation.at.x, y: annotation.at.y },
+    moved: false,
+  };
+  return state;
+}
+
+/**
+ * Move the text.
+ * newAnchor = pointerStage - grabOffset, then normalized and clamped.
+ */
+function textPointerMove(state, screenPoint, viewport, stageSize) {
+  const d = state.textDrag;
+  if (!d || !isPoint(screenPoint) || !stageSize) return { moved: false, normalized: null };
+  if (!d.moved && distance(d.startScreen, screenPoint) < TEXT_DRAG_THRESHOLD_PX) {
+    return { moved: false, normalized: null };
+  }
+  const pointerStage = viewportMath.screenToStage(screenPoint, viewport);
+  if (!pointerStage) return { moved: false, normalized: null };
+  d.moved = true;
+  const next = geometry.normalizePoint({
+    x: pointerStage.x - d.grabOffset.x,
+    y: pointerStage.y - d.grabOffset.y,
+  }, stageSize);
+  if (!next) return { moved: false, normalized: null };
+  d.current = next;
+  return { moved: true, id: d.id, normalized: next };
+}
+
+/** @returns {{action:'move'|'tap'|'none', id, normalized, before}} */
+function textPointerUp(state) {
+  const d = state.textDrag;
+  state.textDrag = null;
+  if (!d) return { action: 'none', id: null, normalized: null };
+  if (!d.moved) return { action: 'tap', id: d.id, normalized: d.original };
+  return { action: 'move', id: d.id, normalized: d.current, before: d.original };
+}
+
+/** Cancel restores the stored anchor. */
+function textPointerCancel(state) {
+  const d = state.textDrag;
+  state.textDrag = null;
+  if (!d) return { action: 'none', id: null, normalized: null };
+  return { action: 'revert', id: d.id, normalized: d.original };
+}
+
+function isDraggingText(state) {
+  return !!(state.textDrag && state.textDrag.moved);
+}
+
+function hasPressedText(state) {
+  return !!state.textDrag;
+}
+
+/** Apply a new anchor without mutating the original. */
+function withAnchor(annotation, normalized) {
+  if (!annotation || !normalized) return annotation;
+  return { ...annotation, at: geometry.clampNormalized(normalized) };
+}
+
+/**
+ * Font size in stage units for the current zoom.
+ * Explicit compensation, never vector-effect or a nested inverse transform —
+ * both proved unreliable in physical iOS Safari under a transformed stage.
+ */
+function textFontForScale(screenPx, scale) {
+  const s = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  const px = Number.isFinite(screenPx) && screenPx > 0 ? screenPx : 16;
+  return px / s;
+}
+
 /** Axis-aligned bounds for rendering a rectangle, in normalized units. */
 function rectBounds(annotation) {
   return geometry.segmentBounds({ a: annotation.a, b: annotation.b });
@@ -294,6 +415,10 @@ module.exports = {
   RECT_MIN_SIZE_PX,
   HANDLE_DRAG_THRESHOLD_PX,
   TOOLS,
+  TEXT_MAX_LENGTH,
+  TEXT_DRAG_THRESHOLD_PX,
+  normalizeText,
+  isValidText,
   createSketchState,
   armTool,
   disarmTool,
@@ -318,6 +443,15 @@ module.exports = {
   clearSelection,
   getSelected,
   withGeometry,
+  withAnchor,
+  textPlacementAt,
+  textPointerDown,
+  textPointerMove,
+  textPointerUp,
+  textPointerCancel,
+  isDraggingText,
+  hasPressedText,
+  textFontForScale,
   rectBounds,
   distance,
 };
