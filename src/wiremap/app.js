@@ -18,6 +18,8 @@ const viewportMath = require('./viewport');
 const interaction = require('./interaction');
 const labelInteraction = require('./labelInteraction');
 const routeInteraction = require('./routeInteraction');
+const sketchInteraction = require('./sketchInteraction');
+const undoStack = require('./undoStack');
 const geometry = require('./geometry');
 
 function createStageController(options) {
@@ -34,6 +36,7 @@ function createStageController(options) {
     empty: doc.getElementById(opts.emptyId || 'wm-empty'),
     labels: doc.getElementById(opts.labelsId || 'wm-labels'),
     routes: doc.getElementById(opts.routesId || 'wm-routes'),
+    sketch: doc.getElementById(opts.sketchId || 'wm-sketch'),
     selection: doc.getElementById(opts.selectionId || 'wm-selection'),
     background: doc.getElementById(opts.backgroundHitId || 'wm-background-hit'),
   };
@@ -49,6 +52,11 @@ function createStageController(options) {
   let annotations = new Map();
   let labelState = labelInteraction.createLabelState();
   let routeState = routeInteraction.createRouteState();
+  let sketchState = sketchInteraction.createSketchState();
+  let undo = undoStack.createUndoStack();
+  let currentSheetId = null;
+  /** Blank sheets draw a drafting grid; image sheets do not. */
+  let showGrid = false;
   /** Whether the current press began on the explicit empty-plan surface. */
   let pressedBackground = false;
   /** Called by the controller; the page supplies the editor and persistence. */
@@ -61,6 +69,10 @@ function createStageController(options) {
     onArrowMoved: opts.onArrowMoved || null,           // (annotation) => void
     onArrowSelected: opts.onArrowSelected || null,     // (annotation|null) => void
     onArrowModeChange: opts.onArrowModeChange || null, // (armed) => void
+    onSketchDrawn: opts.onSketchDrawn || null,       // ({tool,a,b}) => void
+    onSketchChanged: opts.onSketchChanged || null,   // (annotation, before) => void
+    onSketchSelected: opts.onSketchSelected || null, // (annotation|null) => void
+    onSketchToolChange: opts.onSketchToolChange || null, // (tool) => void
   };
 
   function viewSize() {
@@ -120,8 +132,12 @@ function createStageController(options) {
     interaction.cancelAll(gesture);
     labelState = labelInteraction.createLabelState();
     routeState = routeInteraction.createRouteState();
+    sketchState = sketchInteraction.createSketchState();
+    undoStack.reset(undo);
+    showGrid = false;
+    currentSheetId = null;
     annotations = new Map();
-    [el.labels, el.routes, el.selection].forEach(function (layer) {
+    [el.labels, el.routes, el.selection, el.sketch].forEach(function (layer) {
       if (layer) { while (layer.firstChild) layer.removeChild(layer.firstChild); }
     });
     setPlaceholderVisible(true);
@@ -287,6 +303,19 @@ function createStageController(options) {
    */
   const SELECTED_ARROW_STROKE_PX = 2.5;
 
+  /**
+   * Sketch stroke targets in SCREEN pixels, applied the same way as the arrow:
+   * divided by the stage scale, never via vector-effect. WM-6A proved that
+   * property unreliable in physical iOS Safari under a transformed stage.
+   */
+  const SKETCH_STROKE_PX = 1.25;
+  const SKETCH_SELECTED_STROKE_PX = 2.0;
+  const SKETCH_HIT_PX = 40;
+
+  /** Drafting grid for blank sheets. Visual only; never stored. */
+  const GRID_MINOR = 50;      // stage units
+  const GRID_MAJOR = 250;
+
   /** Effective touch width for an arrow, in stage units. */
   const HIT_TARGET_PX = 40;
   /** Visible line width in stage units for the current zoom. */
@@ -425,6 +454,12 @@ function createStageController(options) {
   function renderSelection() {
     if (!el.selection || !stageSize) return;
     while (el.selection.firstChild) el.selection.removeChild(el.selection.firstChild);
+    const sketchId = sketchInteraction.getSelected(sketchState);
+    if (sketchId) {
+      const shape = annotations.get(sketchId);
+      if (shape) renderSketchHandles(shape);
+    }
+
     const id = routeInteraction.getSelected(routeState);
     if (!id) return;
     const arrow = annotations.get(id);
@@ -451,7 +486,38 @@ function createStageController(options) {
     });
   }
 
-  /** Live preview while an arrow is being drawn. Never persisted. */
+  /**
+   * Handles for the selected sketch shape: two for a line, four for a
+   * rectangle. Drawn in the selection layer so they are visibly transient.
+   * A small visible dot sits inside a finger-sized transparent target.
+   */
+  function renderSketchHandles(shape) {
+    if (!el.selection || !stageSize) return;
+    const inverse = labelInteraction.labelCounterScale(view.scale);
+    const points = shape.type === 'rect'
+      ? sketchInteraction.rectCorners(shape)
+      : { a: shape.a, b: shape.b };
+    Object.keys(points).forEach((which) => {
+      const p = geometry.denormalizePoint(points[which], stageSize);
+      const g = doc.createElementNS(SVG_NS, 'g');
+      g.setAttribute('class', 'wm-sketch-handle');
+      g.setAttribute('data-annotation-id', shape.id);
+      g.setAttribute('data-handle', which);
+      g.setAttribute('transform',
+        'translate(' + p.x + ',' + p.y + ') scale(' + inverse + ')');
+      const target = doc.createElementNS(SVG_NS, 'circle');
+      target.setAttribute('r', '22');          // ~44px effective touch target
+      target.setAttribute('class', 'wm-endpoint-target');
+      const dot = doc.createElementNS(SVG_NS, 'rect');
+      dot.setAttribute('x', '-6'); dot.setAttribute('y', '-6');
+      dot.setAttribute('width', '12'); dot.setAttribute('height', '12');
+      dot.setAttribute('class', 'wm-sketch-handle-dot');
+      g.appendChild(target); g.appendChild(dot);
+      el.selection.appendChild(g);
+    });
+  }
+
+    /** Live preview while an arrow is being drawn. Never persisted. */
   function renderDraft(start, end) {
     if (!el.selection || !stageSize) return;
     let draft = doc.getElementById('wm-draft-arrow');
@@ -480,13 +546,141 @@ function createStageController(options) {
     renderSelection();
   }
 
-  /** Redraw every label. Cheap at MVP scale and keeps state in one place. */
+  /** Stroke width in stage units for the current zoom. */
+  function sketchWidthForScale(selected) {
+    const scale = view.scale > 0 ? view.scale : 1;
+    return (selected ? SKETCH_SELECTED_STROKE_PX : SKETCH_STROKE_PX) / scale;
+  }
+
+  function sketchHitForScale() {
+    const scale = view.scale > 0 ? view.scale : 1;
+    return SKETCH_HIT_PX / scale;
+  }
+
+  /**
+   * Drafting grid for a blank sheet, drawn as SVG geometry inside the one
+   * stage transform. It is not a second layer with its own transform, and it
+   * is never persisted — a blank sheet should read as drafting paper, not as
+   * an empty black rectangle.
+   */
+  function renderGrid() {
+    if (!el.sketch || !stageSize || !showGrid) return null;
+    const g = doc.createElementNS(SVG_NS, 'g');
+    g.setAttribute('class', 'wm-grid');
+    g.setAttribute('aria-hidden', 'true');
+    const line = (x1, y1, x2, y2, cls) => {
+      const l = doc.createElementNS(SVG_NS, 'line');
+      l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+      l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+      l.setAttribute('class', cls);
+      // Hairlines, compensated like everything else.
+      l.setAttribute('stroke-width', String((cls === 'wm-grid-major' ? 1 : 0.6)
+        / (view.scale > 0 ? view.scale : 1)));
+      g.appendChild(l);
+    };
+    for (let x = 0; x <= stageSize.width; x += GRID_MINOR) {
+      line(x, 0, x, stageSize.height, x % GRID_MAJOR === 0 ? 'wm-grid-major' : 'wm-grid-minor');
+    }
+    for (let y = 0; y <= stageSize.height; y += GRID_MINOR) {
+      line(0, y, stageSize.width, y, y % GRID_MAJOR === 0 ? 'wm-grid-major' : 'wm-grid-minor');
+    }
+    return g;
+  }
+
+  /** One sketch shape: a wide invisible hit stroke under a thin visible one. */
+  function renderSketchShape(annotation) {
+    const selected = sketchInteraction.getSelected(sketchState) === annotation.id;
+    const g = doc.createElementNS(SVG_NS, 'g');
+    g.setAttribute('class', 'wm-sketch-shape' + (selected ? ' selected' : ''));
+    g.setAttribute('data-annotation-id', annotation.id);
+
+    const a = geometry.denormalizePoint(annotation.a, stageSize);
+    const b = geometry.denormalizePoint(annotation.b, stageSize);
+    const w = String(sketchWidthForScale(selected));
+    const hw = String(sketchHitForScale());
+
+    if (annotation.type === 'line') {
+      const hit = doc.createElementNS(SVG_NS, 'line');
+      hit.setAttribute('x1', a.x); hit.setAttribute('y1', a.y);
+      hit.setAttribute('x2', b.x); hit.setAttribute('y2', b.y);
+      hit.setAttribute('class', 'wm-sketch-hit');
+      hit.setAttribute('stroke-width', hw);
+      const vis = doc.createElementNS(SVG_NS, 'line');
+      vis.setAttribute('x1', a.x); vis.setAttribute('y1', a.y);
+      vis.setAttribute('x2', b.x); vis.setAttribute('y2', b.y);
+      vis.setAttribute('class', 'wm-sketch-line');
+      vis.setAttribute('stroke-width', w);
+      g.appendChild(hit); g.appendChild(vis);
+    } else {
+      const bounds = geometry.segmentBounds({ a: annotation.a, b: annotation.b });
+      const x = bounds.x1 * stageSize.width;
+      const y = bounds.y1 * stageSize.height;
+      const width = (bounds.x2 - bounds.x1) * stageSize.width;
+      const height = (bounds.y2 - bounds.y1) * stageSize.height;
+      // Selection is on the BORDER: a filled interior would swallow taps meant
+      // for whatever the rectangle is drawn around.
+      const hit = doc.createElementNS(SVG_NS, 'rect');
+      hit.setAttribute('x', x); hit.setAttribute('y', y);
+      hit.setAttribute('width', width); hit.setAttribute('height', height);
+      hit.setAttribute('class', 'wm-sketch-hit');
+      hit.setAttribute('stroke-width', hw);
+      const vis = doc.createElementNS(SVG_NS, 'rect');
+      vis.setAttribute('x', x); vis.setAttribute('y', y);
+      vis.setAttribute('width', width); vis.setAttribute('height', height);
+      vis.setAttribute('class', 'wm-sketch-rect');
+      vis.setAttribute('stroke-width', w);
+      g.appendChild(hit); g.appendChild(vis);
+    }
+    return g;
+  }
+
+  /** Live preview while drawing. Never persisted. */
+  function renderSketchDraft(tool, a, b) {
+    if (!el.selection || !stageSize) return;
+    let d = doc.getElementById('wm-draft-sketch');
+    if (!tool || !a || !b) {
+      if (d && d.parentNode) d.parentNode.removeChild(d);
+      return;
+    }
+    const pa = geometry.denormalizePoint(a, stageSize);
+    const pb = geometry.denormalizePoint(b, stageSize);
+    const wanted = tool === 'line' ? 'line' : 'rect';
+    if (d && d.tagName !== wanted) { d.parentNode.removeChild(d); d = null; }
+    if (!d) {
+      d = doc.createElementNS(SVG_NS, wanted);
+      d.setAttribute('id', 'wm-draft-sketch');
+      d.setAttribute('class', wanted === 'line' ? 'wm-sketch-line wm-sketch-draft'
+        : 'wm-sketch-rect wm-sketch-draft');
+      el.selection.appendChild(d);
+    }
+    d.setAttribute('stroke-width', String(sketchWidthForScale(false)));
+    if (wanted === 'line') {
+      d.setAttribute('x1', pa.x); d.setAttribute('y1', pa.y);
+      d.setAttribute('x2', pb.x); d.setAttribute('y2', pb.y);
+    } else {
+      d.setAttribute('x', Math.min(pa.x, pb.x)); d.setAttribute('y', Math.min(pa.y, pb.y));
+      d.setAttribute('width', Math.abs(pb.x - pa.x)); d.setAttribute('height', Math.abs(pb.y - pa.y));
+    }
+  }
+
+  function renderSketch() {
+    if (!el.sketch || !stageSize) return;
+    while (el.sketch.firstChild) el.sketch.removeChild(el.sketch.firstChild);
+    const grid = renderGrid();
+    if (grid) el.sketch.appendChild(grid);
+    annotations.forEach((a) => {
+      if (a.type === 'line' || a.type === 'rect') el.sketch.appendChild(renderSketchShape(a));
+    });
+  }
+
+    /** Redraw every label. Cheap at MVP scale and keeps state in one place. */
   function renderLabels() {
     if (!el.labels || !stageSize) return;
     while (el.labels.firstChild) el.labels.removeChild(el.labels.firstChild);
     annotations.forEach((a) => {
       if (a.type === 'wireLabel') el.labels.appendChild(renderLabel(a));
     });
+    renderSketch();
     renderRoutes();
   }
 
@@ -498,6 +692,11 @@ function createStageController(options) {
       const w = String(hitWidthForScale());
       const hits = el.routes.querySelectorAll ? el.routes.querySelectorAll('.wm-arrow-hit') : [];
       for (let i = 0; i < hits.length; i++) hits[i].setAttribute('stroke-width', w);
+      if (el.sketch) {
+        // Sketch strokes, hit widths and grid hairlines are all screen-space
+        // targets, so every one of them is recomputed when the zoom changes.
+        renderSketch();
+      }
       const groups = el.routes.querySelectorAll ? el.routes.querySelectorAll('.wm-arrow') : [];
       for (let i = 0; i < groups.length; i++) {
         const group = groups[i];
@@ -585,13 +784,95 @@ function createStageController(options) {
     if (hooks.onArrowModeChange) hooks.onArrowModeChange(false);
   }
 
-  function selectArrow(id) {
+  /**
+   * Arm a sketch tool. Arming one disarms every other creation mode, so a
+   * pointer can only ever belong to one of them.
+   */
+  function armSketch(tool) {
+    labelInteraction.disarmPlacement(labelState);
+    if (hooks.onModeChange) hooks.onModeChange(false);
+    routeInteraction.disarmDraw(routeState);
+    if (hooks.onArrowModeChange) hooks.onArrowModeChange(false);
+    sketchInteraction.armTool(sketchState, tool);
+    if (hooks.onSketchToolChange) hooks.onSketchToolChange(sketchInteraction.activeTool(sketchState));
+  }
+
+  function disarmSketch() {
+    sketchInteraction.disarmTool(sketchState);
+    renderSketchDraft(null, null, null);
+    if (hooks.onSketchToolChange) hooks.onSketchToolChange('none');
+  }
+
+  function selectSketch(id) {
+    sketchInteraction.select(sketchState, id);
+    renderSketch();
+    renderSelection();
+    if (hooks.onSketchSelected) hooks.onSketchSelected(id ? annotations.get(id) : null);
+  }
+
+  /**
+   * Bind the controller to a sheet. Undo history is per sheet and is cleared
+   * here, because undoing onto a sheet you are no longer looking at would be
+   * worse than not undoing at all.
+   */
+  function setSheet(sheetId, options) {
+    currentSheetId = sheetId || null;
+    showGrid = !!(options && options.blank);
+    undoStack.bindSheet(undo, currentSheetId);
+    sketchInteraction.disarmTool(sketchState);
+    sketchInteraction.clearSelection(sketchState);
+  }
+
+  // ── Undo, sketch mutations only ──────────────────────────────────────
+  function recordCreate(annotation) { undoStack.pushCreate(undo, annotation); }
+  function recordGeometry(before) { undoStack.pushGeometry(undo, before); }
+  function recordDelete(annotation) { undoStack.pushDelete(undo, annotation); }
+
+  /**
+   * Describe the work needed to reverse the last sketch mutation. The caller
+   * persists it — this module never touches storage.
+   */
+  function planUndo() {
+    return undoStack.undo(undo, (id) => annotations.get(id) || null);
+  }
+
+    function selectArrow(id) {
     routeInteraction.select(routeState, id);
     renderRoutes();
     if (hooks.onArrowSelected) hooks.onArrowSelected(id ? annotations.get(id) : null);
   }
 
-  // ── Pointer handling ────────────────────────────────────────────────
+  /**
+   * Show a blank sheet: same stage, same coordinates, no image blob.
+   *
+   * Deliberately shares every path with showImage except the background, so
+   * sketch geometry on a blank sheet behaves identically to geometry on a plan.
+   */
+  function showBlank(width, height) {
+    if (!el.svg || !el.stage) return false;
+    if (!(width > 0) || !(height > 0)) return false;
+
+    releaseImage();
+    if (el.image) { el.image.removeAttribute('src'); el.image.hidden = true; }
+
+    stageSize = { width: width, height: height };
+    el.stage.style.width = width + 'px';
+    el.stage.style.height = height + 'px';
+    el.svg.setAttribute('width', String(width));
+    el.svg.setAttribute('height', String(height));
+    el.svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    if (el.background) {
+      el.background.setAttribute('width', String(width));
+      el.background.setAttribute('height', String(height));
+    }
+    setPlaceholderVisible(false);
+    showGrid = true;
+    fit();
+    renderLabels();
+    return true;
+  }
+
+    // ── Pointer handling ────────────────────────────────────────────────
   // Pointer Events only. No parallel mouse and touch paths.
 
   function localPoint(e) {
@@ -628,6 +909,17 @@ function createStageController(options) {
     return null;
   }
 
+  /** The id only when the press landed on a sketch shape group. */
+  function sketchShapeIdFrom(target) {
+    let node = target;
+    while (node && node !== el.viewport) {
+      const cls = node.getAttribute && node.getAttribute('class');
+      if (cls && /(^|\s)wm-sketch-shape(\s|$)/.test(cls)) return node.getAttribute('data-annotation-id');
+      node = node.parentNode;
+    }
+    return null;
+  }
+
   function capture(e) {
     if (el.viewport.setPointerCapture) {
       try { el.viewport.setPointerCapture(e.pointerId); } catch (_) { /* already captured */ }
@@ -650,6 +942,20 @@ function createStageController(options) {
     labelInteraction.noteInput(labelState, type, point, nowMs());
 
     lastViewSize = viewSize();
+
+    // Sketch handles sit on top of everything and are small, so they claim the
+    // pointer first. Ownership is decided here, once, and every branch returns.
+    const sketchHandle = attrFrom(e.target, 'data-handle');
+    if (sketchHandle) {
+      const shapeId = labelIdFrom(e.target);
+      const shape = shapeId && annotations.get(shapeId);
+      if (shape) {
+        capture(e);
+        sketchInteraction.handleDown(sketchState, shape, sketchHandle, point);
+        if (e.stopPropagation) e.stopPropagation();
+        return;
+      }
+    }
 
     // Endpoint handles win over everything: they sit on top and are small.
     const handle = attrFrom(e.target, 'data-endpoint');
@@ -680,6 +986,17 @@ function createStageController(options) {
       return;
     }
 
+    // Sketch shapes are below arrows and labels, matching the visual stacking:
+    // wm-sketch renders beneath wm-routes and wm-labels, so a label on top of a
+    // sketch line stays tappable.
+    const sketchId = sketchShapeIdFrom(e.target);
+    if (sketchId && annotations.has(sketchId)) {
+      capture(e);
+      selectSketch(sketchId);
+      if (e.stopPropagation) e.stopPropagation();
+      return;
+    }
+
     const labelId = labelIdFrom(e.target);
     if (labelId && annotations.has(labelId)) {
       // The label owns this pointer: the plan must not pan underneath it.
@@ -687,6 +1004,16 @@ function createStageController(options) {
         try { el.viewport.setPointerCapture(e.pointerId); } catch (_) { /* already captured */ }
       }
       labelInteraction.labelPointerDown(labelState, labelId, point, annotations.get(labelId).at);
+      if (e.stopPropagation) e.stopPropagation();
+      return;
+    }
+
+    // An armed sketch tool draws ONLY on empty sheet. It sits here, after every
+    // existing-annotation branch, because arming Line must not turn a tap on a
+    // label, an arrow or an existing shape into the start of a new line.
+    if (sketchInteraction.isArmed(sketchState)) {
+      capture(e);
+      sketchInteraction.drawStart(sketchState, point, view, stageSize);
       if (e.stopPropagation) e.stopPropagation();
       return;
     }
@@ -707,6 +1034,25 @@ function createStageController(options) {
 
   function onPointerMove(e) {
     if (!stageSize) return;
+
+    if (sketchInteraction.hasPressedHandle(sketchState)) {
+      const r = sketchInteraction.handleMove(sketchState, localPoint(e), view, stageSize);
+      if (r.moved && r.geometry) {
+        const shape = annotations.get(r.id);
+        // Live visual only; the write happens once, at drag end.
+        if (shape) {
+          annotations.set(r.id, sketchInteraction.withGeometry(shape, r.geometry));
+          renderSketch(); renderSelection();
+        }
+      }
+      return;   // a handle drag never pans the plan
+    }
+
+    if (sketchInteraction.isDrawing(sketchState)) {
+      const r = sketchInteraction.drawMove(sketchState, localPoint(e), view, stageSize);
+      if (r.drawing) renderSketchDraft(r.tool, r.a, r.b);
+      return;
+    }
 
     if (routeInteraction.hasPressedEndpoint(routeState)) {
       const r = routeInteraction.endpointMove(routeState, localPoint(e), view, stageSize);
@@ -757,6 +1103,30 @@ function createStageController(options) {
     // lands somewhere new and is treated as a fresh gesture.
     labelInteraction.noteInput(labelState, e.pointerType || 'mouse', point, nowMs());
 
+    if (sketchInteraction.hasPressedHandle(sketchState)) {
+      const outcome = sketchInteraction.handleUp(sketchState);
+      release(e);
+      if (outcome.action === 'move' && hooks.onSketchChanged) {
+        const shape = annotations.get(outcome.id);
+        if (shape) {
+          hooks.onSketchChanged(sketchInteraction.withGeometry(shape, outcome.geometry),
+            sketchInteraction.withGeometry(shape, outcome.before));
+        }
+      }
+      return;
+    }
+
+    if (sketchInteraction.isDrawing(sketchState)) {
+      const outcome = sketchInteraction.drawEnd(sketchState);
+      release(e);
+      renderSketchDraft(null, null, null);
+      disarmSketch();
+      if (outcome.action === 'commit' && hooks.onSketchDrawn) {
+        hooks.onSketchDrawn({ tool: outcome.tool, a: outcome.a, b: outcome.b });
+      }
+      return;
+    }
+
     if (routeInteraction.hasPressedEndpoint(routeState)) {
       const outcome = routeInteraction.endpointUp(routeState);
       release(e);
@@ -802,10 +1172,12 @@ function createStageController(options) {
       && !labelInteraction.isArmed(labelState)
       && !routeInteraction.isArmed(routeState)
       && gesture.mode !== 'pan' && gesture.mode !== 'pinch'
-      && routeInteraction.getSelected(routeState)) {
+      && (routeInteraction.getSelected(routeState)
+        || sketchInteraction.getSelected(sketchState))) {
       interaction.pointerUp(gesture, e.pointerId, view);
       pressedBackground = false;
       selectArrow(null);
+      selectSketch(null);
       return;
     }
 
@@ -837,6 +1209,22 @@ function createStageController(options) {
 
   function onPointerCancel() {
     pressedBackground = false;
+    if (sketchInteraction.hasPressedHandle(sketchState)) {
+      const outcome = sketchInteraction.handleCancel(sketchState);
+      if (outcome.action === 'revert' && outcome.id) {
+        const shape = annotations.get(outcome.id);
+        // Put it back where it was stored: never leave a half-moved shape.
+        if (shape) {
+          annotations.set(outcome.id, sketchInteraction.withGeometry(shape, outcome.geometry));
+          renderSketch(); renderSelection();
+        }
+      }
+    }
+    if (sketchInteraction.isDrawing(sketchState)) {
+      sketchInteraction.drawCancel(sketchState);
+      renderSketchDraft(null, null, null);
+      disarmSketch();
+    }
     if (routeInteraction.hasPressedEndpoint(routeState)) {
       const outcome = routeInteraction.endpointCancel(routeState);
       if (outcome.action === 'revert' && outcome.id) {
@@ -917,6 +1305,7 @@ function createStageController(options) {
     attach,
     destroy,
     showImage,
+    showBlank,
     clear,
     setAnnotations,
     upsertAnnotation,
@@ -931,6 +1320,19 @@ function createStageController(options) {
     isArrowArmed: () => routeInteraction.isArmed(routeState),
     selectArrow,
     getSelectedArrow: () => routeInteraction.getSelected(routeState),
+    armSketch,
+    disarmSketch,
+    activeSketchTool: () => sketchInteraction.activeTool(sketchState),
+    selectSketch,
+    getSelectedSketch: () => sketchInteraction.getSelected(sketchState),
+    setSheet,
+    isGridVisible: () => showGrid,
+    recordCreate,
+    recordGeometry,
+    recordDelete,
+    planUndo,
+    canUndo: () => undoStack.canUndo(undo),
+    undoSize: () => undoStack.size(undo),
     // Temporary WM-6A diagnostics for physical-device testing.
     getScale: () => view.scale,
     getHeadTargetPx: () => ({ length: HEAD_LENGTH_PX, width: HEAD_WIDTH_PX }),

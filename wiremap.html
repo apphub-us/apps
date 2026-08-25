@@ -112,7 +112,8 @@
     padding: 10px 14px; background: var(--surface);
     border-top: 1px solid var(--border);
     max-height: 30vh; max-height: 30dvh;
-    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    overflow-y: auto; overflow-x: hidden;   /* nothing may hide off to the right */
+    -webkit-overflow-scrolling: touch;
   }
   /* Landscape on a phone is short: shrink the probe further so the plan keeps
      the majority of the height. Keyed to shape, not to a device. */
@@ -121,7 +122,13 @@
     .devbar label, .devbar button { padding: 6px 10px; }
     #wm-dev-status { font-size: 10px; line-height: 1.45; }
   }
-  .devbar-row { display: flex; align-items: flex-start; gap: 10px; }
+  /* Wrap, do not overflow. With nowrap the row measured 580px inside a 362px
+     container, putting the Sketch button at x=531 on a 390px screen — off the
+     right edge and reachable only by discovering horizontal scrolling. */
+  .devbar-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    flex-wrap: wrap; width: 100%;
+  }
   .devbar label, .devbar button {
     font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 11px;
     color: var(--accent); background: rgba(255,199,0,0.08);
@@ -138,6 +145,36 @@
   /* The background surface must receive pointer events despite being invisible;
      a transparent fill is ignored by the default visiblePainted. */
   #wm-background-hit { fill: transparent; pointer-events: all; }
+
+  /* ── Blank-sheet drafting grid ── */
+  .wm-grid-minor { stroke: rgba(255,255,255,0.055); fill: none; }
+  .wm-grid-major { stroke: rgba(255,255,255,0.10); fill: none; }
+
+  /* ── Sketch shapes ── */
+  .wm-sketch-line, .wm-sketch-rect {
+    /* No stroke-width and no vector-effect here: both would defeat the
+       per-zoom width the controller computes. See WM-6A. */
+    stroke: var(--text-dim); fill: none; stroke-linecap: round; pointer-events: none;
+  }
+  .wm-sketch-shape.selected .wm-sketch-line,
+  .wm-sketch-shape.selected .wm-sketch-rect { stroke: var(--accent); }
+  .wm-sketch-hit {
+    stroke: transparent; fill: none; stroke-linecap: round; cursor: pointer;
+    /* visiblePainted ignores a transparent stroke; without this the wide touch
+       target does nothing at all. */
+    pointer-events: stroke;
+  }
+  .wm-sketch-draft { opacity: 0.8; pointer-events: none; stroke: var(--accent); }
+  .wm-sketch-handle-dot { fill: var(--accent); stroke: #000; stroke-width: 1.5; pointer-events: none; }
+
+  /* ── Sketch tray (temporary dev UI) ── */
+  .tray {
+    /* Full width on its own row when open. */
+    display: none; gap: 6px; flex-wrap: wrap; width: 100%; flex-basis: 100%;
+    padding-top: 6px; border-top: 1px solid var(--border);
+  }
+  .tray.open { display: flex; }
+  .tray button.active { background: rgba(255,199,0,0.22); }
 
   /* ── Arrows (routes) ── */
   .wm-arrow-line {
@@ -273,6 +310,7 @@
 
     <div class="arm-hint" id="wm-arm-hint" hidden>Tap plan to place label</div>
     <div class="arm-hint" id="wm-arrow-hint" hidden>Drag on plan to draw arrow</div>
+    <div class="arm-hint" id="wm-sketch-hint" hidden></div>
     <div class="empty" id="wm-empty">
       <div class="empty-title">No sheet loaded</div>
       <div class="empty-hint">WM-1 foundation &mdash; model, geometry and viewport maths only.</div>
@@ -292,6 +330,15 @@
       <button type="button" id="wm-add-label">Add Label</button>
       <button type="button" id="wm-add-arrow">Add Arrow</button>
       <button type="button" id="wm-delete-arrow" hidden>Delete Arrow</button>
+      <button type="button" id="wm-sketch-toggle">Sketch</button>
+    </div>
+    <div class="tray" id="wm-sketch-tray">
+      <button type="button" id="wm-blank-sheet">New Blank Sheet</button>
+      <button type="button" id="wm-tool-line">Line</button>
+      <button type="button" id="wm-tool-rect">Rectangle</button>
+      <button type="button" id="wm-sketch-delete" hidden>Delete Shape</button>
+      <button type="button" id="wm-undo">Undo</button>
+      <button type="button" id="wm-sketch-close">Close</button>
     </div>
     <div class="devbar-row">
       <div id="wm-dev-status">Idle &mdash; nothing has been read or written.</div>
@@ -2641,6 +2688,482 @@ window.WM = (function () {
     };
   };
 
+  // ---- src/wiremap/sketchInteraction.js ----
+  __reg["sketchInteraction"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Wire Map — sketch interaction state (WM-6B1).
+     *
+     * Pure. No DOM, no IndexedDB, no rendering.
+     *
+     * The model already carries `line` and `rect` as two-point annotations with
+     * normalized endpoints `a` and `b`, so nothing here invents a schema. This
+     * module owns which tool is armed, when a drag becomes a shape, and which
+     * handle a drag is moving.
+     *
+     * iOS compatibility suppression is NOT reimplemented: labelInteraction owns it
+     * and the controller shares one input state for the whole page. A second
+     * suppression clock would drift from the first.
+     */
+
+    const geometry = require('./geometry');
+    const viewportMath = require('./viewport');
+
+    /** Minimum travel before a drag becomes a line, in screen pixels. */
+    const LINE_MIN_DRAW_PX = 16;
+
+    /**
+     * Minimum extent before a drag becomes a rectangle, in screen pixels.
+     * Applied to BOTH sides: a sliver is as unlikely to be intended as a speck.
+     */
+    const RECT_MIN_SIZE_PX = 16;
+
+    /** Movement before a handle press becomes a drag rather than a tap. */
+    const HANDLE_DRAG_THRESHOLD_PX = 8;
+
+    const TOOLS = ['none', 'line', 'rect'];
+
+    function isFiniteNumber(v) {
+      return typeof v === 'number' && Number.isFinite(v);
+    }
+
+    function isPoint(p) {
+      return !!p && isFiniteNumber(p.x) && isFiniteNumber(p.y);
+    }
+
+    function distance(a, b) {
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function createSketchState() {
+      return {
+        /** 'none' | 'line' | 'rect' — only ever one. */
+        tool: 'none',
+        /** In-flight draw. */
+        draft: null,
+        /** In-flight handle drag. */
+        handleDrag: null,
+        /** Currently selected sketch shape id. */
+        selectedId: null,
+      };
+    }
+
+    // ── Tool state ────────────────────────────────────────────────────────────
+
+    /**
+     * Arm a tool. Arming one disarms the other by construction — a single field
+     * cannot hold two tools, so "line and rect both active" is unrepresentable.
+     */
+    function armTool(state, tool) {
+      if (TOOLS.indexOf(tool) === -1) return state;
+      state.tool = tool;
+      state.draft = null;
+      return state;
+    }
+
+    function disarmTool(state) {
+      state.tool = 'none';
+      state.draft = null;
+      return state;
+    }
+
+    function activeTool(state) {
+      return state.tool;
+    }
+
+    function isArmed(state) {
+      return state.tool !== 'none';
+    }
+
+    // ── Coordinates — shared helpers only ─────────────────────────────────────
+
+    function screenToNormalized(screenPoint, viewport, stageSize) {
+      if (!isPoint(screenPoint) || !stageSize) return null;
+      const stagePoint = viewportMath.screenToStage(screenPoint, viewport);
+      if (!stagePoint) return null;
+      return geometry.normalizePoint(stagePoint, stageSize);
+    }
+
+    function normalizedToScreen(normalized, viewport, stageSize) {
+      if (!normalized || !stageSize) return null;
+      const stagePoint = geometry.denormalizePoint(normalized, stageSize);
+      if (!stagePoint) return null;
+      return viewportMath.stageToScreen(stagePoint, viewport);
+    }
+
+    // ── Drawing ───────────────────────────────────────────────────────────────
+
+    /** Begin a draft for whichever tool is armed. Nothing is created yet. */
+    function drawStart(state, screenPoint, viewport, stageSize) {
+      if (!isArmed(state)) return { started: false };
+      const normalized = screenToNormalized(screenPoint, viewport, stageSize);
+      if (!normalized) return { started: false };
+      state.draft = {
+        tool: state.tool,
+        startScreen: { x: screenPoint.x, y: screenPoint.y },
+        a: normalized,
+        b: normalized,
+        exceeded: false,
+      };
+      return { started: true, tool: state.tool, a: normalized };
+    }
+
+    /**
+     * Extend the draft.
+     *
+     * The preview follows from the first move; `exceeded` alone decides whether it
+     * survives release. A line needs enough travel; a rectangle needs enough of
+     * BOTH width and height, so a sliver is discarded too.
+     */
+    function drawMove(state, screenPoint, viewport, stageSize) {
+      const d = state.draft;
+      if (!d || !isPoint(screenPoint)) return { drawing: false };
+      const normalized = screenToNormalized(screenPoint, viewport, stageSize);
+      if (!normalized) return { drawing: false };
+      d.b = normalized;
+
+      if (d.tool === 'line') {
+        if (distance(d.startScreen, screenPoint) >= LINE_MIN_DRAW_PX) d.exceeded = true;
+      } else {
+        const w = Math.abs(screenPoint.x - d.startScreen.x);
+        const h = Math.abs(screenPoint.y - d.startScreen.y);
+        if (w >= RECT_MIN_SIZE_PX && h >= RECT_MIN_SIZE_PX) d.exceeded = true;
+      }
+      return { drawing: true, tool: d.tool, a: d.a, b: d.b, exceeded: d.exceeded };
+    }
+
+    /**
+     * Release.
+     * A drag that never grew enough commits nothing — a tap with a tool armed must
+     * not litter the sheet with zero-size shapes.
+     */
+    function drawEnd(state) {
+      const d = state.draft;
+      state.draft = null;
+      if (!d) return { action: 'none' };
+      if (!d.exceeded) return { action: 'discarded', tool: d.tool };
+      return { action: 'commit', tool: d.tool, a: d.a, b: d.b };
+    }
+
+    function drawCancel(state) {
+      const had = !!state.draft;
+      state.draft = null;
+      return { action: had ? 'cancelled' : 'none' };
+    }
+
+    function isDrawing(state) {
+      return !!state.draft;
+    }
+
+    // ── Handles ───────────────────────────────────────────────────────────────
+
+    /**
+     * Corner names for a rectangle, resolved against the stored a/b pair.
+     *
+     * The store keeps the two corners the user actually dragged; rendering derives
+     * min/max. Handles therefore address corners by POSITION (nw/ne/se/sw) and this
+     * function maps each to the stored field and axis it controls.
+     */
+    function rectCorners(annotation) {
+      const { a, b } = annotation;
+      const left = Math.min(a.x, b.x);
+      const right = Math.max(a.x, b.x);
+      const top = Math.min(a.y, b.y);
+      const bottom = Math.max(a.y, b.y);
+      return {
+        nw: { x: left, y: top },
+        ne: { x: right, y: top },
+        se: { x: right, y: bottom },
+        sw: { x: left, y: bottom },
+      };
+    }
+
+    /** The corner diagonally opposite the named one. It must stay put. */
+    function oppositeCorner(annotation, corner) {
+      const c = rectCorners(annotation);
+      const map = { nw: 'se', ne: 'sw', se: 'nw', sw: 'ne' };
+      return c[map[corner]] || null;
+    }
+
+    /**
+     * A pointer went down on a handle.
+     * @param {'a'|'b'|'nw'|'ne'|'se'|'sw'} which
+     */
+    function handleDown(state, annotation, which, screenPoint) {
+      if (!annotation || !which || !isPoint(screenPoint)) return state;
+      const isRect = annotation.type === 'rect';
+      const anchor = isRect ? oppositeCorner(annotation, which) : annotation[which];
+      if (!anchor) return state;
+      state.handleDrag = {
+        id: annotation.id,
+        type: annotation.type,
+        which,
+        anchor,                       // the fixed corner, for rectangles
+        original: { a: { ...annotation.a }, b: { ...annotation.b } },
+        current: { a: { ...annotation.a }, b: { ...annotation.b } },
+        startScreen: { x: screenPoint.x, y: screenPoint.y },
+        moved: false,
+      };
+      return state;
+    }
+
+    /**
+     * Move the handle to the pointer.
+     *
+     * Absolute position, not an accumulated delta, so the handle sits exactly under
+     * the finger and behaves identically at every zoom. For a rectangle the
+     * opposite corner is pinned and the dragged corner is free to cross it.
+     */
+    function handleMove(state, screenPoint, viewport, stageSize) {
+      const d = state.handleDrag;
+      if (!d || !isPoint(screenPoint) || !stageSize) return { moved: false, geometry: null };
+      if (!d.moved && distance(d.startScreen, screenPoint) < HANDLE_DRAG_THRESHOLD_PX) {
+        return { moved: false, geometry: null };
+      }
+      const normalized = screenToNormalized(screenPoint, viewport, stageSize);
+      if (!normalized) return { moved: false, geometry: null };
+      d.moved = true;
+
+      if (d.type === 'rect') {
+        // Crossing the anchor is allowed; rendering normalises min/max.
+        d.current = { a: { ...d.anchor }, b: normalized };
+      } else {
+        d.current = { ...d.current, [d.which]: normalized };
+      }
+      return { moved: true, id: d.id, which: d.which, geometry: { a: d.current.a, b: d.current.b } };
+    }
+
+    /** @returns {{action:'move'|'tap'|'none', id, geometry}} */
+    function handleUp(state) {
+      const d = state.handleDrag;
+      state.handleDrag = null;
+      if (!d) return { action: 'none', id: null, geometry: null };
+      if (!d.moved) return { action: 'tap', id: d.id, geometry: d.original };
+      return { action: 'move', id: d.id, which: d.which, geometry: d.current, before: d.original };
+    }
+
+    /** Cancel restores the stored geometry: never leave a half-moved shape. */
+    function handleCancel(state) {
+      const d = state.handleDrag;
+      state.handleDrag = null;
+      if (!d) return { action: 'none', id: null, geometry: null };
+      return { action: 'revert', id: d.id, geometry: d.original };
+    }
+
+    function isDraggingHandle(state) {
+      return !!(state.handleDrag && state.handleDrag.moved);
+    }
+
+    function hasPressedHandle(state) {
+      return !!state.handleDrag;
+    }
+
+    // ── Selection ─────────────────────────────────────────────────────────────
+
+    function select(state, id) { state.selectedId = id || null; return state; }
+    function clearSelection(state) { state.selectedId = null; return state; }
+    function getSelected(state) { return state.selectedId; }
+
+    /** Apply new geometry without mutating the original. */
+    function withGeometry(annotation, geo) {
+      if (!annotation || !geo) return annotation;
+      return {
+        ...annotation,
+        a: geometry.clampNormalized(geo.a),
+        b: geometry.clampNormalized(geo.b),
+      };
+    }
+
+    /** Axis-aligned bounds for rendering a rectangle, in normalized units. */
+    function rectBounds(annotation) {
+      return geometry.segmentBounds({ a: annotation.a, b: annotation.b });
+    }
+
+    module.exports = {
+      LINE_MIN_DRAW_PX,
+      RECT_MIN_SIZE_PX,
+      HANDLE_DRAG_THRESHOLD_PX,
+      TOOLS,
+      createSketchState,
+      armTool,
+      disarmTool,
+      activeTool,
+      isArmed,
+      screenToNormalized,
+      normalizedToScreen,
+      drawStart,
+      drawMove,
+      drawEnd,
+      drawCancel,
+      isDrawing,
+      rectCorners,
+      oppositeCorner,
+      handleDown,
+      handleMove,
+      handleUp,
+      handleCancel,
+      isDraggingHandle,
+      hasPressedHandle,
+      select,
+      clearSelection,
+      getSelected,
+      withGeometry,
+      rectBounds,
+      distance,
+    };
+  };
+
+  // ---- src/wiremap/undoStack.js ----
+  __reg["undoStack"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Wire Map — sketch undo history (WM-6B1).
+     *
+     * Pure. No DOM, no IndexedDB. Records the INVERSE of each completed sketch
+     * mutation; the controller performs the persistence.
+     *
+     * Deliberately narrow. WM-6B1 undoes sketch shapes only — not labels, arrows,
+     * image import, viewport changes or sheet lifecycle. Widening it later means
+     * pushing more entry kinds, not rewriting this.
+     *
+     * There is no redo.
+     */
+
+    /** How many completed sketch operations are remembered. */
+    const MAX_ENTRIES = 20;
+
+    /** Kinds of mutation this stack can reverse. */
+    const KINDS = ['create', 'geometry', 'delete'];
+
+    function createUndoStack(options) {
+      const limit = (options && Number.isFinite(options.limit) && options.limit > 0)
+        ? options.limit : MAX_ENTRIES;
+      return { entries: [], limit, sheetId: null };
+    }
+
+    /**
+     * Bind the stack to a sheet, clearing it if the sheet changed.
+     *
+     * History is per sheet and never persisted: undoing onto a sheet you are no
+     * longer looking at would be worse than not undoing at all.
+     */
+    function bindSheet(stack, sheetId) {
+      if (stack.sheetId !== sheetId) {
+        stack.entries = [];
+        stack.sheetId = sheetId || null;
+      }
+      return stack;
+    }
+
+    function reset(stack) {
+      stack.entries = [];
+      return stack;
+    }
+
+    function size(stack) {
+      return stack.entries.length;
+    }
+
+    function canUndo(stack) {
+      return stack.entries.length > 0;
+    }
+
+    function push(stack, entry) {
+      if (!entry || KINDS.indexOf(entry.kind) === -1 || !entry.annotationId) return stack;
+      stack.entries.push(entry);
+      // Oldest first out. A bounded stack keeps memory predictable on a phone.
+      while (stack.entries.length > stack.limit) stack.entries.shift();
+      return stack;
+    }
+
+    /** A shape was created: undoing removes it. */
+    function pushCreate(stack, annotation) {
+      if (!annotation || !annotation.id) return stack;
+      return push(stack, { kind: 'create', annotationId: annotation.id, sheetId: annotation.sheetId });
+    }
+
+    /** Geometry changed: undoing restores the snapshot taken BEFORE the change. */
+    function pushGeometry(stack, annotationBefore) {
+      if (!annotationBefore || !annotationBefore.id) return stack;
+      return push(stack, {
+        kind: 'geometry',
+        annotationId: annotationBefore.id,
+        sheetId: annotationBefore.sheetId,
+        // Deep enough: only a and b can change here.
+        before: { a: { ...annotationBefore.a }, b: { ...annotationBefore.b } },
+      });
+    }
+
+    /**
+     * A shape was deleted: undoing restores the whole record, id included, so the
+     * same annotation comes back rather than a copy under a new id.
+     */
+    function pushDelete(stack, annotation) {
+      if (!annotation || !annotation.id) return stack;
+      return push(stack, {
+        kind: 'delete',
+        annotationId: annotation.id,
+        sheetId: annotation.sheetId,
+        snapshot: JSON.parse(JSON.stringify(annotation)),
+      });
+    }
+
+    /**
+     * Take the most recent entry and describe the work needed to reverse it.
+     * The caller applies it to the store and the stage.
+     *
+     * @returns {{action:'remove'|'restore'|'none', annotationId, annotation}}
+     */
+    function undo(stack, lookup) {
+      const entry = stack.entries.pop();
+      if (!entry) return { action: 'none', annotationId: null, annotation: null };
+
+      if (entry.kind === 'create') {
+        return { action: 'remove', annotationId: entry.annotationId, annotation: null };
+      }
+
+      if (entry.kind === 'delete') {
+        return { action: 'restore', annotationId: entry.annotationId, annotation: entry.snapshot };
+      }
+
+      // geometry: rebuild the current record with the previous a/b.
+      const current = typeof lookup === 'function' ? lookup(entry.annotationId) : null;
+      if (!current) {
+        // The shape is gone; there is nothing to restore. Fail quietly rather than
+        // inventing a record and corrupting the sheet.
+        return { action: 'none', annotationId: entry.annotationId, annotation: null };
+      }
+      return {
+        action: 'restore',
+        annotationId: entry.annotationId,
+        annotation: { ...current, a: { ...entry.before.a }, b: { ...entry.before.b } },
+      };
+    }
+
+    /** Inspect the next entry without consuming it. */
+    function peek(stack) {
+      return stack.entries.length ? stack.entries[stack.entries.length - 1] : null;
+    }
+
+    module.exports = {
+      MAX_ENTRIES,
+      KINDS,
+      createUndoStack,
+      bindSheet,
+      reset,
+      size,
+      canUndo,
+      push,
+      pushCreate,
+      pushGeometry,
+      pushDelete,
+      undo,
+      peek,
+    };
+  };
+
   // ---- src/wiremap/app.js ----
   __reg["app"] = function (module, exports, require) {
     'use strict';
@@ -2663,6 +3186,8 @@ window.WM = (function () {
     const interaction = require('./interaction');
     const labelInteraction = require('./labelInteraction');
     const routeInteraction = require('./routeInteraction');
+    const sketchInteraction = require('./sketchInteraction');
+    const undoStack = require('./undoStack');
     const geometry = require('./geometry');
 
     function createStageController(options) {
@@ -2679,6 +3204,7 @@ window.WM = (function () {
         empty: doc.getElementById(opts.emptyId || 'wm-empty'),
         labels: doc.getElementById(opts.labelsId || 'wm-labels'),
         routes: doc.getElementById(opts.routesId || 'wm-routes'),
+        sketch: doc.getElementById(opts.sketchId || 'wm-sketch'),
         selection: doc.getElementById(opts.selectionId || 'wm-selection'),
         background: doc.getElementById(opts.backgroundHitId || 'wm-background-hit'),
       };
@@ -2694,6 +3220,11 @@ window.WM = (function () {
       let annotations = new Map();
       let labelState = labelInteraction.createLabelState();
       let routeState = routeInteraction.createRouteState();
+      let sketchState = sketchInteraction.createSketchState();
+      let undo = undoStack.createUndoStack();
+      let currentSheetId = null;
+      /** Blank sheets draw a drafting grid; image sheets do not. */
+      let showGrid = false;
       /** Whether the current press began on the explicit empty-plan surface. */
       let pressedBackground = false;
       /** Called by the controller; the page supplies the editor and persistence. */
@@ -2706,6 +3237,10 @@ window.WM = (function () {
         onArrowMoved: opts.onArrowMoved || null,           // (annotation) => void
         onArrowSelected: opts.onArrowSelected || null,     // (annotation|null) => void
         onArrowModeChange: opts.onArrowModeChange || null, // (armed) => void
+        onSketchDrawn: opts.onSketchDrawn || null,       // ({tool,a,b}) => void
+        onSketchChanged: opts.onSketchChanged || null,   // (annotation, before) => void
+        onSketchSelected: opts.onSketchSelected || null, // (annotation|null) => void
+        onSketchToolChange: opts.onSketchToolChange || null, // (tool) => void
       };
 
       function viewSize() {
@@ -2765,8 +3300,12 @@ window.WM = (function () {
         interaction.cancelAll(gesture);
         labelState = labelInteraction.createLabelState();
         routeState = routeInteraction.createRouteState();
+        sketchState = sketchInteraction.createSketchState();
+        undoStack.reset(undo);
+        showGrid = false;
+        currentSheetId = null;
         annotations = new Map();
-        [el.labels, el.routes, el.selection].forEach(function (layer) {
+        [el.labels, el.routes, el.selection, el.sketch].forEach(function (layer) {
           if (layer) { while (layer.firstChild) layer.removeChild(layer.firstChild); }
         });
         setPlaceholderVisible(true);
@@ -2932,6 +3471,19 @@ window.WM = (function () {
        */
       const SELECTED_ARROW_STROKE_PX = 2.5;
 
+      /**
+       * Sketch stroke targets in SCREEN pixels, applied the same way as the arrow:
+       * divided by the stage scale, never via vector-effect. WM-6A proved that
+       * property unreliable in physical iOS Safari under a transformed stage.
+       */
+      const SKETCH_STROKE_PX = 1.25;
+      const SKETCH_SELECTED_STROKE_PX = 2.0;
+      const SKETCH_HIT_PX = 40;
+
+      /** Drafting grid for blank sheets. Visual only; never stored. */
+      const GRID_MINOR = 50;      // stage units
+      const GRID_MAJOR = 250;
+
       /** Effective touch width for an arrow, in stage units. */
       const HIT_TARGET_PX = 40;
       /** Visible line width in stage units for the current zoom. */
@@ -3070,6 +3622,12 @@ window.WM = (function () {
       function renderSelection() {
         if (!el.selection || !stageSize) return;
         while (el.selection.firstChild) el.selection.removeChild(el.selection.firstChild);
+        const sketchId = sketchInteraction.getSelected(sketchState);
+        if (sketchId) {
+          const shape = annotations.get(sketchId);
+          if (shape) renderSketchHandles(shape);
+        }
+
         const id = routeInteraction.getSelected(routeState);
         if (!id) return;
         const arrow = annotations.get(id);
@@ -3096,7 +3654,38 @@ window.WM = (function () {
         });
       }
 
-      /** Live preview while an arrow is being drawn. Never persisted. */
+      /**
+       * Handles for the selected sketch shape: two for a line, four for a
+       * rectangle. Drawn in the selection layer so they are visibly transient.
+       * A small visible dot sits inside a finger-sized transparent target.
+       */
+      function renderSketchHandles(shape) {
+        if (!el.selection || !stageSize) return;
+        const inverse = labelInteraction.labelCounterScale(view.scale);
+        const points = shape.type === 'rect'
+          ? sketchInteraction.rectCorners(shape)
+          : { a: shape.a, b: shape.b };
+        Object.keys(points).forEach((which) => {
+          const p = geometry.denormalizePoint(points[which], stageSize);
+          const g = doc.createElementNS(SVG_NS, 'g');
+          g.setAttribute('class', 'wm-sketch-handle');
+          g.setAttribute('data-annotation-id', shape.id);
+          g.setAttribute('data-handle', which);
+          g.setAttribute('transform',
+            'translate(' + p.x + ',' + p.y + ') scale(' + inverse + ')');
+          const target = doc.createElementNS(SVG_NS, 'circle');
+          target.setAttribute('r', '22');          // ~44px effective touch target
+          target.setAttribute('class', 'wm-endpoint-target');
+          const dot = doc.createElementNS(SVG_NS, 'rect');
+          dot.setAttribute('x', '-6'); dot.setAttribute('y', '-6');
+          dot.setAttribute('width', '12'); dot.setAttribute('height', '12');
+          dot.setAttribute('class', 'wm-sketch-handle-dot');
+          g.appendChild(target); g.appendChild(dot);
+          el.selection.appendChild(g);
+        });
+      }
+
+        /** Live preview while an arrow is being drawn. Never persisted. */
       function renderDraft(start, end) {
         if (!el.selection || !stageSize) return;
         let draft = doc.getElementById('wm-draft-arrow');
@@ -3125,13 +3714,141 @@ window.WM = (function () {
         renderSelection();
       }
 
-      /** Redraw every label. Cheap at MVP scale and keeps state in one place. */
+      /** Stroke width in stage units for the current zoom. */
+      function sketchWidthForScale(selected) {
+        const scale = view.scale > 0 ? view.scale : 1;
+        return (selected ? SKETCH_SELECTED_STROKE_PX : SKETCH_STROKE_PX) / scale;
+      }
+
+      function sketchHitForScale() {
+        const scale = view.scale > 0 ? view.scale : 1;
+        return SKETCH_HIT_PX / scale;
+      }
+
+      /**
+       * Drafting grid for a blank sheet, drawn as SVG geometry inside the one
+       * stage transform. It is not a second layer with its own transform, and it
+       * is never persisted — a blank sheet should read as drafting paper, not as
+       * an empty black rectangle.
+       */
+      function renderGrid() {
+        if (!el.sketch || !stageSize || !showGrid) return null;
+        const g = doc.createElementNS(SVG_NS, 'g');
+        g.setAttribute('class', 'wm-grid');
+        g.setAttribute('aria-hidden', 'true');
+        const line = (x1, y1, x2, y2, cls) => {
+          const l = doc.createElementNS(SVG_NS, 'line');
+          l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+          l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+          l.setAttribute('class', cls);
+          // Hairlines, compensated like everything else.
+          l.setAttribute('stroke-width', String((cls === 'wm-grid-major' ? 1 : 0.6)
+            / (view.scale > 0 ? view.scale : 1)));
+          g.appendChild(l);
+        };
+        for (let x = 0; x <= stageSize.width; x += GRID_MINOR) {
+          line(x, 0, x, stageSize.height, x % GRID_MAJOR === 0 ? 'wm-grid-major' : 'wm-grid-minor');
+        }
+        for (let y = 0; y <= stageSize.height; y += GRID_MINOR) {
+          line(0, y, stageSize.width, y, y % GRID_MAJOR === 0 ? 'wm-grid-major' : 'wm-grid-minor');
+        }
+        return g;
+      }
+
+      /** One sketch shape: a wide invisible hit stroke under a thin visible one. */
+      function renderSketchShape(annotation) {
+        const selected = sketchInteraction.getSelected(sketchState) === annotation.id;
+        const g = doc.createElementNS(SVG_NS, 'g');
+        g.setAttribute('class', 'wm-sketch-shape' + (selected ? ' selected' : ''));
+        g.setAttribute('data-annotation-id', annotation.id);
+
+        const a = geometry.denormalizePoint(annotation.a, stageSize);
+        const b = geometry.denormalizePoint(annotation.b, stageSize);
+        const w = String(sketchWidthForScale(selected));
+        const hw = String(sketchHitForScale());
+
+        if (annotation.type === 'line') {
+          const hit = doc.createElementNS(SVG_NS, 'line');
+          hit.setAttribute('x1', a.x); hit.setAttribute('y1', a.y);
+          hit.setAttribute('x2', b.x); hit.setAttribute('y2', b.y);
+          hit.setAttribute('class', 'wm-sketch-hit');
+          hit.setAttribute('stroke-width', hw);
+          const vis = doc.createElementNS(SVG_NS, 'line');
+          vis.setAttribute('x1', a.x); vis.setAttribute('y1', a.y);
+          vis.setAttribute('x2', b.x); vis.setAttribute('y2', b.y);
+          vis.setAttribute('class', 'wm-sketch-line');
+          vis.setAttribute('stroke-width', w);
+          g.appendChild(hit); g.appendChild(vis);
+        } else {
+          const bounds = geometry.segmentBounds({ a: annotation.a, b: annotation.b });
+          const x = bounds.x1 * stageSize.width;
+          const y = bounds.y1 * stageSize.height;
+          const width = (bounds.x2 - bounds.x1) * stageSize.width;
+          const height = (bounds.y2 - bounds.y1) * stageSize.height;
+          // Selection is on the BORDER: a filled interior would swallow taps meant
+          // for whatever the rectangle is drawn around.
+          const hit = doc.createElementNS(SVG_NS, 'rect');
+          hit.setAttribute('x', x); hit.setAttribute('y', y);
+          hit.setAttribute('width', width); hit.setAttribute('height', height);
+          hit.setAttribute('class', 'wm-sketch-hit');
+          hit.setAttribute('stroke-width', hw);
+          const vis = doc.createElementNS(SVG_NS, 'rect');
+          vis.setAttribute('x', x); vis.setAttribute('y', y);
+          vis.setAttribute('width', width); vis.setAttribute('height', height);
+          vis.setAttribute('class', 'wm-sketch-rect');
+          vis.setAttribute('stroke-width', w);
+          g.appendChild(hit); g.appendChild(vis);
+        }
+        return g;
+      }
+
+      /** Live preview while drawing. Never persisted. */
+      function renderSketchDraft(tool, a, b) {
+        if (!el.selection || !stageSize) return;
+        let d = doc.getElementById('wm-draft-sketch');
+        if (!tool || !a || !b) {
+          if (d && d.parentNode) d.parentNode.removeChild(d);
+          return;
+        }
+        const pa = geometry.denormalizePoint(a, stageSize);
+        const pb = geometry.denormalizePoint(b, stageSize);
+        const wanted = tool === 'line' ? 'line' : 'rect';
+        if (d && d.tagName !== wanted) { d.parentNode.removeChild(d); d = null; }
+        if (!d) {
+          d = doc.createElementNS(SVG_NS, wanted);
+          d.setAttribute('id', 'wm-draft-sketch');
+          d.setAttribute('class', wanted === 'line' ? 'wm-sketch-line wm-sketch-draft'
+            : 'wm-sketch-rect wm-sketch-draft');
+          el.selection.appendChild(d);
+        }
+        d.setAttribute('stroke-width', String(sketchWidthForScale(false)));
+        if (wanted === 'line') {
+          d.setAttribute('x1', pa.x); d.setAttribute('y1', pa.y);
+          d.setAttribute('x2', pb.x); d.setAttribute('y2', pb.y);
+        } else {
+          d.setAttribute('x', Math.min(pa.x, pb.x)); d.setAttribute('y', Math.min(pa.y, pb.y));
+          d.setAttribute('width', Math.abs(pb.x - pa.x)); d.setAttribute('height', Math.abs(pb.y - pa.y));
+        }
+      }
+
+      function renderSketch() {
+        if (!el.sketch || !stageSize) return;
+        while (el.sketch.firstChild) el.sketch.removeChild(el.sketch.firstChild);
+        const grid = renderGrid();
+        if (grid) el.sketch.appendChild(grid);
+        annotations.forEach((a) => {
+          if (a.type === 'line' || a.type === 'rect') el.sketch.appendChild(renderSketchShape(a));
+        });
+      }
+
+        /** Redraw every label. Cheap at MVP scale and keeps state in one place. */
       function renderLabels() {
         if (!el.labels || !stageSize) return;
         while (el.labels.firstChild) el.labels.removeChild(el.labels.firstChild);
         annotations.forEach((a) => {
           if (a.type === 'wireLabel') el.labels.appendChild(renderLabel(a));
         });
+        renderSketch();
         renderRoutes();
       }
 
@@ -3143,6 +3860,11 @@ window.WM = (function () {
           const w = String(hitWidthForScale());
           const hits = el.routes.querySelectorAll ? el.routes.querySelectorAll('.wm-arrow-hit') : [];
           for (let i = 0; i < hits.length; i++) hits[i].setAttribute('stroke-width', w);
+          if (el.sketch) {
+            // Sketch strokes, hit widths and grid hairlines are all screen-space
+            // targets, so every one of them is recomputed when the zoom changes.
+            renderSketch();
+          }
           const groups = el.routes.querySelectorAll ? el.routes.querySelectorAll('.wm-arrow') : [];
           for (let i = 0; i < groups.length; i++) {
             const group = groups[i];
@@ -3230,13 +3952,95 @@ window.WM = (function () {
         if (hooks.onArrowModeChange) hooks.onArrowModeChange(false);
       }
 
-      function selectArrow(id) {
+      /**
+       * Arm a sketch tool. Arming one disarms every other creation mode, so a
+       * pointer can only ever belong to one of them.
+       */
+      function armSketch(tool) {
+        labelInteraction.disarmPlacement(labelState);
+        if (hooks.onModeChange) hooks.onModeChange(false);
+        routeInteraction.disarmDraw(routeState);
+        if (hooks.onArrowModeChange) hooks.onArrowModeChange(false);
+        sketchInteraction.armTool(sketchState, tool);
+        if (hooks.onSketchToolChange) hooks.onSketchToolChange(sketchInteraction.activeTool(sketchState));
+      }
+
+      function disarmSketch() {
+        sketchInteraction.disarmTool(sketchState);
+        renderSketchDraft(null, null, null);
+        if (hooks.onSketchToolChange) hooks.onSketchToolChange('none');
+      }
+
+      function selectSketch(id) {
+        sketchInteraction.select(sketchState, id);
+        renderSketch();
+        renderSelection();
+        if (hooks.onSketchSelected) hooks.onSketchSelected(id ? annotations.get(id) : null);
+      }
+
+      /**
+       * Bind the controller to a sheet. Undo history is per sheet and is cleared
+       * here, because undoing onto a sheet you are no longer looking at would be
+       * worse than not undoing at all.
+       */
+      function setSheet(sheetId, options) {
+        currentSheetId = sheetId || null;
+        showGrid = !!(options && options.blank);
+        undoStack.bindSheet(undo, currentSheetId);
+        sketchInteraction.disarmTool(sketchState);
+        sketchInteraction.clearSelection(sketchState);
+      }
+
+      // ── Undo, sketch mutations only ──────────────────────────────────────
+      function recordCreate(annotation) { undoStack.pushCreate(undo, annotation); }
+      function recordGeometry(before) { undoStack.pushGeometry(undo, before); }
+      function recordDelete(annotation) { undoStack.pushDelete(undo, annotation); }
+
+      /**
+       * Describe the work needed to reverse the last sketch mutation. The caller
+       * persists it — this module never touches storage.
+       */
+      function planUndo() {
+        return undoStack.undo(undo, (id) => annotations.get(id) || null);
+      }
+
+        function selectArrow(id) {
         routeInteraction.select(routeState, id);
         renderRoutes();
         if (hooks.onArrowSelected) hooks.onArrowSelected(id ? annotations.get(id) : null);
       }
 
-      // ── Pointer handling ────────────────────────────────────────────────
+      /**
+       * Show a blank sheet: same stage, same coordinates, no image blob.
+       *
+       * Deliberately shares every path with showImage except the background, so
+       * sketch geometry on a blank sheet behaves identically to geometry on a plan.
+       */
+      function showBlank(width, height) {
+        if (!el.svg || !el.stage) return false;
+        if (!(width > 0) || !(height > 0)) return false;
+
+        releaseImage();
+        if (el.image) { el.image.removeAttribute('src'); el.image.hidden = true; }
+
+        stageSize = { width: width, height: height };
+        el.stage.style.width = width + 'px';
+        el.stage.style.height = height + 'px';
+        el.svg.setAttribute('width', String(width));
+        el.svg.setAttribute('height', String(height));
+        el.svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+        if (el.background) {
+          el.background.setAttribute('width', String(width));
+          el.background.setAttribute('height', String(height));
+        }
+        setPlaceholderVisible(false);
+        showGrid = true;
+        fit();
+        renderLabels();
+        return true;
+      }
+
+        // ── Pointer handling ────────────────────────────────────────────────
       // Pointer Events only. No parallel mouse and touch paths.
 
       function localPoint(e) {
@@ -3273,6 +4077,17 @@ window.WM = (function () {
         return null;
       }
 
+      /** The id only when the press landed on a sketch shape group. */
+      function sketchShapeIdFrom(target) {
+        let node = target;
+        while (node && node !== el.viewport) {
+          const cls = node.getAttribute && node.getAttribute('class');
+          if (cls && /(^|\s)wm-sketch-shape(\s|$)/.test(cls)) return node.getAttribute('data-annotation-id');
+          node = node.parentNode;
+        }
+        return null;
+      }
+
       function capture(e) {
         if (el.viewport.setPointerCapture) {
           try { el.viewport.setPointerCapture(e.pointerId); } catch (_) { /* already captured */ }
@@ -3295,6 +4110,20 @@ window.WM = (function () {
         labelInteraction.noteInput(labelState, type, point, nowMs());
 
         lastViewSize = viewSize();
+
+        // Sketch handles sit on top of everything and are small, so they claim the
+        // pointer first. Ownership is decided here, once, and every branch returns.
+        const sketchHandle = attrFrom(e.target, 'data-handle');
+        if (sketchHandle) {
+          const shapeId = labelIdFrom(e.target);
+          const shape = shapeId && annotations.get(shapeId);
+          if (shape) {
+            capture(e);
+            sketchInteraction.handleDown(sketchState, shape, sketchHandle, point);
+            if (e.stopPropagation) e.stopPropagation();
+            return;
+          }
+        }
 
         // Endpoint handles win over everything: they sit on top and are small.
         const handle = attrFrom(e.target, 'data-endpoint');
@@ -3325,6 +4154,17 @@ window.WM = (function () {
           return;
         }
 
+        // Sketch shapes are below arrows and labels, matching the visual stacking:
+        // wm-sketch renders beneath wm-routes and wm-labels, so a label on top of a
+        // sketch line stays tappable.
+        const sketchId = sketchShapeIdFrom(e.target);
+        if (sketchId && annotations.has(sketchId)) {
+          capture(e);
+          selectSketch(sketchId);
+          if (e.stopPropagation) e.stopPropagation();
+          return;
+        }
+
         const labelId = labelIdFrom(e.target);
         if (labelId && annotations.has(labelId)) {
           // The label owns this pointer: the plan must not pan underneath it.
@@ -3332,6 +4172,16 @@ window.WM = (function () {
             try { el.viewport.setPointerCapture(e.pointerId); } catch (_) { /* already captured */ }
           }
           labelInteraction.labelPointerDown(labelState, labelId, point, annotations.get(labelId).at);
+          if (e.stopPropagation) e.stopPropagation();
+          return;
+        }
+
+        // An armed sketch tool draws ONLY on empty sheet. It sits here, after every
+        // existing-annotation branch, because arming Line must not turn a tap on a
+        // label, an arrow or an existing shape into the start of a new line.
+        if (sketchInteraction.isArmed(sketchState)) {
+          capture(e);
+          sketchInteraction.drawStart(sketchState, point, view, stageSize);
           if (e.stopPropagation) e.stopPropagation();
           return;
         }
@@ -3352,6 +4202,25 @@ window.WM = (function () {
 
       function onPointerMove(e) {
         if (!stageSize) return;
+
+        if (sketchInteraction.hasPressedHandle(sketchState)) {
+          const r = sketchInteraction.handleMove(sketchState, localPoint(e), view, stageSize);
+          if (r.moved && r.geometry) {
+            const shape = annotations.get(r.id);
+            // Live visual only; the write happens once, at drag end.
+            if (shape) {
+              annotations.set(r.id, sketchInteraction.withGeometry(shape, r.geometry));
+              renderSketch(); renderSelection();
+            }
+          }
+          return;   // a handle drag never pans the plan
+        }
+
+        if (sketchInteraction.isDrawing(sketchState)) {
+          const r = sketchInteraction.drawMove(sketchState, localPoint(e), view, stageSize);
+          if (r.drawing) renderSketchDraft(r.tool, r.a, r.b);
+          return;
+        }
 
         if (routeInteraction.hasPressedEndpoint(routeState)) {
           const r = routeInteraction.endpointMove(routeState, localPoint(e), view, stageSize);
@@ -3402,6 +4271,30 @@ window.WM = (function () {
         // lands somewhere new and is treated as a fresh gesture.
         labelInteraction.noteInput(labelState, e.pointerType || 'mouse', point, nowMs());
 
+        if (sketchInteraction.hasPressedHandle(sketchState)) {
+          const outcome = sketchInteraction.handleUp(sketchState);
+          release(e);
+          if (outcome.action === 'move' && hooks.onSketchChanged) {
+            const shape = annotations.get(outcome.id);
+            if (shape) {
+              hooks.onSketchChanged(sketchInteraction.withGeometry(shape, outcome.geometry),
+                sketchInteraction.withGeometry(shape, outcome.before));
+            }
+          }
+          return;
+        }
+
+        if (sketchInteraction.isDrawing(sketchState)) {
+          const outcome = sketchInteraction.drawEnd(sketchState);
+          release(e);
+          renderSketchDraft(null, null, null);
+          disarmSketch();
+          if (outcome.action === 'commit' && hooks.onSketchDrawn) {
+            hooks.onSketchDrawn({ tool: outcome.tool, a: outcome.a, b: outcome.b });
+          }
+          return;
+        }
+
         if (routeInteraction.hasPressedEndpoint(routeState)) {
           const outcome = routeInteraction.endpointUp(routeState);
           release(e);
@@ -3447,10 +4340,12 @@ window.WM = (function () {
           && !labelInteraction.isArmed(labelState)
           && !routeInteraction.isArmed(routeState)
           && gesture.mode !== 'pan' && gesture.mode !== 'pinch'
-          && routeInteraction.getSelected(routeState)) {
+          && (routeInteraction.getSelected(routeState)
+            || sketchInteraction.getSelected(sketchState))) {
           interaction.pointerUp(gesture, e.pointerId, view);
           pressedBackground = false;
           selectArrow(null);
+          selectSketch(null);
           return;
         }
 
@@ -3482,6 +4377,22 @@ window.WM = (function () {
 
       function onPointerCancel() {
         pressedBackground = false;
+        if (sketchInteraction.hasPressedHandle(sketchState)) {
+          const outcome = sketchInteraction.handleCancel(sketchState);
+          if (outcome.action === 'revert' && outcome.id) {
+            const shape = annotations.get(outcome.id);
+            // Put it back where it was stored: never leave a half-moved shape.
+            if (shape) {
+              annotations.set(outcome.id, sketchInteraction.withGeometry(shape, outcome.geometry));
+              renderSketch(); renderSelection();
+            }
+          }
+        }
+        if (sketchInteraction.isDrawing(sketchState)) {
+          sketchInteraction.drawCancel(sketchState);
+          renderSketchDraft(null, null, null);
+          disarmSketch();
+        }
         if (routeInteraction.hasPressedEndpoint(routeState)) {
           const outcome = routeInteraction.endpointCancel(routeState);
           if (outcome.action === 'revert' && outcome.id) {
@@ -3562,6 +4473,7 @@ window.WM = (function () {
         attach,
         destroy,
         showImage,
+        showBlank,
         clear,
         setAnnotations,
         upsertAnnotation,
@@ -3576,6 +4488,19 @@ window.WM = (function () {
         isArrowArmed: () => routeInteraction.isArmed(routeState),
         selectArrow,
         getSelectedArrow: () => routeInteraction.getSelected(routeState),
+        armSketch,
+        disarmSketch,
+        activeSketchTool: () => sketchInteraction.activeTool(sketchState),
+        selectSketch,
+        getSelectedSketch: () => sketchInteraction.getSelected(sketchState),
+        setSheet,
+        isGridVisible: () => showGrid,
+        recordCreate,
+        recordGeometry,
+        recordDelete,
+        planUndo,
+        canUndo: () => undoStack.canUndo(undo),
+        undoSize: () => undoStack.size(undo),
         // Temporary WM-6A diagnostics for physical-device testing.
         getScale: () => view.scale,
         getHeadTargetPx: () => ({ length: HEAD_LENGTH_PX, width: HEAD_WIDTH_PX }),
@@ -3610,6 +4535,8 @@ window.WM = (function () {
   api["interaction"] = __require("interaction");
   api["labelInteraction"] = __require("labelInteraction");
   api["routeInteraction"] = __require("routeInteraction");
+  api["sketchInteraction"] = __require("sketchInteraction");
+  api["undoStack"] = __require("undoStack");
   api["app"] = __require("app");
   return api;
 })();
@@ -3656,6 +4583,13 @@ window.WM = (function () {
     var arrowBtn = document.getElementById('wm-add-arrow');
     var delArrowBtn = document.getElementById('wm-delete-arrow');
     var arrowHint = document.getElementById('wm-arrow-hint');
+    var tray = document.getElementById('wm-sketch-tray');
+    var sketchHint = document.getElementById('wm-sketch-hint');
+    var btnLine = document.getElementById('wm-tool-line');
+    var btnRect = document.getElementById('wm-tool-rect');
+    var btnUndo = document.getElementById('wm-undo');
+    var btnBlank = document.getElementById('wm-blank-sheet');
+    var btnDelShape = document.getElementById('wm-sketch-delete');
     var status = document.getElementById('wm-dev-status');
     var hint = document.getElementById('wm-arm-hint');
     var vpEl = document.getElementById('wm-viewport');
@@ -3707,6 +4641,23 @@ window.WM = (function () {
         report(a ? 'Selected arrow' : 'Deselected');
       },
       onArrowDrawn: function (ends) { createArrow(ends); },
+      onSketchToolChange: function (tool) {
+        var armed = tool !== 'none';
+        if (sketchHint) {
+          sketchHint.hidden = !armed;
+          sketchHint.textContent = tool === 'line' ? 'Drag on plan to draw line'
+            : tool === 'rect' ? 'Drag on plan to draw rectangle' : '';
+        }
+        vpEl.classList.toggle('armed', armed);
+        btnLine.classList.toggle('active', tool === 'line');
+        btnRect.classList.toggle('active', tool === 'rect');
+      },
+      onSketchSelected: function (shape) {
+        btnDelShape.hidden = !shape;
+        report(shape ? 'Selected ' + shape.type : 'Deselected');
+      },
+      onSketchDrawn: function (d) { createSketch(d); },
+      onSketchChanged: function (after, before) { persistSketch(after, before); },
       onArrowMoved: function (a) { persistArrow(a, 'Moved endpoint'); },
       onModeChange: function (armed) {
         if (hint) hint.hidden = !armed;
@@ -3817,6 +4768,115 @@ window.WM = (function () {
         .catch(fail);
     });
 
+    // ── sketch ──
+    function createSketch(d) {
+      if (!currentSheetId) { fail({ message: 'No sheet loaded.' }); return; }
+      var shape = WM.model.createAnnotation({ id: uid(d.tool), sheetId: currentSheetId,
+        type: d.tool, a: d.a, b: d.b, now: Date.now() });
+      var check = WM.model.validateAnnotation(shape);
+      if (!check.valid) { fail({ message: check.problems.join('; ') }); return; }
+      withDb(function (db) { return db.putAnnotation(shape); })
+        .then(function () {
+          stage.upsertAnnotation(shape);
+          stage.recordCreate(shape);       // one undo entry per completed draw
+          report('Created ' + d.tool);
+        })
+        .catch(fail);
+    }
+
+    function persistSketch(after, before) {
+      var next = WM.model.createAnnotation({ id: after.id, sheetId: after.sheetId,
+        type: after.type, a: after.a, b: after.b, now: after.createdAt });
+      next.updatedAt = Date.now();
+      var check = WM.model.validateAnnotation(next);
+      if (!check.valid) { fail({ message: check.problems.join('; ') }); return; }
+      withDb(function (db) { return db.putAnnotation(next); })
+        .then(function () {
+          stage.upsertAnnotation(next);
+          if (before) stage.recordGeometry(before);
+          report('Moved handle');
+        })
+        .catch(fail);
+    }
+
+    document.getElementById('wm-sketch-toggle').addEventListener('click', function () {
+      tray.classList.toggle('open');
+    });
+    document.getElementById('wm-sketch-close').addEventListener('click', function () {
+      tray.classList.remove('open');
+      stage.disarmSketch();
+    });
+    btnLine.addEventListener('click', function () {
+      if (stage.activeSketchTool() === 'line') stage.disarmSketch(); else stage.armSketch('line');
+    });
+    btnRect.addEventListener('click', function () {
+      if (stage.activeSketchTool() === 'rect') stage.disarmSketch(); else stage.armSketch('rect');
+    });
+
+    btnDelShape.addEventListener('click', function () {
+      var id = stage.getSelectedSketch();
+      if (!id) return;
+      var shape = stage.getAnnotation(id);
+      withDb(function (db) { return db.deleteAnnotation(id); })
+        .then(function () {
+          stage.selectSketch(null);
+          stage.removeAnnotation(id);
+          stage.recordDelete(shape);       // undo restores the same id
+          btnDelShape.hidden = true;
+          report('Deleted ' + shape.type);
+        })
+        .catch(fail);
+    });
+
+    btnUndo.addEventListener('click', function () {
+      var plan = stage.planUndo();
+      if (plan.action === 'none') { report('Nothing to undo'); return; }
+      if (plan.action === 'remove') {
+        withDb(function (db) { return db.deleteAnnotation(plan.annotationId); })
+          .then(function () {
+            stage.selectSketch(null);
+            stage.removeAnnotation(plan.annotationId);
+            report('Undid create');
+          })
+          .catch(fail);
+        return;
+      }
+      // restore: the snapshot keeps the original id, so this is a restore and
+      // never a duplicate.
+      withDb(function (db) { return db.putAnnotation(plan.annotation); })
+        .then(function () { stage.upsertAnnotation(plan.annotation); report('Undid change'); })
+        .catch(fail);
+    });
+
+    btnBlank.addEventListener('click', function () {
+      var sheetId = uid('sheet');
+      var now = Date.now();
+      withDb(function (db) {
+        return db.getJob(DEV_JOB_ID)
+          .then(function (job) {
+            if (job) return job;
+            return db.putJob(WM.model.createJob({ id: DEV_JOB_ID,
+              name: 'Wire Map Development', now: now }));
+          })
+          .then(function () {
+            // Blank: no image blob, no imageId. 2000x1500 matches the working
+            // size of an imported plan, so geometry behaves identically.
+            return db.putSheet(WM.model.createSheet({ id: sheetId, jobId: DEV_JOB_ID,
+              name: 'Blank ' + new Date(now).toLocaleTimeString(), kind: 'blank',
+              width: 2000, height: 1500, order: 0, now: now }));
+          })
+          .then(function () { return db.setMeta(META_CURRENT_SHEET, sheetId); });
+      })
+        .then(function () {
+          currentSheetId = sheetId;
+          stage.setAnnotations([]);
+          stage.setSheet(sheetId, { blank: true });
+          stage.showBlank(2000, 1500);
+          report('Blank sheet created');
+        })
+        .catch(fail);
+    });
+
     addBtn.addEventListener('click', function () {
       if (stage.isArmed()) stage.disarmPlacement(); else stage.armPlacement();
     });
@@ -3866,8 +4926,9 @@ window.WM = (function () {
         })
         .then(function (rec) {
           currentSheetId = sheetId;
-          // A brand new sheet starts with no labels — never inherit the previous one's.
+          // A brand new sheet starts empty — never inherit the previous one's.
           stage.setAnnotations([]);
+          stage.setSheet(sheetId, { blank: false });
           return stage.showImage(rec.blob, rec.width, rec.height).then(function () {
             status.innerHTML =
               line('Sheet', sheetId) + line('Image', imageId) +
@@ -3888,7 +4949,8 @@ window.WM = (function () {
           if (!sheetId) return null;
           return db.getSheet(sheetId).then(function (sheet) {
             if (!sheet) return null;
-            return db.getImage(sheet.imageId).then(function (image) {
+            var img = sheet.imageId ? db.getImage(sheet.imageId) : Promise.resolve(null);
+            return img.then(function (image) {
               return db.listAnnotations(sheet.id).then(function (anns) {
                 return { sheet: sheet, image: image, annotations: anns };
               });
@@ -3897,11 +4959,24 @@ window.WM = (function () {
         });
       })
         .then(function (r) {
-          if (!r || !r.image) {
-            status.innerHTML = '<b>No stored sheet.</b> Import an image first.';
+          if (!r || !r.sheet) {
+            status.innerHTML = '<b>No stored sheet.</b> Import an image or create a blank sheet.';
+            return;
+          }
+          if (r.sheet.kind !== 'blank' && !r.image) {
+            status.innerHTML = '<b>Sheet has no image.</b>';
             return;
           }
           currentSheetId = r.sheet.id;
+          stage.setSheet(r.sheet.id, { blank: r.sheet.kind === 'blank' });
+          if (r.sheet.kind === 'blank') {
+            stage.showBlank(r.sheet.width, r.sheet.height);
+            stage.setAnnotations(r.annotations);
+            status.innerHTML = line('LOADED BLANK SHEET', r.sheet.id)
+              + line('Size', r.sheet.width + '\u00D7' + r.sheet.height)
+              + line('Annotations', r.annotations.length);
+            return;
+          }
           return stage.showImage(r.image.blob, r.image.width, r.image.height).then(function () {
             stage.setAnnotations(r.annotations);
             status.innerHTML =

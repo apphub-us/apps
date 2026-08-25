@@ -50,6 +50,8 @@ const MODULES = [
   'interaction',
   'labelInteraction',
   'routeInteraction',
+  'sketchInteraction',
+  'undoStack',
   'app',
 ];
 

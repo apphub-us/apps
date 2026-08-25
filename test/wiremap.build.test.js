@@ -55,6 +55,8 @@ const src = {
   store: require('../src/wiremap/store'),
   image: require('../src/wiremap/image'),
   labelInteraction: require('../src/wiremap/labelInteraction'),
+  sketchInteraction: require('../src/wiremap/sketchInteraction'),
+  undoStack: require('../src/wiremap/undoStack'),
   routeInteraction: require('../src/wiremap/routeInteraction'),
 };
 
@@ -101,7 +103,7 @@ describe('Wire Map build — window.WM in an isolated context', { skip: skipAll 
   });
 
   test('WM exposes every Wire Map module', () => {
-    for (const key of ['model', 'geometry', 'viewport', 'store', 'image', 'labelInteraction', 'routeInteraction']) {
+    for (const key of ['model', 'geometry', 'viewport', 'store', 'image', 'labelInteraction', 'routeInteraction', 'sketchInteraction', 'undoStack']) {
       assert.ok(WM[key], `WM.${key} is missing`);
       assert.strictEqual(typeof WM[key], 'object');
     }
@@ -201,7 +203,7 @@ describe('Wire Map build — browser and Node agree', { skip: skipAll }, () => {
   });
 
   test('every exported name in the sources is present in the bundle', () => {
-    for (const mod of ['model', 'geometry', 'viewport', 'store', 'image', 'labelInteraction', 'routeInteraction']) {
+    for (const mod of ['model', 'geometry', 'viewport', 'store', 'image', 'labelInteraction', 'routeInteraction', 'sketchInteraction', 'undoStack']) {
       const expected = Object.keys(src[mod]).sort();
       const actual = Object.keys(WM[mod]).sort();
       assert.deepStrictEqual(actual, expected, `export drift in ${mod}`);
@@ -312,8 +314,11 @@ describe('Wire Map build — the WM-1 shell is still inert', { skip: skipAll }, 
     const app = fs.readFileSync(path.join(ROOT, 'src', 'wiremap', 'app.js'), 'utf8');
     assert.ok(/el\.labels\.appendChild\(renderLabel/.test(app), 'labels belong in wm-labels');
     assert.ok(/el\.routes\.appendChild\(renderArrow/.test(app), 'arrows belong in wm-routes');
-    // Selection visuals are transient; the sketch layer is untouched until WM-6B.
-    assert.ok(!/wm-sketch|el\.sketch/.test(app), 'WM-6A must not draw into the sketch layer');
+    // WM-6B1 now owns wm-sketch: lines, rectangles and the blank-sheet grid.
+    assert.ok(/el\.sketch\.appendChild\(renderSketchShape/.test(app),
+      'sketch shapes belong in wm-sketch');
+    assert.ok(!/el\.labels\.appendChild\(renderSketchShape|el\.routes\.appendChild\(renderSketchShape/.test(app),
+      'sketch shapes must not leak into the label or route layers');
     assert.ok(/el\.selection\.appendChild/.test(app), 'handles belong in wm-selection');
   });
 
@@ -464,8 +469,9 @@ describe('Wire Map build — the WM-1 shell is still inert', { skip: skipAll }, 
         `WM-3 must not introduce ${forbidden}`);
     }
     // Probe controls plus the WM-5 editor buttons. None fire on load.
+    // Probe controls, the label editor and now the sketch tray. None fire on load.
     const count = (handWritten.match(/addEventListener/g) || []).length;
-    assert.ok(count >= 3 && count <= 12, `unexpected listener count: ${count}`);
+    assert.ok(count >= 3 && count <= 24, `unexpected listener count: ${count}`);
   });
 
   test('no external dependency was pulled in', () => {

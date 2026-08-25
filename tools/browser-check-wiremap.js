@@ -1678,12 +1678,587 @@ async function runArrowTip(engineName, engine) {
   return { engine: engineName, available: true, detail: r, checks, errs };
 }
 
+// ── WM-6B1: blank sheet, sketch line/rect, undo ─────────────────────────────
+async function runSketch(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e)));
+  await page.goto(APP);
+
+  const R = {};
+  const send = (t, id, x, y, pt) => page.evaluate(({ t, id, x, y, pt }) => {
+    const el = document.getElementById('wm-viewport'); const r = el.getBoundingClientRect();
+    const tg = document.elementFromPoint(r.left + x, r.top + y) || el;
+    tg.dispatchEvent(new PointerEvent(t, { pointerId: id, clientX: r.left + x,
+      clientY: r.top + y, bubbles: true, pointerType: pt || 'touch' }));
+  }, { t, id, x, y, pt });
+  const drag = async (id, from, to, steps) => {
+    await send('pointerdown', id, from.x, from.y);
+    for (const s of steps || [0.4, 0.8, 1]) {
+      await send('pointermove', id, from.x + (to.x - from.x) * s, from.y + (to.y - from.y) * s);
+    }
+    await send('pointerup', id, to.x, to.y);
+    await page.waitForTimeout(250);
+  };
+  const counts = () => page.evaluate(() => ({
+    sketchInSketch: document.querySelectorAll('#wm-sketch .wm-sketch-shape').length,
+    sketchElsewhere: document.querySelectorAll('#wm-routes .wm-sketch-shape').length
+      + document.querySelectorAll('#wm-labels .wm-sketch-shape').length,
+    arrows: document.querySelectorAll('#wm-routes .wm-arrow').length,
+    labels: document.querySelectorAll('#wm-labels .wm-label').length,
+    grid: document.querySelectorAll('#wm-sketch .wm-grid').length,
+    total: window.__wmStage.getAnnotationCount(),
+    view: window.__wmStage.getViewport(),
+  }));
+
+  // ── image sheet: label + arrow + sketch ──
+  await page.evaluate(async () => {
+    const c = document.createElement('canvas'); c.width = 2000; c.height = 1500;
+    const x = c.getContext('2d'); x.fillStyle = '#1d3a5c'; x.fillRect(0, 0, 2000, 1500);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.9));
+    const dt = new DataTransfer(); dt.items.add(new File([blob], 'p.jpg', { type: 'image/jpeg' }));
+    const i = document.getElementById('wm-dev-file'); i.files = dt.files;
+    i.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.waitForFunction(() => window.__wmStage.hasImage(), { timeout: 20000 });
+  await page.waitForTimeout(300);
+  R.gridOnImageSheet = (await counts()).grid;
+
+  await page.click('#wm-add-label');
+  await send('pointerdown', 1, 320, 200); await send('pointerup', 1, 320, 200);
+  await page.waitForTimeout(120);
+  await page.fill('#wm-f-label', 'HR-7'); await page.click('#wm-editor-save');
+  await page.waitForFunction(() => window.__wmStage.getAnnotationCount() === 1, { timeout: 10000 });
+
+  await page.click('#wm-add-arrow');
+  await drag(2, { x: 110, y: 380 }, { x: 260, y: 420 });
+
+  // sketch line
+  await page.click('#wm-sketch-toggle');
+  await page.click('#wm-tool-line');
+  R.lineArmed = await page.evaluate(() => window.__wmStage.activeSketchTool());
+  await drag(3, { x: 120, y: 250 }, { x: 280, y: 300 });
+  // iOS compatibility pair must not create a second line
+  await send('pointerdown', 4, 280, 300, 'mouse'); await send('pointerup', 4, 280, 300, 'mouse');
+  await page.waitForTimeout(200);
+  R.afterLine = await counts();
+  R.toolExited = await page.evaluate(() => window.__wmStage.activeSketchTool());
+
+  // a tap with the tool armed creates nothing
+  await page.click('#wm-tool-line');
+  await send('pointerdown', 5, 200, 330); await send('pointerup', 5, 202, 331);
+  await page.waitForTimeout(200);
+  R.tapCreatesNothing = (await counts()).sketchInSketch === 1;
+  // No second click needed: any pointerup while drawing auto-disarms the tool.
+  R.autoDisarmedAfterTap = await page.evaluate(() => window.__wmStage.activeSketchTool());
+
+  // select the line, drag an endpoint
+  const lineInfo = await page.evaluate(() => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    let id = null; s.getAnnotationIds ? null : null;
+    const g = document.querySelector('#wm-sketch .wm-sketch-shape');
+    id = g.getAttribute('data-annotation-id');
+    const ann = s.getAnnotation(id);
+    const mid = { x: (ann.a.x + ann.b.x) / 2, y: (ann.a.y + ann.b.y) / 2 };
+    return { id, a: ann.a, b: ann.b,
+      midScreen: WM.viewport.stageToScreen(WM.geometry.denormalizePoint(mid, sz), s.getViewport()) };
+  });
+  await send('pointerdown', 6, lineInfo.midScreen.x, lineInfo.midScreen.y);
+  await send('pointerup', 6, lineInfo.midScreen.x, lineInfo.midScreen.y);
+  // Handles are rendered asynchronously after selection; wait for them rather
+  // than assuming a fixed delay is enough.
+  await page.waitForFunction(() => document.querySelectorAll('.wm-sketch-handle').length > 0,
+    { timeout: 10000 });
+  R.lineSelected = await page.evaluate(() => ({
+    id: window.__wmStage.getSelectedSketch(),
+    handles: document.querySelectorAll('.wm-sketch-handle').length,
+    handleHit: (() => { const t = document.querySelector('.wm-sketch-handle .wm-endpoint-target');
+      const r = t.getBoundingClientRect(); return Math.round(Math.min(r.width, r.height)); })(),
+  }));
+  const hA = await page.evaluate(() => {
+    const t = document.querySelector('.wm-sketch-handle[data-handle="a"] .wm-endpoint-target');
+    const r = t.getBoundingClientRect();
+    const vp = document.getElementById('wm-viewport').getBoundingClientRect();
+    return { x: r.left + r.width / 2 - vp.left, y: r.top + r.height / 2 - vp.top };
+  });
+  const viewBeforeLineDrag = (await counts()).view;
+  await drag(7, hA, { x: hA.x + 70, y: hA.y + 50 });
+  R.lineEndpointDrag = await page.evaluate(async (arg) => {
+    const s = window.__wmStage; const live = s.getAnnotation(arg.id);
+    const db = WM.store.createStore(); await db.openDatabase();
+    const saved = await db.getAnnotation(arg.id); db.closeDatabase();
+    const v = s.getViewport();
+    return { aMoved: JSON.stringify(live.a) !== JSON.stringify(arg.a),
+      bUnchanged: JSON.stringify(live.b) === JSON.stringify(arg.b),
+      stageDelta: { dx: v.translateX - arg.view.translateX, dy: v.translateY - arg.view.translateY },
+      persisted: JSON.stringify(saved.a) === JSON.stringify(live.a) };
+  }, { id: lineInfo.id, a: lineInfo.a, b: lineInfo.b, view: viewBeforeLineDrag });
+
+  // rectangle
+  await page.click('#wm-tool-rect');
+  await drag(8, { x: 130, y: 430 }, { x: 300, y: 520 });
+  R.afterRect = await counts();
+  const rectId = await page.evaluate(() => {
+    const gs = document.querySelectorAll('#wm-sketch .wm-sketch-shape');
+    for (const g of gs) {
+      const a = window.__wmStage.getAnnotation(g.getAttribute('data-annotation-id'));
+      if (a.type === 'rect') return a.id;
+    }
+    return null;
+  });
+  await page.evaluate((id) => window.__wmStage.selectSketch(id), rectId);
+  await page.waitForFunction(() => document.querySelectorAll('.wm-sketch-handle').length === 4,
+    { timeout: 10000 });
+  R.rectHandles = await page.evaluate(() => document.querySelectorAll('.wm-sketch-handle').length);
+  const cornerBefore = await page.evaluate((id) => {
+    const s = window.__wmStage;
+    const a = s.getAnnotation(id);
+    return { a: a.a, b: a.b, opposite: WM.sketchInteraction.oppositeCorner(a, 'nw') };
+  }, rectId);
+  const hNW = await page.evaluate(() => {
+    const t = document.querySelector('.wm-sketch-handle[data-handle="nw"] .wm-endpoint-target');
+    const r = t.getBoundingClientRect();
+    const vp = document.getElementById('wm-viewport').getBoundingClientRect();
+    return { x: r.left + r.width / 2 - vp.left, y: r.top + r.height / 2 - vp.top };
+  });
+  const viewBeforeCorner = (await counts()).view;
+  await drag(9, hNW, { x: hNW.x + 45, y: hNW.y + 35 });
+  R.cornerDrag = await page.evaluate((arg) => {
+    const s = window.__wmStage; const a = s.getAnnotation(arg.id);
+    const corners = WM.sketchInteraction.rectCorners(a);
+    const v = s.getViewport();
+    return { changed: JSON.stringify({ a: a.a, b: a.b }) !== JSON.stringify({ a: arg.a, b: arg.b }),
+      oppositeFixed: Math.abs(corners.se.x - arg.opposite.x) < 1e-9
+                  && Math.abs(corners.se.y - arg.opposite.y) < 1e-9,
+      stageDelta: { dx: v.translateX - arg.view.translateX, dy: v.translateY - arg.view.translateY } };
+  }, { id: rectId, ...cornerBefore, view: viewBeforeCorner });
+
+  // strokes across zoom
+  R.strokes = await page.evaluate(() => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    const rows = [];
+    for (const sc of [null, 1, 4, 8]) {
+      if (sc) s._setViewport(WM.viewport.centerOnNormalized({ x: 0.5, y: 0.5 }, sz,
+        { width: el.width, height: el.height }, s.getViewport(), sc));
+      else s._setViewport(WM.viewport.fitToViewport(sz, { width: el.width, height: el.height }));
+      s.renderLabels();
+      const scale = s.getViewport().scale;
+      const sel = document.querySelector('.wm-sketch-shape.selected .wm-sketch-rect')
+        || document.querySelector('.wm-sketch-shape.selected .wm-sketch-line');
+      const un = document.querySelector('.wm-sketch-shape:not(.selected) .wm-sketch-line')
+        || document.querySelector('.wm-sketch-shape:not(.selected) .wm-sketch-rect');
+      const hit = document.querySelector('.wm-sketch-hit');
+      rows.push({ scale: +scale.toFixed(3),
+        unselected: +(parseFloat(un.getAttribute('stroke-width')) * scale).toFixed(3),
+        selected: sel ? +(parseFloat(sel.getAttribute('stroke-width')) * scale).toFixed(3) : null,
+        hit: +(parseFloat(hit.getAttribute('stroke-width')) * scale).toFixed(1) });
+    }
+    return rows;
+  });
+
+  // anchors survive zoom
+  R.anchorStable = await page.evaluate((id) => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    const a = s.getAnnotation(id);
+    const before = JSON.stringify({ a: a.a, b: a.b });
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    for (const sc of [0.195, 1, 8]) {
+      s._setViewport(WM.viewport.centerOnNormalized({ x: 0.5, y: 0.5 }, sz,
+        { width: el.width, height: el.height }, s.getViewport(), sc));
+      s.renderLabels();
+    }
+    return JSON.stringify({ a: s.getAnnotation(id).a, b: s.getAnnotation(id).b }) === before;
+  }, rectId);
+
+  // undo: corner edit, then rect creation
+  await page.click('#wm-undo'); await page.waitForTimeout(300);
+  R.afterUndoEdit = await page.evaluate((arg) => {
+    const a = window.__wmStage.getAnnotation(arg.id);
+    return a ? JSON.stringify({ a: a.a, b: a.b }) === JSON.stringify({ a: arg.a, b: arg.b }) : false;
+  }, { id: rectId, a: cornerBefore.a, b: cornerBefore.b });
+  await page.click('#wm-undo'); await page.waitForTimeout(300);
+  R.afterUndoCreate = await counts();
+  R.rectGoneFromStore = await page.evaluate(async (id) => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const a = await db.getAnnotation(id); db.closeDatabase(); return a === null;
+  }, rectId);
+
+  // reload
+  await page.reload(); await page.waitForTimeout(200);
+  await page.click('#wm-dev-load');
+  await page.waitForFunction(() => window.__wmStage.getAnnotationCount() >= 3, { timeout: 20000 });
+  await page.waitForTimeout(250);
+  R.afterReload = await counts();
+
+  // ── blank sheet ──
+  await page.click('#wm-sketch-toggle');
+  await page.click('#wm-blank-sheet');
+  await page.waitForFunction(() => window.__wmStage.isGridVisible(), { timeout: 10000 });
+  await page.waitForTimeout(250);
+  R.blank = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const id = await db.getMeta('currentSheetId');
+    const sheet = await db.getSheet(id); db.closeDatabase();
+    return { kind: sheet.kind, imageId: sheet.imageId, w: sheet.width, h: sheet.height,
+      gridLines: document.querySelectorAll('#wm-sketch .wm-grid line').length,
+      annotations: window.__wmStage.getAnnotationCount(),
+      imageHidden: document.getElementById('wm-background').hidden };
+  });
+
+  await page.click('#wm-tool-line');
+  await drag(20, { x: 120, y: 250 }, { x: 280, y: 320 });
+  await page.click('#wm-tool-rect');
+  await drag(21, { x: 130, y: 380 }, { x: 290, y: 470 });
+  R.blankShapes = await counts();
+
+  await page.reload(); await page.waitForTimeout(200);
+  await page.click('#wm-dev-load');
+  await page.waitForFunction(() => window.__wmStage.getAnnotationCount() >= 2, { timeout: 20000 });
+  await page.waitForTimeout(250);
+  R.blankAfterReload = await counts();
+  R.blankGridAfterReload = await page.evaluate(() => ({
+    grid: document.querySelectorAll('#wm-sketch .wm-grid line').length > 0,
+    isBlank: window.__wmStage.isGridVisible() }));
+
+  // delete a shape then undo
+  const delId = await page.evaluate(() =>
+    document.querySelector('#wm-sketch .wm-sketch-shape').getAttribute('data-annotation-id'));
+  await page.evaluate((id) => window.__wmStage.selectSketch(id), delId);
+  await page.waitForFunction(() => document.querySelectorAll('.wm-sketch-handle').length > 0,
+    { timeout: 10000 });
+  await page.click('#wm-sketch-toggle');
+  await page.click('#wm-sketch-delete'); await page.waitForTimeout(300);
+  R.afterDelete = (await counts()).sketchInSketch;
+  await page.click('#wm-undo'); await page.waitForTimeout(300);
+  R.afterUndoDelete = await page.evaluate(async (id) => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const a = await db.getAnnotation(id); db.closeDatabase();
+    return { restored: !!a, sameId: a ? a.id === id : false,
+      onStage: document.querySelectorAll('#wm-sketch .wm-sketch-shape').length };
+  }, delId);
+
+  // no cross-sheet leakage: the blank sheet must not show the image sheet's work
+  R.noLeak = R.blankAfterReload.labels === 0 && R.blankAfterReload.arrows === 0;
+
+
+  await browser.close();
+
+  const st = R.strokes;
+  const checks = [
+    ['a sketch line is created, in wm-sketch only',
+      R.afterLine.sketchInSketch === 1 && R.afterLine.sketchElsewhere === 0],
+    ['the iOS compatibility pair creates no second shape', R.afterLine.total === 3],
+    ['the tool disarms after a commit', R.toolExited === 'none'],
+    ['a tap with a tool armed creates nothing', R.tapCreatesNothing],
+    ['a discarded tap also disarms the tool', R.autoDisarmedAfterTap === 'none'],
+    ['tapping a line selects it and shows two handles',
+      !!R.lineSelected.id && R.lineSelected.handles === 2],
+    ['sketch handles are finger-sized', R.lineSelected.handleHit >= 40],
+    ['dragging an endpoint moves only that end',
+      R.lineEndpointDrag.aMoved && R.lineEndpointDrag.bUnchanged],
+    ['dragging an endpoint does NOT pan the stage',
+      R.lineEndpointDrag.stageDelta.dx === 0 && R.lineEndpointDrag.stageDelta.dy === 0],
+    ['the endpoint is written through once', R.lineEndpointDrag.persisted],
+    ['a rectangle is created and shows four corner handles',
+      R.afterRect.sketchInSketch === 2 && R.rectHandles === 4],
+    ['dragging a corner keeps the OPPOSITE corner fixed',
+      R.cornerDrag.changed && R.cornerDrag.oppositeFixed],
+    ['dragging a corner does NOT pan the stage',
+      R.cornerDrag.stageDelta.dx === 0 && R.cornerDrag.stageDelta.dy === 0],
+    ['unselected sketch stroke is ~1.25 screen px at every zoom',
+      st.every((r) => Math.abs(r.unselected - 1.25) < 0.05)],
+    ['selected sketch stroke is ~2.0 screen px at every zoom',
+      st.every((r) => r.selected === null || Math.abs(r.selected - 2.0) < 0.05)],
+    ['the sketch hit target is ~40 screen px at every zoom',
+      st.every((r) => Math.abs(r.hit - 40) < 0.5)],
+    ['zooming never rewrites stored sketch geometry', R.anchorStable],
+    ['UNDO restores the geometry before a corner edit', R.afterUndoEdit],
+    ['UNDO removes a created rectangle from stage and store',
+      R.afterUndoCreate.sketchInSketch === 1 && R.rectGoneFromStore],
+    ['the line, arrow and label survive a reload',
+      R.afterReload.sketchInSketch === 1 && R.afterReload.arrows === 1 && R.afterReload.labels === 1],
+    ['a blank sheet needs no image blob',
+      R.blank.kind === 'blank' && R.blank.imageId === null && R.blank.imageHidden],
+    ['the blank sheet renders a drafting grid', R.blank.gridLines > 0],
+    ['a new blank sheet starts with no annotations', R.blank.annotations === 0],
+    ['sketch tools work on a blank sheet too', R.blankShapes.sketchInSketch === 2],
+    ['a blank sheet and its shapes survive a reload',
+      R.blankAfterReload.sketchInSketch === 2 && R.blankGridAfterReload.grid
+      && R.blankGridAfterReload.isBlank],
+    ['NO cross-sheet leakage between the image and blank sheets', R.noLeak],
+    ['deleting a shape removes it', R.afterDelete === 1],
+    ['UNDO restores a deleted shape under the SAME id',
+      R.afterUndoDelete.restored && R.afterUndoDelete.sameId && R.afterUndoDelete.onStage === 2],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
+// ── WM-6B1: hit-routing priority under overlap ──────────────────────────────
+async function runPriority(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e)));
+  await page.goto(APP);
+  await page.evaluate(async () => {
+    const c = document.createElement('canvas'); c.width = 2000; c.height = 1500;
+    c.getContext('2d').fillRect(0, 0, 2000, 1500);
+    const pr = await WM.image.processImage(await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9)));
+    await window.__wmStage.showImage(pr.blob, pr.width, pr.height);
+    window.__wmStage.setSheet('s1', { blank: false });
+    window.__wmStage.setAnnotations([
+      WM.model.createAnnotation({ id: 'ln', sheetId: 's1', type: 'line',
+        a: { x: 0.2, y: 0.5 }, b: { x: 0.8, y: 0.5 }, now: 1 }),
+      WM.model.createAnnotation({ id: 'rc', sheetId: 's1', type: 'rect',
+        a: { x: 0.25, y: 0.62 }, b: { x: 0.75, y: 0.80 }, now: 1 }),
+      WM.model.createAnnotation({ id: 'lb', sheetId: 's1', type: 'wireLabel',
+        at: { x: 0.5, y: 0.5 }, now: 1, data: { label: 'HR-7' } }),
+      WM.model.createAnnotation({ id: 'ar', sheetId: 's1', type: 'arrow',
+        a: { x: 0.30, y: 0.25 }, b: { x: 0.70, y: 0.25 }, now: 1 }),
+      WM.model.createAnnotation({ id: 'l2', sheetId: 's1', type: 'line',
+        a: { x: 0.30, y: 0.25 }, b: { x: 0.70, y: 0.25 }, now: 1 }),
+    ]);
+  });
+  await page.waitForTimeout(300);
+
+  const R = await page.evaluate(() => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    const vpEl = document.getElementById('wm-viewport');
+    const el = vpEl.getBoundingClientRect();
+    const fire = (t, id, x, y, pt) => {
+      const tg = document.elementFromPoint(el.left + x, el.top + y) || vpEl;
+      tg.dispatchEvent(new PointerEvent(t, { pointerId: id, clientX: el.left + x,
+        clientY: el.top + y, bubbles: true, pointerType: pt || 'touch' }));
+    };
+    const at = (n) => WM.viewport.stageToScreen(WM.geometry.denormalizePoint(n, sz), s.getViewport());
+    const snapshot = () => ({
+      editor: !document.getElementById('wm-editor').hidden,
+      arrow: s.getSelectedArrow(), sketch: s.getSelectedSketch(),
+      count: s.getAnnotationCount(), view: JSON.stringify(s.getViewport()),
+      tool: s.activeSketchTool(),
+    });
+    const reset = () => {
+      document.getElementById('wm-editor').hidden = true;
+      s.selectArrow(null); s.selectSketch(null); s.disarmSketch();
+    };
+    const tap = (p, id, pt) => { fire('pointerdown', id, p.x, p.y, pt); fire('pointerup', id, p.x, p.y, pt); };
+
+    const out = {};
+    let n = 100;
+
+    // ── label directly over a sketch line ──
+    reset();
+    const before = snapshot();
+    tap(at({ x: 0.5, y: 0.5 }), n++);
+    out.labelOverLine = { ...snapshot(), viewUnchanged: snapshot().view === before.view };
+
+    // ── label over a rectangle border ──
+    reset();
+    s.upsertAnnotation({ ...s.getAnnotation('lb'), at: { x: 0.5, y: 0.62 } });
+    tap(at({ x: 0.5, y: 0.62 }), n++);
+    out.labelOverRectBorder = snapshot();
+    s.upsertAnnotation({ ...s.getAnnotation('lb'), at: { x: 0.5, y: 0.5 } });
+
+    // ── arrow directly over a sketch line ──
+    reset();
+    tap(at({ x: 0.5, y: 0.25 }), n++);
+    out.arrowOverLine = snapshot();
+
+    // ── arrow endpoint handle over a sketch line ──
+    reset();
+    s.selectArrow('ar');
+    const h = document.querySelector('.wm-endpoint[data-endpoint="a"] .wm-endpoint-target');
+    const hb = h.getBoundingClientRect();
+    const hp = { x: hb.left + hb.width / 2 - el.left, y: hb.top + hb.height / 2 - el.top };
+    fire('pointerdown', n, hp.x, hp.y);
+    const ownedByHandle = s.getSelectedSketch() === null;
+    fire('pointerup', n++, hp.x, hp.y);
+    out.arrowHandleOverSketch = { ownedByHandle, ...snapshot() };
+
+    // ── ARMED tool landing on existing annotations ──
+    for (const tool of ['line', 'rect']) {
+      for (const [name, p] of [
+        ['label', at({ x: 0.5, y: 0.5 })],
+        ['arrowBody', at({ x: 0.5, y: 0.25 })],
+        ['sketchLine', at({ x: 0.3, y: 0.5 })],
+      ]) {
+        reset();
+        const c0 = s.getAnnotationCount();
+        s.armSketch(tool);
+        fire('pointerdown', n, p.x, p.y);
+        const startedDraft = !!document.getElementById('wm-draft-sketch')
+          || s.activeSketchTool() === tool && (() => { fire('pointermove', n, p.x + 60, p.y + 40);
+              return !!document.getElementById('wm-draft-sketch'); })();
+        fire('pointermove', n, p.x + 60, p.y + 40);
+        fire('pointerup', n++, p.x + 60, p.y + 40);
+        out['armed_' + tool + '_on_' + name] = {
+          startedDraft, created: s.getAnnotationCount() - c0,
+          editor: !document.getElementById('wm-editor').hidden,
+          arrow: s.getSelectedArrow(), sketch: s.getSelectedSketch(),
+        };
+        // undo any accidental creation so later cases start clean
+        while (s.getAnnotationCount() > c0) {
+          const plan = s.planUndo();
+          if (plan.action === 'remove') s.removeAnnotation(plan.annotationId); else break;
+        }
+      }
+      // ── armed tool on genuinely empty sheet MUST draw ──
+      reset();
+      const c1 = s.getAnnotationCount();
+      s.armSketch(tool);
+      const empty = at({ x: 0.12, y: 0.90 });
+      fire('pointerdown', n, empty.x, empty.y);
+      fire('pointermove', n, empty.x + 70, empty.y + 50);
+      const drafted = !!document.getElementById('wm-draft-sketch');
+      fire('pointerup', n++, empty.x + 70, empty.y + 50);
+      out['armed_' + tool + '_on_empty'] = { drafted };
+    }
+
+    // ── iOS pair on the overlap case ──
+    reset();
+    const p = at({ x: 0.5, y: 0.5 });
+    tap(p, n++, 'touch');
+    const afterTouch = snapshot();
+    tap(p, n++, 'mouse');
+    out.iosOverlap = { afterTouch: afterTouch.editor, afterCompat: snapshot().editor,
+      sketch: snapshot().sketch, count: snapshot().count };
+    return out;
+  });
+
+
+  await browser.close();
+
+  const checks = [
+    ['a label over a sketch line stays tappable',
+      R.labelOverLine.editor && R.labelOverLine.sketch === null
+      && R.labelOverLine.viewUnchanged],
+    ['a label over a rectangle border stays tappable',
+      R.labelOverRectBorder.editor && R.labelOverRectBorder.sketch === null],
+    ['an arrow over a sketch line stays tappable',
+      R.arrowOverLine.arrow === 'ar' && R.arrowOverLine.sketch === null],
+    ['an arrow endpoint handle keeps ownership over a sketch line',
+      R.arrowHandleOverSketch.ownedByHandle && R.arrowHandleOverSketch.arrow === 'ar'],
+    ['armed Line on a label does NOT start a line', !R.armed_line_on_label.startedDraft],
+    ['armed Line on an arrow does NOT start a line, the arrow selects',
+      !R.armed_line_on_arrowBody.startedDraft && R.armed_line_on_arrowBody.arrow === 'ar'],
+    ['armed Line on an existing shape does NOT start a line, the shape selects',
+      !R.armed_line_on_sketchLine.startedDraft && R.armed_line_on_sketchLine.sketch === 'ln'],
+    ['armed Rectangle on a label does NOT start a rectangle', !R.armed_rect_on_label.startedDraft],
+    ['armed Rectangle on an arrow does NOT start a rectangle',
+      !R.armed_rect_on_arrowBody.startedDraft && R.armed_rect_on_arrowBody.arrow === 'ar'],
+    ['armed Rectangle on an existing shape does NOT start a rectangle',
+      !R.armed_rect_on_sketchLine.startedDraft && R.armed_rect_on_sketchLine.sketch === 'ln'],
+    ['armed Line on genuinely empty sheet DOES draft', R.armed_line_on_empty.drafted],
+    ['armed Rectangle on genuinely empty sheet DOES draft', R.armed_rect_on_empty.drafted],
+    ['the iOS pair on an overlap yields one action with the same owner',
+      R.iosOverlap.afterTouch && R.iosOverlap.afterCompat
+      && R.iosOverlap.sketch === null && R.iosOverlap.count === 5],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
+// ── WM-6B1: the temporary dev controls must fit a narrow phone ──────────────
+async function runControlLayout(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const errs = [];
+  const results = [];
+  for (const vp of [{ width: 390, height: 844 }, { width: 375, height: 667 },
+    { width: 844, height: 390 }]) {
+    const ctx = await browser.newContext({ viewport: vp });
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errs.push(String(e)));
+    await page.goto(APP);
+    const fire = (t, id, x, y) => page.evaluate(({ t, id, x, y }) => {
+      const el = document.getElementById('wm-viewport'); const r = el.getBoundingClientRect();
+      const tg = document.elementFromPoint(r.left + x, r.top + y) || el;
+      tg.dispatchEvent(new PointerEvent(t, { pointerId: id, clientX: r.left + x,
+        clientY: r.top + y, bubbles: true, pointerType: 'touch' }));
+    }, { t, id, x, y });
+    await page.click('#wm-sketch-toggle');
+    await page.click('#wm-blank-sheet');
+    await page.waitForFunction(() => window.__wmStage.isGridVisible(), { timeout: 15000 });
+    await page.waitForTimeout(250);
+    await page.click('#wm-tool-rect');
+    await fire('pointerdown', 1, 120, 200);
+    await fire('pointermove', 1, 190, 230);
+    await fire('pointermove', 1, 260, 260);
+    await fire('pointerup', 1, 260, 260);
+    await page.waitForTimeout(300);
+    await page.evaluate(() => {
+      const g = document.querySelector('#wm-sketch .wm-sketch-shape');
+      if (g) window.__wmStage.selectSketch(g.getAttribute('data-annotation-id'));
+    });
+    await page.waitForTimeout(200);
+    const m = await page.evaluate((w) => {
+      const inside = (el) => { if (!el) return false; const r = el.getBoundingClientRect();
+        return r.left >= -1 && r.right <= w + 1 && r.width > 0 && r.height > 0; };
+      const bar = document.querySelector('.devbar');
+      const row = document.querySelector('.devbar-row');
+      const tray = document.getElementById('wm-sketch-tray');
+      const del = document.getElementById('wm-sketch-delete');
+      return { width: w,
+        docOverflows: document.documentElement.scrollWidth > w,
+        barOverflows: bar.scrollWidth > bar.clientWidth,
+        rowOverflows: row.scrollWidth > row.clientWidth,
+        rowWraps: getComputedStyle(row).flexWrap === 'wrap',
+        toggleInView: inside(document.getElementById('wm-sketch-toggle')),
+        trayInView: inside(tray),
+        undoInView: inside(document.getElementById('wm-undo')),
+        lineInView: inside(document.getElementById('wm-tool-line')),
+        rectInView: inside(document.getElementById('wm-tool-rect')),
+        deleteShown: !del.hidden,
+        deleteInView: del.hidden ? null : inside(del),
+        selected: !!window.__wmStage.getSelectedSketch(),
+        tool: window.__wmStage.activeSketchTool() };
+    }, vp.width);
+    results.push(m);
+    await ctx.close();
+  }
+  await browser.close();
+
+  const all = (f) => results.every(f);
+  const checks = [
+    ['no horizontal document overflow at any tested width', all((r) => !r.docOverflows)],
+    ['the dev bar itself never overflows horizontally', all((r) => !r.barOverflows)],
+    ['the control row wraps instead of running off the edge',
+      all((r) => r.rowWraps && !r.rowOverflows)],
+    ['the Sketch toggle is on screen at every width', all((r) => r.toggleInView)],
+    ['the open tray is fully on screen at every width', all((r) => r.trayInView)],
+    ['Line, Rectangle and Undo are reachable at every width',
+      all((r) => r.lineInView && r.rectInView && r.undoInView)],
+    ['Delete is on screen wherever a shape is selected',
+      results.every((r) => !r.deleteShown || r.deleteInView)],
+    ['selecting a shape never arms a creation tool',
+      results.every((r) => !r.selected || r.tool === 'none')],
+  ];
+  return { engine: engineName, available: true, detail: results, checks, errs };
+}
+
 (async () => {
   const engines = [['chromium', playwright.chromium], ['webkit', playwright.webkit]];
   let failures = 0;
 
   for (const [name, engine] of engines) {
-    for (const [suite, fn] of [['image + EXIF', run], ['viewport + pointers', runViewport], ['wire labels', runLabels], ['label text', runLabelText], ['arrows', runArrows], ['arrow tip', runArrowTip]]) {
+    for (const [suite, fn] of [['image + EXIF', run], ['viewport + pointers', runViewport], ['wire labels', runLabels], ['label text', runLabelText], ['arrows', runArrows], ['arrow tip', runArrowTip], ['sketch', runSketch], ['hit priority', runPriority], ['control layout', runControlLayout]]) {
     const result = await fn(name, engine);
     console.log(`\n=== ${name.toUpperCase()} — ${suite} ===`);
     if (!result.available) {
