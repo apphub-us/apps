@@ -33,7 +33,8 @@ src/calc/
   wireSizing.js   full conductor selection: ampacity, 110.14(C) terminal
                   limits, 240.4(D), continuous load, NYC feeder minimum,
                   voltage drop, governing constraint
-  motor.js        Article 430
+  motor.js        Article 430 single-motor sizing: table FLC, conductors,
+                  overload, branch protection, disconnect
   grounding.js    250.122, 250.66, 250.122(B)
 test/             one suite per module, plus guards on the shipped app,
                   the production paths, the build, the service worker and the UI
@@ -42,7 +43,7 @@ tools/build-calc.js
 
 ## Status
 
-**322 tests · 0 failures · 0 todo · build:check passing.** Every identified
+**344 tests · 0 failures · 0 todo · build:check passing.** Every identified
 correctness defect (P0-1 through P0-4 and P1-1) is closed and guarded by a hard
 test. No defects are parked as `todo`.
 
@@ -52,7 +53,8 @@ test. No defects are parked as `todo`.
 | Conduit Fill | **fully** |
 | Wire Sizer | **fully** |
 | Box Fill | **fully** |
-| Motor, Grounding, standalone Voltage Drop | not fully migrated |
+| Motor | **fully** |
+| Grounding, standalone Voltage Drop | not fully migrated |
 
 Where a calculator is not fully migrated it still computes locally. Its shared
 module exists and is tested, so completing the migration is transport work
@@ -111,6 +113,37 @@ validation for malformed inputs (invalid or fractional counts, negative
 counts, invalid or negative extension volume). These states were not normally
 reachable through the existing production UI, and no shipped Box Fill decision
 changed.
+
+**Motor architecture.** Production `mtCalc()` is a thin adapter: it reads and
+normalizes the existing Motor controls, builds one structured request, calls
+`EC.motor.calculateMotorCircuit` exactly once, and renders the structured
+result. The shared engine owns every supported Motor electrical decision.
+Supported scope (single-motor calculator only; no NYC-specific Motor override
+is currently implemented): 430.6(A)(1) table-vs-nameplate current basis,
+430.22 conductor sizing at 125% of table FLC, 430.32 overload calculation,
+430.52 branch short-circuit / ground-fault protection with the 430.52(C)(1)
+Exception 1 next-standard-size-up behavior, 430.110 disconnect sizing, and
+Tables 430.248 / 430.250. Multiple-motor feeders, VFD-specific rules, motor
+control circuits, disconnect horsepower ratings and feeder sizing are not
+implemented. The engine — not the UI — owns the current-basis distinction:
+table FLC drives conductor sizing and branch protection, the nameplate current
+drives the overload figure. Production Motor no longer contains independent
+FLC tables, current-basis decisions, a conductor-sizing algorithm, overload or
+branch-protection multipliers, standard-OCPD selection or disconnect sizing —
+the app aliases the shared tables for select population and keeps UI
+parsing/rendering only.
+
+Migration guards: `test/motorParity.test.js` compares the old production
+decisions against the shared engine across the complete supported table
+domain plus seeded cases; `test/motorProduction.test.js` executes the shipped
+`mtCalc()`, proves via a poisoned-engine result that production renders what
+the engine returns, pins exactly one `EC.motor.calculateMotorCircuit` call per
+calculation, and holds a table-vs-nameplate divergence regression.
+
+The Motor migration also added deterministic validation for malformed inputs
+(invalid phase, invalid material, invalid service-factor multiplier, invalid
+nameplate-current states). These were UI-unreachable hardening cases, and no
+shipped Motor decision changed.
 
 The engine is injected into `mobile.html` between `EC-CALC:START/END` markers by
 `tools/build-calc.js`. Never hand-edit that block.
