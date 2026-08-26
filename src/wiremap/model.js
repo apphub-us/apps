@@ -11,10 +11,19 @@
  */
 
 const SHEET_KINDS = ['photo', 'image', 'blank'];
-const ANNOTATION_TYPES = ['wireLabel', 'arrow', 'line', 'rect', 'text'];
+const ANNOTATION_TYPES = ['wireLabel', 'arrow', 'line', 'rect', 'text', 'symbol'];
 
 /** Annotation types positioned by a single normalized point. */
-const POINT_TYPES = ['wireLabel', 'text'];
+const POINT_TYPES = ['wireLabel', 'text', 'symbol'];
+
+/**
+ * A symbolKey is a library identifier such as 'outlet.duplex' — never markup,
+ * never geometry. The model does NOT pin the set of known keys: the renderer
+ * and the symbol library decide what a key currently means, so the library
+ * can grow without a model (or schema) change. 64 chars is far beyond any
+ * sane dotted identifier.
+ */
+const MAX_SYMBOL_KEY_LENGTH = 64;
 /** Annotation types defined by two normalized endpoints, never length+angle. */
 const TWO_POINT_TYPES = ['arrow', 'line', 'rect'];
 
@@ -209,6 +218,16 @@ function validateAnnotation(annotation) {
   if (type === 'text' && !isNonEmptyString(annotation.data && annotation.data.text)) {
     problems.push('text annotations require data.text');
   }
+  if (type === 'symbol') {
+    const key = annotation.data && annotation.data.symbolKey;
+    if (typeof key !== 'string' || key.trim().length === 0) {
+      problems.push('symbol annotations require a non-empty data.symbolKey string');
+    } else if (key !== key.trim()) {
+      problems.push('symbolKey must be trimmed');
+    } else if (key.length > MAX_SYMBOL_KEY_LENGTH) {
+      problems.push(`symbolKey must be at most ${MAX_SYMBOL_KEY_LENGTH} characters`);
+    }
+  }
 
   return { valid: problems.length === 0, problems };
 }
@@ -230,7 +249,15 @@ function createAnnotation(input) {
     a.a = i.a || { x: 0, y: 0 };
     a.b = i.b || { x: 0, y: 0 };
   }
-  a.data = type === 'wireLabel' ? createWireLabelData(i.data) : (i.data || {});
+  if (type === 'wireLabel') {
+    a.data = createWireLabelData(i.data);
+  } else if (type === 'symbol') {
+    // Persist ONLY the identity + anchor: no SVG, no icon paths, no screen px.
+    const raw = i.data && typeof i.data.symbolKey === 'string' ? i.data.symbolKey : '';
+    a.data = { symbolKey: raw.trim() };
+  } else {
+    a.data = i.data || {};
+  }
   return a;
 }
 
@@ -238,6 +265,7 @@ module.exports = {
   SHEET_KINDS,
   ANNOTATION_TYPES,
   POINT_TYPES,
+  MAX_SYMBOL_KEY_LENGTH,
   TWO_POINT_TYPES,
   toLabelKey,
   isNormalizedUnit,

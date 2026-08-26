@@ -471,12 +471,14 @@ describe('Wire Map build — the WM-1 shell is still inert', { skip: skipAll }, 
     // Probe controls plus the WM-5 editor buttons. None fire on load.
     // Probe controls, the label editor and now the sketch tray. None fire on load.
     const count = (handWritten.match(/addEventListener/g) || []).length;
-    // Probe controls, editors, Lookup and the WM-8 Sheets Manager. None fire
-    // on load. Measured at WM-8 close: exactly 36. The ceiling leaves small
-    // deliberate headroom only — when a feature legitimately adds listeners,
-    // re-measure and bump this number in the same commit, with the new count
-    // in this comment. Never widen it to make a red build green.
-    assert.ok(count >= 3 && count <= 40, `unexpected listener count: ${count}`);
+    // Probe controls, editors, Lookup, the WM-8 Sheets Manager and the WM-9A
+    // Symbols picker. None fire on load. Measured at WM-9A: exactly 40
+    // (WM-8 measured 36; Symbols added its open/close/card/delete call
+    // sites). The ceiling leaves small deliberate headroom only — when a
+    // feature legitimately adds listeners, re-measure and bump this number
+    // in the same commit, with the new count in this comment. Never widen
+    // it to make a red build green.
+    assert.ok(count >= 3 && count <= 44, `unexpected listener count: ${count}`);
   });
 
   test('no external dependency was pulled in', () => {

@@ -138,8 +138,9 @@ describe('Wire Map model — Annotation', () => {
     assert.strictEqual(m.validateAnnotation(wireLabel()).valid, true);
   });
 
-  test('all five types are accepted', () => {
-    assert.deepStrictEqual(m.ANNOTATION_TYPES, ['wireLabel', 'arrow', 'line', 'rect', 'text']);
+  test('all six types are accepted', () => {
+    assert.deepStrictEqual(m.ANNOTATION_TYPES,
+      ['wireLabel', 'arrow', 'line', 'rect', 'text', 'symbol']);
     for (const type of ['arrow', 'line', 'rect']) {
       assert.strictEqual(m.validateAnnotation({ ...arrow(), type }).valid, true, type);
     }
@@ -148,6 +149,11 @@ describe('Wire Map model — Annotation', () => {
       data: { text: 'Attic access' }, now: NOW,
     });
     assert.strictEqual(m.validateAnnotation(text).valid, true);
+    const sym = m.createAnnotation({
+      id: 'a4', sheetId: 's1', type: 'symbol', at: { x: 0.5, y: 0.5 },
+      data: { symbolKey: 'outlet.duplex' }, now: NOW,
+    });
+    assert.strictEqual(m.validateAnnotation(sym).valid, true);
   });
 
   test('an unknown type is rejected', () => {
@@ -209,5 +215,75 @@ describe('Wire Map model — Annotation', () => {
 
   test('sheetId is required — an annotation cannot float free of a sheet', () => {
     assert.strictEqual(m.validateAnnotation({ ...wireLabel(), sheetId: '' }).valid, false);
+  });
+});
+
+describe('WM-9A model — symbol annotations', () => {
+  const at = { x: 0.42, y: 0.66 };
+  const sym = (over) => m.createAnnotation({
+    id: 'sym1', sheetId: 's1', type: 'symbol', at,
+    data: { symbolKey: 'outlet.duplex' }, now: NOW, ...over,
+  });
+
+  test('a symbol with a normalized anchor and a key validates', () => {
+    const a = sym();
+    const r = m.validateAnnotation(a);
+    assert.strictEqual(r.valid, true, r.problems.join('; '));
+    assert.deepStrictEqual(a.at, at, 'the anchor is the stored normalized point');
+    assert.deepStrictEqual(a.data, { symbolKey: 'outlet.duplex' },
+      'persisted data is identity only — no SVG, no icon paths');
+  });
+
+  test('creation trims the symbolKey', () => {
+    const a = m.createAnnotation({ id: 'sym2', sheetId: 's1', type: 'symbol',
+      at, data: { symbolKey: '  light.ceiling  ' }, now: NOW });
+    assert.strictEqual(a.data.symbolKey, 'light.ceiling');
+    assert.strictEqual(m.validateAnnotation(a).valid, true);
+  });
+
+  test('an empty or missing symbolKey is rejected', () => {
+    for (const data of [{}, { symbolKey: '' }, { symbolKey: '   ' }, { symbolKey: 7 }]) {
+      const r = m.validateAnnotation({ ...sym(), data });
+      assert.strictEqual(r.valid, false, JSON.stringify(data));
+      assert.ok(r.problems.some((p) => /symbolKey/.test(p)));
+    }
+  });
+
+  test('an untrimmed persisted symbolKey is rejected', () => {
+    const r = m.validateAnnotation({ ...sym(), data: { symbolKey: ' outlet.duplex' } });
+    assert.strictEqual(r.valid, false);
+  });
+
+  test('an oversized symbolKey is rejected at the 64-char boundary', () => {
+    const ok = m.validateAnnotation({ ...sym(), data: { symbolKey: 'k'.repeat(64) } });
+    assert.strictEqual(ok.valid, true, '64 chars is the maximum, not past it');
+    const r = m.validateAnnotation({ ...sym(), data: { symbolKey: 'k'.repeat(65) } });
+    assert.strictEqual(r.valid, false);
+    assert.ok(r.problems.some((p) => /64/.test(p)));
+  });
+
+  test('the model does NOT pin the set of known keys', () => {
+    // The library, not the schema, decides what a key means — so the library
+    // can grow without a model change. A future key must validate today.
+    const r = m.validateAnnotation({ ...sym(), data: { symbolKey: 'device.futureThing' } });
+    assert.strictEqual(r.valid, true);
+  });
+
+  test('symbol anchors follow the same normalized-point rules as text', () => {
+    for (const bad of [{ x: 1.2, y: 0.5 }, { x: NaN, y: 0.5 }, { x: 0.5 }, null]) {
+      const r = m.validateAnnotation({ ...sym(), at: bad });
+      assert.strictEqual(r.valid, false, JSON.stringify(bad));
+    }
+  });
+
+  test('other annotation types are untouched by the extension', () => {
+    const label = m.createAnnotation({ id: 'w1', sheetId: 's1', type: 'wireLabel',
+      at, data: { label: 'HR-1' }, now: NOW });
+    assert.strictEqual(m.validateAnnotation(label).valid, true);
+    const line = m.createAnnotation({ id: 'l1', sheetId: 's1', type: 'line',
+      a: { x: 0.1, y: 0.1 }, b: { x: 0.9, y: 0.9 }, now: NOW });
+    assert.strictEqual(m.validateAnnotation(line).valid, true);
+    assert.strictEqual(line.data.symbolKey, undefined,
+      'non-symbol types gain no symbol fields');
   });
 });

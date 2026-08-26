@@ -5523,12 +5523,1163 @@ async function runPhotoPersistence(engineName, engine) {
   return { engine: engineName, available: true, detail: R, checks, errs };
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// WM-9A — Symbols foundation: picker, previews, placement, rendering,
+// constant screen size, unknown-key safety, density, responsiveness.
+// ─────────────────────────────────────────────────────────────────────────
+async function runSymbolsFoundation(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  await page.goto(APP);
+
+  const R = {};
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    await db.putJob(WM.model.createJob({ id: 'syj', name: 'Symbols Job', now }));
+    await db.putSheet(WM.model.createSheet({ id: 'sy1', jobId: 'syj', name: 'Sym Blank',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    await db.setMeta('currentSheetId', 'sy1');
+    db.closeDatabase();
+    window.__sy = {
+      tapEmpty(x, y) {
+        const el = document.getElementById('wm-viewport');
+        const r = el.getBoundingClientRect();
+        const tg = document.elementFromPoint(r.left + x, r.top + y) || el;
+        const o = (t) => new PointerEvent(t, { pointerId: 901, clientX: r.left + x,
+          clientY: r.top + y, bubbles: true, pointerType: 'touch' });
+        tg.dispatchEvent(o('pointerdown'));
+        tg.dispatchEvent(o('pointerup'));
+      },
+      async anns() {
+        const db2 = WM.store.createStore(); await db2.openDatabase();
+        const a = await db2.listAnnotations('sy1'); db2.closeDatabase(); return a;
+      },
+    };
+  });
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+
+  // ── picker: 8 cards, 4 sections, real previews, responsive ──
+  const openPicker = async () => {
+    await page.evaluate(() => { document.getElementById('wm-sympicker').hidden = true; });
+    await page.click('#wm-symbols-open');
+    await page.waitForTimeout(250);
+  };
+  const measurePicker = () => page.evaluate(() => {
+    const vw = window.innerWidth; const vh = window.innerHeight;
+    const cards = Array.from(document.querySelectorAll('.symcard')).map((c) => {
+      const r = c.getBoundingClientRect();
+      const svg = c.querySelector('svg.wm-symbol-icon');
+      const sr = svg ? svg.getBoundingClientRect() : null;
+      return { key: c.getAttribute('data-symbol-key'),
+        name: c.querySelector('.symcard-name').textContent,
+        left: r.left, right: r.right, width: r.width,
+        iconVisible: !!(sr && sr.width > 20 && sr.height > 20),
+        iconPrimitives: svg ? svg.childNodes.length : 0 };
+    });
+    const sections = Array.from(document.querySelectorAll('.symcard-section'))
+      .map((s) => s.textContent);
+    const panel = document.querySelector('#wm-sympicker .sheet-panel').getBoundingClientRect();
+    const list = document.getElementById('wm-sympicker-list');
+    const close = document.getElementById('wm-sympicker-close').getBoundingClientRect();
+    // reachability without auto-scroll: every card sits inside the SCROLL
+    // CONTAINER's horizontal bounds and within its scrollable height.
+    const lr = list.getBoundingClientRect();
+    const scrollable = list.scrollHeight;
+    const cardsInScroller = cards.every((c) => c.left >= lr.left - 1 && c.right <= lr.right + 1);
+    return { vw, vh, sections, cards,
+      docOverflow: document.documentElement.scrollWidth > vw + 1,
+      panelFits: panel.left >= 0 && panel.right <= vw + 1 && panel.top >= 0
+        && panel.bottom <= vh + 1,
+      listScrolls: scrollable >= lr.height - 1,
+      cardsInScroller,
+      closeVisible: close.width > 0 && close.bottom <= vh + 1,
+      btnVisible: (() => { const b = document.getElementById('wm-symbols-open')
+        .getBoundingClientRect(); return b.width > 0 && b.right <= vw + 1; })() };
+  });
+
+  await openPicker();
+  R.picker = await measurePicker();
+
+  R.viewports = {};
+  for (const [label, w, h] of [['p390', 390, 844], ['p375', 375, 667], ['l844', 844, 390]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.waitForTimeout(300);
+    await openPicker();
+    R.viewports[label] = await measurePicker();
+    await page.click('#wm-sympicker-close');
+    await page.waitForTimeout(150);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(300);
+
+  // ── close without choosing → normal interaction ──
+  await openPicker();
+  await page.click('#wm-sympicker-close');
+  await page.waitForTimeout(200);
+  R.afterClose = await page.evaluate(() => {
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    const mid = document.elementFromPoint(el.left + el.width / 2, el.top + el.height / 2);
+    const s = window.__wmStage;
+    return { blocked: !!(mid && mid.closest && mid.closest('#wm-sympicker')),
+      armed: s.activeSymbolKey() };
+  });
+  R.afterClosePan = await page.evaluate(() => {
+    const s = window.__wmStage;
+    const vpEl = document.getElementById('wm-viewport');
+    const el = vpEl.getBoundingClientRect();
+    s._setViewport(WM.viewport.centerOnNormalized({ x: 0.5, y: 0.5 }, s.getStageSize(),
+      { width: el.width, height: el.height }, s.getViewport(), 3));
+    s.renderLabels();
+    const before = s.getViewport();
+    const send = (t, id, x, y) => vpEl.dispatchEvent(new PointerEvent(t, { pointerId: id,
+      clientX: el.left + x, clientY: el.top + y, bubbles: true, pointerType: 'touch' }));
+    send('pointerdown', 911, 100, 200);
+    [30, 60, 90].forEach((d) => send('pointermove', 911, 100 + d, 200));
+    send('pointerup', 911, 190, 200);
+    const after = s.getViewport();
+    send('pointerdown', 921, 130, 320); send('pointerdown', 922, 230, 320);
+    send('pointermove', 922, 330, 320);
+    const zoomed = s.getViewport().scale;
+    send('pointerup', 921, 130, 320); send('pointerup', 922, 330, 320);
+    s.fit(); s.renderLabels();
+    return { panned: Math.abs(after.translateX - before.translateX) > 20,
+      pinched: zoomed > after.scale, pointers: s.getActivePointers() };
+  });
+  await page.waitForTimeout(150);
+
+  // ── pick Duplex → place exactly one → mode exits ──
+  await openPicker();
+  await page.evaluate(() => {
+    document.querySelector('.symcard[data-symbol-key="outlet.duplex"]').click();
+  });
+  await page.waitForTimeout(200);
+  R.armed = await page.evaluate(() => ({
+    key: window.__wmStage.activeSymbolKey(),
+    pickerClosed: document.getElementById('wm-sympicker').hidden,
+    hint: document.getElementById('wm-symbol-hint').hidden ? ''
+      : document.getElementById('wm-symbol-hint').textContent }));
+  await page.evaluate(() => window.__sy.tapEmpty(140, 260));
+  await page.waitForTimeout(450);
+  R.placedOnce = {
+    anns: await page.evaluate(() => window.__sy.anns()),
+    armed: await page.evaluate(() => window.__wmStage.activeSymbolKey()),
+    hintHidden: await page.evaluate(() => document.getElementById('wm-symbol-hint').hidden),
+  };
+  await page.evaluate(() => window.__sy.tapEmpty(240, 300));
+  await page.waitForTimeout(400);
+  R.secondTap = await page.evaluate(() => window.__sy.anns());
+
+  // ── place all 8 through the picker; verify persisted + rendered ──
+  const spots = [[80, 180], [180, 180], [280, 180], [330, 260], [80, 340],
+    [180, 340], [280, 340], [60, 420], [160, 420], [260, 420]];
+  const keys = ['outlet.simplex', 'outlet.gfci', 'outlet.dedicated', 'switch.single',
+    'switch.threeWay', 'switch.fourWay', 'light.ceiling', 'light.recessed',
+    'device.smoke', 'device.thermostat'];
+  for (let i = 0; i < keys.length; i++) {
+    await openPicker();
+    await page.evaluate((k) => {
+      document.querySelector('.symcard[data-symbol-key="' + k + '"]').click();
+    }, keys[i]);
+    await page.waitForTimeout(150);
+    await page.evaluate(({ x, y }) => window.__sy.tapEmpty(x, y), 
+      { x: spots[i][0], y: spots[i][1] });
+    await page.waitForTimeout(350);
+  }
+  R.allEight = await page.evaluate(async () => {
+    const anns = await window.__sy.anns();
+    const dom = Array.from(document.querySelectorAll('#wm-symbols .wm-symbol'));
+    const s = window.__wmStage;
+    return {
+      stored: anns.map((a) => ({ type: a.type, key: a.data.symbolKey,
+        okAt: a.at && a.at.x >= 0 && a.at.x <= 1 && a.at.y >= 0 && a.at.y <= 1 })),
+      domCount: dom.length,
+      // one source of truth: the plan icon's primitive count matches the
+      // picker preview built from the same key
+      defsMatch: dom.every((g) => {
+        const id = g.getAttribute('data-annotation-id');
+        const key = s.getAnnotation(id).data.symbolKey;
+        const planIcon = g.querySelector('svg.wm-symbol-icon');
+        const preview = s.createSymbolPreview(key, 36);
+        return planIcon && planIcon.childNodes.length === preview.childNodes.length
+          && planIcon.getAttribute('viewBox') === preview.getAttribute('viewBox');
+      }),
+      idsHidden: dom.every((g) => {
+        const txt = g.textContent || '';
+        return txt.indexOf('sym-') === -1;   // no internal ids user-visible
+      }),
+    };
+  });
+
+  // ── unknown symbolKey: placeholder, no crash, still selectable ──
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    await db.putAnnotation(WM.model.createAnnotation({ id: 'future1', sheetId: 'sy1',
+      type: 'symbol', at: { x: 0.9, y: 0.9 }, now: Date.now(),
+      data: { symbolKey: 'device.fromTheFuture' } }));
+    db.closeDatabase();
+  });
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+  R.unknown = await page.evaluate(async () => {
+    const g = document.querySelector('.wm-symbol[data-annotation-id="future1"]');
+    window.__wmStage.selectSymbol('future1');
+    await new Promise((r) => setTimeout(r, 100));
+    const anns = await window.__sy.anns();
+    return { rendered: !!g,
+      placeholder: !!(g && g.textContent.indexOf('?') !== -1),
+      selected: window.__wmStage.getSelectedSymbol() === 'future1',
+      stillStored: anns.some((a) => a.id === 'future1'),
+      total: anns.length };
+  });
+  await page.evaluate(() => window.__wmStage.selectSymbol(null));
+
+  // ── constant screen size at fit / 1× / 4× / 8× ──
+  const measureSymbol = (key) => page.evaluate((k) => {
+    const s = window.__wmStage;
+    let target = null;
+    document.querySelectorAll('#wm-symbols .wm-symbol').forEach((g) => {
+      const a = s.getAnnotation(g.getAttribute('data-annotation-id'));
+      if (a && a.data.symbolKey === k) target = { g, a };
+    });
+    if (!target) return null;
+    // The nested-SVG viewport is sized in explicit stage units (attribute
+    // width = SYMBOL_SIZE_PX / scale) and rides the ONE stage transform, so
+    // its on-screen size is attribute × scale. getBoundingClientRect on an
+    // inner <svg> reports the CONTENT bbox in Chromium, so the viewport
+    // square is verified through the same arithmetic the renderer uses —
+    // and the content bbox doubles as a "fits inside ~24px" sanity bound.
+    const iconEl = target.g.querySelector('svg.wm-symbol-icon');
+    const scale = s.getViewport().scale;
+    const w = parseFloat(iconEl.getAttribute('width')) * scale;
+    const h = parseFloat(iconEl.getAttribute('height')) * scale;
+    const content = iconEl.getBoundingClientRect();
+    const hit = target.g.querySelector('.wm-symbol-hit').getBoundingClientRect();
+    const anchorScreen = WM.viewport.stageToScreen(
+      WM.geometry.denormalizePoint(target.a.at, s.getStageSize()), s.getViewport());
+    const cx = parseFloat(iconEl.getAttribute('x')) + parseFloat(iconEl.getAttribute('width')) / 2;
+    const cy = parseFloat(iconEl.getAttribute('y')) + parseFloat(iconEl.getAttribute('height')) / 2;
+    const centerScreen = WM.viewport.stageToScreen({ x: cx, y: cy }, s.getViewport());
+    return { w, h, hitW: hit.width, hitH: hit.height,
+      contentFits: content.width <= 25 && content.height <= 25
+        && content.width > 4 && content.height > 4,
+      noVectorEffect: !target.g.querySelector('[vector-effect]'),
+      drift: Math.hypot(centerScreen.x - anchorScreen.x, centerScreen.y - anchorScreen.y) };
+  }, key);
+  const setZoom = (z) => page.evaluate((zz) => {
+    const s = window.__wmStage;
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    if (zz === 'fit') { s.fit(); } else {
+      s._setViewport(WM.viewport.centerOnNormalized({ x: 0.5, y: 0.5 }, s.getStageSize(),
+        { width: el.width, height: el.height }, s.getViewport(), zz));
+    }
+    s.renderLabels();
+  }, z);
+
+  R.sizes = {};
+  for (const z of ['fit', 1, 4, 8]) {
+    await setZoom(z);
+    await page.waitForTimeout(120);
+    R.sizes[z] = {};
+    for (const k of ['outlet.duplex', 'switch.threeWay', 'light.ceiling', 'device.smoke']) {
+      R.sizes[z][k] = await measureSymbol(k);
+    }
+  }
+  // selection outline padding constant across zoom
+  R.outline = {};
+  await page.evaluate(() => window.__wmStage.selectSymbol(
+    document.querySelector('#wm-symbols .wm-symbol').getAttribute('data-annotation-id')));
+  for (const z of [1, 8]) {
+    await setZoom(z);
+    await page.waitForTimeout(120);
+    R.outline[z] = await page.evaluate(() => {
+      const box = document.querySelector('.wm-symbol-selection');
+      if (!box) return null;
+      const r = box.getBoundingClientRect();
+      return { w: r.width, h: r.height };
+    });
+  }
+  await page.evaluate(() => window.__wmStage.selectSymbol(null));
+
+  // ── revised-library: 24px raster distinguishability of close families ──
+  R.distinct = await page.evaluate(async () => {
+    const s = window.__wmStage;
+    const raster = (k) => new Promise((res) => {
+      // Rasterize the SAME definition the plan uses, at exactly 24 px, with
+      // the page's stroke/glyph styling inlined (a serialized SVG loses the
+      // stylesheet).
+      const svg = s.createSymbolPreview(k, 24);
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      svg.querySelectorAll('.wm-symbol-stroke').forEach((n) => {
+        n.setAttribute('fill', 'none'); n.setAttribute('stroke', '#000');
+        n.setAttribute('stroke-width', '1.6');
+      });
+      svg.querySelectorAll('.wm-symbol-glyph').forEach((n) => {
+        n.setAttribute('fill', '#000');
+        n.setAttribute('font-family', 'Arial, Helvetica, sans-serif');
+        n.setAttribute('font-weight', '700');
+      });
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = 24; c.height = 24;
+        const g = c.getContext('2d');
+        g.drawImage(img, 0, 0, 24, 24);
+        res(g.getImageData(0, 0, 24, 24).data);
+      };
+      img.onerror = () => res(null);
+      img.src = 'data:image/svg+xml;charset=utf-8,'
+        + encodeURIComponent(new XMLSerializer().serializeToString(svg));
+    });
+    const cmp = async (k1, k2) => {
+      const a = await raster(k1); const b = await raster(k2);
+      if (!a || !b) return { ok: false, why: 'raster failed' };
+      let diff = 0; let inkA = 0; let inkB = 0;
+      for (let i = 3; i < a.length; i += 4) {
+        if (a[i] > 40) inkA++;
+        if (b[i] > 40) inkB++;
+        if (Math.abs(a[i] - b[i]) > 60) diff++;
+      }
+      // both draw something, and enough pixels differ to read at arm's length
+      return { ok: inkA >= 20 && inkB >= 20 && diff >= 12, diff, inkA, inkB };
+    };
+    return {
+      simplexVsDuplex: await cmp('outlet.simplex', 'outlet.duplex'),
+      duplexVsGfci: await cmp('outlet.duplex', 'outlet.gfci'),
+      duplexVsDedicated: await cmp('outlet.duplex', 'outlet.dedicated'),
+      gfciVsDedicated: await cmp('outlet.gfci', 'outlet.dedicated'),
+      singleVsThreeWay: await cmp('switch.single', 'switch.threeWay'),
+      threeWayVsFourWay: await cmp('switch.threeWay', 'switch.fourWay'),
+    };
+  });
+
+  // ── revised-library: S / S3 / S4 stay readable at fit / 1× / 4× / 8× ──
+  R.sReadable = {};
+  for (const z of ['fit', 1, 4, 8]) {
+    await setZoom(z);
+    await page.waitForTimeout(120);
+    R.sReadable[z] = await page.evaluate(() => {
+      const s = window.__wmStage;
+      const out = {};
+      document.querySelectorAll('#wm-symbols .wm-symbol').forEach((g) => {
+        const a = s.getAnnotation(g.getAttribute('data-annotation-id'));
+        if (!a || a.data.symbolKey.indexOf('switch.') !== 0) return;
+        const icon = g.querySelector('svg.wm-symbol-icon');
+        const glyphs = Array.from(icon.querySelectorAll('.wm-symbol-glyph'))
+          .map((t) => t.textContent).join('');
+        const box = icon.getBoundingClientRect();   // content bbox in Chromium
+        out[a.data.symbolKey] = { glyphs,
+          drawn: box.width > 6 && box.width <= 25.5 && box.height > 6
+            && box.height <= 25.5 };
+      });
+      return out;
+    });
+  }
+  await setZoom('fit');
+  await page.waitForTimeout(120);
+
+  // ── density: ≥20 symbols, responsive gestures, invisible hit areas ──
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    const keys = WM.symbols.list().map((s) => s.key);
+    for (let i = 0; i < 14; i++) {
+      await db.putAnnotation(WM.model.createAnnotation({ id: 'dense' + i, sheetId: 'sy1',
+        type: 'symbol', at: { x: 0.08 + (i % 7) * 0.13, y: 0.15 + Math.floor(i / 7) * 0.5 },
+        now, data: { symbolKey: keys[i % keys.length] } }));
+    }
+    db.closeDatabase();
+  });
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(600);
+  R.density = await page.evaluate(() => {
+    const s = window.__wmStage;
+    const nodes = document.querySelectorAll('#wm-symbols .wm-symbol');
+    const hits = document.querySelectorAll('#wm-symbols .wm-symbol-hit');
+    let invisible = true;
+    hits.forEach((h) => {
+      const cs = getComputedStyle(h);
+      if (!(cs.fill === 'rgba(0, 0, 0, 0)' || cs.fill === 'transparent')) invisible = false;
+    });
+    const t0 = performance.now();
+    const vpEl = document.getElementById('wm-viewport');
+    const el = vpEl.getBoundingClientRect();
+    const send = (t, id, x, y) => vpEl.dispatchEvent(new PointerEvent(t, { pointerId: id,
+      clientX: el.left + x, clientY: el.top + y, bubbles: true, pointerType: 'touch' }));
+    send('pointerdown', 931, 130, 300); send('pointerdown', 932, 230, 300);
+    for (let d = 10; d <= 100; d += 10) send('pointermove', 932, 230 + d, 300);
+    send('pointerup', 931, 130, 300); send('pointerup', 932, 330, 300);
+    const pinchMs = performance.now() - t0;
+    s.fit(); s.renderLabels();
+    return { count: nodes.length, hitsInvisible: invisible, pinchMs,
+      pointers: s.getActivePointers() };
+  });
+
+  await ctx.close();
+  await browser.close();
+
+  const near24 = (v) => v > 22 && v < 26.5;
+  const hit44 = (v) => v > 42.5;
+  const allEightStored = R.allEight.stored.filter((a) => a.type === 'symbol');
+  const vpOk = (m) => m && !m.docOverflow && m.panelFits && m.cardsInScroller
+    && m.closeVisible && m.btnVisible && m.cards.length === 11
+    && m.cards.every((c) => c.iconVisible);
+  const sizeOk = (m) => m && near24(m.w) && near24(m.h) && hit44(m.hitW) && hit44(m.hitH)
+    && m.contentFits && m.noVectorEffect && m.drift < 1.5;
+
+  const checks = [
+    ['the picker shows all 11 symbols in the four sections with real previews',
+      R.picker.cards.length === 11
+        && JSON.stringify(R.picker.sections) === JSON.stringify(['Outlets', 'Switches', 'Lighting', 'Devices'])
+        && R.picker.cards.every((c) => c.iconVisible && c.iconPrimitives > 0
+          && c.name.length > 0)],
+    ['picker fits 390×844 portrait with no horizontal overflow', vpOk(R.viewports.p390)],
+    ['picker fits 375×667 portrait', vpOk(R.viewports.p375)],
+    ['picker fits 844×390 landscape', vpOk(R.viewports.l844)],
+    ['closing the picker leaves no backdrop and no stale symbol mode',
+      R.afterClose.blocked === false && R.afterClose.armed === null],
+    ['pan and pinch work right after closing the picker',
+      R.afterClosePan.panned && R.afterClosePan.pinched && R.afterClosePan.pointers === 0],
+    ['choosing a card closes the picker, arms that key, and shows the hint',
+      R.armed.key === 'outlet.duplex' && R.armed.pickerClosed === true
+        && R.armed.hint.indexOf('Duplex Receptacle') !== -1],
+    ['one empty tap places exactly ONE symbol and exits the mode',
+      R.placedOnce.anns.length === 1
+        && R.placedOnce.anns[0].type === 'symbol'
+        && R.placedOnce.anns[0].data.symbolKey === 'outlet.duplex'
+        && R.placedOnce.armed === null && R.placedOnce.hintHidden === true],
+    ['the NEXT empty tap does not create another symbol',
+      R.secondTap.length === 1],
+    ['all 11 symbols persist with correct type, key and normalized anchor',
+      allEightStored.length === 11 && allEightStored.every((a) => a.okAt)
+        && new Set(allEightStored.map((a) => a.key)).size === 11],
+    ['all 11 render in the wm-symbols layer from the SAME definitions as the previews',
+      R.allEight.domCount === 11 && R.allEight.defsMatch === true
+        && R.allEight.idsHidden === true],
+    ['an unknown persisted key renders the ? placeholder, stays stored and selectable',
+      R.unknown.rendered && R.unknown.placeholder && R.unknown.selected
+        && R.unknown.stillStored],
+    ['symbols hold ~24px with ≥44px hit targets and ~zero anchor drift at fit',
+      ['outlet.duplex', 'switch.threeWay', 'light.ceiling', 'device.smoke']
+        .every((k) => sizeOk(R.sizes.fit[k]))],
+    ['…and at 1×', ['outlet.duplex', 'switch.threeWay', 'light.ceiling', 'device.smoke']
+      .every((k) => sizeOk(R.sizes[1][k]))],
+    ['…and at 4×', ['outlet.duplex', 'switch.threeWay', 'light.ceiling', 'device.smoke']
+      .every((k) => sizeOk(R.sizes[4][k]))],
+    ['…and at 8×', ['outlet.duplex', 'switch.threeWay', 'light.ceiling', 'device.smoke']
+      .every((k) => sizeOk(R.sizes[8][k]))],
+    ['the selection outline keeps constant screen-space padding across zoom',
+      R.outline[1] && R.outline[8]
+        && Math.abs(R.outline[1].w - R.outline[8].w) < 2
+        && R.outline[1].w > 28 && R.outline[1].w < 36],
+    ['at 24px, Simplex reads differently from Duplex', R.distinct.simplexVsDuplex.ok],
+    ['at 24px, Duplex reads differently from GFCI', R.distinct.duplexVsGfci.ok],
+    ['at 24px, Duplex reads differently from Dedicated', R.distinct.duplexVsDedicated.ok],
+    ['at 24px, GFCI reads differently from Dedicated', R.distinct.gfciVsDedicated.ok],
+    ['at 24px, S reads differently from S3', R.distinct.singleVsThreeWay.ok],
+    ['at 24px, S3 reads differently from S4', R.distinct.threeWayVsFourWay.ok],
+    ['S / S3 / S4 stay drawn and readable at fit, 1×, 4× and 8×',
+      ['fit', 1, 4, 8].every((z) => {
+        const m = R.sReadable[z];
+        return m && m['switch.single'] && m['switch.single'].glyphs === 'S'
+          && m['switch.single'].drawn
+          && m['switch.threeWay'] && m['switch.threeWay'].glyphs === 'S3'
+          && m['switch.threeWay'].drawn
+          && m['switch.fourWay'] && m['switch.fourWay'].glyphs === 'S4'
+          && m['switch.fourWay'].drawn;
+      })],
+    ['20+ symbols on one sheet: gestures responsive, hit areas invisible',
+      R.density.count >= 20 && R.density.hitsInvisible === true
+        && R.density.pinchMs < 2000 && R.density.pointers === 0],
+    ['no page errors through the symbols foundation flows', errs.length === 0],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WM-9A — Symbols interaction: tap-select, off-center no-jump drag with
+// write accounting, delete, reload cycles, placement priority, iOS trains.
+// ─────────────────────────────────────────────────────────────────────────
+async function runSymbolsInteraction(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  await page.goto(APP);
+
+  await page.evaluate(async () => {
+    // Account every annotation write/delete that reaches the store, across
+    // every connection the page opens. Instrumentation only — behavior is
+    // exactly the production path.
+    window.__writes = [];
+    window.__deletes = [];
+    const orig = WM.store.createStore;
+    WM.store.createStore = function () {
+      const db = orig.apply(this, arguments);
+      const put = db.putAnnotation;
+      db.putAnnotation = function (a) { window.__writes.push(a.id); return put.call(db, a); };
+      const del = db.deleteAnnotation;
+      db.deleteAnnotation = function (id) { window.__deletes.push(id); return del.call(db, id); };
+      return db;
+    };
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    await db.putJob(WM.model.createJob({ id: 'sij', name: 'SymInt', now }));
+    await db.putSheet(WM.model.createSheet({ id: 'si1', jobId: 'sij', name: 'Int Blank',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    await db.putAnnotation(WM.model.createAnnotation({ id: 'symA', sheetId: 'si1',
+      type: 'symbol', at: { x: 0.5, y: 0.35 }, now, data: { symbolKey: 'outlet.duplex' } }));
+    await db.setMeta('currentSheetId', 'si1');
+    db.closeDatabase();
+    window.__writes.length = 0;
+    window.__si = {
+      screenOf(id) {
+        const s = window.__wmStage;
+        const a = s.getAnnotation(id);
+        const p = WM.viewport.stageToScreen(
+          WM.geometry.denormalizePoint(a.at, s.getStageSize()), s.getViewport());
+        const r = document.getElementById('wm-viewport').getBoundingClientRect();
+        return { x: r.left + p.x, y: r.top + p.y, local: p };
+      },
+      send(t, id, x, y, type) {
+        const target = document.elementFromPoint(x, y)
+          || document.getElementById('wm-viewport');
+        target.dispatchEvent(new PointerEvent(t, { pointerId: id, clientX: x, clientY: y,
+          bubbles: true, pointerType: type || 'touch' }));
+      },
+      async anns(sheet) {
+        const db2 = WM.store.createStore(); await db2.openDatabase();
+        const a = await db2.listAnnotations(sheet || 'si1'); db2.closeDatabase(); return a;
+      },
+    };
+  });
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+  const R = {};
+
+  // ── D-equivalent + baseline: touch tap selects; compat mouse pair is one gesture ──
+  R.tapSelect = await page.evaluate(async () => {
+    const s = window.__wmStage;
+    const p = window.__si.screenOf('symA');
+    window.__si.send('pointerdown', 41, p.x, p.y, 'touch');
+    window.__si.send('pointerup', 41, p.x, p.y, 'touch');
+    await new Promise((r) => setTimeout(r, 120));
+    const afterTouch = { selected: s.getSelectedSymbol(),
+      outlines: document.querySelectorAll('.wm-symbol-selection').length,
+      deleteVisible: !document.getElementById('wm-delete-symbol').hidden,
+      anchor: { ...s.getAnnotation('symA').at } };
+    // WebKit's synthesised mouse pair, ~same point, inside the window — one
+    // physical gesture must yield ONE selection and change nothing further.
+    window.__si.send('pointerdown', 42, p.x + 2, p.y + 1, 'mouse');
+    window.__si.send('pointerup', 42, p.x + 2, p.y + 1, 'mouse');
+    await new Promise((r) => setTimeout(r, 120));
+    const a = s.getAnnotation('symA').at;
+    return { afterTouch,
+      stillSelected: s.getSelectedSymbol() === 'symA',
+      outlinesAfterPair: document.querySelectorAll('.wm-symbol-selection').length,
+      anchorUntouched: a.x === afterTouch.anchor.x && a.y === afterTouch.anchor.y };
+  });
+
+  // ── E: off-center drag — no jump, offset preserved, one write, plan still ──
+  R.drag = await page.evaluate(async () => {
+    const s = window.__wmStage;
+    window.__writes.length = 0;
+    const before = s.getViewport();
+    const start = window.__si.screenOf('symA');
+    const anchor0 = { ...s.getAnnotation('symA').at };
+    // grab 10px right, 6px below the center — deliberately off-center
+    const gx = start.x + 10; const gy = start.y + 6;
+    window.__si.send('pointerdown', 51, gx, gy, 'touch');
+    const samples = [];
+    const moves = [[6, 0], [14, 4], [40, 18], [80, 36], [120, 50]];
+    for (const [dx, dy] of moves) {
+      window.__si.send('pointermove', 51, gx + dx, gy + dy, 'touch');
+      const p = window.__si.screenOf('symA');
+      samples.push({ dx, dy, offX: (gx + dx) - p.x, offY: (gy + dy) - p.y,
+        centerMovedX: p.x - start.x, centerMovedY: p.y - start.y });
+    }
+    window.__si.send('pointerup', 51, gx + 120, gy + 50, 'touch');
+    await new Promise((r) => setTimeout(r, 150));
+    // trailing compatibility mouse pair after the drag
+    window.__si.send('pointerdown', 52, gx + 120, gy + 50, 'mouse');
+    window.__si.send('pointerup', 52, gx + 120, gy + 50, 'mouse');
+    await new Promise((r) => setTimeout(r, 350));
+    const after = s.getViewport();
+    const anns = await window.__si.anns();
+    const stored = anns.find((a) => a.id === 'symA');
+    // offset at the first committed sample vs the last: preserved?
+    const committed = samples.filter((sm) => Math.hypot(sm.dx, sm.dy) >= 9);
+    const first = committed[0]; const last = committed[committed.length - 1];
+    return {
+      beforeDrag: samples[0],                       // below threshold: untouched
+      offsetDeltaX: Math.abs(last.offX - first.offX),
+      offsetDeltaY: Math.abs(last.offY - first.offY),
+      stageStill: after.scale === before.scale
+        && after.translateX === before.translateX
+        && after.translateY === before.translateY,
+      writes: window.__writes.slice(),
+      storedMoved: stored && (stored.at.x !== anchor0.x || stored.at.y !== anchor0.y),
+      storedKey: stored && stored.data.symbolKey,
+      liveMatchesStored: stored
+        && Math.abs(s.getAnnotation('symA').at.x - stored.at.x) < 1e-9
+        && Math.abs(s.getAnnotation('symA').at.y - stored.at.y) < 1e-9,
+    };
+  });
+
+  // ── pointercancel restores the stored anchor, zero writes ──
+  R.cancel = await page.evaluate(async () => {
+    const s = window.__wmStage;
+    window.__writes.length = 0;
+    const orig = { ...s.getAnnotation('symA').at };
+    const p = window.__si.screenOf('symA');
+    window.__si.send('pointerdown', 61, p.x, p.y, 'touch');
+    window.__si.send('pointermove', 61, p.x + 60, p.y + 30, 'touch');
+    window.__si.send('pointermove', 61, p.x + 90, p.y + 60, 'touch');
+    const midDrag = { ...s.getAnnotation('symA').at };
+    document.getElementById('wm-viewport').dispatchEvent(
+      new PointerEvent('pointercancel', { pointerId: 61, bubbles: true, pointerType: 'touch' }));
+    await new Promise((r) => setTimeout(r, 200));
+    const now = s.getAnnotation('symA').at;
+    const anns = await window.__si.anns();
+    const stored = anns.find((a) => a.id === 'symA');
+    return { movedDuring: midDrag.x !== orig.x,
+      revertedLive: now.x === orig.x && now.y === orig.y,
+      revertedStored: stored.at.x === orig.x && stored.at.y === orig.y,
+      writes: window.__writes.length };
+  });
+
+  // ── F: Delete Symbol — one deletion, then a fresh touch still works ──
+  R.del = await page.evaluate(async () => {
+    const s = window.__wmStage;
+    window.__deletes.length = 0;
+    const p = window.__si.screenOf('symA');
+    window.__si.send('pointerdown', 71, p.x, p.y, 'touch');
+    window.__si.send('pointerup', 71, p.x, p.y, 'touch');
+    await new Promise((r) => setTimeout(r, 120));
+    document.getElementById('wm-delete-symbol').click();
+    await new Promise((r) => setTimeout(r, 350));
+    const anns = await window.__si.anns();
+    return { deletes: window.__deletes.slice(),
+      gone: !anns.some((a) => a.id === 'symA'),
+      domGone: !document.querySelector('.wm-symbol[data-annotation-id="symA"]'),
+      buttonHidden: document.getElementById('wm-delete-symbol').hidden,
+      selected: s.getSelectedSymbol() };
+  });
+
+  // ── A/B/C trains: full touch trains through picker → exactly one placement ──
+  R.abc = await page.evaluate(async () => {
+    const clickTrain = (el) => {
+      const r = el.getBoundingClientRect();
+      const x = r.left + r.width / 2; const y = r.top + r.height / 2;
+      const o = (t, type) => new PointerEvent(t, { pointerId: 81, clientX: x, clientY: y,
+        bubbles: true, pointerType: type });
+      el.dispatchEvent(o('pointerdown', 'touch'));
+      el.dispatchEvent(o('pointerup', 'touch'));
+      el.dispatchEvent(new MouseEvent('click', { clientX: x, clientY: y, bubbles: true }));
+    };
+    clickTrain(document.getElementById('wm-symbols-open'));
+    await new Promise((r) => setTimeout(r, 150));
+    const openOnce = !document.getElementById('wm-sympicker').hidden;
+    clickTrain(document.querySelector('.symcard[data-symbol-key="device.smoke"]'));
+    await new Promise((r) => setTimeout(r, 150));
+    const s = window.__wmStage;
+    const armedOnce = s.activeSymbolKey() === 'device.smoke'
+      && document.getElementById('wm-sympicker').hidden;
+    // C: one physical touch tap on empty plan + its synthesised mouse pair
+    const vr = document.getElementById('wm-viewport').getBoundingClientRect();
+    const x = vr.left + vr.width * 0.78; const y = vr.top + vr.height * 0.5;
+    window.__si.send('pointerdown', 82, x, y, 'touch');
+    window.__si.send('pointerup', 82, x, y, 'touch');
+    await new Promise((r) => setTimeout(r, 120));
+    window.__si.send('pointerdown', 83, x + 1, y + 1, 'mouse');
+    window.__si.send('pointerup', 83, x + 1, y + 1, 'mouse');
+    await new Promise((r) => setTimeout(r, 400));
+    const anns = await window.__si.anns();
+    const smokes = anns.filter((a) => a.type === 'symbol'
+      && a.data.symbolKey === 'device.smoke');
+    // a fresh legitimate touch afterwards still works: tap the new symbol
+    const created = smokes[0];
+    let freshWorks = false;
+    if (created) {
+      const p = window.__si.screenOf(created.id);
+      window.__si.send('pointerdown', 84, p.x, p.y, 'touch');
+      window.__si.send('pointerup', 84, p.x, p.y, 'touch');
+      await new Promise((r) => setTimeout(r, 120));
+      freshWorks = s.getSelectedSymbol() === created.id;
+      s.selectSymbol(null);
+    }
+    return { openOnce, armedOnce, smokeCount: smokes.length,
+      disarmed: s.activeSymbolKey() === null, freshWorks };
+  });
+
+  // ── reload cycles: create → returns; move → new position; delete → gone ──
+  await page.evaluate(async () => {
+    const s = window.__wmStage;
+    s.armSymbol('light.recessed');
+    const r = document.getElementById('wm-viewport').getBoundingClientRect();
+    const x = r.left + r.width * 0.22; const y = r.top + r.height * 0.68;
+    window.__si.send('pointerdown', 91, x, y, 'touch');
+    window.__si.send('pointerup', 91, x, y, 'touch');
+  });
+  await page.waitForTimeout(400);
+  const cyc1 = await page.evaluate(async () => {
+    const anns = await window.__si.anns();
+    const r = anns.find((a) => a.type === 'symbol' && a.data.symbolKey === 'light.recessed');
+    return r ? { id: r.id, at: r.at } : null;
+  });
+  await page.reload();
+  await page.waitForTimeout(400);
+  await page.evaluate(() => new Promise((res) => {
+    const tick = () => (window.__wmStage ? res() : setTimeout(tick, 50));
+    tick();
+  }));
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+  R.reload1 = await page.evaluate(async (c) => {
+    if (!c) return { back: false, rendered: false, sameAnchor: false, sameKey: false };
+    const db = WM.store.createStore(); await db.openDatabase();
+    const anns = await db.listAnnotations('si1'); db.closeDatabase();
+    const r = anns.find((a) => a.id === c.id);
+    const g = document.querySelector('.wm-symbol[data-annotation-id="' + c.id + '"]');
+    return { back: !!r, rendered: !!g,
+      sameAnchor: r && r.at.x === c.at.x && r.at.y === c.at.y,
+      sameKey: r && r.data.symbolKey === 'light.recessed' };
+  }, cyc1);
+  // move it, reload, position persists
+  await page.evaluate(async (c) => {
+    if (!c) return;
+    const s = window.__wmStage;
+    const p = (function () {
+      const a = s.getAnnotation(c.id);
+      const q = WM.viewport.stageToScreen(
+        WM.geometry.denormalizePoint(a.at, s.getStageSize()), s.getViewport());
+      const r = document.getElementById('wm-viewport').getBoundingClientRect();
+      return { x: r.left + q.x, y: r.top + q.y };
+    })();
+    const send = (t, x, y) => (document.elementFromPoint(x, y)
+      || document.getElementById('wm-viewport'))
+      .dispatchEvent(new PointerEvent(t, { pointerId: 95, clientX: x, clientY: y,
+        bubbles: true, pointerType: 'touch' }));
+    send('pointerdown', p.x, p.y);
+    send('pointermove', p.x + 50, p.y - 40);
+    send('pointermove', p.x + 70, p.y - 60);
+    send('pointerup', p.x + 70, p.y - 60);
+  }, cyc1);
+  await page.waitForTimeout(400);
+  const movedAt = await page.evaluate(async (c) => {
+    if (!c) return null;
+    const db = WM.store.createStore(); await db.openDatabase();
+    const anns = await db.listAnnotations('si1'); db.closeDatabase();
+    const r = anns.find((a) => a.id === c.id);
+    return r ? r.at : null;
+  }, cyc1);
+  await page.reload();
+  await page.waitForTimeout(400);
+  await page.evaluate(() => new Promise((res) => {
+    const tick = () => (window.__wmStage ? res() : setTimeout(tick, 50));
+    tick();
+  }));
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+  R.reload2 = await page.evaluate(async ({ c, m }) => {
+    if (!c || !m) return { changed: false, persisted: false };
+    const db = WM.store.createStore(); await db.openDatabase();
+    const anns = await db.listAnnotations('si1'); db.closeDatabase();
+    const r = anns.find((a) => a.id === c.id);
+    const changed = m.x !== c.at.x || m.y !== c.at.y;
+    return { changed, persisted: r && r.at.x === m.x && r.at.y === m.y };
+  }, { c: cyc1, m: movedAt });
+  // delete, reload, stays gone
+  await page.evaluate(async (c) => {
+    if (!c) return;
+    const db = WM.store.createStore(); await db.openDatabase();
+    await db.deleteAnnotation(c.id); db.closeDatabase();
+  }, cyc1);
+  await page.reload();
+  await page.waitForTimeout(400);
+  await page.evaluate(() => new Promise((res) => {
+    const tick = () => (window.__wmStage ? res() : setTimeout(tick, 50));
+    tick();
+  }));
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+  R.reload3 = await page.evaluate(async (c) => {
+    if (!c) return { gone: false, domGone: false };
+    const db = WM.store.createStore(); await db.openDatabase();
+    const anns = await db.listAnnotations('si1'); db.closeDatabase();
+    return { gone: !anns.some((a) => a.id === c.id),
+      domGone: !document.querySelector('.wm-symbol[data-annotation-id="' + c.id + '"]') };
+  }, cyc1);
+
+  await ctx.close();
+  await browser.close();
+
+  const checks = [
+    ['a touch tap selects the symbol once; the synthesised mouse pair changes nothing',
+      R.tapSelect.afterTouch.selected === 'symA'
+        && R.tapSelect.afterTouch.outlines === 1
+        && R.tapSelect.afterTouch.deleteVisible
+        && R.tapSelect.stillSelected
+        && R.tapSelect.outlinesAfterPair === 1
+        && R.tapSelect.anchorUntouched],
+    ['below the 8px threshold the symbol has not moved',
+      R.drag.beforeDrag.dx === 6
+        && Math.abs(R.drag.beforeDrag.centerMovedX) < 0.5
+        && Math.abs(R.drag.beforeDrag.centerMovedY) < 0.5],
+    ['the off-center grab offset is preserved from commit to release — no jump',
+      R.drag.offsetDeltaX < 1.5 && R.drag.offsetDeltaY < 1.5],
+    ['the plan does not pan underneath a symbol drag', R.drag.stageStill === true],
+    ['a full drag persists exactly ONE write for the same annotation, key unchanged',
+      R.drag.writes.length === 1 && R.drag.writes[0] === 'symA'
+        && R.drag.storedMoved === true && R.drag.storedKey === 'outlet.duplex'
+        && R.drag.liveMatchesStored === true],
+    ['pointercancel restores the stored anchor with ZERO writes',
+      R.cancel.movedDuring && R.cancel.revertedLive && R.cancel.revertedStored
+        && R.cancel.writes === 0],
+    ['Delete Symbol removes exactly the selected symbol and hides itself',
+      R.del.deletes.length === 1 && R.del.deletes[0] === 'symA'
+        && R.del.gone && R.del.domGone && R.del.buttonHidden
+        && R.del.selected === null],
+    ['iOS trains: one modal open, one armed key, exactly ONE symbol from tap+compat pair',
+      R.abc.openOnce && R.abc.armedOnce && R.abc.smokeCount === 1 && R.abc.disarmed],
+    ['a fresh legitimate touch after the trains still works normally',
+      R.abc.freshWorks === true],
+    ['created symbol returns after reload with the same id, key and anchor',
+      R.reload1.back && R.reload1.rendered && R.reload1.sameAnchor && R.reload1.sameKey],
+    ['a moved symbol returns after reload at its NEW anchor',
+      R.reload2.changed && R.reload2.persisted],
+    ['a deleted symbol stays gone after reload', R.reload3.gone && R.reload3.domGone],
+    ['no page errors through the symbol interaction flows', errs.length === 0],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WM-9A — Symbols isolation: placement priority over every annotation type,
+// overlap ownership, Sheet A/B isolation, armed/selected sheet-switch
+// safety, the Photo→Blank→Photo regression via the CORRECT production
+// photo workflow, and Wire Lookup exclusion.
+// ─────────────────────────────────────────────────────────────────────────
+async function runSymbolsIsolation(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  await page.goto(APP);
+
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    await db.putJob(WM.model.createJob({ id: 'isoj', name: 'Iso Job', now }));
+    await db.putSheet(WM.model.createSheet({ id: 'isoA', jobId: 'isoj', name: 'Iso A',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    await db.putSheet(WM.model.createSheet({ id: 'isoB', jobId: 'isoj', name: 'Iso B',
+      kind: 'blank', width: 2000, height: 1500, order: 1, now }));
+    const ann = (id, sheetId, over) => WM.model.createAnnotation(
+      Object.assign({ id, sheetId, now }, over));
+    // Sheet A: Duplex + Ceiling, plus one of every other annotation type at
+    // DISTINCT points for the armed-priority taps, plus overlap pairs.
+    const putA = [
+      ann('aDup', 'isoA', { type: 'symbol', at: { x: 0.15, y: 0.2 },
+        data: { symbolKey: 'outlet.duplex' } }),
+      ann('aCeil', 'isoA', { type: 'symbol', at: { x: 0.85, y: 0.2 },
+        data: { symbolKey: 'light.ceiling' } }),
+      ann('aLbl', 'isoA', { type: 'wireLabel', at: { x: 0.35, y: 0.2 },
+        data: { label: 'HR-9' } }),
+      ann('aArw', 'isoA', { type: 'arrow', a: { x: 0.45, y: 0.35 },
+        b: { x: 0.65, y: 0.35 } }),
+      ann('aLine', 'isoA', { type: 'line', a: { x: 0.1, y: 0.5 },
+        b: { x: 0.3, y: 0.5 } }),
+      ann('aRect', 'isoA', { type: 'rect', a: { x: 0.4, y: 0.45 },
+        b: { x: 0.55, y: 0.6 } }),
+      ann('aTxt', 'isoA', { type: 'text', at: { x: 0.75, y: 0.5 },
+        data: { text: 'Panel' } }),
+      // overlap pairs: a symbol centered ON a line and ON a rect
+      ann('ovLine', 'isoA', { type: 'line', a: { x: 0.1, y: 0.8 },
+        b: { x: 0.3, y: 0.8 } }),
+      ann('ovLineSym', 'isoA', { type: 'symbol', at: { x: 0.2, y: 0.8 },
+        data: { symbolKey: 'device.thermostat' } }),
+      ann('ovRect', 'isoA', { type: 'rect', a: { x: 0.55, y: 0.72 },
+        b: { x: 0.75, y: 0.88 } }),
+      ann('ovRectSym', 'isoA', { type: 'symbol', at: { x: 0.65, y: 0.8 },
+        data: { symbolKey: 'switch.single' } }),
+      // a Wire Label and an arrow midpoint sitting ON symbols
+      ann('ovSymUnderLbl', 'isoA', { type: 'symbol', at: { x: 0.35, y: 0.65 },
+        data: { symbolKey: 'outlet.gfci' } }),
+      ann('ovLbl', 'isoA', { type: 'wireLabel', at: { x: 0.35, y: 0.65 },
+        data: { label: 'HR-10' } }),
+      ann('ovSymUnderArw', 'isoA', { type: 'symbol', at: { x: 0.88, y: 0.65 },
+        data: { symbolKey: 'light.recessed' } }),
+      ann('ovArw', 'isoA', { type: 'arrow', a: { x: 0.8, y: 0.65 },
+        b: { x: 0.96, y: 0.65 } }),
+      // Sheet B: 3-Way + Smoke
+      ann('bThree', 'isoB', { type: 'symbol', at: { x: 0.3, y: 0.4 },
+        data: { symbolKey: 'switch.threeWay' } }),
+      ann('bSmoke', 'isoB', { type: 'symbol', at: { x: 0.7, y: 0.6 },
+        data: { symbolKey: 'device.smoke' } }),
+    ];
+    for (const a of putA) {
+      if (a.type === 'wireLabel') a.data.labelKey = WM.model.toLabelKey(a.data.label);
+      await db.putAnnotation(a);
+    }
+    await db.setMeta('currentSheetId', 'isoA');
+    db.closeDatabase();
+    window.__iso = {
+      screenOfNorm(n) {
+        const s = window.__wmStage;
+        const p = WM.viewport.stageToScreen(
+          WM.geometry.denormalizePoint(n, s.getStageSize()), s.getViewport());
+        const r = document.getElementById('wm-viewport').getBoundingClientRect();
+        return { x: r.left + p.x, y: r.top + p.y };
+      },
+      tap(x, y) {
+        // Resolve the target PER EVENT, exactly as real hit-testing does: a
+        // pointerdown that selects an annotation re-renders its layer, so the
+        // element under the finger at release time is a REBUILT node. A real
+        // pointerup follows capture/hit-testing to a live element; dispatching
+        // on the stale pre-render node would silently vanish instead.
+        const o = (t) => new PointerEvent(t, { pointerId: 601, clientX: x, clientY: y,
+          bubbles: true, pointerType: 'touch' });
+        (document.elementFromPoint(x, y) || document.getElementById('wm-viewport'))
+          .dispatchEvent(o('pointerdown'));
+        (document.elementFromPoint(x, y) || document.getElementById('wm-viewport'))
+          .dispatchEvent(o('pointerup'));
+      },
+      closeModals() {
+        ['wm-editor', 'wm-text-editor'].forEach((id) => {
+          const m = document.getElementById(id);
+          if (m && !m.hidden) {
+            const btn = m.querySelector('#wm-editor-cancel, #wm-text-cancel');
+            if (btn) btn.click(); else m.hidden = true;
+          }
+        });
+      },
+      async symbolsOn(sheetId) {
+        const db2 = WM.store.createStore(); await db2.openDatabase();
+        const a = await db2.listAnnotations(sheetId); db2.closeDatabase();
+        return a.filter((x) => x.type === 'symbol').map((x) => x.id).sort();
+      },
+    };
+  });
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(600);
+  const R = {};
+
+  // ── §43 placement priority: armed Duplex must never build on occupied ──
+  R.priority = await page.evaluate(async () => {
+    const s = window.__wmStage;
+    const before = (await window.__iso.symbolsOn('isoA')).length;
+    s.armSymbol('outlet.duplex');
+    const targets = [
+      ['wireLabel', { x: 0.35, y: 0.2 }],
+      ['arrow', { x: 0.55, y: 0.35 }],          // shaft midpoint
+      ['arrowEndpoint', { x: 0.45, y: 0.35 }],  // endpoint handle a
+      ['line', { x: 0.2, y: 0.5 }],
+      ['rect', { x: 0.475, y: 0.45 }],          // rect top edge
+      ['text', { x: 0.75, y: 0.5 }],
+      ['symbol', { x: 0.85, y: 0.2 }],
+    ];
+    const still = [];
+    for (const [what, n] of targets) {
+      const p = window.__iso.screenOfNorm(n);
+      const tg = document.elementFromPoint(p.x, p.y);
+      window.__iso.tap(p.x, p.y);
+      await new Promise((r) => setTimeout(r, 200));
+      window.__iso.closeModals();
+      await new Promise((r) => setTimeout(r, 120));
+      const count = (await window.__iso.symbolsOn('isoA')).length;
+      still.push({ what, count, armed: s.activeSymbolKey(),
+        hit: tg ? (tg.tagName + '.' + (tg.getAttribute('class') || '')) : 'null',
+        modals: ['wm-editor', 'wm-text-editor', 'wm-sheets', 'wm-sympicker']
+          .filter((id) => !document.getElementById(id).hidden) });
+    }
+    // …and a genuinely empty logical-sheet point places exactly one
+    const empty = window.__iso.screenOfNorm({ x: 0.6, y: 0.12 });
+    const emptyHit = document.elementFromPoint(empty.x, empty.y);
+    window.__iso.tap(empty.x, empty.y);
+    await new Promise((r) => setTimeout(r, 400));
+    const after = (await window.__iso.symbolsOn('isoA')).length;
+    return { before, still, after, disarmed: s.activeSymbolKey() === null,
+      emptyHit: emptyHit ? (emptyHit.tagName + '.' + (emptyHit.getAttribute('class') || '')) : 'null' };
+  });
+
+  // ── §37 overlap ownership at shared points (no arming) ──
+  R.overlap = await page.evaluate(async () => {
+    const s = window.__wmStage;
+    const probe = async (n) => {
+      // Clear EVERY selection family first: earlier probe sections may have
+      // legitimately left an arrow/sketch selected (families select
+      // independently, as they always have), and this probe must assert what
+      // THIS tap selects — not what history left behind.
+      s.selectSymbol(null);
+      if (s.selectArrow) s.selectArrow(null);
+      if (s.selectSketch) s.selectSketch(null);
+      await new Promise((r) => setTimeout(r, 80));
+      const p = window.__iso.screenOfNorm(n);
+      window.__iso.tap(p.x, p.y);
+      await new Promise((r) => setTimeout(r, 200));
+      window.__iso.closeModals();
+      const winner = {
+        symbol: s.getSelectedSymbol(),
+        arrow: s.getSelectedArrow ? s.getSelectedArrow() : null,
+        sketch: s.getSelectedSketch ? s.getSelectedSketch() : null,
+      };
+      s.selectSymbol(null);
+      if (s.selectArrow) s.selectArrow(null);
+      if (s.selectSketch) s.selectSketch(null);
+      await new Promise((r) => setTimeout(r, 80));
+      return winner;
+    };
+    return {
+      symbolOverLine: await probe({ x: 0.2, y: 0.8 }),
+      symbolOverRect: await probe({ x: 0.65, y: 0.8 }),
+      labelOverSymbol: await (async () => {
+        // a tap on the label opens the editor; ownership shows as NO symbol
+        // selection and the editor appearing
+        s.selectSymbol(null);
+        const p = window.__iso.screenOfNorm({ x: 0.35, y: 0.65 });
+        window.__iso.tap(p.x, p.y);
+        await new Promise((r) => setTimeout(r, 250));
+        const editorOpen = !document.getElementById('wm-editor').hidden;
+        window.__iso.closeModals();
+        return { editorOpen, symbol: s.getSelectedSymbol() };
+      })(),
+      arrowOverSymbol: await probe({ x: 0.88, y: 0.65 }),
+    };
+  });
+
+  // ── A → B → A: only current-sheet symbols, no stale state ──
+  const switchTo = async (name) => {
+    await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+    await page.click('#wm-sheets-open');
+    await page.waitForTimeout(300);
+    await page.evaluate((n) => {
+      Array.from(document.querySelectorAll('.sheet-row'))
+        .find((r) => r.querySelector('.sheet-name').textContent.indexOf(n) === 0)
+        .querySelector('.sheet-main').click();
+    }, name);
+    await page.waitForTimeout(700);
+  };
+  const domSymbols = () => page.evaluate(() =>
+    Array.from(document.querySelectorAll('#wm-symbols .wm-symbol'))
+      .map((g) => g.getAttribute('data-annotation-id')).sort());
+
+  await page.evaluate(() => window.__wmStage.selectSymbol('aDup'));
+  await page.waitForTimeout(150);
+  await switchTo('Iso B');
+  R.onB = {
+    dom: await domSymbols(),
+    state: await page.evaluate(() => ({
+      selected: window.__wmStage.getSelectedSymbol(),
+      armed: window.__wmStage.activeSymbolKey(),
+      outline: !!document.querySelector('.wm-symbol-selection'),
+      deleteHidden: document.getElementById('wm-delete-symbol').hidden })),
+  };
+  await switchTo('Iso A');
+  R.backOnA = { dom: await domSymbols() };
+
+  // ── armed GFCI + manual sheet switch: mode must clear, no phantom ──
+  await page.evaluate(() => window.__wmStage.armSymbol('outlet.gfci'));
+  await switchTo('Iso B');
+  R.armedSwitch = await page.evaluate(async () => {
+    const s = window.__wmStage;
+    const armedAfter = s.activeSymbolKey();
+    const hintHidden = document.getElementById('wm-symbol-hint').hidden;
+    const beforeB = await window.__iso.symbolsOn('isoB');
+    const r = document.getElementById('wm-viewport').getBoundingClientRect();
+    window.__iso.tap(r.left + r.width * 0.5, r.top + r.height * 0.15);
+    await new Promise((rr) => setTimeout(rr, 350));
+    const afterB = await window.__iso.symbolsOn('isoB');
+    const anywhere = (await window.__iso.symbolsOn('isoA')).length
+      + afterB.length;
+    return { armedAfter, hintHidden, placedOnB: afterB.length - beforeB.length,
+      totalNow: anywhere };
+  });
+
+  // ── selected Duplex + switch: forced Delete must NOT cross sheets ──
+  await switchTo('Iso A');
+  await page.evaluate(() => window.__wmStage.selectSymbol('aDup'));
+  await page.waitForTimeout(150);
+  await switchTo('Iso B');
+  R.forcedDelete = await page.evaluate(async () => {
+    const s = window.__wmStage;
+    const cleared = s.getSelectedSymbol() === null;
+    const hidden = document.getElementById('wm-delete-symbol').hidden;
+    document.getElementById('wm-delete-symbol').click();   // forced
+    await new Promise((r) => setTimeout(r, 350));
+    const aSymbols = await window.__iso.symbolsOn('isoA');
+    return { cleared, hidden, dupSurvives: aSymbols.indexOf('aDup') !== -1 };
+  });
+
+  await ctx.close();
+  await browser.close();
+
+  const pri = R.priority;
+  const checks = [
+    ['an armed symbol never creates on top of ANY existing annotation',
+      pri.still.every((s) => s.count === pri.before && s.armed === 'outlet.duplex')],
+    ['after those occupied taps, one genuinely empty tap places exactly ONE',
+      pri.after === pri.before + 1 && pri.disarmed],
+    ['a symbol on a sketch line owns the tap',
+      R.overlap.symbolOverLine.symbol === 'ovLineSym'
+        && !R.overlap.symbolOverLine.sketch],
+    ['a symbol on a rectangle owns the tap',
+      R.overlap.symbolOverRect.symbol === 'ovRectSym'
+        && !R.overlap.symbolOverRect.sketch],
+    ['a Wire Label on a symbol stays easily tappable — the label wins',
+      R.overlap.labelOverSymbol.editorOpen === true
+        && R.overlap.labelOverSymbol.symbol === null],
+    ['an arrow over a symbol keeps deterministic priority — the arrow wins',
+      R.overlap.arrowOverSymbol.arrow === 'ovArw'
+        && !R.overlap.arrowOverSymbol.symbol],
+    ['Sheet B shows ONLY Sheet B symbols with no stale selection/mode',
+      JSON.stringify(R.onB.dom) === JSON.stringify(['bSmoke', 'bThree'])
+        && R.onB.state.selected === null && R.onB.state.armed === null
+        && !R.onB.state.outline && R.onB.state.deleteHidden],
+    ['returning to Sheet A shows exactly Sheet A symbols again',
+      R.backOnA.dom.length === 7
+        && ['aCeil', 'aDup', 'ovLineSym', 'ovRectSym', 'ovSymUnderArw', 'ovSymUnderLbl']
+          .every((id) => R.backOnA.dom.indexOf(id) !== -1)
+        && R.backOnA.dom.indexOf('bThree') === -1
+        && R.backOnA.dom.indexOf('bSmoke') === -1],
+    ['arming GFCI then switching sheets disarms — no phantom placement on B',
+      R.armedSwitch.armedAfter === null && R.armedSwitch.hintHidden
+        && R.armedSwitch.placedOnB === 0],
+    ['a forced Delete Symbol after switching cannot delete across sheets',
+      R.forcedDelete.cleared && R.forcedDelete.hidden
+        && R.forcedDelete.dupSurvives],
+    ['no page errors through the symbols isolation flows', errs.length === 0],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
 (async () => {
   const engines = [['chromium', withExecOverride('chromium', playwright.chromium)], ['webkit', playwright.webkit]];
   let failures = 0;
 
   for (const [name, engine] of engines) {
-    for (const [suite, fn] of [['image + EXIF', run], ['viewport + pointers', runViewport], ['wire labels', runLabels], ['label text', runLabelText], ['arrows', runArrows], ['arrow tip', runArrowTip], ['sketch', runSketch], ['hit priority', runPriority], ['control layout', runControlLayout], ['sketch text', runText], ['wire lookup', runLookup], ['lookup aftermath', runLookupAftermath], ['sheets manager', runSheets], ['sheets photo paths', runSheetsPhoto], ['sheets isolation', runSheetsIsolation], ['sheets lookup sync', runSheetsLookupSync], ['sheets touch mutations', runSheetsTouchMutations], ['post-switch interactions', runPostSwitchInteractions], ['photo persistence', runPhotoPersistence]]) {
+    for (const [suite, fn] of [['image + EXIF', run], ['viewport + pointers', runViewport], ['wire labels', runLabels], ['label text', runLabelText], ['arrows', runArrows], ['arrow tip', runArrowTip], ['sketch', runSketch], ['hit priority', runPriority], ['control layout', runControlLayout], ['sketch text', runText], ['wire lookup', runLookup], ['lookup aftermath', runLookupAftermath], ['sheets manager', runSheets], ['sheets photo paths', runSheetsPhoto], ['sheets isolation', runSheetsIsolation], ['sheets lookup sync', runSheetsLookupSync], ['sheets touch mutations', runSheetsTouchMutations], ['post-switch interactions', runPostSwitchInteractions], ['photo persistence', runPhotoPersistence], ['symbols foundation', runSymbolsFoundation], ['symbols interaction', runSymbolsInteraction], ['symbols isolation', runSymbolsIsolation]]) {
     const result = await fn(name, engine);
     console.log(`\n=== ${name.toUpperCase()} — ${suite} ===`);
     if (!result.available) {
@@ -5538,6 +6689,9 @@ async function runPhotoPersistence(engineName, engine) {
     }
     for (const [label, ok] of result.checks) {
       console.log('  ' + (ok ? 'PASS' : 'FAIL') + '  ' + label);
+      if (!ok && process.env.WIREMAP_DEBUG) {
+        console.log('        detail:', JSON.stringify(result.detail).slice(0, 2400));
+      }
       if (!ok) failures += 1;
     }
     if (result.errs.length) { console.log('  page errors:', result.errs); failures += 1; }

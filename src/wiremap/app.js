@@ -21,6 +21,8 @@ const routeInteraction = require('./routeInteraction');
 const sketchInteraction = require('./sketchInteraction');
 const undoStack = require('./undoStack');
 const geometry = require('./geometry');
+const symbols = require('./symbols');
+const symbolInteraction = require('./symbolInteraction');
 
 function createStageController(options) {
   const opts = options || {};
@@ -37,6 +39,7 @@ function createStageController(options) {
     labels: doc.getElementById(opts.labelsId || 'wm-labels'),
     routes: doc.getElementById(opts.routesId || 'wm-routes'),
     sketch: doc.getElementById(opts.sketchId || 'wm-sketch'),
+    symbols: doc.getElementById(opts.symbolsId || 'wm-symbols'),
     selection: doc.getElementById(opts.selectionId || 'wm-selection'),
     background: doc.getElementById(opts.backgroundHitId || 'wm-background-hit'),
   };
@@ -53,6 +56,7 @@ function createStageController(options) {
   let labelState = labelInteraction.createLabelState();
   let routeState = routeInteraction.createRouteState();
   let sketchState = sketchInteraction.createSketchState();
+  let symbolState = symbolInteraction.createSymbolState();
   let undo = undoStack.createUndoStack();
   let currentSheetId = null;
   /** Blank sheets draw a drafting grid; image sheets do not. */
@@ -76,6 +80,10 @@ function createStageController(options) {
     onTextEdit: opts.onTextEdit || null,             // (annotation) => void
     onTextMoved: opts.onTextMoved || null,           // (after, before) => void
     onSketchToolChange: opts.onSketchToolChange || null, // (tool) => void
+    onSymbolModeChange: opts.onSymbolModeChange || null, // (symbolKey|null) => void
+    onSymbolSelected: opts.onSymbolSelected || null,     // (annotation|null) => void
+    onSymbolPlace: opts.onSymbolPlace || null,           // (normalized, key) => void
+    onSymbolMoved: opts.onSymbolMoved || null,           // (annotation) => void
   };
 
   function viewSize() {
@@ -136,11 +144,12 @@ function createStageController(options) {
     labelState = labelInteraction.createLabelState();
     routeState = routeInteraction.createRouteState();
     sketchState = sketchInteraction.createSketchState();
+    symbolState = symbolInteraction.createSymbolState();
     undoStack.reset(undo);
     showGrid = false;
     currentSheetId = null;
     annotations = new Map();
-    [el.labels, el.routes, el.selection, el.sketch].forEach(function (layer) {
+    [el.labels, el.routes, el.selection, el.sketch, el.symbols].forEach(function (layer) {
       if (layer) { while (layer.firstChild) layer.removeChild(layer.firstChild); }
     });
     setPlaceholderVisible(true);
@@ -316,6 +325,20 @@ function createStageController(options) {
   const SKETCH_HIT_PX = 40;
 
   /**
+   * Electrical symbols are plan MARKERS, not physical dimensions: they hold
+   * ~24 screen px at every zoom. The nested-SVG size is divided by the stage
+   * scale — explicit stage-space compensation, the same WebKit-proven idiom
+   * as every other screen-space target here. Never vector-effect, never a
+   * CSS inverse transform.
+   */
+  const SYMBOL_SIZE_PX = 24;
+  /** Finger room around a symbol: an invisible explicit hit square. */
+  const SYMBOL_HIT_PX = 44;
+  /** Selection outline padding and stroke, in screen px. */
+  const SYMBOL_SELECT_PAD_PX = 4;
+  const SYMBOL_SELECT_STROKE_PX = 2;
+
+  /**
    * Sketch text size in SCREEN pixels, converted to stage units at render time.
    * Same explicit compensation as every other screen-space target here.
    */
@@ -470,6 +493,112 @@ function createStageController(options) {
    * The visible handle stays small; a larger transparent circle behind it
    * provides a finger-sized target.
    */
+  /**
+   * Apply one trusted library primitive into an SVG container. Every value
+   * comes from src/wiremap/symbols.js constants — never from user data — and
+   * is applied via setAttribute/textContent only. No markup strings.
+   */
+  function buildSymbolPrimitive(container, prim) {
+    let node;
+    if (prim.t === 'circle') {
+      node = doc.createElementNS(SVG_NS, 'circle');
+      node.setAttribute('cx', prim.cx); node.setAttribute('cy', prim.cy);
+      node.setAttribute('r', prim.r);
+      node.setAttribute('class', 'wm-symbol-stroke');
+    } else if (prim.t === 'line') {
+      node = doc.createElementNS(SVG_NS, 'line');
+      node.setAttribute('x1', prim.x1); node.setAttribute('y1', prim.y1);
+      node.setAttribute('x2', prim.x2); node.setAttribute('y2', prim.y2);
+      node.setAttribute('class', 'wm-symbol-stroke');
+    } else if (prim.t === 'rect') {
+      node = doc.createElementNS(SVG_NS, 'rect');
+      node.setAttribute('x', prim.x); node.setAttribute('y', prim.y);
+      node.setAttribute('width', prim.w); node.setAttribute('height', prim.h);
+      node.setAttribute('class', 'wm-symbol-stroke');
+    } else if (prim.t === 'path') {
+      node = doc.createElementNS(SVG_NS, 'path');
+      node.setAttribute('d', prim.d);
+      node.setAttribute('class', 'wm-symbol-stroke');
+    } else if (prim.t === 'text') {
+      node = doc.createElementNS(SVG_NS, 'text');
+      node.setAttribute('x', prim.x); node.setAttribute('y', prim.y);
+      node.setAttribute('font-size', prim.size);
+      node.setAttribute('text-anchor', 'middle');
+      node.setAttribute('class', 'wm-symbol-glyph');
+      node.textContent = prim.text;
+    }
+    if (node) container.appendChild(node);
+  }
+
+  /**
+   * A standalone preview of one symbol at an explicit pixel size, resolved
+   * from the SAME definition the plan renderer uses — one source of truth.
+   * Unknown keys render the library placeholder. For the picker.
+   */
+  function createSymbolPreview(symbolKey, sizePx) {
+    const def = symbols.forRender(symbolKey);
+    const svg = doc.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('width', sizePx);
+    svg.setAttribute('height', sizePx);
+    svg.setAttribute('viewBox', def.viewBox);
+    svg.setAttribute('class', 'wm-symbol-icon');
+    svg.setAttribute('aria-hidden', 'true');
+    def.primitives.forEach((p) => buildSymbolPrimitive(svg, p));
+    return svg;
+  }
+
+  /**
+   * One plan symbol: a nested SVG viewport anchored in stage coordinates.
+   *
+   * The parent stage still owns pan/zoom through its ONE transform; this
+   * nested SVG only maps the icon's fixed 24×24 internal coordinates into an
+   * explicitly calculated stage-space square of SYMBOL_SIZE_PX / scale, so
+   * the icon holds ~24 screen px at every zoom without vector-effect or any
+   * inverse transform. The persisted `at` is the CENTER of the symbol.
+   */
+  function renderSymbolNode(annotation) {
+    const def = symbols.forRender(annotation.data && annotation.data.symbolKey);
+    const scale = view.scale > 0 ? view.scale : 1;
+    const p = geometry.denormalizePoint(annotation.at, stageSize);
+    const size = SYMBOL_SIZE_PX / scale;
+    const hit = SYMBOL_HIT_PX / scale;
+
+    const g = doc.createElementNS(SVG_NS, 'g');
+    g.setAttribute('class', 'wm-symbol'
+      + (symbolInteraction.getSelected(symbolState) === annotation.id ? ' selected' : ''));
+    g.setAttribute('data-annotation-id', annotation.id);
+
+    const icon = doc.createElementNS(SVG_NS, 'svg');
+    icon.setAttribute('x', p.x - size / 2);
+    icon.setAttribute('y', p.y - size / 2);
+    icon.setAttribute('width', size);
+    icon.setAttribute('height', size);
+    icon.setAttribute('viewBox', def.viewBox);
+    icon.setAttribute('class', 'wm-symbol-icon');
+    def.primitives.forEach((prim) => buildSymbolPrimitive(icon, prim));
+    g.appendChild(icon);
+
+    // The invisible finger target, LAST so it is the paint the pointer meets.
+    // Transparent fill + explicit pointer-events (in CSS) — the same
+    // WebKit-safe pattern as .wm-endpoint-target and .wm-arrow-hit.
+    const hitRect = doc.createElementNS(SVG_NS, 'rect');
+    hitRect.setAttribute('x', p.x - hit / 2);
+    hitRect.setAttribute('y', p.y - hit / 2);
+    hitRect.setAttribute('width', hit);
+    hitRect.setAttribute('height', hit);
+    hitRect.setAttribute('class', 'wm-symbol-hit');
+    g.appendChild(hitRect);
+    return g;
+  }
+
+  function renderSymbols() {
+    if (!el.symbols || !stageSize) return;
+    while (el.symbols.firstChild) el.symbols.removeChild(el.symbols.firstChild);
+    annotations.forEach((a) => {
+      if (a.type === 'symbol') el.symbols.appendChild(renderSymbolNode(a));
+    });
+  }
+
   function renderSelection() {
     if (!el.selection || !stageSize) return;
     while (el.selection.firstChild) el.selection.removeChild(el.selection.firstChild);
@@ -477,6 +606,28 @@ function createStageController(options) {
     if (sketchId) {
       const shape = annotations.get(sketchId);
       if (shape) renderSketchHandles(shape);
+    }
+
+    // Selected symbol: a subtle constant-screen-size outline, no handles —
+    // symbols cannot be resized in WM-9A. Padding and stroke are screen-px
+    // targets divided by the stage scale, like every screen-space size here.
+    const symId = symbolInteraction.getSelected(symbolState);
+    if (symId) {
+      const sym = annotations.get(symId);
+      if (sym && sym.type === 'symbol') {
+        const sc = view.scale > 0 ? view.scale : 1;
+        const c = geometry.denormalizePoint(sym.at, stageSize);
+        const half = (SYMBOL_SIZE_PX / 2 + SYMBOL_SELECT_PAD_PX) / sc;
+        const box = doc.createElementNS(SVG_NS, 'rect');
+        box.setAttribute('x', c.x - half);
+        box.setAttribute('y', c.y - half);
+        box.setAttribute('width', half * 2);
+        box.setAttribute('height', half * 2);
+        box.setAttribute('stroke-width', SYMBOL_SELECT_STROKE_PX / sc);
+        box.setAttribute('stroke-dasharray', (4 / sc) + ' ' + (3 / sc));
+        box.setAttribute('class', 'wm-symbol-selection');
+        el.selection.appendChild(box);
+      }
     }
 
     const id = routeInteraction.getSelected(routeState);
@@ -807,11 +958,15 @@ function createStageController(options) {
     });
     renderSketch();
     renderRoutes();
+    renderSymbols();
   }
 
   /** Keep label bodies a constant screen size as the plan zooms. */
   function rescaleLabels() {
     renderSelection();   // endpoint handles are inverse-scaled too
+    // Symbol viewports and hit squares are stage-space sizes computed from
+    // the scale, so every zoom change recomputes them.
+    renderSymbols();
     if (el.routes) {
       // Keep the arrow touch target a constant screen size as the plan zooms.
       const w = String(hitWidthForScale());
@@ -886,6 +1041,7 @@ function createStageController(options) {
 
   // ── Add Label mode ──────────────────────────────────────────────────
   function armPlacement() {
+    quietDisarmSymbol();
     labelInteraction.armPlacement(labelState);
     if (hooks.onModeChange) hooks.onModeChange(true);
   }
@@ -897,6 +1053,7 @@ function createStageController(options) {
 
   // ── Arrow mode ──────────────────────────────────────────────────────
   function armArrow() {
+    quietDisarmSymbol();
     labelInteraction.disarmPlacement(labelState);
     if (hooks.onModeChange) hooks.onModeChange(false);
     routeInteraction.armDraw(routeState);
@@ -914,6 +1071,7 @@ function createStageController(options) {
    * pointer can only ever belong to one of them.
    */
   function armSketch(tool) {
+    quietDisarmSymbol();
     labelInteraction.disarmPlacement(labelState);
     if (hooks.onModeChange) hooks.onModeChange(false);
     routeInteraction.disarmDraw(routeState);
@@ -958,6 +1116,41 @@ function createStageController(options) {
     if (hooks.onSketchSelected) hooks.onSketchSelected(id ? annotations.get(id) : null);
   }
 
+  // ── Symbol mode + selection ─────────────────────────────────────────
+  /** Drop symbol placement without touching other modes; fires the hook. */
+  function quietDisarmSymbol() {
+    if (!symbolInteraction.isArmed(symbolState)) return;
+    symbolInteraction.disarmPlacement(symbolState);
+    if (hooks.onSymbolModeChange) hooks.onSymbolModeChange(null);
+  }
+
+  /**
+   * Arm ONE symbolKey for placement. Arming disarms every other creation
+   * mode through the existing wrappers — at most one mode may own the next
+   * empty tap, exactly as Label/Arrow/Sketch already enforce among
+   * themselves.
+   */
+  function armSymbol(symbolKey) {
+    disarmPlacement();
+    disarmArrow();
+    disarmSketch();
+    symbolInteraction.armPlacement(symbolState, symbolKey);
+    if (hooks.onSymbolModeChange) {
+      hooks.onSymbolModeChange(symbolInteraction.armedKey(symbolState));
+    }
+  }
+
+  function disarmSymbol() {
+    quietDisarmSymbol();
+  }
+
+  function selectSymbol(id) {
+    symbolInteraction.select(symbolState, id);
+    renderSymbols();
+    renderSelection();
+    if (hooks.onSymbolSelected) hooks.onSymbolSelected(id ? annotations.get(id) : null);
+  }
+
   /**
    * Bind the controller to a sheet. Undo history is per sheet and is cleared
    * here, because undoing onto a sheet you are no longer looking at would be
@@ -976,10 +1169,14 @@ function createStageController(options) {
     disarmPlacement();
     disarmArrow();
     disarmSketch();
+    quietDisarmSymbol();
     routeInteraction.select(routeState, null);
     if (hooks.onArrowSelected) hooks.onArrowSelected(null);
     sketchInteraction.clearSelection(sketchState);
     if (hooks.onSketchSelected) hooks.onSketchSelected(null);
+    symbolInteraction.symbolPointerCancel(symbolState);
+    symbolInteraction.select(symbolState, null);
+    if (hooks.onSymbolSelected) hooks.onSymbolSelected(null);
   }
 
   // ── Undo, sketch mutations only ──────────────────────────────────────
@@ -1063,6 +1260,17 @@ function createStageController(options) {
       // "selected"). A prefix test would also match the child line's
       // "wm-arrow-hit", which carries no id — the press would then be lost.
       if (cls && /(^|\s)wm-arrow(\s|$)/.test(cls)) return node.getAttribute('data-annotation-id');
+      node = node.parentNode;
+    }
+    return null;
+  }
+
+  /** The id only when the press landed on a symbol group. */
+  function symbolIdFrom(target) {
+    let node = target;
+    while (node && node !== el.viewport) {
+      const cls = node.getAttribute && node.getAttribute('class');
+      if (cls && /(^|\s)wm-symbol(\s|$)/.test(cls)) return node.getAttribute('data-annotation-id');
       node = node.parentNode;
     }
     return null;
@@ -1156,6 +1364,18 @@ function createStageController(options) {
       return;
     }
 
+    // Existing symbol: press to drag, tap to select. Above text/sketch,
+    // matching the visual stacking (wm-symbols renders above wm-sketch);
+    // below arrows and Wire Labels, which must stay easily tappable.
+    const symbolId = symbolIdFrom(e.target);
+    if (symbolId && annotations.has(symbolId)) {
+      capture(e);
+      symbolInteraction.symbolPointerDown(symbolState, symbolId, point,
+        annotations.get(symbolId).at, view, stageSize);
+      if (e.stopPropagation) e.stopPropagation();
+      return;
+    }
+
     // Sketch shapes are below arrows and labels, matching the visual stacking:
     // wm-sketch renders beneath wm-routes and wm-labels, so a label on top of a
     // sketch line stays tappable.
@@ -1219,6 +1439,20 @@ function createStageController(options) {
 
   function onPointerMove(e) {
     if (!stageSize) return;
+
+    if (symbolInteraction.hasPressedSymbol(symbolState)) {
+      const r = symbolInteraction.symbolPointerMove(symbolState, localPoint(e), view, stageSize);
+      if (r.moved && r.normalized) {
+        const id = symbolState.drag.id;
+        const a = annotations.get(id);
+        if (a) {
+          // Live visual only. Nothing is written until the drag ends.
+          annotations.set(id, { ...a, at: r.normalized });
+          renderSymbols(); renderSelection();
+        }
+      }
+      return;   // a symbol drag never pans the plan
+    }
 
     if (sketchInteraction.hasPressedText(sketchState)) {
       const r = sketchInteraction.textPointerMove(sketchState, localPoint(e), view, stageSize);
@@ -1300,6 +1534,18 @@ function createStageController(options) {
     // suppression window has to track that — otherwise the compatibility click
     // lands somewhere new and is treated as a fresh gesture.
     labelInteraction.noteInput(labelState, e.pointerType || 'mouse', point, nowMs());
+
+    if (symbolInteraction.hasPressedSymbol(symbolState)) {
+      const outcome = symbolInteraction.symbolPointerUp(symbolState);
+      release(e);
+      if (outcome.action === 'tap') {
+        selectSymbol(outcome.id);
+      } else if (outcome.action === 'move' && hooks.onSymbolMoved) {
+        const a = annotations.get(outcome.id);
+        if (a) hooks.onSymbolMoved({ ...a, at: outcome.normalized });   // one write, at the end
+      }
+      return;
+    }
 
     if (sketchInteraction.hasPressedText(sketchState)) {
       const outcome = sketchInteraction.textPointerUp(sketchState);
@@ -1392,13 +1638,31 @@ function createStageController(options) {
     if (pressedBackground
       && !labelInteraction.isArmed(labelState)
       && !routeInteraction.isArmed(routeState)
+      && !symbolInteraction.isArmed(symbolState)
       && gesture.mode !== 'pan' && gesture.mode !== 'pinch'
       && (routeInteraction.getSelected(routeState)
-        || sketchInteraction.getSelected(sketchState))) {
+        || sketchInteraction.getSelected(sketchState)
+        || symbolInteraction.getSelected(symbolState))) {
       interaction.pointerUp(gesture, e.pointerId, view);
       pressedBackground = false;
       selectArrow(null);
       selectSketch(null);
+      selectSymbol(null);
+      return;
+    }
+
+    // Symbol placement: an armed tap on legitimately empty plan creates ONE
+    // symbol and exits the mode. Presses on existing annotations were claimed
+    // at pointerdown and never register with the gesture, so activeCount==1
+    // is precisely "this press landed on empty sheet".
+    if (symbolInteraction.isArmed(symbolState)
+      && gesture.mode !== 'pan' && gesture.mode !== 'pinch'
+      && interaction.activeCount(gesture) === 1) {
+      const key = symbolInteraction.armedKey(symbolState);
+      const normalized = symbolInteraction.placementAt(symbolState, point, view, stageSize);
+      interaction.pointerUp(gesture, e.pointerId, view);
+      disarmSymbol();
+      if (normalized && hooks.onSymbolPlace) hooks.onSymbolPlace(normalized, key);
       return;
     }
 
@@ -1430,6 +1694,17 @@ function createStageController(options) {
 
   function onPointerCancel() {
     pressedBackground = false;
+    if (symbolInteraction.hasPressedSymbol(symbolState)) {
+      const outcome = symbolInteraction.symbolPointerCancel(symbolState);
+      if (outcome.action === 'revert' && outcome.id) {
+        const a = annotations.get(outcome.id);
+        // Put it back where it was stored: never leave a half-moved symbol.
+        if (a) {
+          annotations.set(outcome.id, { ...a, at: outcome.normalized });
+          renderSymbols(); renderSelection();
+        }
+      }
+    }
     if (sketchInteraction.hasPressedText(sketchState)) {
       const outcome = sketchInteraction.textPointerCancel(sketchState);
       if (outcome.action === 'revert' && outcome.id) {
@@ -1554,6 +1829,12 @@ function createStageController(options) {
     armSketch,
     disarmSketch,
     activeSketchTool: () => sketchInteraction.activeTool(sketchState),
+    armSymbol,
+    disarmSymbol,
+    activeSymbolKey: () => symbolInteraction.armedKey(symbolState),
+    selectSymbol,
+    getSelectedSymbol: () => symbolInteraction.getSelected(symbolState),
+    createSymbolPreview,
     selectSketch,
     getSelectedSketch: () => sketchInteraction.getSelected(sketchState),
     setSheet,

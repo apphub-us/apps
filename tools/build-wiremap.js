@@ -54,6 +54,8 @@ const MODULES = [
   'undoStack',
   'search',
   'sheets',
+  'symbols',
+  'symbolInteraction',
   'app',
 ];
 
