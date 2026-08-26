@@ -29,7 +29,9 @@ src/calc/
   conduitFill.js  Chapter 9 Tables 1/4/5, 376.22
   boxFill.js      314.16
   voltageDrop.js  VD formula + minimum size search
-  wireSizing.js   ampacity + 240.4(D) + continuous load + VD
+  wireSizing.js   full conductor selection: ampacity, 110.14(C) terminal
+                  limits, 240.4(D), continuous load, NYC feeder minimum,
+                  voltage drop, governing constraint
   motor.js        Article 430
   grounding.js    250.122, 250.66, 250.122(B)
 test/             one suite per module, plus guards on the shipped app,
@@ -39,7 +41,7 @@ tools/build-calc.js
 
 ## Status
 
-**265 tests · 0 failures · 0 todo · build:check passing.** Every identified
+**298 tests · 0 failures · 0 todo · build:check passing.** Every identified
 correctness defect (P0-1 through P0-4 and P1-1) is closed and guarded by a hard
 test. No defects are parked as `todo`.
 
@@ -47,15 +49,39 @@ test. No defects are parked as `todo`.
 |---|---|
 | Ampacity | **fully** |
 | Conduit Fill | **fully** |
-| Wire Sizer | **partly** — `wsCalc` still owns the selection loop, terminal-limit handling and the voltage-drop path; it reuses shared helpers and rules such as 240.4(D) and the temperature correction |
+| Wire Sizer | **fully** |
 | Box Fill, Motor, Grounding, standalone Voltage Drop | not fully migrated |
 
 Where a calculator is not fully migrated it still computes locally. Its shared
 module exists and is tested, so completing the migration is transport work
-rather than new logic. Until then the same rule can exist in two places, which
-is how a defect slipped into the Wire Sizer path after the shared module was
-already correct — see `test/wireSizerProduction.test.js`, which executes the
-shipped `wsCalc()` rather than checking the source text.
+rather than new logic. Until then the same rule can exist in two places — which
+is exactly how a defect once slipped into the pre-migration Wire Sizer path
+after the shared module was already correct. `test/wireSizerProduction.test.js`
+still executes the shipped `wsCalc()` rather than checking source text, and now
+also guards (via a poisoned-engine test) against any independent selection loop
+ever returning.
+
+**Wire Sizer architecture.** Production `wsCalc` is a thin adapter: it reads and
+normalizes the UI inputs, builds one structured request, calls
+`EC.wireSizing.selectConductor` once, and renders the structured result. The
+shared engine owns every electrical decision — conductor selection,
+continuous/noncontinuous load sizing, ampacity, the 110.14(C)
+terminal-temperature limitation, 240.4(D), the NYC dwelling-feeder minimum,
+voltage-drop-driven upsizing, and the final governing constraint. A permanent
+parity harness (`test/wireSizerParity.test.js`) pins the migration against the
+legacy decisions across ~1,050 input combinations.
+
+Two engine correctness fixes landed with the migration:
+
+- **P1-10 — voltage drop under the preferred load model.** The
+  continuous/noncontinuous input model now feeds the resolved total load into
+  voltage-drop evaluation. The shipped legacy path was unaffected (it used the
+  legacy load field) and remained parity-identical through the switch.
+- **Terminal-limit governing explanation.** The shared result now states
+  explicitly when the terminal-temperature limitation is what raised the
+  required conductor size (`governingConstraint: 'TERMINAL_LIMIT'`, plus
+  per-size `rejectedOnlyByTerminalLimit`), so the UI can answer *why* a
+  conductor was selected without reproducing any electrical logic.
 
 The engine is injected into `mobile.html` between `EC-CALC:START/END` markers by
 `tools/build-calc.js`. Never hand-edit that block.
