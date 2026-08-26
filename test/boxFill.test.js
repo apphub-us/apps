@@ -83,3 +83,116 @@ describe('Box fill — NEC 314.16(B)', () => {
     assert.strictEqual(calculateBoxFill({ boxKey: 'sq_4x1_5', largestWireSize: '99' }).reason, 'WIRE_NOT_IN_TABLE');
   });
 });
+
+describe('Box Fill migration — boundary and structured-result contracts', () => {
+  const { calculateBoxFill } = require('../src/calc/boxFill');
+  const { BF_VOL, BF_BOXES } = require('../src/calc/tables');
+
+  test('EXACT-FILL SEMANTICS: used === available is a deterministic PASS', () => {
+    // 314.16 requires the box volume to be "not less than" the fill: equal
+    // complies. Values are exact quarters in binary, so `<=` needs no
+    // tolerance — pinned here so floating point can never blur the boundary.
+    const r = calculateBoxFill({ boxKey: 'dev_3x2x2', largestWireSize: '14',
+      numConductors: 5 });
+    assert.strictEqual(r.usedVolume, 10);
+    assert.strictEqual(r.boxVolume, 10);
+    assert.strictEqual(r.remaining, 0);
+    assert.strictEqual(r.fits, true);
+    assert.strictEqual(r.fillPercent, 100);
+    const over = calculateBoxFill({ boxKey: 'dev_3x2x2', largestWireSize: '14',
+      numConductors: 6 });
+    assert.strictEqual(over.fits, false);
+    assert.strictEqual(over.remaining, -2);
+  });
+
+  test('zero and one conductor are deterministic', () => {
+    const zero = calculateBoxFill({ boxKey: 'sq_4x1_5', largestWireSize: '12' });
+    assert.strictEqual(zero.usedVolume, 0);
+    assert.strictEqual(zero.fits, true);
+    assert.strictEqual(zero.fillPercent, 0);
+    const one = calculateBoxFill({ boxKey: 'sq_4x1_5', largestWireSize: '12',
+      numConductors: 1 });
+    assert.strictEqual(one.usedVolume, 2.25);
+  });
+
+  test('every supported wire size computes its exact 314.16(B) volume', () => {
+    for (const [size, vol] of Object.entries(BF_VOL)) {
+      const r = calculateBoxFill({ boxKey: 'sq_4_11_16x2_125',
+        largestWireSize: size, numConductors: 3, numDevices: 1, hasClamps: true,
+        hasEgc: true });
+      assert.strictEqual(r.volPerWire, vol, size);
+      assert.strictEqual(r.usedVolume, Math.round(vol * 7 * 100) / 100,
+        size + ': 3 + 2(device) + 1 + 1 = 7 allowances');
+    }
+  });
+
+  test('every supported box key resolves and totals against its table volume', () => {
+    for (const [key, box] of Object.entries(BF_BOXES)) {
+      const r = calculateBoxFill({ boxKey: key, largestWireSize: '14',
+        numConductors: 2 });
+      assert.strictEqual(r.ok, true, key);
+      assert.strictEqual(r.boxVolume, box.vol, key);
+    }
+  });
+
+  test('the breakdown always sums to the total', () => {
+    const r = calculateBoxFill({ boxKey: 'pl_dg_34', largestWireSize: '8',
+      numConductors: 5, numDevices: 2, hasClamps: true, hasEgc: true,
+      numSupportFittings: 1 });
+    const sum = r.conductorVolume + r.deviceVolume + r.clampVolume
+      + r.egcVolume + r.fittingVolume;
+    assert.ok(Math.abs(sum - r.usedVolume) < 1e-9);
+    assert.ok(Math.abs((r.boxVolume - r.usedVolume) - r.remaining) < 1e-9);
+  });
+
+  test('governing-size boundaries: the single largest size drives every allowance', () => {
+    // The app models ONE governing size (mixed sizes are not a production
+    // capability); moving it must move conductor, device, clamp and EGC
+    // allowances together.
+    const small = calculateBoxFill({ boxKey: 'sq_4x1_5', largestWireSize: '14',
+      numConductors: 4, numDevices: 1, hasClamps: true, hasEgc: true });
+    const large = calculateBoxFill({ boxKey: 'sq_4x1_5', largestWireSize: '6',
+      numConductors: 4, numDevices: 1, hasClamps: true, hasEgc: true });
+    assert.strictEqual(small.usedVolume, 16);   // 8 allowances x 2.00
+    assert.strictEqual(large.usedVolume, 40);   // 8 allowances x 5.00
+    assert.strictEqual(small.fits, true);
+    assert.strictEqual(large.fits, false);
+  });
+
+  test('invalid inputs fail with structured reasons — never NaN, never a loop', () => {
+    assert.strictEqual(calculateBoxFill({ boxKey: 'nope', largestWireSize: '12' })
+      .reason, 'BOX_NOT_IN_TABLE');
+    assert.strictEqual(calculateBoxFill({ boxKey: 'sq_4x1_5', largestWireSize: '4' })
+      .reason, 'WIRE_NOT_IN_TABLE');
+    assert.strictEqual(calculateBoxFill({}).reason, 'BOX_NOT_IN_TABLE');
+    for (const bad of [-1, 1.5, NaN, Infinity, '3']) {
+      const r = calculateBoxFill({ boxKey: 'sq_4x1_5', largestWireSize: '12',
+        numConductors: bad });
+      assert.strictEqual(r.ok, false, String(bad));
+      assert.ok(r.reason === 'NEGATIVE_COUNT' || r.reason === 'INVALID_COUNT',
+        String(bad) + ' → ' + r.reason);
+    }
+    assert.strictEqual(calculateBoxFill({ boxKey: 'sq_4x1_5',
+      largestWireSize: '12', numDevices: -2 }).reason, 'NEGATIVE_COUNT');
+    assert.strictEqual(calculateBoxFill({ boxKey: 'sq_4x1_5',
+      largestWireSize: '12', numSupportFittings: 2.5 }).reason, 'INVALID_COUNT');
+    for (const bad of [-1, NaN, Infinity, '6.5']) {
+      const r = calculateBoxFill({ boxKey: 'sq_4x1_5', largestWireSize: '12',
+        extensionVolume: bad });
+      assert.strictEqual(r.reason, 'INVALID_EXTENSION', String(bad));
+    }
+  });
+
+  test('pathological but valid counts terminate with finite arithmetic', () => {
+    const r = calculateBoxFill({ boxKey: 'sq_4x1_5', largestWireSize: '6',
+      numConductors: 1e6, numDevices: 1e6 });
+    assert.strictEqual(r.ok, true);
+    assert.ok(Number.isFinite(r.usedVolume) && r.fits === false);
+  });
+
+  test('no HTML anywhere in the structured result', () => {
+    const r = calculateBoxFill({ boxKey: 'sq_4x1_5', largestWireSize: '12',
+      numConductors: 6, numDevices: 1, hasClamps: true, hasEgc: true });
+    assert.ok(!JSON.stringify(r).includes('<'));
+  });
+});

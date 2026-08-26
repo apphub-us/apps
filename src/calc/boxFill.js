@@ -23,7 +23,19 @@ function calculateBoxFill(input) {
   const volPerWire = BF_VOL[largestWireSize];
   if (!box) return { ok: false, reason: 'BOX_NOT_IN_TABLE', boxKey };
   if (!volPerWire) return { ok: false, reason: 'WIRE_NOT_IN_TABLE', largestWireSize };
-  if (numConductors < 0 || numDevices < 0) return { ok: false, reason: 'NEGATIVE_COUNT' };
+  // Counts are allowances under 314.16(B): whole, non-negative, finite.
+  // Structured failure — never NaN totals, never a negative fill volume.
+  for (const [name, value] of [['numConductors', numConductors],
+    ['numDevices', numDevices], ['numSupportFittings', numSupportFittings]]) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value)) {
+      return { ok: false, reason: 'INVALID_COUNT', field: name, value };
+    }
+    if (value < 0) return { ok: false, reason: 'NEGATIVE_COUNT', field: name, value };
+  }
+  if (typeof extensionVolume !== 'number' || !Number.isFinite(extensionVolume)
+    || extensionVolume < 0) {
+    return { ok: false, reason: 'INVALID_EXTENSION', extensionVolume };
+  }
 
   const conductorVolume = numConductors * volPerWire;
   const deviceVolume = numDevices * 2 * volPerWire;

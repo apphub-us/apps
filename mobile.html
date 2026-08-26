@@ -2198,7 +2198,19 @@ window.EC = (function () {
       const volPerWire = BF_VOL[largestWireSize];
       if (!box) return { ok: false, reason: 'BOX_NOT_IN_TABLE', boxKey };
       if (!volPerWire) return { ok: false, reason: 'WIRE_NOT_IN_TABLE', largestWireSize };
-      if (numConductors < 0 || numDevices < 0) return { ok: false, reason: 'NEGATIVE_COUNT' };
+      // Counts are allowances under 314.16(B): whole, non-negative, finite.
+      // Structured failure — never NaN totals, never a negative fill volume.
+      for (const [name, value] of [['numConductors', numConductors],
+        ['numDevices', numDevices], ['numSupportFittings', numSupportFittings]]) {
+        if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value)) {
+          return { ok: false, reason: 'INVALID_COUNT', field: name, value };
+        }
+        if (value < 0) return { ok: false, reason: 'NEGATIVE_COUNT', field: name, value };
+      }
+      if (typeof extensionVolume !== 'number' || !Number.isFinite(extensionVolume)
+        || extensionVolume < 0) {
+        return { ok: false, reason: 'INVALID_EXTENSION', extensionVolume };
+      }
 
       const conductorVolume = numConductors * volPerWire;
       const deviceVolume = numDevices * 2 * volPerWire;
@@ -3647,65 +3659,36 @@ cfUpdateCalc();
 
 // ── BOX FILL DATA ────────────────────────────────────────
 // Conductor volume allowances in³ — NEC 314.16(B)(1) Table
-var BF_VOL = { '14':2.00, '12':2.25, '10':2.50, '8':3.00, '6':5.00 };
-
-// Box volumes in³ — NEC Table 314.16(A) + common plastic sizes
-var BF_BOXES = {
-  sq_4x1_25:      { label:'4" Square 1-1/4"',         vol:21.0 },
-  sq_4x1_5:       { label:'4" Square 1-1/2"',         vol:25.5 },
-  sq_4x2_125:     { label:'4" Square 2-1/8"',         vol:30.3 },
-  sq_4_11_16x1_5: { label:'4-11/16" Square 1-1/2"',  vol:42.0 },
-  sq_4_11_16x2_125:{ label:'4-11/16" Square 2-1/8"', vol:60.0 },
-  oct_4x1_25:     { label:'4" Octagon 1-1/4"',        vol:15.5 },
-  oct_4x1_5:      { label:'4" Octagon 1-1/2"',        vol:21.5 },
-  oct_4x2_125:    { label:'4" Octagon 2-1/8"',        vol:30.3 },
-  dev_3x2x1_5:    { label:'Device 3×2×1-1/2"',        vol:7.5  },
-  dev_3x2x2:      { label:'Device 3×2×2"',            vol:10.0 },
-  dev_3x2x2_25:   { label:'Device 3×2×2-1/4"',        vol:10.5 },
-  dev_3x2x2_5:    { label:'Device 3×2×2-1/2"',        vol:12.5 },
-  dev_3x2x2_75:   { label:'Device 3×2×2-3/4"',        vol:14.0 },
-  dev_3x2x3_5:    { label:'Device 3×2×3-1/2"',        vol:18.0 },
-  handy_1_5:      { label:'Handy Box 1-1/2"',          vol:10.3 },
-  handy_1_875:    { label:'Handy Box 1-7/8"',          vol:13.0 },
-  pl_sg_14:       { label:'Plastic 1-Gang 14 cu in',   vol:14.0 },
-  pl_sg_18:       { label:'Plastic 1-Gang 18 cu in',   vol:18.0 },
-  pl_sg_20:       { label:'Plastic 1-Gang 20 cu in',   vol:20.0 },
-  pl_sg_22:       { label:'Plastic 1-Gang 22 cu in',   vol:22.0 },
-  pl_dg_30:       { label:'Plastic 2-Gang 30 cu in',   vol:30.0 },
-  pl_dg_34:       { label:'Plastic 2-Gang 34 cu in',   vol:34.0 },
-  pl_dg_40:       { label:'Plastic 2-Gang 40 cu in',   vol:40.0 },
-  pl_tg_42:       { label:'Plastic 3-Gang 42 cu in',   vol:42.0 },
-  pl_tg_50:       { label:'Plastic 3-Gang 50 cu in',   vol:50.0 },
-  pl_oct_15:      { label:'Plastic Round/Oct 15 cu in',vol:15.0 },
-  pl_oct_20:      { label:'Plastic Round/Oct 20 cu in',vol:20.0 }
-};
+// NEC 314.16 data comes from the injected shared engine — one source.
+var BF_VOL = EC.tables.BF_VOL;
+var BF_BOXES = EC.tables.BF_BOXES;
 
 function bfUpdateCalc() {
+  // ── THIN ADAPTER ─────────────────────────────────────────────────────
+  // Reads the form, builds ONE structured request, calls the shared engine,
+  // renders the structured result. Every 314.16 decision — allowances,
+  // summation, remaining, fill percent, max conductors and the fits verdict —
+  // lives in EC.boxFill.calculateBoxFill. Nothing below re-decides any of it.
   var boxKey    = document.getElementById('bfBoxType').value;
   var wireSize  = document.getElementById('bfWireSize').value;
   var numCond   = parseInt(document.getElementById('bfConductors').value) || 0;
   var numDev    = parseInt(document.getElementById('bfDevices').value) || 0;
-  var hasClamps = parseInt(document.getElementById('bfClamps').value) || 0;
-  var hasEgc    = parseInt(document.getElementById('bfEgc').value) || 0;
-
+  var hasClamps = (parseInt(document.getElementById('bfClamps').value) || 0) > 0;
+  var hasEgc    = (parseInt(document.getElementById('bfEgc').value) || 0) > 0;
   var extVol    = parseFloat(document.getElementById('bfExtension').value) || 0;
-  var box = BF_BOXES[boxKey];
-  var volPerWire = BF_VOL[wireSize];
-  if (!box || !volPerWire) return;
 
-  // NEC 314.16(B) calculation
-  var condVol   = numCond * volPerWire;                    // (B)(1) conductors
-  var devVol    = numDev * 2 * volPerWire;                 // (B)(4) devices = 2×largest
-  var clampVol  = hasClamps * volPerWire;                  // (B)(2) clamps = 1×largest
-  var egcVol    = hasEgc * volPerWire;                     // (B)(5) EGC = 1×largest
-  var totalUsed = condVol + devVol + clampVol + egcVol;
-  var boxVol    = box.vol + extVol;  // NEC 314.16(A)(1) — extension adds volume
-  var remaining = boxVol - totalUsed;
-  var pct       = (totalUsed / boxVol * 100).toFixed(1);
-  var fits      = totalUsed <= boxVol;
-  var maxCond   = Math.floor((boxVol - devVol - clampVol - egcVol) / volPerWire);
-  if (maxCond < 0) maxCond = 0;
+  var r = EC.boxFill.calculateBoxFill({
+    boxKey: boxKey,
+    largestWireSize: wireSize,
+    numConductors: numCond,
+    numDevices: numDev,
+    hasClamps: hasClamps,
+    hasEgc: hasEgc,
+    extensionVolume: extVol
+  });
+  if (!r.ok) return;   // same quiet behavior the panel always had on bad input
 
+  var fits = r.fits;
   var sc = fits ? 'result-ok' : 'result-over';
 
   var bfBox = document.getElementById('bfResultBox');
@@ -3717,28 +3700,29 @@ function bfUpdateCalc() {
   var extLabel = extVol > 0 ? ' (+'+extVol.toFixed(1)+' ext)' : '';
   document.getElementById('bfResultGrid').innerHTML =
     '<div class="result-item"><div class="result-item-label">Status</div><div class="result-item-value '+sc+'">'+(fits?'✓ FITS':'✗ OVER')+'</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Total Volume</div><div class="result-item-value">'+boxVol.toFixed(1)+' in³'+extLabel+'</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Volume Used</div><div class="result-item-value '+sc+'">'+totalUsed.toFixed(2)+' in³</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Remaining</div><div class="result-item-value '+(remaining>=0?'result-ok':'result-over')+'">'+remaining.toFixed(2)+' in³</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Fill %</div><div class="result-item-value '+sc+'">'+pct+'%</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Max #'+wireSize+' Conductors</div><div class="result-item-value result-ok">'+maxCond+'</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Conductors ('+condVol.toFixed(2)+' in³)</div><div class="result-item-value">'+numCond+' × '+volPerWire+'"</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Devices ('+devVol.toFixed(2)+' in³)</div><div class="result-item-value">'+numDev+' × '+(2*volPerWire)+'"</div></div>';
+    '<div class="result-item"><div class="result-item-label">Total Volume</div><div class="result-item-value">'+r.boxVolume.toFixed(1)+' in³'+extLabel+'</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Volume Used</div><div class="result-item-value '+sc+'">'+r.usedVolume.toFixed(2)+' in³</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Remaining</div><div class="result-item-value '+(r.remaining>=0?'result-ok':'result-over')+'">'+r.remaining.toFixed(2)+' in³</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Fill %</div><div class="result-item-value '+sc+'">'+r.fillPercent.toFixed(1)+'%</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Max #'+wireSize+' Conductors</div><div class="result-item-value result-ok">'+r.maxConductors+'</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Conductors ('+r.conductorVolume.toFixed(2)+' in³)</div><div class="result-item-value">'+numCond+' × '+r.volPerWire+'"</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Devices ('+r.deviceVolume.toFixed(2)+' in³)</div><div class="result-item-value">'+numDev+' × '+(2*r.volPerWire)+'"</div></div>';
 }
 
 function bfInitRefTables() {
   // Conductor volume reference table
-  var wires = [
-    {s:'14',v:2.00}, {s:'12',v:2.25}, {s:'10',v:2.50}, {s:'8',v:3.00}, {s:'6',v:5.00}
-  ];
+  // Reference rows come straight from the shared NEC table — no third copy
+  // of the 314.16(B) volumes anywhere in the app.
+  var wireKeys = Object.keys(EC.tables.BF_VOL);
   var tbody = '';
-  for (var i = 0; i < wires.length; i++) {
-    var w = wires[i];
+  for (var i = 0; i < wireKeys.length; i++) {
+    var ws = wireKeys[i];
+    var wv = EC.tables.BF_VOL[ws];
     tbody += '<tr>'+
-      '<td class="wire-col">#'+w.s+' AWG</td>'+
-      '<td class="hi">'+w.v.toFixed(2)+' in³</td>'+
-      '<td>'+(w.v*2).toFixed(2)+' in³</td>'+
-      '<td>'+w.v.toFixed(2)+' in³</td>'+
+      '<td class="wire-col">#'+ws+' AWG</td>'+
+      '<td class="hi">'+wv.toFixed(2)+' in³</td>'+
+      '<td>'+(wv*2).toFixed(2)+' in³</td>'+
+      '<td>'+wv.toFixed(2)+' in³</td>'+
     '</tr>';
   }
   document.getElementById('bfRefTable').innerHTML = tbody;
