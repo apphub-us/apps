@@ -303,3 +303,115 @@ describe('Rooftop — NEC 2020 310.15(B)(2)', () => {
 });
 
 const round2 = (n) => Math.round(n * 100) / 100;
+
+describe('Wire Sizer hardening — shipped Ampacity Calculator cross-regression', () => {
+  // The Wire Sizer migration added context fields to calculateAmpacity's
+  // FAILURE return in src/calc/ampacity.js. This suite executes the REAL
+  // shipped ampUpdateCalc from mobile.html and pins representative results,
+  // proving the shipped Ampacity Calculator did not change.
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const APP = path.join(__dirname, '..', 'mobile.html');
+  const html = fs.existsSync(APP) ? fs.readFileSync(APP, 'utf8') : '';
+
+  function buildAmpHarness() {
+    const ids = ['ampWireSize', 'ampMaterial', 'ampInsul', 'ampTemp', 'ampBundle',
+      'ampRoof', 'ampRoofSun', 'ampRoofClearance', 'ampResultBox', 'ampResultGrid'];
+    const els = {};
+    ids.forEach((id) => {
+      els[id] = { value: '', innerHTML: '', style: {},
+        classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } } };
+    });
+    const doc = { getElementById: (id) => els[id] || null };
+    const win = {};
+    const s = html.indexOf('<!-- EC-CALC:START');
+    const e = html.indexOf('<!-- EC-CALC:END -->');
+    let block = html.slice(s, e);
+    block = block.slice(block.indexOf('<script>') + 8, block.lastIndexOf('</script>'));
+    // eslint-disable-next-line no-new-func
+    new Function('window', block)(win);
+    const fs2 = html.indexOf('function ampUpdateCalc');
+    const fe = html.indexOf('function ampRenderRefTable');
+    // AMP_TYPICAL_* are hand-maintained display tables (typical breaker
+    // chip); lift them from the app source exactly as shipped.
+    function varBlock(name) {
+      const i = html.indexOf('var ' + name);
+      let depth = 0; const st = html.indexOf('{', i);
+      for (let j = st; j < html.length; j++) {
+        if (html[j] === '{') depth++;
+        else if (html[j] === '}') {
+          depth--;
+          if (depth === 0) return html.slice(i, html.indexOf(';', j) + 1);
+        }
+      }
+      return '';
+    }
+    const api = {};
+    // eslint-disable-next-line no-new-func
+    new Function('document', 'window', 'EC', 'exports',
+      'var AMP_CU=EC.tables.AMP_CU,AMP_AL=EC.tables.AMP_AL,'
+      + 'AMP_TEMP_LOOKUP=EC.tables.AMP_TEMP_LOOKUP;'
+      + 'function ampGetBaseCol(i){return i==="tw"?"t60":i==="thw"?"t75":"t90";}'
+      + varBlock('AMP_TYPICAL_CU') + varBlock('AMP_TYPICAL_AL')
+      + 'var currentAmpMat = "cu";'   // module-scope material toggle state
+      + html.slice(fs2, fe)
+      + ';exports.ampUpdateCalc=ampUpdateCalc;'
+      + 'exports.setMat=function(m){currentAmpMat=m;};')(doc, win, win.EC, api);
+    return { els, api };
+  }
+
+  function run(h, inputs) {
+    const defaults = { ampWireSize: '8', ampMaterial: 'cu', ampInsul: 'thhn',
+      ampTemp: '86', ampBundle: '1.0', ampRoof: 'no', ampRoofSun: 'no',
+      ampRoofClearance: '' };
+    Object.entries({ ...defaults, ...inputs }).forEach(([k, v]) => { h.els[k].value = v; });
+    h.api.setMat(inputs.ampMaterial || defaults.ampMaterial);
+    h.api.ampUpdateCalc();
+    return h.els.ampResultGrid.innerHTML;
+  }
+
+  const skip = html ? false : 'mobile.html not found';
+  test('copper baseline, temperature correction, terminal limit and P0-1 band all unchanged', { skip }, () => {
+    const h = buildAmpHarness();
+    // Copper #8 THHN at base ambient: 55 A table value visible.
+    assert.ok(/55/.test(run(h, { ampWireSize: '8', ampMaterial: 'cu' })),
+      'Cu #8 THHN baseline drifted');
+    // Aluminum #6 THHN at base ambient: 60 A table value visible.
+    assert.ok(/60/.test(run(h, { ampWireSize: '6', ampMaterial: 'al' })),
+      'Al #6 THHN baseline drifted');
+    // Temperature correction at 104F on 90C insulation: 0.91 factor shown.
+    assert.ok(/0\.91/.test(run(h, { ampWireSize: '8', ampTemp: '104' })),
+      'temperature-correction factor drifted');
+    // P0-1 band regression: 88F must land in the 87–95F band (0.96), never a
+    // nearest-match on 86F. The adapter renders through the shared lookup.
+    const p01 = run(h, { ampWireSize: '8', ampTemp: '88' });
+    assert.ok(/0\.96/.test(p01), 'P0-1 band lookup drifted at 88F');
+    // Terminal limitation where applicable: 3/0 THHN Cu corrected value stays
+    // above the 75C column, so the 200 A terminal figure must appear.
+    assert.ok(/200/.test(run(h, { ampWireSize: '3/0', ampTemp: '86' })),
+      'the 110.14(C) terminal figure disappeared from the shipped output');
+  });
+
+  test('the failure-return context fields did not alter any success result', { skip }, () => {
+    const { calculateAmpacity } = require('../src/calc/ampacity');
+    // Success path: exact pre-hardening values, spot-pinned.
+    const cu = calculateAmpacity({ size: '8', material: 'cu', insulation: 'thhn',
+      ambientF: 104, adjustmentFactor: 1, terminalRatingC: 75 });
+    assert.strictEqual(cu.ok, true);
+    assert.strictEqual(cu.baseAmpacity, 55);
+    assert.strictEqual(cu.correctionFactor, 0.91);
+    assert.strictEqual(cu.terminalLimit, 50);
+    assert.strictEqual(cu.finalAmpacity, 50);
+    const al = calculateAmpacity({ size: '6', material: 'al', insulation: 'thw',
+      ambientF: 86, adjustmentFactor: 0.8, terminalRatingC: 75 });
+    assert.strictEqual(al.ok, true);
+    assert.strictEqual(al.baseAmpacity, 50);
+    assert.strictEqual(al.finalAmpacity, 40);
+    // Failure path: same ok/reason as before, now with render context.
+    const fail = calculateAmpacity({ size: '8', material: 'cu', insulation: 'tw',
+      ambientF: 140, adjustmentFactor: 1, terminalRatingC: 75 });
+    assert.strictEqual(fail.ok, false);
+    assert.strictEqual(fail.baseAmpacity, 40, 'context field: TW base');
+    assert.strictEqual(fail.terminalLimit, 50, 'context field: 75C column');
+  });
+});

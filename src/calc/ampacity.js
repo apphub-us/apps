@@ -241,6 +241,10 @@ function calculateAmpacity(input) {
     return {
       ok: false,
       reason: temp.reason,
+      // Context for callers rendering per-size rows: the size exists and has
+      // a table value even though no correction factor is published for it.
+      baseAmpacity,
+      terminalLimit: terminalRatingC === 60 ? row.t60 : row.t75,
       conductorRatingC: temp.conductorRatingC,
       temperatureBand: temp.band,
       ambientF,

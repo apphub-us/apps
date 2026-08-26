@@ -168,14 +168,155 @@ describe('Production Wire Sizer — NYC dwelling-feeder minimum', { skip: skipAl
   });
 
   test('material is read before it is used — no hoisting hazard remains', () => {
-    // Guards the specific root cause rather than the symptom.
+    // Guards the specific root cause rather than the symptom. Post-migration
+    // the NYC floor is decided in the shared engine, so the material's first
+    // production use is the engine request itself.
     const body = html.slice(html.lastIndexOf('function wsCalc'));
-    const matAt = body.indexOf("var mat");
-    const useAt = body.indexOf("mat === 'al'");
+    const matAt = body.indexOf('var mat');
+    const useAt = body.indexOf('material: mat');
     assert.ok(matAt > -1 && useAt > -1, 'expected both the assignment and the use');
     assert.ok(matAt < useAt,
       '`mat` is used before it is assigned; var hoisting will make it undefined');
     assert.strictEqual((body.match(/var mat\s*=/g) || []).length, 1,
       'a duplicate `var mat` assignment reintroduces the ordering hazard');
+    assert.ok(!/nycMinSize/.test(body.slice(0, body.indexOf('function wsGoToFillCalc'))),
+      'a local NYC minimum decision is back inside wsCalc');
+  });
+});
+
+describe('Production Wire Sizer — full migration to the shared engine', { skip: skipAll }, () => {
+  before(() => { if (!harness) harness = buildHarness(); });
+
+  test('BEHAVIORAL GUARD: the rendered winner comes from the engine result, not a local loop', () => {
+    // Poison the engine: make selectConductor return a fixed, absurd winner.
+    // A wsCalc that still ran its own candidate search would ignore this and
+    // render its own choice; the thin adapter must render the poison. This
+    // fails the moment production reintroduces an independent sizing
+    // algorithm, regardless of how it is spelled.
+    const real = harness.EC.wireSizing.selectConductor;
+    try {
+      harness.EC.wireSizing.selectConductor = () => ({
+        ok: true,
+        finalSelectedConductor: '3/0',
+        temperatureCorrectionFactor: 1,
+        evaluated: [{
+          size: '3/0', baseAmpacity: 200, terminalLimitedAmpacity: 200,
+          calculatedAmpacity: 200, ampacityOK: true, ocpdOK: true, vdOK: true,
+          voltDropPercent: 1.11, voltDropVolts: 2.31, voltageAtLoad: 205.69,
+        }],
+      });
+      const got = recommend({ wsLoad: '20', wsFeet: '10', wsMaterial: 'cu' });
+      assert.strictEqual(got, '3/0',
+        'wsCalc rendered its own winner — an independent selection loop is back');
+      assert.ok(harness.els.wsResult.innerHTML.includes('★'),
+        'the winner row must come from the engine evaluated list');
+    } finally {
+      harness.EC.wireSizing.selectConductor = real;
+    }
+  });
+
+  test('BEHAVIORAL GUARD: every wsCalc run calls the shared engine exactly once', () => {
+    const real = harness.EC.wireSizing.selectConductor;
+    let calls = 0;
+    try {
+      harness.EC.wireSizing.selectConductor = (req) => { calls++; return real(req); };
+      recommend({ wsLoad: '60', wsFeet: '120', wsMaterial: 'cu' });
+      assert.strictEqual(calls, 1, 'expected exactly one engine call per calculation');
+    } finally {
+      harness.EC.wireSizing.selectConductor = real;
+    }
+  });
+
+  test('the engine request carries every UI field faithfully', () => {
+    const real = harness.EC.wireSizing.selectConductor;
+    let seen = null;
+    try {
+      harness.EC.wireSizing.selectConductor = (req) => { seen = req; return real(req); };
+      recommend({
+        wsLoad: '90', wsContinuous: '40', wsFeet: '150', wsVoltage: '480',
+        wsPhase: '3', wsMaterial: 'al', wsBundle: '0.8', wsTemp: '104',
+        wsMaxVD: '3', wsInsul: 'thw', wsCircuitType: 'FEEDER',
+        wsDwelling: 'yes', wsHundredPct: 'yes',
+      });
+    } finally {
+      harness.EC.wireSizing.selectConductor = real;
+    }
+    assert.deepStrictEqual(seen, {
+      load: 90, continuousLoad: 40, feet: 150, voltage: 480, phase: 3,
+      material: 'al', insulation: 'thw', ambientF: 104, adjustmentFactor: 0.8,
+      maxVoltDropPercent: 3, terminalRatingC: 75, circuitType: 'FEEDER',
+      assemblyRatedFor100PercentContinuousOperation: true,
+      jurisdiction: 'NYC', feedsDwellingUnit: true,
+    });
+  });
+
+  test('ampacity-governed case: short run, production matches the engine', () => {
+    const got = recommend({ wsLoad: '100', wsFeet: '20', wsMaterial: 'cu' });
+    const eng = harness.EC.wireSizing.selectConductor({
+      load: 100, feet: 20, voltage: 208, phase: 1, material: 'cu',
+      insulation: 'thhn', terminalRatingC: 75, jurisdiction: 'NYC',
+    });
+    assert.strictEqual(got, eng.finalSelectedConductor);
+    assert.strictEqual(eng.governingConstraint, 'AMPACITY');
+  });
+
+  test('voltage-drop-governed case: long run upsizes past the ampacity size', () => {
+    const got = recommend({ wsLoad: '60', wsFeet: '400', wsVoltage: '208', wsMaterial: 'cu' });
+    const eng = harness.EC.wireSizing.selectConductor({
+      load: 60, feet: 400, voltage: 208, phase: 1, material: 'cu',
+      insulation: 'thhn', terminalRatingC: 75, jurisdiction: 'NYC',
+    });
+    assert.strictEqual(got, eng.finalSelectedConductor);
+    assert.strictEqual(eng.governingConstraint, 'VOLTAGE_DROP');
+    assert.ok(cm(eng.finalSelectedConductor) > cm(eng.sizeRequiredByAmpacity),
+      'voltage drop should have pushed past the ampacity-only size');
+  });
+
+  test('terminal-limit case: 90C insulation is still capped at the 75C column', () => {
+    // 55 A on THHN copper: #8 THHN base is 55 A, but 110.14(C) caps it at the
+    // 75C column (50 A), so #8 must be rejected and #6 selected. A production
+    // path that used the 90C column uncapped would return #8.
+    const got = recommend({ wsLoad: '55', wsInsul: 'thhn', wsMaterial: 'cu' });
+    assert.strictEqual(got, '6', 'terminal limiting was lost in migration');
+    const eng = harness.EC.wireSizing.selectConductor({
+      load: 55, material: 'cu', insulation: 'thhn', terminalRatingC: 75,
+    });
+    assert.strictEqual(got, eng.finalSelectedConductor);
+    const rejected = eng.evaluated.find((e) => e.size === '8');
+    assert.strictEqual(rejected.terminalLimit, 50);
+    assert.strictEqual(rejected.ampacityOK, false);
+  });
+
+  test('continuous-load case: production applies 125% through the engine', () => {
+    // 40 A continuous alone: 1.25 x 40 = 50 A -> #8 Cu (t75 = 50) exactly.
+    const got = recommend({ wsLoad: '40', wsContinuous: '40', wsMaterial: 'cu' });
+    const eng = harness.EC.wireSizing.selectConductor({
+      load: 40, continuousLoad: 40, material: 'cu', insulation: 'thhn',
+    });
+    assert.strictEqual(got, eng.finalSelectedConductor);
+    assert.strictEqual(eng.continuousLoadSizingRequirementA, 50);
+  });
+
+  test('no-qualifier case renders the failure card, never loops forever', () => {
+    recommend({ wsLoad: '9000', wsMaterial: 'cu' });
+    assert.ok(harness.els.wsResult.innerHTML.includes('No single conductor qualifies'));
+  });
+
+  test('the null-correction combo (140F + TW) still renders the all-fail table', () => {
+    recommend({ wsLoad: '30', wsTemp: '140', wsInsul: 'tw', wsMaterial: 'cu' });
+    const out = harness.els.wsResult.innerHTML;
+    assert.ok(out.includes('No single conductor qualifies'));
+    assert.ok(out.includes('×0.00×'), 'the zero-factor rows disappeared from the table');
+  });
+
+  test('structural: wsCalc owns no sizing loop, tables, or VD formula', () => {
+    const s2 = html.lastIndexOf('function wsCalc');
+    const body = html.slice(s2, html.indexOf('function wsGoToFillCalc', s2));
+    for (const banned of ['var sizes =', 'VD_K[', 'VD_CM[', '1.732',
+      'smallConductorOcpdLimit', 'STANDARD_OCPD', 'nycMinSize', 'var t75',
+      'contReq', 'tableAtTerminal']) {
+      assert.ok(!body.includes(banned), 'electrical logic is back in wsCalc: ' + banned);
+    }
+    assert.ok(body.includes('EC.wireSizing.selectConductor'));
   });
 });

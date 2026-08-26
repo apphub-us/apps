@@ -462,3 +462,244 @@ describe('NYC minimum dwelling-unit feeder — NYCEC 2025 215.2(A)(1)', () => {
       'the note must mention the 3-conductor requirement this tool does not verify');
   });
 });
+
+describe('Wire Sizer migration — boundary and structured-result contracts', () => {
+  const { selectConductor } = require('../src/calc/wireSizing');
+
+  test('exactly at required ampacity is accepted; one amp over steps up', () => {
+    // #3 Cu at a 75C terminal is exactly 100 A.
+    const at = selectConductor({ load: 100, material: 'cu', insulation: 'thhn' });
+    assert.strictEqual(at.finalSelectedConductor, '3');
+    const over = selectConductor({ load: 101, material: 'cu', insulation: 'thhn' });
+    assert.strictEqual(over.finalSelectedConductor, '2');
+  });
+
+  test('exactly at the VD target passes; just over it upsizes', () => {
+    // Solve feet so #6 Cu lands exactly on 3.00% at 208 V, 40 A, 1ph:
+    // pct = (2*12.9*40*feet/26240)/208*100  →  feet = 3.00 * 208 * 26240 / (100*2*12.9*40)
+    const feetExact = (3.0 * 208 * 26240) / (100 * 2 * 12.9 * 40);
+    const at = selectConductor({ load: 40, feet: feetExact, voltage: 208,
+      phase: 1, material: 'cu', insulation: 'thhn', maxVoltDropPercent: 3 });
+    assert.strictEqual(at.finalSelectedConductor, '6', 'exactly at target must pass');
+    const over = selectConductor({ load: 40, feet: feetExact + 1, voltage: 208,
+      phase: 1, material: 'cu', insulation: 'thhn', maxVoltDropPercent: 3 });
+    assert.strictEqual(over.finalSelectedConductor, '4', 'just over must upsize');
+    assert.strictEqual(over.governingConstraint, 'VOLTAGE_DROP');
+  });
+
+  test('continuous-load threshold: 125% exactly reaching a column boundary', () => {
+    // 40 A all-continuous: requirement 50 A = #8 Cu t75 exactly.
+    const r = selectConductor({ load: 40, continuousLoad: 40, material: 'cu' });
+    assert.strictEqual(r.continuousLoadSizingRequirementA, 50);
+    assert.strictEqual(r.finalSelectedConductor, '8');
+    // One amp of continuous more pushes past the column.
+    const r2 = selectConductor({ load: 41, continuousLoad: 41, material: 'cu' });
+    assert.strictEqual(r2.finalSelectedConductor, '6');
+  });
+
+  test('small-conductor OCPD boundary: #10 Cu at its 30 A ceiling', () => {
+    const at = selectConductor({ load: 30, material: 'cu', insulation: 'thw' });
+    assert.strictEqual(at.finalSelectedConductor, '10',
+      '30 A on #10 needs a 30 A device — exactly at the 240.4(D) ceiling');
+    const over = selectConductor({ load: 31, material: 'cu', insulation: 'thw' });
+    const ten = over.evaluated.find((e) => e.size === '10');
+    assert.strictEqual(ten.reason, 'OCPD_EXCEEDS_240_4_D_LIMIT',
+      '31 A derives a 35 A device, over the 30 A ceiling');
+    assert.strictEqual(over.finalSelectedConductor, '8');
+  });
+
+  test('NYC minimum below / at / above the floor, both materials', () => {
+    const below = selectConductor({ load: 20, material: 'al',
+      circuitType: 'FEEDER', feedsDwellingUnit: true });
+    assert.strictEqual(below.finalSelectedConductor, '6');
+    assert.strictEqual(below.governingConstraint, 'NYC_DWELLING_FEEDER_MINIMUM');
+    const at = selectConductor({ load: 45, material: 'al',
+      circuitType: 'FEEDER', feedsDwellingUnit: true });
+    assert.strictEqual(at.finalSelectedConductor, '6',
+      '45 A needs #6 Al on its own; the floor coincides');
+    // Sharper truth after the terminal-explanation hardening: what pushes
+    // 45 A past #8 Al is the 110.14(C) cap (#8 Al at 90C is exactly 45 A and
+    // would pass uncapped), so the terminal limit — not the coinciding NYC
+    // floor — is the governing constraint.
+    assert.strictEqual(at.governingConstraint, 'TERMINAL_LIMIT');
+    assert.deepStrictEqual(at.governingConstraints, ['AMPACITY', 'TERMINAL_LIMIT']);
+    const above = selectConductor({ load: 60, material: 'al',
+      circuitType: 'FEEDER', feedsDwellingUnit: true });
+    assert.strictEqual(above.finalSelectedConductor, '4');
+    assert.strictEqual(above.governingConstraint, 'AMPACITY');
+  });
+
+  test('terminal column boundary: 60C vs 75C termination changes the pick', () => {
+    const t75 = selectConductor({ load: 55, material: 'cu', insulation: 'thhn',
+      terminalRatingC: 75 });
+    assert.strictEqual(t75.finalSelectedConductor, '6');
+    const t60 = selectConductor({ load: 55, material: 'cu', insulation: 'thhn',
+      terminalRatingC: 60 });
+    assert.strictEqual(t60.finalSelectedConductor, '6',
+      '#6 t60 is exactly 55 A — at the boundary it must still pass');
+    const t60over = selectConductor({ load: 56, material: 'cu', insulation: 'thhn',
+      terminalRatingC: 60 });
+    assert.strictEqual(t60over.finalSelectedConductor, '4');
+  });
+
+  test('governing constraint is deterministic across the stage ladder', () => {
+    const amp = selectConductor({ load: 100, feet: 10, voltage: 480, phase: 3,
+      material: 'cu' });
+    assert.strictEqual(amp.governingConstraint, 'AMPACITY');
+    const ocpd = selectConductor({ load: 31, material: 'cu', insulation: 'thw' });
+    assert.strictEqual(ocpd.governingConstraint, 'OCPD_240_4_D');
+    assert.deepStrictEqual(ocpd.governingConstraints, ['OCPD_240_4_D']);
+    const vd = selectConductor({ load: 60, feet: 400, voltage: 208, material: 'cu' });
+    assert.strictEqual(vd.governingConstraint, 'VOLTAGE_DROP');
+    const nyc = selectConductor({ load: 15, material: 'cu',
+      circuitType: 'FEEDER', feedsDwellingUnit: true });
+    assert.strictEqual(nyc.governingConstraint, 'NYC_DWELLING_FEEDER_MINIMUM');
+  });
+
+  test('invalid inputs fail with structured reasons, never NaN or a hang', () => {
+    assert.strictEqual(selectConductor({ load: NaN }).reason, 'INVALID_LOAD');
+    assert.strictEqual(selectConductor({ load: -5 }).reason, 'NEGATIVE_LOAD');
+    assert.strictEqual(selectConductor({}).reason, 'NO_LOAD_SUPPLIED');
+    assert.strictEqual(selectConductor({ load: 20, material: 'brass' }).reason,
+      'INVALID_MATERIAL');
+    assert.strictEqual(selectConductor({ load: 20, feet: -10 }).reason,
+      'INVALID_DISTANCE');
+    assert.strictEqual(selectConductor({ load: 20, feet: NaN }).reason,
+      'INVALID_DISTANCE');
+    assert.strictEqual(selectConductor({ load: 20, feet: 50, voltage: 0 }).reason,
+      'INVALID_VOLTAGE');
+    assert.strictEqual(selectConductor({ load: 20, feet: 50, voltage: NaN }).reason,
+      'INVALID_VOLTAGE');
+    assert.strictEqual(selectConductor({ load: 20, feet: 50, phase: 2 }).reason,
+      'INVALID_PHASE');
+    assert.strictEqual(selectConductor({ load: 20, adjustmentFactor: 0 }).reason,
+      'INVALID_ADJUSTMENT_FACTOR');
+    assert.strictEqual(selectConductor({ load: 20, circuitType: 'SERVICE' }).reason,
+      'INVALID_CIRCUIT_TYPE');
+  });
+
+  test('termination: impossible loads and unmeetable VD targets return, with nulls', () => {
+    const huge = selectConductor({ load: 9000, material: 'cu' });
+    assert.strictEqual(huge.ok, true);
+    assert.strictEqual(huge.finalSelectedConductor, null);
+    assert.strictEqual(huge.governingConstraint, null);
+    const unmeetable = selectConductor({ load: 200, feet: 5000, voltage: 120,
+      material: 'al', maxVoltDropPercent: 2 });
+    assert.strictEqual(unmeetable.ok, true);
+    assert.strictEqual(unmeetable.finalSelectedConductor, null);
+    assert.strictEqual(unmeetable.sizeRequiredWithVoltageDrop, null,
+      'no conductor in the table meets the target — reported, not looped');
+    assert.ok(unmeetable.sizeRequiredByAmpacity, 'the ampacity stage still resolves');
+  });
+
+  test('the preferred load model now drives voltage drop (P1-10 fix)', () => {
+    const r = selectConductor({ continuousLoadA: 40, noncontinuousLoadA: 20,
+      feet: 250, voltage: 240, material: 'cu' });
+    assert.strictEqual(r.ok, true);
+    assert.ok(r.finalSelectedConductor, 'a conductor must be selectable');
+    const win = r.evaluated.find((e) => e.size === r.finalSelectedConductor);
+    assert.ok(win.voltDropPercent > 0,
+      'voltage drop must be computed from the resolved 60 A total');
+    assert.ok(win.voltDropVolts > 0 && win.voltageAtLoad < 240);
+  });
+
+  test('the result carries everything a renderer needs, no HTML anywhere', () => {
+    const r = selectConductor({ load: 60, feet: 120, voltage: 208, material: 'cu' });
+    for (const k of ['material', 'insulation', 'ambientF', 'adjustmentFactor',
+      'terminalRatingC', 'voltage', 'feet', 'phase', 'maxVoltDropPercent',
+      'temperatureCorrectionFactor', 'sizeRequiredByAmpacity',
+      'sizeRequiredWithOcpdRule', 'sizeRequiredWithVoltageDrop',
+      'governingConstraint', 'governingConstraints']) {
+      assert.ok(k in r, 'missing result field: ' + k);
+    }
+    const row = r.evaluated[0];
+    for (const k of ['baseAmpacity', 'terminalLimit', 'terminalLimitedAmpacity',
+      'voltDropPercent', 'voltDropVolts', 'voltageAtLoad']) {
+      assert.ok(k in row, 'missing row field: ' + k);
+    }
+    assert.ok(!JSON.stringify(r).includes('<'), 'no markup in the engine result');
+  });
+});
+
+describe('Wire Sizer hardening — terminal-governed explanation contract', () => {
+  const { selectConductor } = require('../src/calc/wireSizing');
+
+  test('55 A THHN Cu: the result states TERMINAL_LIMIT governed, end to end', () => {
+    const r = selectConductor({ load: 55, material: 'cu', insulation: 'thhn',
+      terminalRatingC: 75 });
+    assert.strictEqual(r.finalSelectedConductor, '6');
+    assert.strictEqual(r.governingConstraint, 'TERMINAL_LIMIT');
+    assert.deepStrictEqual(r.governingConstraints, ['AMPACITY', 'TERMINAL_LIMIT']);
+    assert.strictEqual(r.sizeRequiredByAmpacity, '6');
+    assert.strictEqual(r.sizeRequiredByAmpacityIgnoringTerminalLimit, '8',
+      'the 90C column alone would have allowed #8');
+    assert.strictEqual(r.terminalLimitRaisedAmpacityStage, true);
+    assert.strictEqual(r.terminalLimitGovernsOnSelected, true);
+    const rejected = r.evaluated.find((e) => e.size === '8');
+    assert.strictEqual(rejected.baseAmpacity, 55);
+    assert.strictEqual(rejected.terminalLimit, 50);
+    assert.strictEqual(rejected.terminalLimitedAmpacity, 50);
+    assert.strictEqual(rejected.ampacityOK, false);
+    assert.strictEqual(rejected.ampacityWouldPassWithoutTerminalLimit, true);
+    assert.strictEqual(rejected.rejectedOnlyByTerminalLimit, true,
+      'the renderer-readable statement: rejected ONLY because of 110.14(C)');
+    const winner = r.evaluated.find((e) => e.size === '6');
+    assert.strictEqual(winner.baseAmpacity, 75);
+    assert.strictEqual(winner.terminalLimit, 65);
+    assert.strictEqual(winner.terminalLimitedAmpacity, 65);
+  });
+
+  test('contrast: 60 A Cu is plain AMPACITY — #8 fails with or without the cap', () => {
+    const r = selectConductor({ load: 60, material: 'cu', insulation: 'thhn' });
+    assert.strictEqual(r.finalSelectedConductor, '6');
+    assert.strictEqual(r.governingConstraint, 'AMPACITY');
+    assert.deepStrictEqual(r.governingConstraints, ['AMPACITY']);
+    assert.strictEqual(r.terminalLimitRaisedAmpacityStage, false);
+    const rejected = r.evaluated.find((e) => e.size === '8');
+    assert.strictEqual(rejected.rejectedOnlyByTerminalLimit, false);
+  });
+
+  test('the refinement never rewrites a VD- or NYC-governed selection', () => {
+    const vd = selectConductor({ load: 55, feet: 400, voltage: 208,
+      material: 'cu', insulation: 'thhn' });
+    assert.strictEqual(vd.governingConstraint, 'VOLTAGE_DROP',
+      'terminal raising of the ampacity stage must not outrank the true last raiser');
+    assert.ok(vd.governingConstraints.indexOf('TERMINAL_LIMIT') === -1);
+    const nyc = selectConductor({ load: 15, material: 'cu',
+      circuitType: 'FEEDER', feedsDwellingUnit: true });
+    assert.strictEqual(nyc.governingConstraint, 'NYC_DWELLING_FEEDER_MINIMUM');
+  });
+
+  test('the diagnostic never changes acceptance: selections match pre-hardening picks', () => {
+    for (const [input, expect] of [
+      [{ load: 55, material: 'cu', insulation: 'thhn' }, '6'],
+      [{ load: 60, material: 'cu', insulation: 'thhn' }, '6'],
+      [{ load: 45, material: 'al', circuitType: 'FEEDER', feedsDwellingUnit: true }, '6'],
+      [{ load: 100, material: 'cu', insulation: 'thhn' }, '3'],
+    ]) {
+      assert.strictEqual(selectConductor(input).finalSelectedConductor, expect,
+        JSON.stringify(input));
+    }
+  });
+});
+
+describe('Wire Sizer hardening — P1-10 model equivalence', () => {
+  const { selectConductor } = require('../src/calc/wireSizing');
+
+  test('the same physical circuit through both load models is one decision', () => {
+    // 40 A continuous + 20 A noncontinuous, 250 ft, 240 V, 1ph copper.
+    const preferred = selectConductor({ continuousLoadA: 40, noncontinuousLoadA: 20,
+      feet: 250, voltage: 240, phase: 1, material: 'cu', insulation: 'thhn' });
+    const legacy = selectConductor({ load: 60, continuousLoad: 40,
+      feet: 250, voltage: 240, phase: 1, material: 'cu', insulation: 'thhn' });
+    assert.strictEqual(preferred.ok, true);
+    assert.strictEqual(legacy.ok, true);
+    assert.strictEqual(preferred.finalSelectedConductor, legacy.finalSelectedConductor);
+    const pw = preferred.evaluated.find((e) => e.size === preferred.finalSelectedConductor);
+    const lw = legacy.evaluated.find((e) => e.size === legacy.finalSelectedConductor);
+    assert.strictEqual(pw.voltDropPercent, lw.voltDropPercent,
+      'both models must feed the SAME resolved 60 A total into voltage drop');
+    assert.ok(pw.voltDropPercent > 0);
+    assert.deepStrictEqual(preferred.governingConstraints, legacy.governingConstraints);
+  });
+});

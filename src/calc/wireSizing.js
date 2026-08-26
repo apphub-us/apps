@@ -95,6 +95,9 @@ function selectConductor(input) {
     contA = continuousLoadA || 0;
     noncontA = noncontinuousLoadA || 0;
   } else if (load !== null) {
+    if (load < 0) {
+      return { ok: false, reason: 'NEGATIVE_LOAD', load };
+    }
     contA = continuousLoad || 0;
     if (contA > load) {
       return { ok: false, reason: 'INVALID_CONTINUOUS_LOAD', continuousLoad: contA, load };
@@ -110,6 +113,23 @@ function selectConductor(input) {
   if (!(totalActualLoadA > 0)) return { ok: false, reason: 'INVALID_LOAD', load: totalActualLoadA };
   if (circuitType !== 'BRANCH_CIRCUIT' && circuitType !== 'FEEDER') {
     return { ok: false, reason: 'INVALID_CIRCUIT_TYPE', circuitType };
+  }
+  if (material !== 'cu' && material !== 'al') {
+    return { ok: false, reason: 'INVALID_MATERIAL', material };
+  }
+  if (!(feet >= 0) || !Number.isFinite(feet)) {
+    return { ok: false, reason: 'INVALID_DISTANCE', feet };
+  }
+  if (feet > 0) {
+    if (!(voltage > 0) || !Number.isFinite(voltage)) {
+      return { ok: false, reason: 'INVALID_VOLTAGE', voltage };
+    }
+    if (Number(phase) !== 1 && Number(phase) !== 3) {
+      return { ok: false, reason: 'INVALID_PHASE', phase };
+    }
+  }
+  if (!(adjustmentFactor > 0) || !Number.isFinite(adjustmentFactor)) {
+    return { ok: false, reason: 'INVALID_ADJUSTMENT_FACTOR', adjustmentFactor };
   }
 
   const hundredPercentRatedExceptionApplied =
@@ -149,7 +169,59 @@ function selectConductor(input) {
     const amp = calculateAmpacity({
       size, material, insulation, ambientF, adjustmentFactor, terminalRatingC,
     });
-    if (!amp.ok) continue;
+    if (!amp.ok) {
+      // No published correction factor for this conductor rating at this
+      // ambient (e.g. 140°F with TW). The conductor cannot qualify, but the
+      // row is still reported — with zero usable ampacity, exactly as the
+      // pre-migration app showed it — so the renderer never reaches into the
+      // tables itself. OCPD and voltage drop are still evaluated for the row
+      // display; they cannot make it pass.
+      const cap = smallConductorOcpdLimit(size, material);
+      const derived = STANDARD_OCPD.find((b) => b >= continuousLoadSizingRequirementA) ?? null;
+      const degradedOcpdOK = (cap === null) || (derived !== null && derived <= cap);
+      let dvd = null;
+      let dvdOK = true;
+      if (feet > 0 && VD_CM[size]) {
+        dvd = calculateVoltageDrop({
+          amps: totalActualLoadA, feet, voltage, phase, material, size,
+        });
+        dvdOK = dvd.ok && dvd.percentDrop <= maxVoltDropPercent;
+      }
+      evaluated.push({
+        size,
+        ampacityDeterminable: false,
+        ampacityUnavailableReason: amp.reason,
+        baseAmpacity: amp.baseAmpacity !== undefined ? amp.baseAmpacity : null,
+        temperatureCorrectionFactor: 0,
+        adjustmentFactor,
+        terminalLimit: amp.terminalLimit !== undefined ? amp.terminalLimit : null,
+        terminalLimitGoverns: false,
+        calculatedAmpacity: 0,
+        terminalLimitedAmpacity: 0,
+        tableAmpacityAtTerminal: 0,
+        continuousTestOK: false,
+        conditionsOfUseTestOK: false,
+        finalAmpacity: 0,
+        ampacityOK: false,
+        ampacityWouldPassWithoutTerminalLimit: false,
+        rejectedOnlyByTerminalLimit: false,
+        smallConductorRuleApplies: cap !== null,
+        maxOcpdUnder240_4_D: cap,
+        selectedOcpd: null,
+        derivedOcpdForSizing: derived,
+        ocpdCheckValue: derived,
+        ocpdBasis: contA > 0 ? 'CONTINUOUS_LOAD_RULE_MINIMUM' : 'SMALLEST_STANDARD_FOR_CURRENT_LOAD',
+        ocpdOK: degradedOcpdOK,
+        voltDropPercent: dvd && dvd.ok ? dvd.percentDrop : null,
+        voltDropVolts: dvd && dvd.ok ? dvd.voltageDrop : null,
+        voltageAtLoad: dvd && dvd.ok ? dvd.voltageAtLoad : null,
+        vdOK: dvdOK,
+        conductorAccepted: false,
+        passes: false,
+        reason: 'AMPACITY_NOT_DETERMINABLE',
+      });
+      continue;
+    }
 
     // ── the six concepts, kept distinct ──────────────────────────────
     // 1. calculated ampacity      base x correction x adjustment
@@ -169,6 +241,14 @@ function selectConductor(input) {
     const continuousTestOK = tableAmpacityAtTerminal >= continuousLoadSizingRequirementA;
     const conditionsOfUseTestOK = terminalLimitedAmpacity >= conditionsOfUseRequirementA;
     const ampacityOK = continuousTestOK && conditionsOfUseTestOK;
+    // The same two tests with NO 110.14(C) cap: base table value for test (a),
+    // corrected/adjusted value for test (b). Diagnostic only — never used for
+    // acceptance — so a renderer can state, without re-deciding, that a
+    // conductor was rejected ONLY because of the terminal limitation.
+    const ampacityWouldPassWithoutTerminalLimit =
+      amp.baseAmpacity >= continuousLoadSizingRequirementA
+      && calculatedAmpacity >= conditionsOfUseRequirementA;
+    const rejectedOnlyByTerminalLimit = !ampacityOK && ampacityWouldPassWithoutTerminalLimit;
 
     // Overcurrent device. 210.20(A) / 215.3: the rating shall not be less than
     // noncontinuous + 125% continuous. Where the caller supplied a device we
@@ -193,7 +273,12 @@ function selectConductor(input) {
     let vd = null;
     let vdOK = true;
     if (feet > 0 && VD_CM[size]) {
-      vd = calculateVoltageDrop({ amps: load, feet, voltage, phase, material, size });
+      // totalActualLoadA, never the legacy `load` field: with the preferred
+      // continuous/noncontinuous input model `load` is null, and a null here
+      // silently failed every voltage-drop check (P1-10).
+      vd = calculateVoltageDrop({
+        amps: totalActualLoadA, feet, voltage, phase, material, size,
+      });
       vdOK = vd.ok && vd.percentDrop <= maxVoltDropPercent;
     }
 
@@ -206,6 +291,11 @@ function selectConductor(input) {
 
     evaluated.push({
       size,
+      baseAmpacity: amp.baseAmpacity,
+      temperatureCorrectionFactor: amp.correctionFactor,
+      adjustmentFactor: amp.adjustmentFactor,
+      terminalLimit: amp.terminalLimit,
+      terminalLimitGoverns: amp.terminalLimitGoverns,
       calculatedAmpacity,
       terminalLimitedAmpacity,
       tableAmpacityAtTerminal,
@@ -213,6 +303,8 @@ function selectConductor(input) {
       conditionsOfUseTestOK,
       finalAmpacity: terminalLimitedAmpacity, // retained for existing callers
       ampacityOK,
+      ampacityWouldPassWithoutTerminalLimit,
+      rejectedOnlyByTerminalLimit,
       smallConductorRuleApplies,
       maxOcpdUnder240_4_D,
       selectedOcpd,           // non-null ONLY when the caller supplied one
@@ -221,6 +313,8 @@ function selectConductor(input) {
       ocpdBasis,
       ocpdOK,
       voltDropPercent: vd && vd.ok ? vd.percentDrop : null,
+      voltDropVolts: vd && vd.ok ? vd.voltageDrop : null,
+      voltageAtLoad: vd && vd.ok ? vd.voltageAtLoad : null,
       vdOK,
       conductorAccepted: passes,
       passes,
@@ -239,6 +333,55 @@ function selectConductor(input) {
   const finalSelectedConductor = winner;
 
   const win = evaluated.find((e) => e.size === winner) || null;
+
+  // ── governing constraint (deterministic, explainable) ────────────────
+  // Stage sizes: the smallest conductor that satisfies each cumulative set of
+  // constraints in fixed order AMPACITY → 240.4(D) OCPD → VOLTAGE DROP, then
+  // the NYC floor. Each stage can only hold or raise the size; the final
+  // selection is the last stage. The governing constraint is the LAST stage
+  // that actually raised it — every earlier constraint was already satisfied
+  // at the smaller size, so it cannot be the binding one.
+  const stageIndex = (pred) => {
+    const hit = evaluated.find(pred);
+    return hit ? SIZE_ORDER.indexOf(hit.size) : Infinity;
+  };
+  const idxAmpacityStage = stageIndex((e) => e.ampacityOK);
+  const idxAmpacityUncapped = stageIndex((e) => e.ampacityWouldPassWithoutTerminalLimit);
+  const terminalLimitRaisedAmpacityStage =
+    idxAmpacityStage !== Infinity && idxAmpacityStage > idxAmpacityUncapped;
+  const idxOcpdStage = stageIndex((e) => e.ampacityOK && e.ocpdOK);
+  const idxVdStage = stageIndex((e) => e.ampacityOK && e.ocpdOK && e.vdOK);
+  const sizeRequiredByAmpacity =
+    idxAmpacityStage === Infinity ? null : SIZE_ORDER[idxAmpacityStage];
+  const sizeRequiredWithOcpdRule =
+    idxOcpdStage === Infinity ? null : SIZE_ORDER[idxOcpdStage];
+  const sizeRequiredWithVoltageDrop =
+    idxVdStage === Infinity ? null : SIZE_ORDER[idxVdStage];
+
+  let governingConstraint = null;
+  const governingConstraints = [];
+  if (finalSelectedConductor) {
+    const finalIdx = SIZE_ORDER.indexOf(finalSelectedConductor);
+    if (idxAmpacityStage === finalIdx) {
+      governingConstraints.push('AMPACITY');
+      // Refine, don't replace: AMPACITY stays in the list (the ampacity
+      // family is what binds), and TERMINAL_LIMIT is appended when the
+      // 110.14(C) cap is specifically what pushed the stage up — so the
+      // singular governingConstraint names the true cause.
+      if (terminalLimitRaisedAmpacityStage) governingConstraints.push('TERMINAL_LIMIT');
+    }
+    if (idxOcpdStage === finalIdx && idxOcpdStage > idxAmpacityStage) {
+      governingConstraints.push('OCPD_240_4_D');
+    }
+    if (idxVdStage === finalIdx && idxVdStage > idxOcpdStage) {
+      governingConstraints.push('VOLTAGE_DROP');
+    }
+    if (nycDwellingFeederMinimumApplies
+      && requiredConductorSizeBeforeNYCMinimum !== finalSelectedConductor) {
+      governingConstraints.push('NYC_DWELLING_FEEDER_MINIMUM');
+    }
+    governingConstraint = governingConstraints[governingConstraints.length - 1] || 'AMPACITY';
+  }
 
   // Which test actually drives the conductor size? The two requirement figures
   // are judged against different ampacities — the continuous test against the
@@ -279,6 +422,28 @@ function selectConductor(input) {
     requiredConductorSizeBeforeNYCMinimum,
     finalSelectedConductor,
     codeReferences,
+    // Input echoes the renderer needs verbatim (never re-derived in the UI).
+    material,
+    insulation,
+    ambientF,
+    adjustmentFactor,
+    terminalRatingC,
+    voltage,
+    feet,
+    phase: Number(phase),
+    maxVoltDropPercent,
+    temperatureCorrectionFactor: win ? win.temperatureCorrectionFactor
+      : (evaluated[0] ? evaluated[0].temperatureCorrectionFactor : null),
+    // Governing-constraint decomposition.
+    sizeRequiredByAmpacity,
+    sizeRequiredByAmpacityIgnoringTerminalLimit:
+      idxAmpacityUncapped === Infinity ? null : SIZE_ORDER[idxAmpacityUncapped],
+    terminalLimitRaisedAmpacityStage,
+    sizeRequiredWithOcpdRule,
+    sizeRequiredWithVoltageDrop,
+    governingConstraint,
+    governingConstraints,
+    terminalLimitGovernsOnSelected: win ? win.terminalLimitGoverns : null,
     // retained for existing callers
     load: totalActualLoadA,
     requiredAmpacity: requiredConductorAmpacityA,

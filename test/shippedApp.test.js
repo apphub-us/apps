@@ -36,18 +36,20 @@ describe('Shipped app — data integrity guards', { skip: skipAll }, () => {
     }
   });
 
-  test('P2-1 DRIFT GUARD: wsCalc keeps a second hardcoded 75C table — it must agree with AMP_CU', () => {
-    const { AMP_CU, AMP_AL } = require('../src/calc/tables');
-    const s = html.indexOf('var t75 = {', html.indexOf('function wsCalc'));
-    const sandbox = {};
-    // eslint-disable-next-line no-new-func
-    new Function('exports', html.slice(s, html.indexOf('};', s) + 2) + ';exports.t75=t75;')(sandbox);
-    for (const size of Object.keys(sandbox.t75.cu)) {
-      assert.strictEqual(sandbox.t75.cu[size], AMP_CU[size].t75, `Cu drift at ${size}`);
-    }
-    for (const size of Object.keys(sandbox.t75.al)) {
-      assert.strictEqual(sandbox.t75.al[size], AMP_AL[size].t75, `Al drift at ${size}`);
-    }
+  test('P2-1 RESOLVED: the second hardcoded 75C table is GONE from wsCalc', () => {
+    // Before the Wire Sizer migration wsCalc carried its own t75 map, and
+    // this guard proved it agreed with the shared tables. The migration
+    // removed the map entirely: the ONLY 110.14(C) source is now
+    // src/calc/tables.js via the injected engine. This guard now proves it
+    // stays removed.
+    const s2 = html.lastIndexOf('function wsCalc');
+    const body = html.slice(s2, html.indexOf('function wsGoToFillCalc', s2));
+    assert.ok(!body.includes('var t75'),
+      'a second hardcoded terminal table is back inside wsCalc');
+    assert.ok(!/t60\s*:\s*\d/.test(body) && !/t75\s*:\s*\d/.test(body),
+      'inline terminal-column data is back inside wsCalc');
+    assert.ok(body.includes('EC.wireSizing.selectConductor'),
+      'wsCalc must obtain terminal-limited ampacity from the shared engine');
   });
 
   test('every calculator still returns a value rather than throwing on empty input', () => {
@@ -93,10 +95,18 @@ describe('Shipped app — known divergences from the verified core', { skip: ski
     }
     const s2 = html.lastIndexOf('function wsCalc');
     const body = html.slice(s2, html.indexOf('function wsGoToFillCalc', s2));
-    assert.ok(/continuousTestOK/.test(body), 'the continuous-load test is missing');
-    assert.ok(/conditionsTestOK/.test(body), 'the conditions-of-use test is missing');
-    assert.ok(/contMult\s*=\s*\(hundredPct/.test(body),
-      'the 100% exception must be explicit, never assumed');
+    // Post-migration: both 210.19(A)(1) tests live in the shared engine ONLY.
+    // Production passes the inputs through and must not re-derive either test
+    // or the 125% multiplier.
+    assert.ok(body.includes('EC.wireSizing.selectConductor'),
+      'wsCalc must delegate continuous-load sizing to the shared engine');
+    assert.ok(body.includes('assemblyRatedFor100PercentContinuousOperation'),
+      'the 100% exception must be passed through explicitly, never assumed');
+    assert.ok(!/contMult/.test(body) && !/contReq/.test(body),
+      'local continuous-load arithmetic is back inside wsCalc');
+    const engine = require('../src/calc/wireSizing');
+    assert.ok(/continuousTestOK/.test(String(engine.selectConductor)),
+      'the continuous-load test must exist in the shared engine');
     const { selectConductor } = require('../src/calc/wireSizing');
     assert.strictEqual(selectConductor({ continuousLoadA: 20 }).continuousLoadMultiplier, 1.25);
     assert.strictEqual(selectConductor({ continuousLoadA: 20 }).hundredPercentRatedExceptionApplied, false);

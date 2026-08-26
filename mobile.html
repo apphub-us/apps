@@ -1852,6 +1852,10 @@ window.EC = (function () {
         return {
           ok: false,
           reason: temp.reason,
+          // Context for callers rendering per-size rows: the size exists and has
+          // a table value even though no correction factor is published for it.
+          baseAmpacity,
+          terminalLimit: terminalRatingC === 60 ? row.t60 : row.t75,
           conductorRatingC: temp.conductorRatingC,
           temperatureBand: temp.band,
           ambientF,
@@ -2477,6 +2481,9 @@ window.EC = (function () {
         contA = continuousLoadA || 0;
         noncontA = noncontinuousLoadA || 0;
       } else if (load !== null) {
+        if (load < 0) {
+          return { ok: false, reason: 'NEGATIVE_LOAD', load };
+        }
         contA = continuousLoad || 0;
         if (contA > load) {
           return { ok: false, reason: 'INVALID_CONTINUOUS_LOAD', continuousLoad: contA, load };
@@ -2492,6 +2499,23 @@ window.EC = (function () {
       if (!(totalActualLoadA > 0)) return { ok: false, reason: 'INVALID_LOAD', load: totalActualLoadA };
       if (circuitType !== 'BRANCH_CIRCUIT' && circuitType !== 'FEEDER') {
         return { ok: false, reason: 'INVALID_CIRCUIT_TYPE', circuitType };
+      }
+      if (material !== 'cu' && material !== 'al') {
+        return { ok: false, reason: 'INVALID_MATERIAL', material };
+      }
+      if (!(feet >= 0) || !Number.isFinite(feet)) {
+        return { ok: false, reason: 'INVALID_DISTANCE', feet };
+      }
+      if (feet > 0) {
+        if (!(voltage > 0) || !Number.isFinite(voltage)) {
+          return { ok: false, reason: 'INVALID_VOLTAGE', voltage };
+        }
+        if (Number(phase) !== 1 && Number(phase) !== 3) {
+          return { ok: false, reason: 'INVALID_PHASE', phase };
+        }
+      }
+      if (!(adjustmentFactor > 0) || !Number.isFinite(adjustmentFactor)) {
+        return { ok: false, reason: 'INVALID_ADJUSTMENT_FACTOR', adjustmentFactor };
       }
 
       const hundredPercentRatedExceptionApplied =
@@ -2531,7 +2555,59 @@ window.EC = (function () {
         const amp = calculateAmpacity({
           size, material, insulation, ambientF, adjustmentFactor, terminalRatingC,
         });
-        if (!amp.ok) continue;
+        if (!amp.ok) {
+          // No published correction factor for this conductor rating at this
+          // ambient (e.g. 140°F with TW). The conductor cannot qualify, but the
+          // row is still reported — with zero usable ampacity, exactly as the
+          // pre-migration app showed it — so the renderer never reaches into the
+          // tables itself. OCPD and voltage drop are still evaluated for the row
+          // display; they cannot make it pass.
+          const cap = smallConductorOcpdLimit(size, material);
+          const derived = STANDARD_OCPD.find((b) => b >= continuousLoadSizingRequirementA) ?? null;
+          const degradedOcpdOK = (cap === null) || (derived !== null && derived <= cap);
+          let dvd = null;
+          let dvdOK = true;
+          if (feet > 0 && VD_CM[size]) {
+            dvd = calculateVoltageDrop({
+              amps: totalActualLoadA, feet, voltage, phase, material, size,
+            });
+            dvdOK = dvd.ok && dvd.percentDrop <= maxVoltDropPercent;
+          }
+          evaluated.push({
+            size,
+            ampacityDeterminable: false,
+            ampacityUnavailableReason: amp.reason,
+            baseAmpacity: amp.baseAmpacity !== undefined ? amp.baseAmpacity : null,
+            temperatureCorrectionFactor: 0,
+            adjustmentFactor,
+            terminalLimit: amp.terminalLimit !== undefined ? amp.terminalLimit : null,
+            terminalLimitGoverns: false,
+            calculatedAmpacity: 0,
+            terminalLimitedAmpacity: 0,
+            tableAmpacityAtTerminal: 0,
+            continuousTestOK: false,
+            conditionsOfUseTestOK: false,
+            finalAmpacity: 0,
+            ampacityOK: false,
+            ampacityWouldPassWithoutTerminalLimit: false,
+            rejectedOnlyByTerminalLimit: false,
+            smallConductorRuleApplies: cap !== null,
+            maxOcpdUnder240_4_D: cap,
+            selectedOcpd: null,
+            derivedOcpdForSizing: derived,
+            ocpdCheckValue: derived,
+            ocpdBasis: contA > 0 ? 'CONTINUOUS_LOAD_RULE_MINIMUM' : 'SMALLEST_STANDARD_FOR_CURRENT_LOAD',
+            ocpdOK: degradedOcpdOK,
+            voltDropPercent: dvd && dvd.ok ? dvd.percentDrop : null,
+            voltDropVolts: dvd && dvd.ok ? dvd.voltageDrop : null,
+            voltageAtLoad: dvd && dvd.ok ? dvd.voltageAtLoad : null,
+            vdOK: dvdOK,
+            conductorAccepted: false,
+            passes: false,
+            reason: 'AMPACITY_NOT_DETERMINABLE',
+          });
+          continue;
+        }
 
         // ── the six concepts, kept distinct ──────────────────────────────
         // 1. calculated ampacity      base x correction x adjustment
@@ -2551,6 +2627,14 @@ window.EC = (function () {
         const continuousTestOK = tableAmpacityAtTerminal >= continuousLoadSizingRequirementA;
         const conditionsOfUseTestOK = terminalLimitedAmpacity >= conditionsOfUseRequirementA;
         const ampacityOK = continuousTestOK && conditionsOfUseTestOK;
+        // The same two tests with NO 110.14(C) cap: base table value for test (a),
+        // corrected/adjusted value for test (b). Diagnostic only — never used for
+        // acceptance — so a renderer can state, without re-deciding, that a
+        // conductor was rejected ONLY because of the terminal limitation.
+        const ampacityWouldPassWithoutTerminalLimit =
+          amp.baseAmpacity >= continuousLoadSizingRequirementA
+          && calculatedAmpacity >= conditionsOfUseRequirementA;
+        const rejectedOnlyByTerminalLimit = !ampacityOK && ampacityWouldPassWithoutTerminalLimit;
 
         // Overcurrent device. 210.20(A) / 215.3: the rating shall not be less than
         // noncontinuous + 125% continuous. Where the caller supplied a device we
@@ -2575,7 +2659,12 @@ window.EC = (function () {
         let vd = null;
         let vdOK = true;
         if (feet > 0 && VD_CM[size]) {
-          vd = calculateVoltageDrop({ amps: load, feet, voltage, phase, material, size });
+          // totalActualLoadA, never the legacy `load` field: with the preferred
+          // continuous/noncontinuous input model `load` is null, and a null here
+          // silently failed every voltage-drop check (P1-10).
+          vd = calculateVoltageDrop({
+            amps: totalActualLoadA, feet, voltage, phase, material, size,
+          });
           vdOK = vd.ok && vd.percentDrop <= maxVoltDropPercent;
         }
 
@@ -2588,6 +2677,11 @@ window.EC = (function () {
 
         evaluated.push({
           size,
+          baseAmpacity: amp.baseAmpacity,
+          temperatureCorrectionFactor: amp.correctionFactor,
+          adjustmentFactor: amp.adjustmentFactor,
+          terminalLimit: amp.terminalLimit,
+          terminalLimitGoverns: amp.terminalLimitGoverns,
           calculatedAmpacity,
           terminalLimitedAmpacity,
           tableAmpacityAtTerminal,
@@ -2595,6 +2689,8 @@ window.EC = (function () {
           conditionsOfUseTestOK,
           finalAmpacity: terminalLimitedAmpacity, // retained for existing callers
           ampacityOK,
+          ampacityWouldPassWithoutTerminalLimit,
+          rejectedOnlyByTerminalLimit,
           smallConductorRuleApplies,
           maxOcpdUnder240_4_D,
           selectedOcpd,           // non-null ONLY when the caller supplied one
@@ -2603,6 +2699,8 @@ window.EC = (function () {
           ocpdBasis,
           ocpdOK,
           voltDropPercent: vd && vd.ok ? vd.percentDrop : null,
+          voltDropVolts: vd && vd.ok ? vd.voltageDrop : null,
+          voltageAtLoad: vd && vd.ok ? vd.voltageAtLoad : null,
           vdOK,
           conductorAccepted: passes,
           passes,
@@ -2621,6 +2719,55 @@ window.EC = (function () {
       const finalSelectedConductor = winner;
 
       const win = evaluated.find((e) => e.size === winner) || null;
+
+      // ── governing constraint (deterministic, explainable) ────────────────
+      // Stage sizes: the smallest conductor that satisfies each cumulative set of
+      // constraints in fixed order AMPACITY → 240.4(D) OCPD → VOLTAGE DROP, then
+      // the NYC floor. Each stage can only hold or raise the size; the final
+      // selection is the last stage. The governing constraint is the LAST stage
+      // that actually raised it — every earlier constraint was already satisfied
+      // at the smaller size, so it cannot be the binding one.
+      const stageIndex = (pred) => {
+        const hit = evaluated.find(pred);
+        return hit ? SIZE_ORDER.indexOf(hit.size) : Infinity;
+      };
+      const idxAmpacityStage = stageIndex((e) => e.ampacityOK);
+      const idxAmpacityUncapped = stageIndex((e) => e.ampacityWouldPassWithoutTerminalLimit);
+      const terminalLimitRaisedAmpacityStage =
+        idxAmpacityStage !== Infinity && idxAmpacityStage > idxAmpacityUncapped;
+      const idxOcpdStage = stageIndex((e) => e.ampacityOK && e.ocpdOK);
+      const idxVdStage = stageIndex((e) => e.ampacityOK && e.ocpdOK && e.vdOK);
+      const sizeRequiredByAmpacity =
+        idxAmpacityStage === Infinity ? null : SIZE_ORDER[idxAmpacityStage];
+      const sizeRequiredWithOcpdRule =
+        idxOcpdStage === Infinity ? null : SIZE_ORDER[idxOcpdStage];
+      const sizeRequiredWithVoltageDrop =
+        idxVdStage === Infinity ? null : SIZE_ORDER[idxVdStage];
+
+      let governingConstraint = null;
+      const governingConstraints = [];
+      if (finalSelectedConductor) {
+        const finalIdx = SIZE_ORDER.indexOf(finalSelectedConductor);
+        if (idxAmpacityStage === finalIdx) {
+          governingConstraints.push('AMPACITY');
+          // Refine, don't replace: AMPACITY stays in the list (the ampacity
+          // family is what binds), and TERMINAL_LIMIT is appended when the
+          // 110.14(C) cap is specifically what pushed the stage up — so the
+          // singular governingConstraint names the true cause.
+          if (terminalLimitRaisedAmpacityStage) governingConstraints.push('TERMINAL_LIMIT');
+        }
+        if (idxOcpdStage === finalIdx && idxOcpdStage > idxAmpacityStage) {
+          governingConstraints.push('OCPD_240_4_D');
+        }
+        if (idxVdStage === finalIdx && idxVdStage > idxOcpdStage) {
+          governingConstraints.push('VOLTAGE_DROP');
+        }
+        if (nycDwellingFeederMinimumApplies
+          && requiredConductorSizeBeforeNYCMinimum !== finalSelectedConductor) {
+          governingConstraints.push('NYC_DWELLING_FEEDER_MINIMUM');
+        }
+        governingConstraint = governingConstraints[governingConstraints.length - 1] || 'AMPACITY';
+      }
 
       // Which test actually drives the conductor size? The two requirement figures
       // are judged against different ampacities — the continuous test against the
@@ -2661,6 +2808,28 @@ window.EC = (function () {
         requiredConductorSizeBeforeNYCMinimum,
         finalSelectedConductor,
         codeReferences,
+        // Input echoes the renderer needs verbatim (never re-derived in the UI).
+        material,
+        insulation,
+        ambientF,
+        adjustmentFactor,
+        terminalRatingC,
+        voltage,
+        feet,
+        phase: Number(phase),
+        maxVoltDropPercent,
+        temperatureCorrectionFactor: win ? win.temperatureCorrectionFactor
+          : (evaluated[0] ? evaluated[0].temperatureCorrectionFactor : null),
+        // Governing-constraint decomposition.
+        sizeRequiredByAmpacity,
+        sizeRequiredByAmpacityIgnoringTerminalLimit:
+          idxAmpacityUncapped === Infinity ? null : SIZE_ORDER[idxAmpacityUncapped],
+        terminalLimitRaisedAmpacityStage,
+        sizeRequiredWithOcpdRule,
+        sizeRequiredWithVoltageDrop,
+        governingConstraint,
+        governingConstraints,
+        terminalLimitGovernsOnSelected: win ? win.terminalLimitGoverns : null,
         // retained for existing callers
         load: totalActualLoadA,
         requiredAmpacity: requiredConductorAmpacityA,
@@ -3698,12 +3867,6 @@ function ampSwitchMat(mat, el) {
 // calls it and Wire Sizer is NOT migrated yet. It delegates to the shared
 // engine's legacy path, so there is one implementation, not two.
 // Delete this shim when Wire Sizer is migrated.
-function ampGetTempFactor(ambF, insulType) {
-  // Returns null where no factor applies. wsCalc treats null as 0 today; that
-  // is P0-2/P0-3 territory and is left alone here.
-  return EC.ampacity.tempCorrectionFactor(ambF, insulType);
-}
-
 function ampGetBaseCol(insulType) {
   if (insulType === 'tw') return 't60';
   if (insulType === 'thw') return 't75';
@@ -7899,27 +8062,20 @@ function outletRender() {
 
 // ── WIRE SIZER ───────────────────────────────────────────
 function wsCalc() {
+  // ── THIN ADAPTER ─────────────────────────────────────────────────────
+  // Reads the form, builds ONE structured request, calls the shared engine,
+  // renders the structured result. Every electrical decision — candidate
+  // loop, both ampacity tests, terminal limiting, 240.4(D), NYC dwelling
+  // feeder minimum, voltage drop and the final selection — lives in
+  // EC.wireSizing.selectConductor. Nothing below re-decides any of them.
   var load    = parseFloat(document.getElementById('wsLoad').value) || 0;
   var contA   = parseFloat((document.getElementById('wsContinuous') || {}).value) || 0;
-  var noncontA = Math.max(0, load - contA);
   var circuitType = (document.getElementById('wsCircuitType') || {}).value || 'BRANCH_CIRCUIT';
   var dwellingRaw = (document.getElementById('wsDwelling') || {}).value || '';
   var dwellWrap = document.getElementById('wsDwellingWrap');
   if (dwellWrap) dwellWrap.style.display = (circuitType === 'FEEDER') ? '' : 'none';
-  // NYCEC 215.2(A)(1) minimum feeder size. A separate size floor, not an
-  // ampacity or OCPD rule. Never assumed — only applied on an explicit Yes.
-  // `mat` is read here, not further down: it is used immediately below to pick
-  // the NYC dwelling-feeder floor. With `var` hoisting a later assignment left
-  // it undefined at this point, silently giving aluminium the copper floor.
   var mat     = document.getElementById('wsMaterial').value;
-  var nycMinApplies = (circuitType === 'FEEDER') && (dwellingRaw === 'yes');
-  var nycMinSize = nycMinApplies ? (mat === 'al' ? '6' : '8') : null;
   var hundredPct = (document.getElementById('wsHundredPct') || {}).value === 'yes';
-  // NEC 210.19(A)(1)(a) / 215.2(A)(1)(a): noncontinuous + 125% continuous,
-  // judged against the un-derated table ampacity. Test (b) uses the actual
-  // load against the derated ampacity. The larger requirement governs.
-  var contMult = (hundredPct && contA > 0) ? 1.0 : 1.25;
-  var contReq  = noncontA + contMult * contA;
   var feet    = parseFloat(document.getElementById('wsFeet').value) || 0;
   var voltage = parseFloat(document.getElementById('wsVoltage').value) || 208;
   var phase   = document.getElementById('wsPhase').value;
@@ -7944,71 +8100,45 @@ function wsCalc() {
     return;
   }
 
-  var ampTable = mat === 'cu' ? AMP_CU : AMP_AL;
-  var typicalTable = mat === 'cu' ? AMP_TYPICAL_CU : AMP_TYPICAL_AL;
-  var sizes = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0','250','300','350','400','500','600','700','750'];
-  if (mat === 'al') sizes = sizes.filter(function(s){return s!=='14';});
+  var r = EC.wireSizing.selectConductor({
+    load: load,
+    continuousLoad: contA,
+    feet: feet,
+    voltage: voltage,
+    phase: parseInt(phase, 10) || 1,
+    material: mat,
+    insulation: insul,
+    ambientF: temp,
+    adjustmentFactor: bundle,
+    maxVoltDropPercent: maxVD,
+    terminalRatingC: 75,
+    circuitType: circuitType,
+    assemblyRatedFor100PercentContinuousOperation: hundredPct,
+    jurisdiction: 'NYC',
+    feedsDwellingUnit: dwellingRaw === '' ? null : (dwellingRaw === 'yes')
+  });
 
-  var tempFactor = ampGetTempFactor(temp, insul);
+  if (!r.ok) {
+    document.getElementById('wsResult').innerHTML = '<div style="background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.3);border-left:4px solid var(--danger);border-radius:4px;padding:14px 18px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--danger)">Cannot size: ' + String(r.reason || 'invalid input').replace(/[<>&]/g, '') + '</div>';
+    window.wsSizerWinner = null;
+    return;
+  }
 
-  var t75 = {
-    cu: {'14':20,'12':25,'10':35,'8':50,'6':65,'4':85,'3':100,'2':115,'1':130,'1/0':150,'2/0':175,'3/0':200,'4/0':230,'250':255,'300':285,'350':310,'400':335,'500':380,'600':420,'700':460,'750':475},
-    al: {'12':20,'10':30,'8':40,'6':50,'4':65,'3':75,'2':90,'1':100,'1/0':120,'2/0':135,'3/0':155,'4/0':180,'250':205,'300':230,'350':250,'400':270,'500':310,'600':340,'700':375,'750':385}
-  };
+  var winner = r.finalSelectedConductor;
+  window.wsSizerWinner = winner;
+  var tempFactor = r.temperatureCorrectionFactor === null ? 0 : r.temperatureCorrectionFactor;
 
-  var K = VD_K[mat];
-  var multiplier = phase === '3' ? 1.732 : 2;
-
-  var winner = null;
   var rows = '';
-
-  for (var i = 0; i < sizes.length; i++) {
-    var sz = sizes[i];
-    var baseData = ampTable[sz];
-    if (!baseData) continue;
-
-    var baseCol = ampGetBaseCol(insul);
-    var base = baseData[baseCol];
-    var afterTemp = base * tempFactor;
-    var afterBundle = afterTemp * bundle;
-    var finalAmp = Math.min(afterBundle, t75[mat][sz] || afterBundle);
-    var tableAtTerminal = Math.min(base, t75[mat][sz] || base);
-      var continuousTestOK = tableAtTerminal >= contReq;      // 210.19(A)(1)(a)
-      var conditionsTestOK = finalAmp >= load;                 // 210.19(A)(1)(b)
-      var ampOK = continuousTestOK && conditionsTestOK;
-
-      // NEC 240.4(D) — small-conductor overcurrent ceiling, from the shared
-      // engine. Limits the DEVICE, not the ampacity, and is material-specific.
-      // The breaker is not an input here, so take the smallest standard device
-      // that could serve the load; if even that exceeds the ceiling, no valid
-      // device exists for this conductor. 240.4(B) cannot lift this cap.
-      var ocpdCap = EC.ampacity.smallConductorOcpdLimit(sz, mat);
-      // Not a breaker selection. This is the smallest standard device that
-      // could carry the present load, derived only to test the 240.4(D)
-      // ceiling. Continuous-load factors are out of scope here.
-      var derivedOcpdForSizing = null;
-      for (var q = 0; q < EC.ampacity.STANDARD_OCPD.length; q++) {
-        if (EC.ampacity.STANDARD_OCPD[q] >= contReq) { derivedOcpdForSizing = EC.ampacity.STANDARD_OCPD[q]; break; }
-      }
-      var ocpdOK = (ocpdCap === null) || (derivedOcpdForSizing !== null && derivedOcpdForSizing <= ocpdCap);
-
-    var cm = VD_CM[sz];
-    var vd = 0, vdPct = 0;
-    if (feet && cm) {
-      vd = (multiplier * K * load * feet) / cm;
-      vdPct = (vd / voltage) * 100;
-    }
-    var vdOK = !feet || vdPct <= maxVD;
-    // NYCEC 215.2(A)(1) minimum feeder size — a separate size floor. Compared by
-      // circular mils so it does not depend on array ordering. It can only
-      // exclude conductors SMALLER than the minimum; it changes nothing else.
-      var nycMinOK = !nycMinApplies || !VD_CM[nycMinSize] || (VD_CM[sz] >= VD_CM[nycMinSize]);
-      var bothOK = ampOK && ocpdOK && vdOK && nycMinOK;
-    if (bothOK && !winner) { winner = sz; window.wsSizerWinner = sz; }
+  for (var i = 0; i < r.evaluated.length; i++) {
+    var row = r.evaluated[i];
+    var sz = row.size;
+    var finalAmp = row.terminalLimitedAmpacity;
+    var ampOK = row.ampacityOK;
+    var vdOK = row.vdOK;
 
     var isWinner = winner === sz;
     var rowBg = isWinner ? 'background:rgba(82,192,122,0.1);border-left:3px solid var(--success)' : (!ampOK ? 'opacity:0.45' : '');
-    var ampColor = (ampOK && ocpdOK) ? 'var(--success)' : 'var(--danger)';
+    var ampColor = (ampOK && row.ocpdOK) ? 'var(--success)' : 'var(--danger)';
     var vdColor  = vdOK  ? 'var(--success)' : 'var(--danger)';
 
     var sizeLabel = sz;
@@ -8016,23 +8146,29 @@ function wsCalc() {
     else if (parseInt(sz) >= 250) sizeLabel = sz + ' kcmil';
     else sizeLabel = '#' + sz + ' AWG';
 
+    var vdPctCell = (feet && row.voltDropPercent !== null) ? (vdOK?'✓':'✗') + ' ' + row.voltDropPercent.toFixed(2) + '%' : '—';
+    var vdVCell = (feet && row.voltDropVolts !== null) ? row.voltDropVolts.toFixed(2) + 'V' : '—';
+
     rows += '<tr' + (rowBg ? ' style="' + rowBg + '"' : '') + '>' +
       '<td class="wire-col">' + (isWinner ? '★ ' : '') + sizeLabel + (isWinner ? ' ← USE' : '') + '</td>' +
       '<td style="color:' + ampColor + '">' + (ampOK?'✓':'✗') + ' ' + finalAmp.toFixed(0) + 'A</td>' +
-      '<td style="color:var(--text-dim);font-size:10px">' + base + '×' + tempFactor.toFixed(2) + '×' + bundle + '</td>' +
-      '<td style="color:' + vdColor + '">' + (feet ? (vdOK?'✓':'✗') + ' ' + vdPct.toFixed(2) + '%' : '—') + '</td>' +
-      '<td style="color:' + vdColor + '">' + (feet ? vd.toFixed(2) + 'V' : '—') + '</td>' +
+      '<td style="color:var(--text-dim);font-size:10px">' + row.baseAmpacity + '×' + tempFactor.toFixed(2) + '×' + bundle + '</td>' +
+      '<td style="color:' + vdColor + '">' + vdPctCell + '</td>' +
+      '<td style="color:' + vdColor + '">' + vdVCell + '</td>' +
     '</tr>';
   }
 
   var summary = '';
   if (winner) {
-    var wd = ampTable[winner];
-    var wBase = wd[ampGetBaseCol(insul)];
-    var wFinal = Math.min(wBase * tempFactor * bundle, t75[mat][winner] || 9999);
-    var wCM = VD_CM[winner];
-    var wVD = feet ? (multiplier * K * load * feet) / wCM : 0;
-    var wVDpct = feet ? (wVD / voltage) * 100 : 0;
+    var win = null;
+    for (var w = 0; w < r.evaluated.length; w++) {
+      if (r.evaluated[w].size === winner) { win = r.evaluated[w]; break; }
+    }
+    var wBase = win.baseAmpacity;
+    var wFinal = win.terminalLimitedAmpacity;
+    var wVDpct = win.voltDropPercent !== null ? win.voltDropPercent : 0;
+    var wVD = win.voltDropVolts !== null ? win.voltDropVolts : 0;
+    var typicalTable = mat === 'cu' ? AMP_TYPICAL_CU : AMP_TYPICAL_AL;
     var typical = typicalTable[winner] || '—';
     var wLabel = winner.includes('/') ? winner + ' AWG' : (parseInt(winner) >= 250 ? winner + ' kcmil' : '#' + winner + ' AWG');
 
@@ -8043,9 +8179,9 @@ function wsCalc() {
           '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">Ampacity: <strong style="color:var(--success)">' + wFinal.toFixed(0) + 'A</strong> ≥ ' + load + 'A</span>' +
           (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">V-Drop: <strong style="color:var(--success)">' + wVDpct.toFixed(2) + '%</strong> ≤ ' + maxVD + '%</span>' : '') +
           '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">Breaker: <strong style="color:var(--accent)">' + typical + '</strong></span>' +
-          (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">V at load: <strong>' + (voltage - wVD).toFixed(1) + 'V</strong></span>' : '') +
+          (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">V at load: <strong>' + (win.voltageAtLoad !== null ? win.voltageAtLoad.toFixed(1) : voltage.toFixed(1)) + 'V</strong></span>' : '') +
         '</div>' +
-        '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Derating: ' + wBase + 'A base × ' + tempFactor.toFixed(2) + ' (temp@' + temp + '°F) × ' + bundle + ' (bundle) = ' + (wBase * tempFactor * bundle).toFixed(0) + 'A → capped at 75°C terminal: <strong>' + wFinal.toFixed(0) + 'A</strong></div>' +
+        '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Derating: ' + wBase + 'A base × ' + tempFactor.toFixed(2) + ' (temp@' + temp + '°F) × ' + bundle + ' (bundle) = ' + win.calculatedAmpacity.toFixed(0) + 'A → capped at 75°C terminal: <strong>' + wFinal.toFixed(0) + 'A</strong></div>' +
       '</div>';
   } else {
     summary = '<div style="background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.3);border-left:4px solid var(--danger);border-radius:4px;padding:14px 18px;margin-bottom:16px;font-family:IBM Plex Mono,monospace">' +
