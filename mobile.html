@@ -2255,6 +2255,7 @@ window.EC = (function () {
      * 430.110      disconnect at least 115% of FLC
      */
     const { MT_FLC_1PH, MT_V_1PH, MT_FLC_3PH, MT_V_3PH, MT_PCT, MT_STD, AMP_CU, AMP_AL } = require('./tables');
+    const { SIZE_ORDER } = require('./wireSizing');
 
     function nextStandard(x) {
       for (const s of MT_STD) if (s >= x) return s;
@@ -2289,15 +2290,32 @@ window.EC = (function () {
         nameplateFLA = null, serviceFactorMultiplier = 1.25, material = 'cu',
       } = input || {};
 
-      const flc = tableFLC(hp, volts, phase);
-      if (flc === null) return { ok: false, reason: 'NOT_IN_TABLE', hp, volts, phase };
+      const ph = Number(phase);
+      if (ph !== 1 && ph !== 3) {
+        // The old ternary treated ANYTHING non-1 as three-phase; a malformed
+        // phase silently landed in Table 430.250. Structured rejection instead.
+        return { ok: false, reason: 'INVALID_PHASE', phase };
+      }
+      if (material !== 'cu' && material !== 'al') {
+        return { ok: false, reason: 'INVALID_MATERIAL', material };
+      }
+      if (typeof serviceFactorMultiplier !== 'number'
+        || !Number.isFinite(serviceFactorMultiplier) || serviceFactorMultiplier <= 0) {
+        return { ok: false, reason: 'INVALID_SERVICE_FACTOR', serviceFactorMultiplier };
+      }
+
+      const flc = tableFLC(hp, volts, ph);
+      if (flc === null) return { ok: false, reason: 'NOT_IN_TABLE', hp, volts, phase: ph };
 
       const minConductorAmpacity = flc * 1.25;              // 430.22
+      // Deliberately a simple 75C-column pick, matching the tool's stated output
+      // ("Copper at 75C, before any derating"): the motor calculator gives the
+      // Article 430 sizing baseline; derating and terminal machinery live in the
+      // Ampacity and Wire Sizer tools. Conductor ordering is the ONE shared
+      // SIZE_ORDER — never a second local list.
       const table = material === 'al' ? AMP_AL : AMP_CU;
-      const order = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0',
-                     '250','300','350','400','500','600','700','750'];
       let conductorSize = null;
-      for (const s of order) {
+      for (const s of SIZE_ORDER) {
         if (table[s] && table[s].t75 >= minConductorAmpacity) { conductorSize = s; break; }
       }
 
@@ -2307,14 +2325,16 @@ window.EC = (function () {
       const standardProtection = nextStandard(maxProtection); // 430.52(C)(1) Ex.1
       const disconnect = nextStandard(flc * 1.15);          // 430.110
 
-      const overload = nameplateFLA > 0
+      const nameplateProvided = typeof nameplateFLA === 'number'
+        && Number.isFinite(nameplateFLA) && nameplateFLA > 0;
+      const overload = nameplateProvided
         ? round2(nameplateFLA * serviceFactorMultiplier)    // 430.32 — NAMEPLATE
         : null;
 
       return {
         ok: true,
         tableFLC: flc,
-        tableRef: phase === 1 ? 'NEC Table 430.248' : 'NEC Table 430.250',
+        tableRef: ph === 1 ? 'NEC Table 430.248' : 'NEC Table 430.250',
         minConductorAmpacity: round2(minConductorAmpacity),
         conductorSize,
         protectionPercent: pct,
@@ -2323,7 +2343,10 @@ window.EC = (function () {
         disconnectRating: disconnect,
         overloadMax: overload,
         overloadBasis: 'nameplate',
-        nameplateDiffersFromTable: nameplateFLA > 0 && Math.abs(nameplateFLA - flc) > 0.05,
+        overloadPercentApplied: Math.round(serviceFactorMultiplier * 100),
+        serviceFactorMultiplier,
+        nameplateProvided,
+        nameplateDiffersFromTable: nameplateProvided && Math.abs(nameplateFLA - flc) > 0.05,
       };
     }
     const round2 = (n) => Math.round(n * 100) / 100;
@@ -6077,48 +6100,18 @@ var cvUpdating = false;
 // branch-circuit protection; the nameplate is used only for overload (430.32).
 
 // Table 430.248 — single-phase, full-load current (A)
-var MT_FLC_1PH = {
-  '1/6':[4.4,2.5,2.4,2.2], '1/4':[5.8,3.3,3.2,2.9], '1/3':[7.2,4.1,4.0,3.6],
-  '1/2':[9.8,5.6,5.4,4.9], '3/4':[13.8,7.9,7.6,6.9], '1':[16,9.2,8.8,8.0],
-  '1.5':[20,11.5,11.0,10], '2':[24,13.8,13.2,12], '3':[34,19.6,18.7,17],
-  '5':[56,32.2,30.8,28], '7.5':[80,46.0,44.0,40], '10':[100,57.5,55.0,50]
-};
-var MT_V_1PH = ['115','200','208','230'];
-
-// Table 430.250 — three-phase, induction squirrel cage / wound rotor (A)
-var MT_FLC_3PH = {
-  '1/2':[4.4,2.5,2.4,2.2,1.1,0.9], '3/4':[6.4,3.7,3.5,3.2,1.6,1.3],
-  '1':[8.4,4.8,4.6,4.2,2.1,1.7],   '1.5':[12,6.9,6.6,6,3,2.4],
-  '2':[13.6,7.8,7.5,6.8,3.4,2.7],  '3':[null,11,10.6,9.6,4.8,3.9],
-  '5':[null,17.5,16.7,15.2,7.6,6.1],'7.5':[null,25.3,24.2,22,11,9],
-  '10':[null,32.2,30.8,28,14,11],  '15':[null,48.3,46.2,42,21,17],
-  '20':[null,62.1,59.4,54,27,22],  '25':[null,78.2,74.8,68,34,27],
-  '30':[null,92,88,80,40,32],      '40':[null,120,114,104,52,41],
-  '50':[null,150,143,130,65,52],   '60':[null,177,169,154,77,62],
-  '75':[null,221,211,192,96,77],   '100':[null,285,273,248,124,99],
-  '125':[null,359,343,312,156,125],'150':[null,414,396,360,180,144],
-  '200':[null,552,528,480,240,192]
-};
-var MT_V_3PH = ['115','200','208','230','460','575'];
-
-// Table 430.52 — max % of FLC by device type
-var MT_PCT = {
-  designB: { nontd:300, dual:175, inst:1100, inverse:250 },
-  other:   { nontd:300, dual:175, inst:800,  inverse:250 },
-  wound:   { nontd:150, dual:150, inst:800,  inverse:150 },
-  dc:      { nontd:150, dual:150, inst:250,  inverse:150 }
-};
+// Article 430 data comes from the injected shared engine — one source.
+// The selects are populated from these tables, so which HP/voltage
+// combinations exist is decided by the same data the engine computes from.
+var MT_FLC_1PH = EC.tables.MT_FLC_1PH;
+var MT_V_1PH = EC.tables.MT_V_1PH;
+var MT_FLC_3PH = EC.tables.MT_FLC_3PH;
+var MT_V_3PH = EC.tables.MT_V_3PH;
 var MT_OCPD_LABEL = { nontd:'Non-time-delay fuse', dual:'Dual element (time delay) fuse',
                       inst:'Instantaneous trip breaker', inverse:'Inverse time breaker' };
 
 // NEC 240.6(A) standard ampere ratings
-var MT_STD = [15,20,25,30,35,40,45,50,60,70,80,90,100,110,125,150,175,200,225,250,
-              300,350,400,450,500,600,700,800,1000,1200,1600,2000,2500,3000,4000,5000,6000];
 
-function mtNextStd(x) {
-  for (var i = 0; i < MT_STD.length; i++) if (MT_STD[i] >= x) return MT_STD[i];
-  return null;
-}
 
 function mtInit() {
   if (!document.getElementById('mt-phase')) return;
@@ -6163,6 +6156,12 @@ function mtRow(label, value, note, strong) {
 }
 
 function mtCalc() {
+  // ── THIN ADAPTER ─────────────────────────────────────────────────────
+  // Reads the form, builds ONE structured request, calls the shared engine,
+  // renders the structured result. Every Article 430 decision — table FLC,
+  // the 430.22 conductor requirement and size, the 430.52 percentage and
+  // next-standard device, the 430.110 disconnect and the 430.32 overload —
+  // lives in EC.motor.calculateMotorCircuit. Nothing below re-decides any.
   var res = document.getElementById('mt-result');
   if (!res) return;
   var note = document.getElementById('mt-note');
@@ -6172,70 +6171,56 @@ function mtCalc() {
   var hp    = document.getElementById('mt-hp').value;
   var type  = document.getElementById('mt-type').value;
   var dev   = document.getElementById('mt-ocpd').value;
+  var np    = parseFloat(document.getElementById('mt-nameplate').value);
+  var sf    = parseFloat(document.getElementById('mt-sf').value) || 1.25;
 
-  var vList = ph === '1' ? MT_V_1PH : MT_V_3PH;
-  var table = ph === '1' ? MT_FLC_1PH : MT_FLC_3PH;
-  var row = table[hp];
-  var flc = row ? row[vList.indexOf(volts)] : null;
+  var r = EC.motor.calculateMotorCircuit({
+    hp: hp,
+    volts: volts,
+    phase: parseInt(ph, 10),
+    motorType: type,
+    ocpdType: dev,
+    nameplateFLA: isNaN(np) ? null : np,
+    serviceFactorMultiplier: sf
+  });
 
-  if (flc === null || flc === undefined) {
+  if (!r.ok) {
     res.innerHTML = mtRow('Not listed', '\u2014', hp + ' HP at ' + volts + 'V is not in the NEC table for this phase');
     if (note) note.textContent = 'Pick a different voltage or horsepower — this combination has no table entry.';
     return;
   }
 
-  // Conductors — NEC 430.22, 125% of TABLE full-load current
-  var minAmp = flc * 1.25;
-  var wire = null;
-  if (typeof AMP_CU !== 'undefined') {
-    var sizes = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0',
-                 '250','300','350','400','500','600','700','750'];
-    for (var i = 0; i < sizes.length; i++) {
-      var r = AMP_CU[sizes[i]];
-      if (r && r.t75 >= minAmp) { wire = sizes[i]; break; }
-    }
-  }
-  var wireLbl = wire ? (wire.indexOf('/') >= 0 ? wire + ' AWG'
-                        : (parseInt(wire) >= 250 ? wire + ' kcmil' : '#' + wire + ' AWG'))
-                     : 'parallel run needed';
-
-  // Branch-circuit short-circuit / ground-fault — NEC 430.52
-  var pct = MT_PCT[type][dev];
-  var raw = flc * pct / 100;
-  var std = mtNextStd(raw);
-
-  // Disconnect — NEC 430.110, at least 115% of FLC
-  var disc = mtNextStd(flc * 1.15);
+  var wireLbl = r.conductorSize
+    ? (r.conductorSize.indexOf('/') >= 0 ? r.conductorSize + ' AWG'
+        : (parseInt(r.conductorSize) >= 250 ? r.conductorSize + ' kcmil' : '#' + r.conductorSize + ' AWG'))
+    : 'parallel run needed';
 
   var html = '';
-  html += mtRow('Table FLC', flc + ' A',
-    (ph === '1' ? 'NEC Table 430.248' : 'NEC Table 430.250') + ' \u2014 ' + hp + ' HP @ ' + volts + 'V', true);
-  html += mtRow('Min conductor ampacity', minAmp.toFixed(1) + ' A', 'NEC 430.22 \u2014 125% of table FLC');
+  html += mtRow('Table FLC', r.tableFLC + ' A',
+    r.tableRef + ' \u2014 ' + hp + ' HP @ ' + volts + 'V', true);
+  html += mtRow('Min conductor ampacity', r.minConductorAmpacity.toFixed(1) + ' A', 'NEC 430.22 \u2014 125% of table FLC');
   html += mtRow('Conductor size', wireLbl, 'Copper at 75\u00B0C, before any derating');
-  html += mtRow('Max ' + MT_OCPD_LABEL[dev].toLowerCase(), raw.toFixed(1) + ' A',
-    'NEC Table 430.52 \u2014 ' + pct + '% of FLC');
-  html += mtRow('Next standard size', std ? std + ' A' : 'above 6000 A',
+  html += mtRow('Max ' + MT_OCPD_LABEL[dev].toLowerCase(), r.maxProtection.toFixed(1) + ' A',
+    'NEC Table 430.52 \u2014 ' + r.protectionPercent + '% of FLC');
+  html += mtRow('Next standard size', r.standardProtection ? r.standardProtection + ' A' : 'above 6000 A',
     'NEC 240.6(A) \u2014 430.52(C)(1) Ex.1 permits rounding up', true);
-  html += mtRow('Disconnect rating', disc + ' A min', 'NEC 430.110 \u2014 at least 115% of FLC');
+  html += mtRow('Disconnect rating', r.disconnectRating + ' A min', 'NEC 430.110 \u2014 at least 115% of FLC');
 
-  var np = parseFloat(document.getElementById('mt-nameplate').value);
-  var sf = parseFloat(document.getElementById('mt-sf').value);
-  if (!isNaN(np) && np > 0) {
-    var ol = np * sf;
-    html += mtRow('Overload setting', ol.toFixed(1) + ' A max',
-      'NEC 430.32 \u2014 ' + Math.round(sf * 100) + '% of NAMEPLATE ' + np + ' A, not the table', true);
+  if (r.nameplateProvided) {
+    html += mtRow('Overload setting', r.overloadMax.toFixed(1) + ' A max',
+      'NEC 430.32 \u2014 ' + r.overloadPercentApplied + '% of NAMEPLATE ' + np + ' A, not the table', true);
   } else {
     html += mtRow('Overload setting', 'enter nameplate FLA', 'NEC 430.32 uses the nameplate, not the table');
   }
 
   res.innerHTML = html;
 
-  var tip = 'Conductors and the breaker come from the table value (' + flc + ' A). ';
-  if (!isNaN(np) && np > 0 && Math.abs(np - flc) > 0.05) {
+  var tip = 'Conductors and the breaker come from the table value (' + r.tableFLC + ' A). ';
+  if (r.nameplateDiffersFromTable) {
     tip += 'Your nameplate reads ' + np + ' A — that difference is expected and correct: ' +
            'the table figure sizes the wire and breaker, the nameplate sizes the overload. ';
   }
-  tip += 'If the ' + MT_OCPD_LABEL[dev].toLowerCase() + ' at ' + (std || raw.toFixed(0)) +
+  tip += 'If the ' + MT_OCPD_LABEL[dev].toLowerCase() + ' at ' + (r.standardProtection || r.maxProtection.toFixed(0)) +
          ' A will not let the motor start, 430.52(C) Exception 2 allows going higher — ' +
          'up to 400% (inverse time \u2264100 A), 225% (dual element) or 300% (non-time-delay).';
   if (note) note.innerHTML = tip +

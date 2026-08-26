@@ -8,6 +8,7 @@
  * 430.110      disconnect at least 115% of FLC
  */
 const { MT_FLC_1PH, MT_V_1PH, MT_FLC_3PH, MT_V_3PH, MT_PCT, MT_STD, AMP_CU, AMP_AL } = require('./tables');
+const { SIZE_ORDER } = require('./wireSizing');
 
 function nextStandard(x) {
   for (const s of MT_STD) if (s >= x) return s;
@@ -42,15 +43,32 @@ function calculateMotorCircuit(input) {
     nameplateFLA = null, serviceFactorMultiplier = 1.25, material = 'cu',
   } = input || {};
 
-  const flc = tableFLC(hp, volts, phase);
-  if (flc === null) return { ok: false, reason: 'NOT_IN_TABLE', hp, volts, phase };
+  const ph = Number(phase);
+  if (ph !== 1 && ph !== 3) {
+    // The old ternary treated ANYTHING non-1 as three-phase; a malformed
+    // phase silently landed in Table 430.250. Structured rejection instead.
+    return { ok: false, reason: 'INVALID_PHASE', phase };
+  }
+  if (material !== 'cu' && material !== 'al') {
+    return { ok: false, reason: 'INVALID_MATERIAL', material };
+  }
+  if (typeof serviceFactorMultiplier !== 'number'
+    || !Number.isFinite(serviceFactorMultiplier) || serviceFactorMultiplier <= 0) {
+    return { ok: false, reason: 'INVALID_SERVICE_FACTOR', serviceFactorMultiplier };
+  }
+
+  const flc = tableFLC(hp, volts, ph);
+  if (flc === null) return { ok: false, reason: 'NOT_IN_TABLE', hp, volts, phase: ph };
 
   const minConductorAmpacity = flc * 1.25;              // 430.22
+  // Deliberately a simple 75C-column pick, matching the tool's stated output
+  // ("Copper at 75C, before any derating"): the motor calculator gives the
+  // Article 430 sizing baseline; derating and terminal machinery live in the
+  // Ampacity and Wire Sizer tools. Conductor ordering is the ONE shared
+  // SIZE_ORDER — never a second local list.
   const table = material === 'al' ? AMP_AL : AMP_CU;
-  const order = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0',
-                 '250','300','350','400','500','600','700','750'];
   let conductorSize = null;
-  for (const s of order) {
+  for (const s of SIZE_ORDER) {
     if (table[s] && table[s].t75 >= minConductorAmpacity) { conductorSize = s; break; }
   }
 
@@ -60,14 +78,16 @@ function calculateMotorCircuit(input) {
   const standardProtection = nextStandard(maxProtection); // 430.52(C)(1) Ex.1
   const disconnect = nextStandard(flc * 1.15);          // 430.110
 
-  const overload = nameplateFLA > 0
+  const nameplateProvided = typeof nameplateFLA === 'number'
+    && Number.isFinite(nameplateFLA) && nameplateFLA > 0;
+  const overload = nameplateProvided
     ? round2(nameplateFLA * serviceFactorMultiplier)    // 430.32 — NAMEPLATE
     : null;
 
   return {
     ok: true,
     tableFLC: flc,
-    tableRef: phase === 1 ? 'NEC Table 430.248' : 'NEC Table 430.250',
+    tableRef: ph === 1 ? 'NEC Table 430.248' : 'NEC Table 430.250',
     minConductorAmpacity: round2(minConductorAmpacity),
     conductorSize,
     protectionPercent: pct,
@@ -76,7 +96,10 @@ function calculateMotorCircuit(input) {
     disconnectRating: disconnect,
     overloadMax: overload,
     overloadBasis: 'nameplate',
-    nameplateDiffersFromTable: nameplateFLA > 0 && Math.abs(nameplateFLA - flc) > 0.05,
+    overloadPercentApplied: Math.round(serviceFactorMultiplier * 100),
+    serviceFactorMultiplier,
+    nameplateProvided,
+    nameplateDiffersFromTable: nameplateProvided && Math.abs(nameplateFLA - flc) > 0.05,
   };
 }
 const round2 = (n) => Math.round(n * 100) / 100;
