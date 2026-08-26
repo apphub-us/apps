@@ -53,6 +53,7 @@ const MODULES = [
   'sketchInteraction',
   'undoStack',
   'search',
+  'sheets',
   'app',
 ];
 

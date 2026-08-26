@@ -430,3 +430,91 @@ describe('WM-2 store — meta and lifecycle', () => {
     assert.strictEqual(driver.__state.openConnections, 0);
   });
 });
+
+// ── WM-8: atomic sheet reordering ───────────────────────────────────────────
+describe('WM-8 reorderSheets', () => {
+  const now = 1;
+  const build = async () => {
+    const db = store.createStore({ driver: createMemoryDriver() });
+    await db.openDatabase();
+    await db.putJob(model.createJob({ id: 'jA', name: 'A', now }));
+    await db.putJob(model.createJob({ id: 'jB', name: 'B', now }));
+    for (const [id, order] of [['a', 0], ['b', 1], ['c', 2]]) {
+      await db.putSheet(model.createSheet({ id, jobId: 'jA', name: id.toUpperCase(),
+        kind: 'blank', width: 2000, height: 1500, order, now }));
+    }
+    await db.putSheet(model.createSheet({ id: 'x', jobId: 'jB', name: 'X',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    return db;
+  };
+  const orderOf = async (db, jobId) => {
+    const list = await db.listSheets(jobId);
+    return list.slice().sort((p, q) => p.order - q.order).map((s) => s.id + ':' + s.order);
+  };
+
+  test('rewrites order compactly from zero', async () => {
+    const db = await build();
+    await db.reorderSheets('jA', ['c', 'a', 'b']);
+    assert.deepStrictEqual(await orderOf(db, 'jA'), ['c:0', 'a:1', 'b:2']);
+  });
+
+  test('the new order survives a reopen', async () => {
+    const driver = createMemoryDriver();
+    const db = store.createStore({ driver });
+    await db.openDatabase();
+    await db.putJob(model.createJob({ id: 'jA', name: 'A', now }));
+    for (const [id, order] of [['a', 0], ['b', 1]]) {
+      await db.putSheet(model.createSheet({ id, jobId: 'jA', name: id, kind: 'blank',
+        width: 2000, height: 1500, order, now }));
+    }
+    await db.reorderSheets('jA', ['b', 'a']);
+    db.closeDatabase();
+    const again = store.createStore({ driver });
+    await again.openDatabase();
+    assert.deepStrictEqual(await orderOf(again, 'jA'), ['b:0', 'a:1']);
+  });
+
+  test('an unknown sheet id is rejected', async () => {
+    const db = await build();
+    await assert.rejects(() => db.reorderSheets('jA', ['a', 'ghost', 'b']));
+    assert.deepStrictEqual(await orderOf(db, 'jA'), ['a:0', 'b:1', 'c:2'], 'order must be untouched');
+  });
+
+  test('A SHEET FROM ANOTHER JOB IS REJECTED', async () => {
+    const db = await build();
+    await assert.rejects(() => db.reorderSheets('jA', ['a', 'x', 'b']));
+    assert.deepStrictEqual(await orderOf(db, 'jA'), ['a:0', 'b:1', 'c:2']);
+    assert.deepStrictEqual(await orderOf(db, 'jB'), ['x:0'], 'the other job must be untouched');
+  });
+
+  test('duplicate ids are rejected', async () => {
+    const db = await build();
+    await assert.rejects(() => db.reorderSheets('jA', ['a', 'a', 'b']));
+    assert.deepStrictEqual(await orderOf(db, 'jA'), ['a:0', 'b:1', 'c:2']);
+  });
+
+  test('bad arguments are rejected without touching anything', async () => {
+    const db = await build();
+    for (const bad of [[null, ['a']], ['jA', []], ['jA', null], ['jA', ['a', 7]]]) {
+      await assert.rejects(() => db.reorderSheets(bad[0], bad[1]));
+    }
+    assert.deepStrictEqual(await orderOf(db, 'jA'), ['a:0', 'b:1', 'c:2']);
+  });
+
+  test('VALIDATION HAPPENS BEFORE ANY WRITE — no partial reorder', async () => {
+    const db = await build();
+    // 'ghost' sits last, so a naive implementation would already have written
+    // the first two sheets by the time it failed.
+    await assert.rejects(() => db.reorderSheets('jA', ['c', 'b', 'ghost']));
+    assert.deepStrictEqual(await orderOf(db, 'jA'), ['a:0', 'b:1', 'c:2']);
+  });
+
+  test('no duplicate order values result from repeated reorders', async () => {
+    const db = await build();
+    for (const seq of [['b', 'a', 'c'], ['c', 'b', 'a'], ['a', 'c', 'b']]) {
+      await db.reorderSheets('jA', seq);
+      const list = await db.listSheets('jA');
+      assert.strictEqual(new Set(list.map((s) => s.order)).size, 3);
+    }
+  });
+});

@@ -307,6 +307,57 @@ function createStore(options) {
   }
 
   // ── Annotations ─────────────────────────────────────────────────────
+  /**
+   * Rewrite the order of a job's sheets in ONE transaction.
+   *
+   * Move-up/move-down previously issued one independent putSheet per sheet.
+   * Each was its own transaction, so a failure partway through could leave two
+   * sheets holding the same order permanently. This validates the whole list
+   * first and then writes it all-or-nothing.
+   *
+   * @param {string} jobId
+   * @param {string[]} orderedSheetIds every sheet of the job, in the new order
+   */
+  function reorderSheets(jobId, orderedSheetIds) {
+    if (!jobId) return reject(ERR.BAD_ARGUMENT, 'reorderSheets requires a jobId');
+    if (!Array.isArray(orderedSheetIds) || orderedSheetIds.length === 0) {
+      return reject(ERR.BAD_ARGUMENT, 'reorderSheets requires a non-empty id list');
+    }
+    const seen = new Set();
+    for (const id of orderedSheetIds) {
+      if (!id || typeof id !== 'string') {
+        return reject(ERR.BAD_ARGUMENT, 'reorderSheets requires string sheet ids');
+      }
+      if (seen.has(id)) {
+        return reject(ERR.BAD_ARGUMENT, `reorderSheets received duplicate sheet id ${id}`);
+      }
+      seen.add(id);
+    }
+
+    return tx(['sheets'], 'readwrite', async (s) => {
+      const records = [];
+      for (const id of orderedSheetIds) {
+        const sheet = await s.sheets.get(id);
+        if (!sheet) {
+          throw new StoreError(ERR.NOT_FOUND,
+            `reorderSheets: sheet ${id} does not exist`, { sheetId: id });
+        }
+        if (sheet.jobId !== jobId) {
+          throw new StoreError(ERR.BAD_ARGUMENT,
+            `reorderSheets: sheet ${id} belongs to job ${sheet.jobId}, not ${jobId}`,
+            { sheetId: id, jobId: sheet.jobId });
+        }
+        records.push(sheet);
+      }
+      // Every id validated before a single write happens, so a rejection
+      // leaves the stored order exactly as it was.
+      for (let i = 0; i < records.length; i++) {
+        await s.sheets.put({ ...records[i], order: i });
+      }
+      return records.length;
+    });
+  }
+
   function putAnnotation(annotation) {
     try {
       assertValid('annotation', annotation, model.validateAnnotation);
@@ -431,7 +482,7 @@ function createStore(options) {
     closeDatabase,
     isOpen: () => conn !== null,
     putJob, getJob, listJobs, deleteJob,
-    putSheet, getSheet, listSheets, deleteSheet,
+    putSheet, getSheet, listSheets, deleteSheet, reorderSheets,
     putAnnotation, getAnnotation, listAnnotations, deleteAnnotation,
     getMeta, setMeta,
     putImage, getImage, deleteImage,

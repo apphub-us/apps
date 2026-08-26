@@ -28,6 +28,17 @@ try {
 
 const APP = 'file://' + path.join(__dirname, '..', 'wiremap.html');
 
+// Optional override for environments where Playwright's own browser download
+// is unavailable: point WIREMAP_CHROMIUM at any Chromium executable (with
+// optional WIREMAP_CHROMIUM_ARGS, space-separated). Without the env var,
+// behaviour is exactly as before.
+function withExecOverride(name, engine) {
+  if (name !== 'chromium' || !process.env.WIREMAP_CHROMIUM) return engine;
+  const executablePath = process.env.WIREMAP_CHROMIUM;
+  const args = (process.env.WIREMAP_CHROMIUM_ARGS || '').split(' ').filter(Boolean);
+  return { launch: (opts) => engine.launch({ ...opts, executablePath, args }) };
+}
+
 async function run(engineName, engine) {
   let browser;
   try {
@@ -3459,12 +3470,2065 @@ async function runLookupAftermath(engineName, engine) {
   return { engine: engineName, available: true, detail: R, checks, errs };
 }
 
+// ── WM-8: sheets manager ────────────────────────────────────────────────────
+async function runSheets(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  const dialogs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  page.on('dialog', async (d) => { dialogs.push(d.message()); await d.dismiss(); });
+  await page.goto(APP);
+
+  const R = {};
+
+  // seed: one job, one sheet with a label; plus a second job that must not leak
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    await db.putJob(WM.model.createJob({ id: 'wm-dev-job', name: 'Dev', now }));
+    await db.putSheet(WM.model.createSheet({ id: 'base', jobId: 'wm-dev-job', name: 'Base Plan',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    await db.putAnnotation(WM.model.createAnnotation({ id: 'lb1', sheetId: 'base',
+      type: 'wireLabel', at: { x: 0.4, y: 0.4 }, now, data: { label: 'HR-07', from: 'Panel A' } }));
+    await db.putJob(WM.model.createJob({ id: 'job-b', name: 'Other', now }));
+    await db.putSheet(WM.model.createSheet({ id: 'bx', jobId: 'job-b', name: 'B1',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    await db.setMeta('currentSheetId', 'base');
+    db.closeDatabase();
+  });
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+
+  const openSheets = async () => {
+    await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+    await page.click('#wm-sheets-open');
+    await page.waitForTimeout(350);
+    return page.evaluate(() => ({
+      status: document.getElementById('wm-sheets-status').textContent,
+      rows: Array.from(document.querySelectorAll('.sheet-row')).map(r => ({
+        id: r.getAttribute('data-sheet-id'),
+        name: r.querySelector('.sheet-name').textContent,
+        kind: r.querySelector('.sheet-meta').textContent,
+        current: r.classList.contains('current'),
+        upDisabled: r.querySelectorAll('button')[0].disabled,
+        downDisabled: r.querySelectorAll('button')[1].disabled,
+        delDisabled: r.querySelectorAll('button')[3].disabled })),
+      scriptNodes: document.querySelectorAll('#wm-sheets script').length }));
+  };
+  const addBlank = async (name) => {
+    await page.evaluate(() => { document.getElementById('wm-sheets').hidden = false; });
+    await page.waitForTimeout(150);
+    await page.click('#wm-sheets-add');
+    await page.waitForFunction(() => !document.getElementById('wm-addsheet').hidden, { timeout: 10000 });
+    await page.fill('#wm-addsheet-name', name);
+    await page.click('#wm-addsheet-blank');
+    await page.waitForTimeout(600);
+  };
+  const rowBtn = (id, idx) => page.evaluate(({ id, idx }) => {
+    const r = document.querySelector('.sheet-row[data-sheet-id="' + id + '"]');
+    r.querySelectorAll('button')[idx].click();
+  }, { id, idx });
+  const meta = () => page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const cur = await db.getMeta('currentSheetId'); db.closeDatabase(); return cur;
+  });
+
+  R.initial = await openSheets();
+  await addBlank('1F Plan');
+  R.afterFirstAdd = { meta: await meta(), list: (await openSheets()).rows.map(r => r.name) };
+  await addBlank('2F Plan');
+  await addBlank('  Roof  ');
+  R.afterAdds = await openSheets();
+
+  // open a non-current sheet
+  await page.evaluate(() => {
+    document.querySelector('.sheet-row[data-sheet-id="base"] .sheet-main').click();
+  });
+  await page.waitForTimeout(600);
+  R.openOther = { meta: await meta(), labels: await page.evaluate(() =>
+    document.querySelectorAll('.wm-label').length) };
+
+  // tapping the current sheet must not reload
+  const before = await openSheets();
+  const curId = before.rows.find(r => r.current).id;
+  const viewBefore = await page.evaluate(() => JSON.stringify(window.__wmStage.getViewport()));
+  await page.evaluate((id) => {
+    document.querySelector('.sheet-row[data-sheet-id="' + id + '"] .sheet-main').click();
+  }, curId);
+  await page.waitForTimeout(400);
+  R.tapCurrent = { closed: await page.evaluate(() => document.getElementById('wm-sheets').hidden),
+    viewKept: (await page.evaluate(() => JSON.stringify(window.__wmStage.getViewport()))) === viewBefore };
+
+  // rename
+  let list = await openSheets();
+  const oneF = list.rows.find(r => r.name.indexOf('1F') === 0).id;
+  await rowBtn(oneF, 2);
+  await page.waitForTimeout(200);
+  await page.fill('#wm-rename-name', 'Ground Floor');
+  await page.click('#wm-rename-save');
+  await page.waitForTimeout(400);
+  R.afterRename = { names: (await openSheets()).rows.map(r => r.name),
+    sameId: await page.evaluate(async (id) => {
+      const db = WM.store.createStore(); await db.openDatabase();
+      const s = await db.getSheet(id); db.closeDatabase();
+      return { name: s.name, order: s.order, kind: s.kind }; }, oneF) };
+
+  // reorder
+  list = await openSheets();
+  const roof = list.rows.find(r => r.name === 'Roof').id;
+  await rowBtn(roof, 0);
+  await page.waitForTimeout(400);
+  R.afterMoveUp = (await openSheets()).rows.map(r => r.name);
+  await page.reload(); await page.waitForTimeout(300);
+  await page.click('#wm-dev-load'); await page.waitForTimeout(500);
+  R.orderAfterReload = (await openSheets()).rows.map(r => r.name);
+
+  // delete a non-current sheet
+  list = await openSheets();
+  const twoF = list.rows.find(r => r.name === '2F Plan').id;
+  const curBefore = await meta();
+  await rowBtn(twoF, 3);
+  await page.waitForTimeout(250);
+  R.deleteDialog = await page.evaluate(() => ({
+    open: !document.getElementById('wm-delsheet').hidden,
+    body: document.getElementById('wm-delsheet-body').textContent }));
+  await page.click('#wm-delsheet-confirm');
+  await page.waitForTimeout(600);
+  R.afterDeleteOther = { names: (await openSheets()).rows.map(r => r.name),
+    metaSame: (await meta()) === curBefore };
+
+  // delete the CURRENT sheet
+  list = await openSheets();
+  const cur2 = list.rows.find(r => r.current);
+  await rowBtn(cur2.id, 3);
+  await page.waitForTimeout(250);
+  await page.click('#wm-delsheet-confirm');
+  await page.waitForTimeout(800);
+  R.afterDeleteCurrent = { newMeta: await meta(), oldId: cur2.id,
+    names: (await openSheets()).rows.map(r => r.name) };
+
+  // reduce to one sheet, then delete must be blocked
+  list = await openSheets();
+  while (list.rows.length > 1) {
+    const victim = list.rows.find(r => !r.current) || list.rows[0];
+    await rowBtn(victim.id, 3);
+    await page.waitForTimeout(200);
+    await page.click('#wm-delsheet-confirm');
+    await page.waitForTimeout(700);
+    list = await openSheets();
+  }
+  R.lastSheet = { count: list.rows.length, delDisabled: list.rows[0].delDisabled };
+
+  // XSS sheet name
+  await addBlank('<script>alert(1)</script>');
+  R.xss = await openSheets();
+  R.xssStored = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const cur = await db.getMeta('currentSheetId');
+    const s = await db.getSheet(cur); db.closeDatabase(); return s.name;
+  });
+
+  // cross-job isolation
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    await db.setMeta('currentSheetId', 'bx'); db.closeDatabase();
+  });
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await page.click('#wm-dev-load'); await page.waitForTimeout(500);
+  R.otherJob = (await openSheets()).rows.map(r => r.name);
+
+
+  // ── listeners must not accumulate across repeated open/close cycles ──
+  R.listeners = await page.evaluate(async () => {
+    const count = () => {
+      // Fixed modal controls are what could leak; row nodes are discarded with
+      // the list on every render.
+      const ids = ['wm-sheets-open', 'wm-sheets-close', 'wm-sheets-add',
+        'wm-addsheet-blank', 'wm-addsheet-cancel', 'wm-rename-save',
+        'wm-rename-cancel', 'wm-delsheet-confirm', 'wm-delsheet-cancel'];
+      return ids.filter((id) => document.getElementById(id)).length;
+    };
+    const before = count();
+    let writes = 0;
+    const db = WM.store.createStore(); await db.openDatabase();
+    const cur = await db.getMeta('currentSheetId');
+    const sheet = await db.getSheet(cur);
+    const beforeName = sheet.name;
+    db.closeDatabase();
+    for (let i = 0; i < 10; i++) {
+      document.getElementById('wm-sheets-open').click();
+      document.getElementById('wm-sheets-close').click();
+      document.getElementById('wm-sheets-add').click();
+      document.getElementById('wm-addsheet-cancel').click();
+    }
+    await new Promise((r) => setTimeout(r, 400));
+    const after = count();
+    // One Rename Save must produce exactly one stored name, not ten.
+    const db2 = WM.store.createStore(); await db2.openDatabase();
+    const still = await db2.getSheet(cur); db2.closeDatabase();
+    return { before, after, stable: before === after,
+      nameUnchangedByCycling: still.name === beforeName,
+      sheetsHidden: document.getElementById('wm-sheets').hidden,
+      addHidden: document.getElementById('wm-addsheet').hidden, writes };
+  });
+
+  // ── close the manager, then use the plan normally ──
+  await page.evaluate(() => {
+    ['wm-sheets', 'wm-addsheet', 'wm-rename', 'wm-delsheet', 'wm-lookup']
+      .forEach((id) => { document.getElementById(id).hidden = true; });
+  });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(250);
+  await page.click('#wm-sheets-close');
+  await page.waitForTimeout(250);
+  R.afterClose = await page.evaluate(() => {
+    const modal = document.getElementById('wm-sheets');
+    const el = document.getElementById('wm-viewport').getBoundingClientRect();
+    const mid = document.elementFromPoint(el.left + el.width / 2, el.top + el.height / 2);
+    const s = window.__wmStage;
+    return { hidden: modal.hidden, display: getComputedStyle(modal).display,
+      backdropIntercepts: !!(mid && mid.closest && mid.closest('#wm-sheets')),
+      tool: s.activeSketchTool(), gesture: s.getGestureMode(),
+      pointers: s.getActivePointers(),
+      selectedSketch: s.getSelectedSketch(), selectedArrow: s.getSelectedArrow() };
+  });
+  R.panAfterClose = await page.evaluate(() => {
+    const s = window.__wmStage, sz = s.getStageSize();
+    const vpEl = document.getElementById('wm-viewport');
+    const el = vpEl.getBoundingClientRect();
+    s._setViewport(WM.viewport.centerOnNormalized({ x: 0.5, y: 0.5 }, sz,
+      { width: el.width, height: el.height }, s.getViewport(), 3));
+    s.renderLabels();
+    const before = s.getViewport();
+    const send = (t, x, y) => {
+      const tg = document.elementFromPoint(el.left + x, el.top + y) || vpEl;
+      tg.dispatchEvent(new PointerEvent(t, { pointerId: 501, clientX: el.left + x,
+        clientY: el.top + y, bubbles: true, pointerType: 'touch' }));
+    };
+    send('pointerdown', 120, 200);
+    [30, 60, 95].forEach((d) => send('pointermove', 120 + d, 200));
+    send('pointerup', 215, 200);
+    const after = s.getViewport();
+    // Pinch straight at the viewport element: elementFromPoint can land on an
+    // annotation, which correctly claims the pointer, and that would test
+    // annotation routing rather than the gesture we mean to exercise here.
+    const pinch = (t, id, x, y) => vpEl.dispatchEvent(new PointerEvent(t, { pointerId: id,
+      clientX: el.left + x, clientY: el.top + y, bubbles: true, pointerType: 'touch' }));
+    pinch('pointerdown', 71, 150, 300); pinch('pointerdown', 72, 250, 300);
+    pinch('pointermove', 72, 360, 300);
+    const zoomed = s.getViewport().scale;
+    pinch('pointerup', 71, 150, 300); pinch('pointerup', 72, 360, 300);
+    return { panned: Math.abs(after.translateX - before.translateX) > 20,
+      scaleKept: after.scale === before.scale,
+      pinched: zoomed > after.scale,
+      pointers: s.getActivePointers(), gesture: s.getGestureMode() };
+  });
+
+  // ── responsive ──
+  R.responsive = [];
+  for (const vp of [{ width: 390, height: 844 }, { width: 375, height: 667 },
+    { width: 844, height: 390 }]) {
+    await page.setViewportSize(vp);
+    await page.waitForTimeout(250);
+    await page.click('#wm-sheets-open');
+    await page.waitForTimeout(300);
+    R.responsive.push(await page.evaluate((w) => {
+      const inView = (el) => { if (!el) return false; const r = el.getBoundingClientRect();
+        return r.left >= -1 && r.right <= w + 1 && r.width > 0 && r.height > 0; };
+      const bar = document.querySelector('.devbar');
+      const list = document.getElementById('wm-sheets-list');
+      const rowBtns = Array.from(document.querySelectorAll('.sheet-row button'));
+      return { width: w,
+        docOverflows: document.documentElement.scrollWidth > w,
+        barOverflows: bar.scrollWidth > bar.clientWidth + 1,
+        sheetsBtn: inView(document.getElementById('wm-sheets-open')),
+        panel: inView(document.querySelector('#wm-sheets .sheet-panel')),
+        addBtn: inView(document.getElementById('wm-sheets-add')),
+        closeBtn: inView(document.getElementById('wm-sheets-close')),
+        listScrolls: getComputedStyle(list).overflowY === 'auto',
+        rowsFit: rowBtns.every((b) => b.getBoundingClientRect().right <= w + 1) };
+    }, vp.width));
+    await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  // ── many sheets: the list must stay bounded and metadata-only ──
+  R.many = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const cur = await db.getMeta('currentSheetId');
+    const sheet = await db.getSheet(cur);
+    const now = Date.now();
+    const existing = await db.listSheets(sheet.jobId);
+    for (let i = 0; i < 12; i++) {
+      await db.putSheet(WM.model.createSheet({ id: 'bulk-' + i, jobId: sheet.jobId,
+        name: 'Bulk Sheet ' + (i + 1), kind: 'blank', width: 2000, height: 1500,
+        order: existing.length + i, now }));
+    }
+    db.closeDatabase();
+    return { seeded: 12 };
+  });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(400);
+  R.manyList = await page.evaluate(() => {
+    const list = document.getElementById('wm-sheets-list');
+    const panel = document.querySelector('#wm-sheets .sheet-panel');
+    return { rows: document.querySelectorAll('.sheet-row').length,
+      listScrollable: list.scrollHeight > list.clientHeight,
+      listBounded: list.clientHeight <= window.innerHeight,
+      panelBounded: panel.getBoundingClientRect().height <= window.innerHeight + 1,
+      docOverflows: document.documentElement.scrollWidth > window.innerWidth,
+      addInView: (() => { const r = document.getElementById('wm-sheets-add').getBoundingClientRect();
+        return r.top >= 0 && r.bottom <= window.innerHeight + 1; })(),
+      currentVisible: !!document.querySelector('.sheet-row.current') };
+  });
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+
+  await browser.close();
+
+  const rowNames = (arr) => arr.map((x) => x.replace('CURRENT', ''));
+  const checks = [
+    ['the sheets list opens showing the current sheet',
+      R.initial.rows.length === 1 && R.initial.rows[0].current
+      && R.initial.rows[0].name.indexOf('CURRENT') !== -1],
+    ['a single sheet cannot be moved or deleted',
+      R.initial.rows[0].upDisabled && R.initial.rows[0].downDisabled
+      && R.initial.rows[0].delDisabled],
+    ['adding a blank sheet makes it current and appends it last',
+      R.afterFirstAdd.list.length === 2
+      && R.afterFirstAdd.list[1].indexOf('1F Plan') === 0],
+    ['sheet names are trimmed on creation',
+      R.afterAdds.rows.some((r) => r.name.replace('CURRENT', '') === 'Roof')],
+    ['four sheets are listed in creation order',
+      rowNames(R.afterAdds.rows.map((r) => r.name)).join('|')
+        === 'Base Plan|1F Plan|2F Plan|Roof'],
+    ['opening another sheet switches current and its annotations',
+      R.openOther.meta === 'base' && R.openOther.labels === 1],
+    ['tapping the CURRENT sheet closes the manager without resetting the view',
+      R.tapCurrent.closed && R.tapCurrent.viewKept],
+    ['renaming keeps the same id, order and kind',
+      R.afterRename.sameId.name === 'Ground Floor' && R.afterRename.sameId.order === 1
+      && R.afterRename.sameId.kind === 'blank'],
+    ['Move Up reorders the list', R.afterMoveUp.join('|').indexOf('Roof|2F Plan') !== -1],
+    ['the new order survives a page reload',
+      R.orderAfterReload.join('|') === R.afterMoveUp.join('|')],
+    ['delete asks for confirmation naming the sheet',
+      R.deleteDialog.open && R.deleteDialog.body.indexOf('2F Plan') !== -1],
+    ['deleting a non-current sheet leaves the current one alone',
+      R.afterDeleteOther.metaSame && R.afterDeleteOther.names.length === 3],
+    ['deleting the current sheet picks a deterministic replacement',
+      R.afterDeleteCurrent.newMeta !== R.afterDeleteCurrent.oldId
+      && R.afterDeleteCurrent.names.length === 2],
+    ['THE LAST REMAINING SHEET CANNOT BE DELETED',
+      R.lastSheet.count === 1 && R.lastSheet.delDisabled],
+    ['an HTML-looking sheet name is stored literally',
+      R.xssStored === '<script>alert(1)</script>'],
+    ['the sheets list renders that name without creating a script node',
+      R.xss.scriptNodes === 0
+      && R.xss.rows.some((r) => r.name.indexOf('<script>alert(1)</script>') !== -1)],
+    ['no dialog fired anywhere in the sheets flow', dialogs.length === 0],
+    ['CROSS-JOB ISOLATION: another job shows only its own sheets',
+      R.otherJob.length === 1 && R.otherJob[0].indexOf('B1') === 0],
+    ['LISTENERS do not accumulate across repeated open/close cycles',
+      R.listeners.stable && R.listeners.nameUnchangedByCycling],
+    ['repeated cycles leave both modals closed',
+      R.listeners.sheetsHidden && R.listeners.addHidden],
+    ['closing the manager hides it and leaves nothing intercepting the plan',
+      R.afterClose.hidden && R.afterClose.display === 'none'
+      && !R.afterClose.backdropIntercepts],
+    ['closing the manager leaves tool, gesture and pointer state clean',
+      R.afterClose.tool === 'none' && R.afterClose.gesture === 'idle'
+      && R.afterClose.pointers === 0 && R.afterClose.selectedSketch === null
+      && R.afterClose.selectedArrow === null],
+    ['pan and pinch work immediately after closing the manager',
+      R.panAfterClose.panned && R.panAfterClose.scaleKept && R.panAfterClose.pinched
+      && R.panAfterClose.pointers === 0 && R.panAfterClose.gesture === 'idle'],
+    ['no horizontal overflow at any tested width',
+      R.responsive.every((r) => !r.docOverflows && !r.barOverflows)],
+    ['the Sheets control and modal are reachable at every width',
+      R.responsive.every((r) => r.sheetsBtn && r.panel)],
+    ['Add Sheet, Close and row actions are reachable at every width',
+      R.responsive.every((r) => r.addBtn && r.closeBtn && r.rowsFit)],
+    ['with 12+ sheets the list scrolls inside a bounded modal',
+      R.manyList.rows >= 12 && R.manyList.listScrollable && R.manyList.listBounded
+      && R.manyList.panelBounded && !R.manyList.docOverflows],
+    ['Add Sheet stays reachable with a long list',
+      R.manyList.addInView && R.manyList.currentVisible],
+    ['no page errors through the whole sheets flow', errs.length === 0],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WM-8 hardening — photo sheets through the REAL production path.
+//
+// Everything below goes through the shipped change handler on
+// #wm-addsheet-file: processImage → putImage → putSheet → loadCurrentSheet,
+// including the orphan-image cleanup when persistence fails mid-way.
+// ─────────────────────────────────────────────────────────────────────────
+async function runSheetsPhoto(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  await page.goto(APP);
+
+  const R = {};
+
+  // seed: one job, one blank base sheet
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    await db.putJob(WM.model.createJob({ id: 'pj', name: 'Photo Job', now }));
+    await db.putSheet(WM.model.createSheet({ id: 'pbase', jobId: 'pj', name: 'Base',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    await db.setMeta('currentSheetId', 'pbase');
+    db.closeDatabase();
+
+    // page-side helpers shared by every photo check below
+    window.__ph = {
+      // A real JPEG, drawn — not synthesized bytes — so decode, resize and
+      // re-encode all run for real.
+      makeJpeg(w, h) {
+        return new Promise((resolve) => {
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          const g = c.getContext('2d');
+          g.fillStyle = '#246'; g.fillRect(0, 0, w, h);
+          g.fillStyle = '#fc0'; g.fillRect(w / 4, h / 4, w / 2, h / 2);
+          c.toBlob((b) => resolve(b), 'image/jpeg', 0.9);
+        });
+      },
+      attach(blob, name, mime) {
+        const input = document.getElementById('wm-addsheet-file');
+        const dt = new DataTransfer();
+        dt.items.add(new File([blob], name, { type: mime }));
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      },
+      attachNothing() {
+        const input = document.getElementById('wm-addsheet-file');
+        input.files = new DataTransfer().files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      },
+      counts() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(WM.store.DB_NAME);
+          req.onerror = () => reject(req.error);
+          req.onsuccess = () => {
+            const db = req.result;
+            const tx = db.transaction(['sheets', 'images', 'annotations'], 'readonly');
+            const out = {};
+            const count = (store, key) => {
+              const r = tx.objectStore(store).count();
+              r.onsuccess = () => { out[key] = r.result; };
+            };
+            count('sheets', 'sheets'); count('images', 'images'); count('annotations', 'annotations');
+            tx.oncomplete = () => { db.close(); resolve(out); };
+            tx.onerror = () => { db.close(); reject(tx.error); };
+          };
+        });
+      },
+      async state() {
+        const db = WM.store.createStore(); await db.openDatabase();
+        const cur = await db.getMeta('currentSheetId');
+        const sheet = cur ? await db.getSheet(cur) : null;
+        const image = sheet && sheet.imageId ? await db.getImage(sheet.imageId) : null;
+        db.closeDatabase();
+        const s = window.__wmStage;
+        const img = document.getElementById('wm-background');
+        return {
+          currentId: cur,
+          kind: sheet ? sheet.kind : null,
+          name: sheet ? sheet.name : null,
+          imageId: sheet ? sheet.imageId : null,
+          storedW: image ? image.width : null,
+          storedH: image ? image.height : null,
+          stage: s.getStageSize(),
+          imgVisible: !!(img && !img.hidden && img.getAttribute('src')
+            && img.complete && img.naturalWidth > 0),
+          grid: s.isGridVisible(),
+          addOpen: !document.getElementById('wm-addsheet').hidden,
+          addError: document.getElementById('wm-addsheet-error').textContent,
+        };
+      },
+    };
+  });
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+
+  const openAdd = async (name) => {
+    await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+    await page.click('#wm-sheets-open');
+    await page.waitForTimeout(300);
+    await page.click('#wm-sheets-add');
+    await page.waitForFunction(() => !document.getElementById('wm-addsheet').hidden, { timeout: 10000 });
+    await page.fill('#wm-addsheet-name', name);
+  };
+
+  // ── 1. Add Photo success through the production pipeline ──
+  R.before = await page.evaluate(() => window.__ph.counts());
+  await openAdd('Site Photo');
+  await page.evaluate(async () => {
+    const b = await window.__ph.makeJpeg(800, 600);
+    window.__ph.attach(b, 'plan.jpg', 'image/jpeg');
+  });
+  await page.waitForFunction(() => document.getElementById('wm-addsheet').hidden, { timeout: 15000 });
+  await page.waitForTimeout(700);
+  R.photoOk = await page.evaluate(() => window.__ph.state());
+  R.afterPhoto = await page.evaluate(() => window.__ph.counts());
+
+  // ── 2. Add Photo cancel — a change event with no file creates nothing ──
+  await openAdd('Never Created');
+  await page.evaluate(() => window.__ph.attachNothing());
+  await page.waitForTimeout(500);
+  R.cancel = {
+    counts: await page.evaluate(() => window.__ph.counts()),
+    addStillOpen: await page.evaluate(() => !document.getElementById('wm-addsheet').hidden),
+    error: await page.evaluate(() => document.getElementById('wm-addsheet-error').textContent),
+  };
+  await page.click('#wm-addsheet-cancel');
+  await page.waitForTimeout(200);
+
+  // ── 3a. Failure AFTER the image is stored — the orphan blob must go ──
+  await openAdd('Doomed Sheet');
+  await page.evaluate(async () => {
+    const orig = WM.model.validateSheet;
+    window.__ph.restore = () => { WM.model.validateSheet = orig; };
+    WM.model.validateSheet = () => ({ valid: false, problems: ['injected: sheet persistence failure'] });
+    const b = await window.__ph.makeJpeg(400, 300);
+    window.__ph.attach(b, 'doomed.jpg', 'image/jpeg');
+  });
+  await page.waitForFunction(() =>
+    document.getElementById('wm-addsheet-error').textContent.indexOf('injected') !== -1,
+    { timeout: 15000 });
+  R.orphan = {
+    counts: await page.evaluate(() => window.__ph.counts()),
+    error: await page.evaluate(() => document.getElementById('wm-addsheet-error').textContent),
+    current: await page.evaluate(async () => {
+      const db = WM.store.createStore(); await db.openDatabase();
+      const cur = await db.getMeta('currentSheetId'); db.closeDatabase(); return cur;
+    }),
+  };
+  await page.evaluate(() => window.__ph.restore());
+
+  // ── 3b. Failure BEFORE the image is stored — a non-image file ──
+  await page.fill('#wm-addsheet-name', 'Not An Image');
+  await page.evaluate(() => {
+    window.__ph.attach(new Blob(['plain text, not pixels'], { type: 'text/plain' }),
+      'notes.txt', 'text/plain');
+  });
+  await page.waitForFunction(() =>
+    document.getElementById('wm-addsheet-error').textContent.indexOf('Could not add sheet') !== -1,
+    { timeout: 15000 });
+  R.badFile = { counts: await page.evaluate(() => window.__ph.counts()) };
+  await page.click('#wm-addsheet-cancel');
+  await page.waitForTimeout(200);
+
+  // ── 14. Photo → Blank → Photo switching ──
+  await openAdd('Second Photo');
+  await page.evaluate(async () => {
+    const b = await window.__ph.makeJpeg(640, 480);
+    window.__ph.attach(b, 'second.jpg', 'image/jpeg');
+  });
+  await page.waitForFunction(() => document.getElementById('wm-addsheet').hidden, { timeout: 15000 });
+  await page.waitForTimeout(700);
+
+  const switchTo = async (name) => {
+    await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+    await page.click('#wm-sheets-open');
+    await page.waitForTimeout(300);
+    await page.evaluate((n) => {
+      const rows = Array.from(document.querySelectorAll('.sheet-row'));
+      const row = rows.find((r) => r.querySelector('.sheet-name').textContent.indexOf(n) === 0);
+      row.querySelector('.sheet-main').click();
+    }, name);
+    await page.waitForTimeout(700);
+    return page.evaluate(() => window.__ph.state());
+  };
+
+  R.toPhoto1 = await switchTo('Site Photo');
+  R.toBlank = await switchTo('Base');
+  R.toPhoto2 = await switchTo('Second Photo');
+
+  await ctx.close();
+  await browser.close();
+
+  const checks = [
+    ['Add Photo stores image + sheet through the production path',
+      R.afterPhoto.sheets === R.before.sheets + 1 && R.afterPhoto.images === R.before.images + 1],
+    ['the new photo sheet is current, kind photo, with its imageId',
+      R.photoOk.kind === 'photo' && R.photoOk.name === 'Site Photo' && !!R.photoOk.imageId],
+    ['stored image dimensions drive the stage size',
+      R.photoOk.stage && R.photoOk.stage.width === R.photoOk.storedW
+        && R.photoOk.stage.height === R.photoOk.storedH],
+    ['the photo is actually displayed (background img visible, no grid)',
+      R.photoOk.imgVisible === true && R.photoOk.grid === false],
+    ['the Add modal closed after a successful photo add', R.photoOk.addOpen === false],
+    ['cancelling the file picker creates nothing',
+      R.cancel.counts.sheets === R.afterPhoto.sheets && R.cancel.counts.images === R.afterPhoto.images],
+    ['a cancelled picker leaves the Add modal open with no error',
+      R.cancel.addStillOpen === true && R.cancel.error === ''],
+    ['a failed sheet write removes the already-stored image (no orphan)',
+      R.orphan.counts.images === R.afterPhoto.images && R.orphan.counts.sheets === R.afterPhoto.sheets],
+    ['the failure is reported and the current sheet is untouched',
+      R.orphan.error.indexOf('Could not add sheet') !== -1 && R.orphan.current === R.photoOk.currentId],
+    ['a non-image file fails cleanly with nothing stored',
+      R.badFile.counts.images === R.afterPhoto.images && R.badFile.counts.sheets === R.afterPhoto.sheets],
+    ['switching to a photo sheet shows its image',
+      R.toPhoto1.kind === 'photo' && R.toPhoto1.imgVisible === true && R.toPhoto1.grid === false],
+    ['switching photo → blank hides the image and shows the grid',
+      R.toBlank.kind === 'blank' && R.toBlank.imgVisible === false && R.toBlank.grid === true
+        && R.toBlank.stage.width === 2000 && R.toBlank.stage.height === 1500],
+    ['switching blank → second photo shows the SECOND image at its own size',
+      R.toPhoto2.kind === 'photo' && R.toPhoto2.imgVisible === true
+        && R.toPhoto2.stage.width === R.toPhoto2.storedW
+        && R.toPhoto2.stage.height === R.toPhoto2.storedH
+        && R.toPhoto2.imageId !== R.toPhoto1.imageId],
+    ['no page errors through the photo flows', errs.length === 0],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WM-8 hardening — annotation, tool, selection and undo isolation across
+// sheet switches, plus permanent cross-job write isolation.
+// ─────────────────────────────────────────────────────────────────────────
+async function runSheetsIsolation(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  await page.goto(APP);
+
+  const R = {};
+
+  // seed: job A with two sheets (all five annotation types on A1, two on A2),
+  // job B with one sheet — job B is the untouchable control group.
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    await db.putJob(WM.model.createJob({ id: 'ja', name: 'Job A', now }));
+    await db.putSheet(WM.model.createSheet({ id: 'a1', jobId: 'ja', name: 'A One',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    await db.putSheet(WM.model.createSheet({ id: 'a2', jobId: 'ja', name: 'A Two',
+      kind: 'blank', width: 2000, height: 1500, order: 1, now }));
+    const put = (a) => db.putAnnotation(a);
+    await put(WM.model.createAnnotation({ id: 'a1-label', sheetId: 'a1', type: 'wireLabel',
+      at: { x: 0.3, y: 0.3 }, now, data: { label: 'HR-01', from: 'Panel A' } }));
+    await put(WM.model.createAnnotation({ id: 'a1-arrow', sheetId: 'a1', type: 'arrow',
+      a: { x: 0.2, y: 0.2 }, b: { x: 0.6, y: 0.6 }, now }));
+    await put(WM.model.createAnnotation({ id: 'a1-line', sheetId: 'a1', type: 'line',
+      a: { x: 0.1, y: 0.8 }, b: { x: 0.9, y: 0.8 }, now }));
+    await put(WM.model.createAnnotation({ id: 'a1-rect', sheetId: 'a1', type: 'rect',
+      a: { x: 0.55, y: 0.15 }, b: { x: 0.8, y: 0.4 }, now }));
+    await put(WM.model.createAnnotation({ id: 'a1-text', sheetId: 'a1', type: 'text',
+      at: { x: 0.5, y: 0.9 }, now, data: { text: 'A1 note' } }));
+    await put(WM.model.createAnnotation({ id: 'a2-label', sheetId: 'a2', type: 'wireLabel',
+      at: { x: 0.4, y: 0.4 }, now, data: { label: 'HR-02' } }));
+    await put(WM.model.createAnnotation({ id: 'a2-line', sheetId: 'a2', type: 'line',
+      a: { x: 0.2, y: 0.2 }, b: { x: 0.7, y: 0.7 }, now }));
+    await db.putJob(WM.model.createJob({ id: 'jb', name: 'Job B', now }));
+    await db.putSheet(WM.model.createSheet({ id: 'b1', jobId: 'jb', name: 'B One',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    await put(WM.model.createAnnotation({ id: 'b1-label', sheetId: 'b1', type: 'wireLabel',
+      at: { x: 0.5, y: 0.5 }, now, data: { label: 'BB-99', notes: 'must never change' } }));
+    await db.setMeta('currentSheetId', 'a1');
+    db.closeDatabase();
+
+    window.__iso = {
+      async jobBFingerprint() {
+        const db2 = WM.store.createStore(); await db2.openDatabase();
+        const sheets = await db2.listSheets('jb');
+        const anns = await db2.listAnnotations('b1');
+        db2.closeDatabase();
+        return JSON.stringify({ sheets, anns });
+      },
+      async annIds(sheetId) {
+        const db2 = WM.store.createStore(); await db2.openDatabase();
+        const anns = await db2.listAnnotations(sheetId);
+        db2.closeDatabase();
+        return anns.map((a) => a.id).sort();
+      },
+      stageView() {
+        const s = window.__wmStage;
+        return {
+          count: s.getAnnotationCount(),
+          tool: s.activeSketchTool(),
+          selArrow: s.getSelectedArrow(),
+          selSketch: s.getSelectedSketch(),
+          canUndo: s.canUndo(),
+          undoSize: s.undoSize(),
+          delArrowHidden: document.getElementById('wm-delete-arrow').hidden,
+          delShapeHidden: document.getElementById('wm-sketch-delete').hidden,
+          domLabels: Array.from(document.querySelectorAll('.wm-label'))
+            .map((n) => n.textContent).sort(),
+          hasA1Line: !!s.getAnnotation('a1-line'),
+          hasA2Line: !!s.getAnnotation('a2-line'),
+        };
+      },
+    };
+  });
+  R.jobBBefore = await page.evaluate(() => window.__iso.jobBFingerprint());
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+
+  const switchSheet = async (id) => {
+    await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+    await page.click('#wm-sheets-open');
+    await page.waitForTimeout(300);
+    await page.evaluate((sid) => {
+      document.querySelector('.sheet-row[data-sheet-id="' + sid + '"] .sheet-main').click();
+    }, id);
+    await page.waitForTimeout(600);
+  };
+
+  // ── 4. full annotation isolation, all five types ──
+  R.onA1 = await page.evaluate(() => window.__iso.stageView());
+  await switchSheet('a2');
+  R.onA2 = await page.evaluate(() => window.__iso.stageView());
+  await switchSheet('a1');
+  R.backOnA1 = await page.evaluate(() => window.__iso.stageView());
+
+  // ── 5. an armed Line/Text tool does not survive a sheet switch ──
+  await page.click('#wm-sketch-toggle');
+  await page.waitForTimeout(150);
+  await page.click('#wm-tool-line');
+  R.lineArmed = await page.evaluate(() => window.__wmStage.activeSketchTool());
+  await switchSheet('a2');
+  R.lineAfterSwitch = await page.evaluate(() => window.__wmStage.activeSketchTool());
+  await page.click('#wm-tool-text');
+  R.textArmed = await page.evaluate(() => window.__wmStage.activeSketchTool());
+  await switchSheet('a1');
+  R.textAfterSwitch = await page.evaluate(() => window.__wmStage.activeSketchTool());
+
+  // ── 6. selection reset: arrow / line / rect / text ──
+  // The arrow case is the one that used to be dangerous: selection survived
+  // the switch and Delete Arrow removed an annotation on the PREVIOUS sheet.
+  await page.evaluate(() => window.__wmStage.selectArrow('a1-arrow'));
+  R.arrowSelected = await page.evaluate(() => ({
+    sel: window.__wmStage.getSelectedArrow(),
+    btnHidden: document.getElementById('wm-delete-arrow').hidden }));
+  await switchSheet('a2');
+  R.arrowAfterSwitch = await page.evaluate(() => ({
+    sel: window.__wmStage.getSelectedArrow(),
+    btnHidden: document.getElementById('wm-delete-arrow').hidden }));
+  // even a forced click on the (hidden) button must not reach across sheets
+  await page.evaluate(() => document.getElementById('wm-delete-arrow').click());
+  await page.waitForTimeout(400);
+  R.a1AfterForcedDelete = await page.evaluate(() => window.__iso.annIds('a1'));
+
+  await switchSheet('a1');
+  for (const [key, id] of [['line', 'a1-line'], ['rect', 'a1-rect'], ['text', 'a1-text']]) {
+    await page.evaluate((sid) => window.__wmStage.selectSketch(sid), id);
+    const sel = await page.evaluate(() => window.__wmStage.getSelectedSketch());
+    await switchSheet('a2');
+    R['sketch_' + key] = {
+      selected: sel,
+      afterSwitch: await page.evaluate(() => ({
+        sel: window.__wmStage.getSelectedSketch(),
+        btnHidden: document.getElementById('wm-sketch-delete').hidden })),
+    };
+    await page.evaluate(() => document.getElementById('wm-sketch-delete').click());
+    await page.waitForTimeout(300);
+    await switchSheet('a1');
+  }
+  R.a1AfterSketchDeletes = await page.evaluate(() => window.__iso.annIds('a1'));
+
+  // ── 7. undo history is per sheet and cannot fire across a switch ──
+  await page.evaluate(() => {
+    const s = window.__wmStage;
+    s.recordCreate({ id: 'a1-line', sheetId: 'a1', type: 'line' });
+  });
+  R.undoBeforeSwitch = await page.evaluate(() => ({
+    canUndo: window.__wmStage.canUndo(), size: window.__wmStage.undoSize() }));
+  await switchSheet('a2');
+  R.undoAfterSwitch = await page.evaluate(() => ({
+    canUndo: window.__wmStage.canUndo(), size: window.__wmStage.undoSize() }));
+  await page.click('#wm-undo');
+  await page.waitForTimeout(300);
+  R.a1AfterCrossUndo = await page.evaluate(() => window.__iso.annIds('a1'));
+  R.a2AfterCrossUndo = await page.evaluate(() => window.__iso.annIds('a2'));
+
+  // ── 13. a manual switch followed by NORMAL interactions ──
+  R.interact = await page.evaluate(async () => {
+    const s = window.__wmStage;
+    const vpEl = document.getElementById('wm-viewport');
+    const el = vpEl.getBoundingClientRect();
+    // Zoom in first: at fit scale a pan is correctly clamped to nothing, so
+    // the check would measure the clamp rather than the gesture.
+    s._setViewport(WM.viewport.centerOnNormalized({ x: 0.5, y: 0.5 }, s.getStageSize(),
+      { width: el.width, height: el.height }, s.getViewport(), 3));
+    s.renderLabels();
+    const before = s.getViewport();
+    const send = (t, id, x, y) => vpEl.dispatchEvent(new PointerEvent(t, { pointerId: id,
+      clientX: el.left + x, clientY: el.top + y, bubbles: true, pointerType: 'touch' }));
+    send('pointerdown', 601, 100, 220);
+    [25, 55, 90].forEach((d) => send('pointermove', 601, 100 + d, 220));
+    send('pointerup', 601, 190, 220);
+    const afterPan = s.getViewport();
+    send('pointerdown', 611, 140, 320); send('pointerdown', 612, 240, 320);
+    send('pointermove', 612, 340, 320);
+    const zoomed = s.getViewport().scale;
+    send('pointerup', 611, 140, 320); send('pointerup', 612, 340, 320);
+    return { panned: Math.abs(afterPan.translateX - before.translateX) > 20,
+      pinched: zoomed > afterPan.scale,
+      pointers: s.getActivePointers(), gesture: s.getGestureMode() };
+  });
+
+  // a new label placed after the switch lands on the CURRENT sheet
+  await page.click('#wm-add-label');
+  await page.waitForTimeout(150);
+  await page.evaluate(() => {
+    const vpEl = document.getElementById('wm-viewport');
+    const el = vpEl.getBoundingClientRect();
+    const send = (t) => vpEl.dispatchEvent(new PointerEvent(t, { pointerId: 621,
+      clientX: el.left + el.width / 2, clientY: el.top + el.height / 2,
+      bubbles: true, pointerType: 'touch' }));
+    send('pointerdown'); send('pointerup');
+  });
+  await page.waitForTimeout(300);
+  R.labelEditorOpen = await page.evaluate(() => {
+    const ed = document.getElementById('wm-editor');
+    return !!(ed && !ed.hidden);
+  });
+  if (R.labelEditorOpen) {
+    await page.fill('#wm-f-label', 'ZZ-13');
+    await page.click('#wm-editor-save');
+    await page.waitForTimeout(400);
+  }
+  R.newLabelSheet = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const anns = await db.listAnnotations('a2');
+    db.closeDatabase();
+    const zz = anns.find((a) => a.data && a.data.label === 'ZZ-13');
+    return zz ? zz.sheetId : null;
+  });
+
+  // ── 16. permanent cross-job write isolation ──
+  // rename + reorder + add + delete inside job A, then prove job B is
+  // byte-identical to its pre-session snapshot.
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    const row = document.querySelector('.sheet-row[data-sheet-id="a1"]');
+    row.querySelectorAll('button')[2].click(); // Rename
+  });
+  await page.waitForTimeout(200);
+  await page.fill('#wm-rename-name', 'A One Renamed');
+  await page.click('#wm-rename-save');
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    const row = document.querySelector('.sheet-row[data-sheet-id="a2"]');
+    row.querySelectorAll('button')[0].click(); // Up
+  });
+  await page.waitForTimeout(400);
+  await page.click('#wm-sheets-add');
+  await page.waitForFunction(() => !document.getElementById('wm-addsheet').hidden, { timeout: 10000 });
+  await page.fill('#wm-addsheet-name', 'A Three');
+  await page.click('#wm-addsheet-blank');
+  await page.waitForTimeout(600);
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    const rows = Array.from(document.querySelectorAll('.sheet-row'));
+    const row = rows.find((r) => r.querySelector('.sheet-name').textContent.indexOf('A Three') === 0);
+    row.querySelectorAll('button')[3].click(); // Delete
+  });
+  await page.waitForTimeout(250);
+  await page.click('#wm-delsheet-confirm');
+  await page.waitForTimeout(600);
+  R.jobBAfter = await page.evaluate(() => window.__iso.jobBFingerprint());
+
+  await ctx.close();
+  await browser.close();
+
+  const a1Full = ['a1-arrow', 'a1-label', 'a1-line', 'a1-rect', 'a1-text'];
+  const checks = [
+    ['sheet A1 renders exactly its five annotations (all types present)',
+      R.onA1.count === 5 && R.onA1.hasA1Line === true && R.onA1.hasA2Line === false
+        && R.onA1.domLabels.indexOf('HR-01') !== -1 && R.onA1.domLabels.indexOf('HR-02') === -1],
+    ['switching to A2 swaps to exactly its two annotations',
+      R.onA2.count === 2 && R.onA2.hasA2Line === true && R.onA2.hasA1Line === false
+        && R.onA2.domLabels.indexOf('HR-02') !== -1 && R.onA2.domLabels.indexOf('HR-01') === -1],
+    ['switching back restores A1 in full', R.backOnA1.count === 5 && R.backOnA1.hasA1Line === true],
+    ['an armed Line tool is disarmed by a sheet switch',
+      R.lineArmed === 'line' && (!R.lineAfterSwitch || R.lineAfterSwitch === 'none')],
+    ['an armed Text tool is disarmed by a sheet switch',
+      R.textArmed === 'text' && (!R.textAfterSwitch || R.textAfterSwitch === 'none')],
+    ['arrow selection is cleared by a sheet switch and its button hides',
+      R.arrowSelected.sel === 'a1-arrow' && R.arrowSelected.btnHidden === false
+        && R.arrowAfterSwitch.sel === null && R.arrowAfterSwitch.btnHidden === true],
+    ['a forced Delete Arrow after the switch cannot reach the previous sheet',
+      JSON.stringify(R.a1AfterForcedDelete) === JSON.stringify(a1Full)],
+    ['line selection is cleared by a sheet switch',
+      R.sketch_line.selected === 'a1-line' && R.sketch_line.afterSwitch.sel === null
+        && R.sketch_line.afterSwitch.btnHidden === true],
+    ['rect selection is cleared by a sheet switch',
+      R.sketch_rect.selected === 'a1-rect' && R.sketch_rect.afterSwitch.sel === null],
+    ['text selection is cleared by a sheet switch',
+      R.sketch_text.selected === 'a1-text' && R.sketch_text.afterSwitch.sel === null],
+    ['forced shape deletes after switches never touched the previous sheet',
+      JSON.stringify(R.a1AfterSketchDeletes) === JSON.stringify(a1Full)],
+    ['undo history exists before the switch and is empty after it',
+      R.undoBeforeSwitch.canUndo === true && R.undoAfterSwitch.canUndo === false
+        && R.undoAfterSwitch.size === 0],
+    ['pressing Undo on the new sheet mutates neither sheet',
+      JSON.stringify(R.a1AfterCrossUndo) === JSON.stringify(a1Full)
+        && R.a2AfterCrossUndo.indexOf('a2-label') !== -1
+        && R.a2AfterCrossUndo.indexOf('a2-line') !== -1],
+    ['pan and pinch work normally right after a manual sheet switch',
+      R.interact.panned === true && R.interact.pinched === true
+        && R.interact.pointers === 0],
+    ['a label placed after the switch lands on the CURRENT sheet',
+      !R.labelEditorOpen || R.newLabelSheet === 'a2'],
+    ['a full manager session in job A leaves job B byte-identical',
+      R.jobBBefore === R.jobBAfter],
+    ['no page errors through the isolation flows', errs.length === 0],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WM-8 hardening — Lookup must always reflect the Sheets Manager: rename,
+// reorder, delete, delete-current; plus full-reload persistence and
+// touch-driven sheet sequences.
+// ─────────────────────────────────────────────────────────────────────────
+async function runSheetsLookupSync(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  await page.goto(APP);
+
+  const R = {};
+
+  // seed: HR-07 exists on BOTH sheets (equal rank → sheet order decides),
+  // KX-1 exists only on S1.
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    await db.putJob(WM.model.createJob({ id: 'lj', name: 'Lookup Job', now }));
+    await db.putSheet(WM.model.createSheet({ id: 's1', jobId: 'lj', name: 'Alpha',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    await db.putSheet(WM.model.createSheet({ id: 's2', jobId: 'lj', name: 'Beta',
+      kind: 'blank', width: 2000, height: 1500, order: 1, now }));
+    await db.putAnnotation(WM.model.createAnnotation({ id: 'l1', sheetId: 's1',
+      type: 'wireLabel', at: { x: 0.3, y: 0.3 }, now, data: { label: 'HR-07', from: 'Panel A' } }));
+    await db.putAnnotation(WM.model.createAnnotation({ id: 'l2', sheetId: 's2',
+      type: 'wireLabel', at: { x: 0.6, y: 0.6 }, now, data: { label: 'HR-07', from: 'Panel B' } }));
+    await db.putAnnotation(WM.model.createAnnotation({ id: 'l3', sheetId: 's1',
+      type: 'wireLabel', at: { x: 0.8, y: 0.2 }, now, data: { label: 'KX-1' } }));
+    await db.setMeta('currentSheetId', 's1');
+    db.closeDatabase();
+  });
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+
+  const lookup = async (q) => {
+    await page.evaluate(() => {
+      ['wm-sheets', 'wm-addsheet', 'wm-rename', 'wm-delsheet'].forEach((id) => {
+        document.getElementById(id).hidden = true; });
+      document.getElementById('wm-lookup').hidden = true;
+    });
+    await page.click('#wm-lookup-open');
+    await page.waitForTimeout(250);
+    await page.fill('#wm-lookup-query', q);
+    await page.click('#wm-lookup-search');
+    await page.waitForTimeout(450);
+    return page.evaluate(() => ({
+      count: document.getElementById('wm-lookup-count').textContent,
+      results: Array.from(document.querySelectorAll('#wm-lookup-results .result')).map((c) => ({
+        sheetId: c.getAttribute('data-sheet-id'),
+        sheetName: c.querySelector('.result-sheet').textContent,
+        label: c.querySelector('.result-label').textContent })) }));
+  };
+  const closeLookup = async () => {
+    await page.evaluate(() => { document.getElementById('wm-lookup').hidden = true; });
+  };
+  const managerAction = async (fn, arg) => {
+    await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+    await page.click('#wm-sheets-open');
+    await page.waitForTimeout(300);
+    await page.evaluate(fn, arg);
+  };
+
+  R.baseline = await lookup('HR-07');
+  await closeLookup();
+
+  // ── 8. rename is reflected in Lookup ──
+  await managerAction((sid) => {
+    document.querySelector('.sheet-row[data-sheet-id="' + sid + '"]')
+      .querySelectorAll('button')[2].click();
+  }, 's1');
+  await page.waitForTimeout(200);
+  await page.fill('#wm-rename-name', 'Gamma');
+  await page.click('#wm-rename-save');
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  R.afterRename = await lookup('HR-07');
+  await closeLookup();
+
+  // ── 9. reorder is reflected in result ordering ──
+  await managerAction((sid) => {
+    document.querySelector('.sheet-row[data-sheet-id="' + sid + '"]')
+      .querySelectorAll('button')[0].click();
+  }, 's2');
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  R.afterReorder = await lookup('HR-07');
+  await closeLookup();
+
+  // ── 10. deleting a sheet removes its labels from Lookup ──
+  await managerAction((sid) => {
+    document.querySelector('.sheet-row[data-sheet-id="' + sid + '"]')
+      .querySelectorAll('button')[3].click();
+  }, 's2');
+  await page.waitForTimeout(250);
+  await page.click('#wm-delsheet-confirm');
+  await page.waitForTimeout(600);
+  R.afterDelete = await lookup('HR-07');
+  await closeLookup();
+
+  // ── 11. Lookup keeps working after deleting the CURRENT sheet ──
+  // Rebuild a second sheet with a label, make it current, delete it, then
+  // search and NAVIGATE from a result card on the replacement sheet.
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(300);
+  await page.click('#wm-sheets-add');
+  await page.waitForFunction(() => !document.getElementById('wm-addsheet').hidden, { timeout: 10000 });
+  await page.fill('#wm-addsheet-name', 'Delta');
+  await page.click('#wm-addsheet-blank');
+  await page.waitForTimeout(700);
+  R.deltaIsCurrent = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const cur = await db.getMeta('currentSheetId');
+    const sheet = await db.getSheet(cur); db.closeDatabase();
+    return sheet.name === 'Delta' ? cur : null;
+  });
+  await managerAction((sid) => {
+    document.querySelector('.sheet-row[data-sheet-id="' + sid + '"]')
+      .querySelectorAll('button')[3].click();
+  }, R.deltaIsCurrent);
+  await page.waitForTimeout(250);
+  await page.click('#wm-delsheet-confirm');
+  await page.waitForTimeout(800);
+  R.afterDeleteCurrent = {
+    meta: await page.evaluate(async () => {
+      const db = WM.store.createStore(); await db.openDatabase();
+      const cur = await db.getMeta('currentSheetId'); db.closeDatabase(); return cur;
+    }),
+    lookup: await lookup('HR-07'),
+  };
+  // navigate from the result card
+  await page.evaluate(() => {
+    document.querySelector('#wm-lookup-results .result').click();
+  });
+  await page.waitForTimeout(700);
+  R.navigated = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const cur = await db.getMeta('currentSheetId'); db.closeDatabase();
+    return { meta: cur, lookupClosed: document.getElementById('wm-lookup').hidden,
+      count: window.__wmStage.getAnnotationCount() };
+  });
+
+  // ── 15. a full reload preserves current sheet, names and order ──
+  const beforeReload = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const cur = await db.getMeta('currentSheetId');
+    const cs = await db.getSheet(cur);
+    const sheets = WM.sheets.normalizeOrder(await db.listSheets(cs.jobId));
+    db.closeDatabase();
+    return { cur, names: sheets.map((s) => s.name) };
+  });
+  await page.reload(); await page.waitForTimeout(300);
+  await page.click('#wm-dev-load'); await page.waitForTimeout(600);
+  R.reload = {
+    before: beforeReload,
+    after: await page.evaluate(async () => {
+      const db = WM.store.createStore(); await db.openDatabase();
+      const cur = await db.getMeta('currentSheetId');
+      const cs = await db.getSheet(cur);
+      const sheets = WM.sheets.normalizeOrder(await db.listSheets(cs.jobId));
+      db.closeDatabase();
+      return { cur, names: sheets.map((s) => s.name),
+        stageHasSheet: window.__wmStage.hasImage() };
+    }),
+    lookup: await lookup('HR-07'),
+  };
+  await closeLookup();
+
+  // ── 12. touch-driven sheet sequences (Chromium; desktop WebKit when
+  //        installed adds signal — the physical iPhone gate stays required) ──
+  R.touch = await page.evaluate(async () => {
+    const tap = (target) => {
+      const r = target.getBoundingClientRect();
+      const o = { pointerId: 701, clientX: r.left + r.width / 2,
+        clientY: r.top + r.height / 2, bubbles: true, pointerType: 'touch' };
+      target.dispatchEvent(new PointerEvent('pointerdown', o));
+      target.dispatchEvent(new PointerEvent('pointerup', o));
+      target.click();
+    };
+    // rapid open/close cycles by touch, then a touch sheet-switch
+    for (let i = 0; i < 5; i++) {
+      tap(document.getElementById('wm-sheets-open'));
+      await new Promise((r) => setTimeout(r, 60));
+      tap(document.getElementById('wm-sheets-close'));
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    tap(document.getElementById('wm-sheets-open'));
+    await new Promise((r) => setTimeout(r, 250));
+    const rows = document.querySelectorAll('.sheet-row .sheet-main');
+    tap(rows[rows.length - 1]);
+    await new Promise((r) => setTimeout(r, 700));
+    const vpEl = document.getElementById('wm-viewport');
+    const el = vpEl.getBoundingClientRect();
+    const mid = document.elementFromPoint(el.left + el.width / 2, el.top + el.height / 2);
+    const blocked = !!(mid && mid.closest && (mid.closest('#wm-sheets') || mid.closest('#wm-lookup')));
+    const s = window.__wmStage;
+    const send = (t, id, x, y) => vpEl.dispatchEvent(new PointerEvent(t, { pointerId: id,
+      clientX: el.left + x, clientY: el.top + y, bubbles: true, pointerType: 'touch' }));
+    send('pointerdown', 711, 130, 300); send('pointerdown', 712, 230, 300);
+    send('pointermove', 712, 330, 300);
+    const base = s.getViewport().scale;
+    send('pointerup', 711, 130, 300); send('pointerup', 712, 330, 300);
+    return { blocked, pinchWorks: base > 0, pointers: s.getActivePointers(),
+      sheetsHidden: document.getElementById('wm-sheets').hidden };
+  });
+
+  await ctx.close();
+  await browser.close();
+
+  const names = (r) => r.results.map((x) => x.sheetName);
+  const checks = [
+    ['baseline: HR-07 found on both sheets, sheet order deciding ties',
+      R.baseline.results.length === 2
+        && names(R.baseline)[0] === 'Alpha' && names(R.baseline)[1] === 'Beta'],
+    ['a rename is reflected on result cards immediately',
+      R.afterRename.results.length === 2 && names(R.afterRename)[0] === 'Gamma'
+        && names(R.afterRename).indexOf('Alpha') === -1],
+    ['a reorder changes equal-rank result ordering to the new sheet order',
+      R.afterReorder.results.length === 2 && names(R.afterReorder)[0] === 'Beta'
+        && names(R.afterReorder)[1] === 'Gamma'],
+    ['deleting a sheet removes its labels from Lookup (cascade)',
+      R.afterDelete.results.length === 1 && names(R.afterDelete)[0] === 'Gamma'],
+    ['deleting the CURRENT sheet leaves Lookup working on the replacement',
+      R.deltaIsCurrent !== null && R.afterDeleteCurrent.meta !== R.deltaIsCurrent
+        && R.afterDeleteCurrent.lookup.results.length === 1],
+    ['navigating from a result card after that deletion loads the right sheet',
+      R.navigated.meta === R.afterDeleteCurrent.lookup.results[0].sheetId
+        && R.navigated.lookupClosed === true && R.navigated.count >= 1],
+    ['a full reload preserves current sheet, names and order',
+      R.reload.after.cur === R.reload.before.cur
+        && JSON.stringify(R.reload.after.names) === JSON.stringify(R.reload.before.names)
+        && R.reload.after.stageHasSheet === true],
+    ['Lookup still answers correctly after the reload',
+      R.reload.lookup.results.length === 1],
+    ['touch-driven open/close and sheet switch leave no blocking backdrop',
+      R.touch.blocked === false && R.touch.sheetsHidden === true],
+    ['gestures stay clean after the touch sequences', R.touch.pointers === 0],
+    ['no page errors through the lookup-sync flows', errs.length === 0],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WM-8 hardening — iOS-style event sequences for every Sheets Manager
+// mutation. Each physical action is a full touch sequence (pointerdown →
+// pointerup → compatibility click, exactly what iOS Safari synthesizes) and
+// must cause EXACTLY ONE mutation or navigation. Switch and Move Up are also
+// driven with pointerType 'mouse' compatibility sequences. Desktop WebKit
+// adds signal when installed; the physical iPhone gate stays required.
+// ─────────────────────────────────────────────────────────────────────────
+async function runSheetsTouchMutations(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  await page.goto(APP);
+
+  const R = {};
+
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    await db.putJob(WM.model.createJob({ id: 'tj', name: 'Touch Job', now }));
+    for (const [id, name, order] of [['t1', 'One', 0], ['t2', 'Two', 1], ['t3', 'Three', 2]]) {
+      await db.putSheet(WM.model.createSheet({ id, jobId: 'tj', name,
+        kind: 'blank', width: 2000, height: 1500, order, now }));
+    }
+    await db.setMeta('currentSheetId', 't1');
+    db.closeDatabase();
+
+    // The iOS event train on a tap: pointerdown, pointerup, then the
+    // compatibility click. Sent as one unit so any handler wired to more
+    // than one of them mutates more than once and fails the exact-state
+    // assertions below.
+    window.__seq = (target, pointerType) => {
+      const r = target.getBoundingClientRect();
+      const o = { pointerId: 801, clientX: r.left + r.width / 2,
+        clientY: r.top + r.height / 2, bubbles: true, pointerType };
+      target.dispatchEvent(new PointerEvent('pointerdown', o));
+      target.dispatchEvent(new PointerEvent('pointerup', o));
+      target.click();
+    };
+    window.__orderNow = async () => {
+      const db2 = WM.store.createStore(); await db2.openDatabase();
+      const sheets = WM.sheets.normalizeOrder(await db2.listSheets('tj'));
+      const cur = await db2.getMeta('currentSheetId');
+      db2.closeDatabase();
+      return { names: sheets.map((s) => s.name), orders: sheets.map((s) => s.order), cur };
+    };
+  });
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+
+  const seqOn = async (selector, pointerType) => page.evaluate(({ selector, pointerType }) => {
+    window.__seq(document.querySelector(selector), pointerType);
+  }, { selector, pointerType });
+  const rowBtnSeq = async (id, idx, pointerType) => page.evaluate(({ id, idx, pointerType }) => {
+    const row = document.querySelector('.sheet-row[data-sheet-id="' + id + '"]');
+    window.__seq(row.querySelectorAll('button')[idx], pointerType);
+  }, { id, idx, pointerType });
+
+  // ── Open Sheets by one touch tap ──
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await seqOn('#wm-sheets-open', 'touch');
+  await page.waitForTimeout(400);
+  R.open = await page.evaluate(() => ({
+    open: !document.getElementById('wm-sheets').hidden,
+    rows: document.querySelectorAll('.sheet-row').length,
+    status: document.getElementById('wm-sheets-status').textContent }));
+
+  // ── Open/switch a sheet by one touch tap ──
+  await page.evaluate(() => {
+    window.__seq(document.querySelector('.sheet-row[data-sheet-id="t2"] .sheet-main'), 'touch');
+  });
+  await page.waitForTimeout(700);
+  R.switchTouch = { state: await page.evaluate(() => window.__orderNow()),
+    closed: await page.evaluate(() => document.getElementById('wm-sheets').hidden) };
+
+  // ── Move Up by one touch tap: exactly ONE position ──
+  // Three sits at index 2; a single tap must land it at index 1 and a
+  // double-fired handler chain would land it at index 0.
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(300);
+  await rowBtnSeq('t3', 0, 'touch');
+  await page.waitForTimeout(500);
+  R.moveUpTouch = await page.evaluate(() => window.__orderNow());
+
+  // ── Move Down by one touch tap: exactly ONE position back ──
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(300);
+  await rowBtnSeq('t3', 1, 'touch');
+  await page.waitForTimeout(500);
+  R.moveDownTouch = await page.evaluate(() => window.__orderNow());
+
+  // ── Rename Save by one touch tap ──
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(300);
+  await rowBtnSeq('t1', 2, 'touch');
+  await page.waitForTimeout(250);
+  await page.fill('#wm-rename-name', 'Uno');
+  await seqOn('#wm-rename-save', 'touch');
+  await page.waitForTimeout(500);
+  R.renameTouch = {
+    state: await page.evaluate(() => window.__orderNow()),
+    modalClosed: await page.evaluate(() => document.getElementById('wm-rename').hidden),
+    listed: await page.evaluate(() => Array.from(document.querySelectorAll('.sheet-name'))
+      .filter((n) => n.textContent.indexOf('Uno') === 0).length),
+  };
+
+  // ── Delete confirmation by one touch tap: exactly ONE sheet removed ──
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(300);
+  await rowBtnSeq('t3', 3, 'touch');
+  await page.waitForTimeout(300);
+  R.delDialog = await page.evaluate(() => ({
+    open: !document.getElementById('wm-delsheet').hidden,
+    body: document.getElementById('wm-delsheet-body').textContent }));
+  await seqOn('#wm-delsheet-confirm', 'touch');
+  await page.waitForTimeout(700);
+  R.deleteTouch = {
+    state: await page.evaluate(() => window.__orderNow()),
+    dialogClosed: await page.evaluate(() => document.getElementById('wm-delsheet').hidden),
+    error: await page.evaluate(() => document.getElementById('wm-delsheet-error').textContent),
+  };
+
+  // ── compatibility MOUSE sequences: switch, then Move Up ──
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    window.__seq(document.querySelector('.sheet-row[data-sheet-id="t1"] .sheet-main'), 'mouse');
+  });
+  await page.waitForTimeout(700);
+  R.switchMouse = await page.evaluate(() => window.__orderNow());
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(300);
+  await rowBtnSeq('t2', 0, 'mouse');
+  await page.waitForTimeout(500);
+  R.moveUpMouse = await page.evaluate(() => window.__orderNow());
+
+  await ctx.close();
+  await browser.close();
+
+  const checks = [
+    ['one touch tap opens the Sheets Manager, fully rendered',
+      R.open.open === true && R.open.rows === 3 && R.open.status === '3 sheets'],
+    ['one touch tap on a row switches to exactly that sheet and closes the manager',
+      R.switchTouch.state.cur === 't2' && R.switchTouch.closed === true],
+    ['one touch Move Up moves the sheet exactly ONE position',
+      JSON.stringify(R.moveUpTouch.names) === JSON.stringify(['One', 'Three', 'Two'])
+        && JSON.stringify(R.moveUpTouch.orders) === JSON.stringify([0, 1, 2])],
+    ['one touch Move Down moves it exactly ONE position back',
+      JSON.stringify(R.moveDownTouch.names) === JSON.stringify(['One', 'Two', 'Three'])
+        && JSON.stringify(R.moveDownTouch.orders) === JSON.stringify([0, 1, 2])],
+    ['one touch Rename Save stores the new name exactly once',
+      JSON.stringify(R.renameTouch.state.names) === JSON.stringify(['Uno', 'Two', 'Three'])
+        && R.renameTouch.modalClosed === true && R.renameTouch.listed === 1],
+    ['the delete confirmation opens on one touch tap, naming the sheet',
+      R.delDialog.open === true && R.delDialog.body.indexOf('Three') !== -1],
+    ['one touch Delete confirm removes exactly ONE sheet, cleanly',
+      JSON.stringify(R.deleteTouch.state.names) === JSON.stringify(['Uno', 'Two'])
+        && R.deleteTouch.state.cur === 't2'
+        && R.deleteTouch.dialogClosed === true && R.deleteTouch.error === ''],
+    ['a compatibility MOUSE sequence switches to exactly one sheet',
+      R.switchMouse.cur === 't1'],
+    ['a compatibility MOUSE Move Up moves exactly ONE position',
+      JSON.stringify(R.moveUpMouse.names) === JSON.stringify(['Two', 'Uno'])
+        && JSON.stringify(R.moveUpMouse.orders) === JSON.stringify([0, 1])],
+    ['no page errors through the touch mutation flows', errs.length === 0],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WM-8 hardening — physical interactions IMMEDIATELY after a Sheets Manager
+// switch, against every annotation type, with ownership verified: every
+// mutation lands on the sheet just switched to and the previous sheet stays
+// byte-identical.
+// ─────────────────────────────────────────────────────────────────────────
+async function runPostSwitchInteractions(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  await page.goto(APP);
+
+  const R = {};
+
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    await db.putJob(WM.model.createJob({ id: 'sj', name: 'Switch Job', now }));
+    await db.putSheet(WM.model.createSheet({ id: 'p1', jobId: 'sj', name: 'Prev',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    await db.putSheet(WM.model.createSheet({ id: 'p2', jobId: 'sj', name: 'Next',
+      kind: 'blank', width: 2000, height: 1500, order: 1, now }));
+    const put = (a) => db.putAnnotation(a);
+    // p1 — the sheet being LEFT; its fingerprint must never change
+    await put(WM.model.createAnnotation({ id: 'p1-label', sheetId: 'p1', type: 'wireLabel',
+      at: { x: 0.3, y: 0.3 }, now, data: { label: 'KEEP-1' } }));
+    await put(WM.model.createAnnotation({ id: 'p1-arrow', sheetId: 'p1', type: 'arrow',
+      a: { x: 0.2, y: 0.2 }, b: { x: 0.6, y: 0.6 }, now }));
+    await put(WM.model.createAnnotation({ id: 'p1-text', sheetId: 'p1', type: 'text',
+      at: { x: 0.7, y: 0.8 }, now, data: { text: 'keep' } }));
+    // p2 — the sheet being switched TO; one of every draggable type
+    await put(WM.model.createAnnotation({ id: 'p2-label', sheetId: 'p2', type: 'wireLabel',
+      at: { x: 0.35, y: 0.30 }, now, data: { label: 'PL-1', from: 'Panel P' } }));
+    await put(WM.model.createAnnotation({ id: 'p2-arrow', sheetId: 'p2', type: 'arrow',
+      a: { x: 0.15, y: 0.50 }, b: { x: 0.45, y: 0.62 }, now }));
+    await put(WM.model.createAnnotation({ id: 'p2-line', sheetId: 'p2', type: 'line',
+      a: { x: 0.20, y: 0.75 }, b: { x: 0.70, y: 0.75 }, now }));
+    await put(WM.model.createAnnotation({ id: 'p2-rect', sheetId: 'p2', type: 'rect',
+      a: { x: 0.60, y: 0.12 }, b: { x: 0.85, y: 0.32 }, now }));
+    await put(WM.model.createAnnotation({ id: 'p2-text', sheetId: 'p2', type: 'text',
+      at: { x: 0.55, y: 0.90 }, now, data: { text: 'Note P2' } }));
+    await db.setMeta('currentSheetId', 'p1');
+    db.closeDatabase();
+
+    window.__ps = {
+      async fingerprint(sheetId) {
+        const db2 = WM.store.createStore(); await db2.openDatabase();
+        const anns = await db2.listAnnotations(sheetId);
+        db2.closeDatabase();
+        return JSON.stringify(anns);
+      },
+      async saved(id) {
+        const db2 = WM.store.createStore(); await db2.openDatabase();
+        const a = await db2.getAnnotation(id);
+        db2.closeDatabase();
+        return a;
+      },
+      screenOf(at) {
+        const s = window.__wmStage;
+        return WM.viewport.stageToScreen(
+          WM.geometry.denormalizePoint(at, s.getStageSize()), s.getViewport());
+      },
+    };
+  });
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+  R.p1Before = await page.evaluate(() => window.__ps.fingerprint('p1'));
+
+  // ── the switch under test: p1 → p2 through the Sheets Manager ──
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    document.querySelector('.sheet-row[data-sheet-id="p2"] .sheet-main').click();
+  });
+  await page.waitForTimeout(700);
+
+  const send = (t, id, x, y) => page.evaluate(({ t, id, x, y }) => {
+    const el = document.getElementById('wm-viewport');
+    const r = el.getBoundingClientRect();
+    const tg = document.elementFromPoint(r.left + x, r.top + y) || el;
+    tg.dispatchEvent(new PointerEvent(t, { pointerId: id, clientX: r.left + x,
+      clientY: r.top + y, bubbles: true, pointerType: 'touch' }));
+  }, { t, id, x, y });
+  const drag = async (id, from, to) => {
+    await send('pointerdown', id, from.x, from.y);
+    for (const f of [0.35, 0.7, 1]) {
+      await send('pointermove', id, from.x + (to.x - from.x) * f, from.y + (to.y - from.y) * f);
+    }
+    await send('pointerup', id, to.x, to.y);
+    await page.waitForTimeout(350);
+  };
+  const screenOf = (annId) => page.evaluate((aid) =>
+    window.__ps.screenOf(window.__wmStage.getAnnotation(aid).at
+      || window.__wmStage.getAnnotation(aid).a), annId);
+
+  // ── 1+2. pan and pinch, straight after the switch (pre-zoomed) ──
+  R.gesture = await page.evaluate(async () => {
+    const s = window.__wmStage;
+    const vpEl = document.getElementById('wm-viewport');
+    const el = vpEl.getBoundingClientRect();
+    s._setViewport(WM.viewport.centerOnNormalized({ x: 0.5, y: 0.5 }, s.getStageSize(),
+      { width: el.width, height: el.height }, s.getViewport(), 3));
+    s.renderLabels();
+    const before = s.getViewport();
+    const send = (t, id, x, y) => vpEl.dispatchEvent(new PointerEvent(t, { pointerId: id,
+      clientX: el.left + x, clientY: el.top + y, bubbles: true, pointerType: 'touch' }));
+    send('pointerdown', 821, 110, 210);
+    [25, 55, 90].forEach((d) => send('pointermove', 821, 110 + d, 210));
+    send('pointerup', 821, 200, 210);
+    const afterPan = s.getViewport();
+    send('pointerdown', 831, 140, 330); send('pointerdown', 832, 240, 330);
+    send('pointermove', 832, 340, 330);
+    const zoomed = s.getViewport().scale;
+    send('pointerup', 831, 140, 330); send('pointerup', 832, 340, 330);
+    s.fit(); s.renderLabels();
+    return { panned: Math.abs(afterPan.translateX - before.translateX) > 20,
+      scaleKeptDuringPan: afterPan.scale === before.scale,
+      pinched: zoomed > afterPan.scale, pointers: s.getActivePointers() };
+  });
+  await page.waitForTimeout(200);
+
+  // ── 3. Wire Label: tap opens its editor; drag moves it ──
+  let pt = await screenOf('p2-label');
+  await send('pointerdown', 841, pt.x, pt.y);
+  await send('pointerup', 841, pt.x, pt.y);
+  await page.waitForTimeout(300);
+  R.labelTap = await page.evaluate(() => ({
+    open: !document.getElementById('wm-editor').hidden,
+    value: document.getElementById('wm-f-label').value }));
+  await page.click('#wm-editor-cancel');
+  await page.waitForTimeout(200);
+  const labelBefore = await page.evaluate(() => window.__wmStage.getAnnotation('p2-label').at);
+  pt = await screenOf('p2-label');
+  await drag(842, pt, { x: pt.x + 60, y: pt.y + 30 });
+  R.labelDrag = {
+    live: await page.evaluate(() => window.__wmStage.getAnnotation('p2-label').at),
+    saved: await page.evaluate(() => window.__ps.saved('p2-label')),
+    before: labelBefore,
+  };
+
+  // ── 4. Arrow endpoint drag ──
+  const arrowMid = await page.evaluate(() => {
+    const s = window.__wmStage; const a = s.getAnnotation('p2-arrow');
+    return window.__ps.screenOf({ x: (a.a.x + a.b.x) / 2, y: (a.a.y + a.b.y) / 2 });
+  });
+  await send('pointerdown', 851, arrowMid.x, arrowMid.y);
+  await send('pointerup', 851, arrowMid.x, arrowMid.y);
+  await page.waitForTimeout(300);
+  R.arrowSelected = await page.evaluate(() => ({
+    sel: window.__wmStage.getSelectedArrow(),
+    handles: document.querySelectorAll('.wm-endpoint').length }));
+  const arrowBefore = await page.evaluate(() => {
+    const a = window.__wmStage.getAnnotation('p2-arrow');
+    return { a: a.a, b: a.b };
+  });
+  const hArrow = await page.evaluate(() => {
+    // the handle nearest endpoint a
+    const s = window.__wmStage; const ann = s.getAnnotation('p2-arrow');
+    const target = window.__ps.screenOf(ann.a);
+    const vp = document.getElementById('wm-viewport').getBoundingClientRect();
+    let best = null; let bestD = Infinity;
+    document.querySelectorAll('.wm-endpoint .wm-endpoint-target').forEach((t) => {
+      const r = t.getBoundingClientRect();
+      const c = { x: r.left + r.width / 2 - vp.left, y: r.top + r.height / 2 - vp.top };
+      const d = (c.x - target.x) ** 2 + (c.y - target.y) ** 2;
+      if (d < bestD) { bestD = d; best = c; }
+    });
+    return best;
+  });
+  await drag(852, hArrow, { x: hArrow.x + 55, y: hArrow.y - 35 });
+  R.arrowDrag = {
+    live: await page.evaluate(() => {
+      const a = window.__wmStage.getAnnotation('p2-arrow');
+      return { a: a.a, b: a.b };
+    }),
+    saved: await page.evaluate(() => window.__ps.saved('p2-arrow')),
+    before: arrowBefore,
+  };
+  await page.evaluate(() => window.__wmStage.selectArrow(null));
+
+  // ── 5. Line endpoint drag ──
+  const lineMid = await page.evaluate(() => {
+    const a = window.__wmStage.getAnnotation('p2-line');
+    return window.__ps.screenOf({ x: (a.a.x + a.b.x) / 2, y: (a.a.y + a.b.y) / 2 });
+  });
+  await send('pointerdown', 861, lineMid.x, lineMid.y);
+  await send('pointerup', 861, lineMid.x, lineMid.y);
+  await page.waitForTimeout(300);
+  R.lineSelected = await page.evaluate(() => ({
+    sel: window.__wmStage.getSelectedSketch(),
+    handles: document.querySelectorAll('.wm-sketch-handle').length }));
+  const lineBefore = await page.evaluate(() => {
+    const a = window.__wmStage.getAnnotation('p2-line');
+    return { a: a.a, b: a.b };
+  });
+  const hLine = await page.evaluate(() => {
+    const t = document.querySelector('.wm-sketch-handle[data-handle="a"] .wm-endpoint-target');
+    const r = t.getBoundingClientRect();
+    const vp = document.getElementById('wm-viewport').getBoundingClientRect();
+    return { x: r.left + r.width / 2 - vp.left, y: r.top + r.height / 2 - vp.top };
+  });
+  await drag(862, hLine, { x: hLine.x + 45, y: hLine.y - 40 });
+  R.lineDrag = {
+    live: await page.evaluate(() => {
+      const a = window.__wmStage.getAnnotation('p2-line');
+      return { a: a.a, b: a.b };
+    }),
+    saved: await page.evaluate(() => window.__ps.saved('p2-line')),
+    before: lineBefore,
+  };
+  await page.evaluate(() => window.__wmStage.selectSketch(null));
+
+  // ── 6. Rectangle corner drag ──
+  const rectEdge = await page.evaluate(() => {
+    const a = window.__wmStage.getAnnotation('p2-rect');
+    return window.__ps.screenOf({ x: (a.a.x + a.b.x) / 2, y: Math.min(a.a.y, a.b.y) });
+  });
+  await send('pointerdown', 871, rectEdge.x, rectEdge.y);
+  await send('pointerup', 871, rectEdge.x, rectEdge.y);
+  await page.waitForTimeout(300);
+  R.rectSelected = await page.evaluate(() => ({
+    sel: window.__wmStage.getSelectedSketch(),
+    handles: document.querySelectorAll('.wm-sketch-handle').length }));
+  const rectBefore = await page.evaluate(() => {
+    const a = window.__wmStage.getAnnotation('p2-rect');
+    return { a: a.a, b: a.b };
+  });
+  const hRect = await page.evaluate(() => {
+    const t = document.querySelector('.wm-sketch-handle[data-handle="nw"] .wm-endpoint-target');
+    const r = t.getBoundingClientRect();
+    const vp = document.getElementById('wm-viewport').getBoundingClientRect();
+    return { x: r.left + r.width / 2 - vp.left, y: r.top + r.height / 2 - vp.top };
+  });
+  await drag(872, hRect, { x: hRect.x - 30, y: hRect.y - 25 });
+  R.rectDrag = {
+    live: await page.evaluate(() => {
+      const a = window.__wmStage.getAnnotation('p2-rect');
+      return { a: a.a, b: a.b };
+    }),
+    saved: await page.evaluate(() => window.__ps.saved('p2-rect')),
+    before: rectBefore,
+  };
+  await page.evaluate(() => window.__wmStage.selectSketch(null));
+
+  // ── 7. Text: tap opens its editor; drag moves it without opening it ──
+  pt = await screenOf('p2-text');
+  await send('pointerdown', 881, pt.x, pt.y);
+  await send('pointerup', 881, pt.x, pt.y);
+  await page.waitForTimeout(300);
+  R.textTap = await page.evaluate(() => ({
+    open: !document.getElementById('wm-text-editor').hidden,
+    value: document.getElementById('wm-text-value').value }));
+  await page.click('#wm-text-cancel');
+  await page.waitForTimeout(200);
+  const textBefore = await page.evaluate(() => window.__wmStage.getAnnotation('p2-text').at);
+  pt = await screenOf('p2-text');
+  await drag(882, pt, { x: pt.x - 50, y: pt.y - 40 });
+  R.textDrag = {
+    live: await page.evaluate(() => window.__wmStage.getAnnotation('p2-text').at),
+    saved: await page.evaluate(() => window.__ps.saved('p2-text')),
+    editorOpen: await page.evaluate(() => !document.getElementById('wm-text-editor').hidden),
+    before: textBefore,
+  };
+
+  // ── ownership: everything landed on p2; p1 is byte-identical ──
+  R.p1After = await page.evaluate(() => window.__ps.fingerprint('p1'));
+  R.p2Count = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const anns = await db.listAnnotations('p2'); db.closeDatabase();
+    return anns.length;
+  });
+
+  await ctx.close();
+  await browser.close();
+
+  const moved = (a, b) => JSON.stringify(a) !== JSON.stringify(b);
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const checks = [
+    ['pan works immediately after the manager switch (scale untouched)',
+      R.gesture.panned === true && R.gesture.scaleKeptDuringPan === true],
+    ['pinch zoom works immediately after the manager switch',
+      R.gesture.pinched === true && R.gesture.pointers === 0],
+    ['tapping the wire label opens its editor with its own values',
+      R.labelTap.open === true && R.labelTap.value === 'PL-1'],
+    ['dragging the wire label moves it, persisted, still owned by the new sheet',
+      moved(R.labelDrag.live, R.labelDrag.before)
+        && same(R.labelDrag.saved.at, R.labelDrag.live)
+        && R.labelDrag.saved.sheetId === 'p2'],
+    ['tapping the arrow selects it and shows its endpoint handles',
+      R.arrowSelected.sel === 'p2-arrow' && R.arrowSelected.handles === 2],
+    ['dragging an arrow endpoint moves ONLY that endpoint, persisted, owned by the new sheet',
+      moved(R.arrowDrag.live.a, R.arrowDrag.before.a)
+        && same(R.arrowDrag.live.b, R.arrowDrag.before.b)
+        && same(R.arrowDrag.saved.a, R.arrowDrag.live.a)
+        && R.arrowDrag.saved.sheetId === 'p2'],
+    ['tapping the line selects it with two handles',
+      R.lineSelected.sel === 'p2-line' && R.lineSelected.handles === 2],
+    ['dragging a line endpoint moves ONLY that endpoint, persisted, owned by the new sheet',
+      moved(R.lineDrag.live.a, R.lineDrag.before.a)
+        && same(R.lineDrag.live.b, R.lineDrag.before.b)
+        && same(R.lineDrag.saved.a, R.lineDrag.live.a)
+        && R.lineDrag.saved.sheetId === 'p2'],
+    ['tapping the rectangle selects it with four corner handles',
+      R.rectSelected.sel === 'p2-rect' && R.rectSelected.handles === 4],
+    ['dragging the NW corner reshapes the rectangle, persisted, owned by the new sheet',
+      (moved(R.rectDrag.live.a, R.rectDrag.before.a) || moved(R.rectDrag.live.b, R.rectDrag.before.b))
+        && same(R.rectDrag.saved.a, R.rectDrag.live.a)
+        && same(R.rectDrag.saved.b, R.rectDrag.live.b)
+        && R.rectDrag.saved.sheetId === 'p2'],
+    ['tapping the text opens its editor with its own content',
+      R.textTap.open === true && R.textTap.value === 'Note P2'],
+    ['dragging the text moves it without opening the editor, persisted, owned by the new sheet',
+      moved(R.textDrag.live, R.textDrag.before)
+        && same(R.textDrag.saved.at, R.textDrag.live)
+        && R.textDrag.editorOpen === false
+        && R.textDrag.saved.sheetId === 'p2'],
+    ['no annotation was created or lost by the post-switch drags', R.p2Count === 5],
+    ['the sheet that was LEFT is byte-identical after every interaction',
+      R.p1Before === R.p1After],
+    ['no page errors through the post-switch interaction flows', errs.length === 0],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// WM-8 physical-gate regression — Photo Sheet image persistence across
+// sheet switches, reloads and deletion. This pins the iPhone defect where
+// a Photo Sheet rendered on creation but came back BLANK after switching
+// away and returning: the store now materializes IndexedDB blobs while the
+// connection is open, and every check here demands ACTUAL pixels
+// (naturalWidth), never just a src attribute.
+// ─────────────────────────────────────────────────────────────────────────
+async function runPhotoPersistence(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  await page.goto(APP);
+
+  const R = {};
+
+  await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const now = Date.now();
+    await db.putJob(WM.model.createJob({ id: 'qj', name: 'Persist Job', now }));
+    await db.putSheet(WM.model.createSheet({ id: 'qblank', jobId: 'qj', name: 'Blank Base',
+      kind: 'blank', width: 2000, height: 1500, order: 0, now }));
+    await db.setMeta('currentSheetId', 'qblank');
+    db.closeDatabase();
+
+    const img = document.getElementById('wm-background');
+    window.__pp = {
+      loads: 0, errors: 0, urls: [],
+      makeJpeg(w, h, hue) {
+        return new Promise((resolve) => {
+          const c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          const g = c.getContext('2d');
+          g.fillStyle = hue; g.fillRect(0, 0, w, h);
+          g.fillStyle = '#fff'; g.fillRect(w / 3, h / 3, w / 3, h / 3);
+          c.toBlob((b) => resolve(b), 'image/jpeg', 0.9);
+        });
+      },
+      attach(blob, name) {
+        const input = document.getElementById('wm-addsheet-file');
+        const dt = new DataTransfer();
+        dt.items.add(new File([blob], name, { type: 'image/jpeg' }));
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      },
+      async state() {
+        const db2 = WM.store.createStore(); await db2.openDatabase();
+        const cur = await db2.getMeta('currentSheetId');
+        const sheet = cur ? await db2.getSheet(cur) : null;
+        const image = sheet && sheet.imageId ? await db2.getImage(sheet.imageId) : null;
+        db2.closeDatabase();
+        return { sheetId: sheet ? sheet.id : null,
+          kind: sheet ? sheet.kind : null,
+          imageId: sheet ? sheet.imageId : null,
+          record: image ? { size: image.blob.size, type: image.blob.type,
+            w: image.width, h: image.height } : null,
+          shown: !!(!img.hidden && img.getAttribute('src')
+            && img.complete && img.naturalWidth > 0),
+          naturalW: img.naturalWidth, naturalH: img.naturalHeight,
+          src: img.getAttribute('src') };
+      },
+      async imageCount() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(WM.store.DB_NAME);
+          req.onerror = () => reject(req.error);
+          req.onsuccess = () => {
+            const dbi = req.result;
+            const t = dbi.transaction(['images'], 'readonly');
+            const r = t.objectStore('images').count();
+            r.onsuccess = () => { dbi.close(); resolve(r.result); };
+            r.onerror = () => { dbi.close(); reject(r.error); };
+          };
+        });
+      },
+    };
+    img.addEventListener('load', () => { window.__pp.loads += 1;
+      window.__pp.urls.push(img.currentSrc || img.src); });
+    img.addEventListener('error', () => { window.__pp.errors += 1; });
+  });
+  await page.click('#wm-dev-load');
+  await page.waitForTimeout(500);
+
+  const addPhoto = async (name, hue) => {
+    await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+    await page.click('#wm-sheets-open');
+    await page.waitForTimeout(300);
+    await page.click('#wm-sheets-add');
+    await page.waitForFunction(() => !document.getElementById('wm-addsheet').hidden, { timeout: 10000 });
+    await page.fill('#wm-addsheet-name', name);
+    await page.evaluate(async ({ name, hue }) => {
+      const b = await window.__pp.makeJpeg(720, 540, hue);
+      window.__pp.attach(b, name + '.jpg');
+    }, { name, hue });
+    await page.waitForFunction(() => document.getElementById('wm-addsheet').hidden, { timeout: 15000 });
+    await page.waitForTimeout(700);
+  };
+  const switchTo = async (name) => {
+    await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+    await page.click('#wm-sheets-open');
+    await page.waitForTimeout(300);
+    await page.evaluate((n) => {
+      Array.from(document.querySelectorAll('.sheet-row'))
+        .find((r) => r.querySelector('.sheet-name').textContent.indexOf(n) === 0)
+        .querySelector('.sheet-main').click();
+    }, name);
+    await page.waitForTimeout(800);
+    return page.evaluate(() => window.__pp.state());
+  };
+
+  // ── create, verify with real pixels, capture identity ──
+  await addPhoto('Persist Photo', '#264');
+  R.created = await page.evaluate(() => window.__pp.state());
+  R.countAfterCreate = await page.evaluate(() => window.__pp.imageCount());
+
+  // ── Photo → Blank → Photo, three full round trips ──
+  R.trips = [];
+  for (let i = 0; i < 3; i++) {
+    const onBlank = await switchTo('Blank Base');
+    const back = await switchTo('Persist Photo');
+    R.trips.push({ onBlank, back });
+  }
+  R.countAfterTrips = await page.evaluate(() => window.__pp.imageCount());
+  R.events = await page.evaluate(() => ({ loads: window.__pp.loads,
+    errors: window.__pp.errors, distinctUrls: new Set(window.__pp.urls).size }));
+
+  // ── full reload, then away-and-back again ──
+  await page.reload(); await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    const img = document.getElementById('wm-background');
+    window.__pp2 = { errors: 0 };
+    img.addEventListener('error', () => { window.__pp2.errors += 1; });
+  });
+  await page.click('#wm-dev-load'); await page.waitForTimeout(800);
+  R.afterReload = await page.evaluate(async () => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const cur = await db.getMeta('currentSheetId');
+    const sheet = await db.getSheet(cur);
+    const image = sheet.imageId ? await db.getImage(sheet.imageId) : null;
+    db.closeDatabase();
+    const img = document.getElementById('wm-background');
+    return { sheetId: sheet.id, imageId: sheet.imageId, record: !!image,
+      shown: !!(!img.hidden && img.complete && img.naturalWidth > 0),
+      naturalW: img.naturalWidth };
+  });
+  // reinstall the full helper set lost to the reload, then one more away-and-back
+  await page.evaluate(() => {
+    window.__pp = window.__pp || {};
+    window.__pp.makeJpeg = (w, h, hue) => new Promise((resolve) => {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const g = c.getContext('2d');
+      g.fillStyle = hue; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#fff'; g.fillRect(w / 3, h / 3, w / 3, h / 3);
+      c.toBlob((b) => resolve(b), 'image/jpeg', 0.9);
+    });
+    window.__pp.attach = (blob, name) => {
+      const input = document.getElementById('wm-addsheet-file');
+      const dt = new DataTransfer();
+      dt.items.add(new File([blob], name, { type: 'image/jpeg' }));
+      input.files = dt.files;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    window.__pp.imageCount = () => new Promise((resolve, reject) => {
+      const req = indexedDB.open(WM.store.DB_NAME);
+      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const dbi = req.result;
+        const t = dbi.transaction(['images'], 'readonly');
+        const r = t.objectStore('images').count();
+        r.onsuccess = () => { dbi.close(); resolve(r.result); };
+        r.onerror = () => { dbi.close(); reject(r.error); };
+      };
+    });
+    window.__pp.state = async () => {
+      const db2 = WM.store.createStore(); await db2.openDatabase();
+      const cur = await db2.getMeta('currentSheetId');
+      const sheet = cur ? await db2.getSheet(cur) : null;
+      const image = sheet && sheet.imageId ? await db2.getImage(sheet.imageId) : null;
+      db2.closeDatabase();
+      const img = document.getElementById('wm-background');
+      return { sheetId: sheet ? sheet.id : null, kind: sheet ? sheet.kind : null,
+        imageId: sheet ? sheet.imageId : null,
+        record: image ? { size: image.blob.size, type: image.blob.type,
+          w: image.width, h: image.height } : null,
+        shown: !!(!img.hidden && img.getAttribute('src')
+          && img.complete && img.naturalWidth > 0),
+        naturalW: img.naturalWidth, naturalH: img.naturalHeight,
+        src: img.getAttribute('src') };
+    };
+  });
+  await switchTo('Blank Base');
+  R.afterReloadReturn = await switchTo('Persist Photo');
+  R.reloadErrors = await page.evaluate(() => window.__pp2.errors);
+
+  // ── deletion still cascades ITS image and only its image ──
+  await addPhoto('Decoy Photo', '#622');
+  R.decoy = await page.evaluate(() => window.__pp.state());
+  R.countWithDecoy = await page.evaluate(async () => {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(WM.store.DB_NAME);
+      req.onsuccess = () => { const dbi = req.result;
+        const t = dbi.transaction(['images'], 'readonly');
+        const r = t.objectStore('images').count();
+        r.onsuccess = () => { dbi.close(); resolve(r.result); };
+        r.onerror = () => { dbi.close(); reject(r.error); }; };
+      req.onerror = () => reject(req.error);
+    });
+  });
+  // delete "Persist Photo" through the real manager
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    Array.from(document.querySelectorAll('.sheet-row'))
+      .find((r) => r.querySelector('.sheet-name').textContent.indexOf('Persist Photo') === 0)
+      .querySelectorAll('button')[3].click();
+  });
+  await page.waitForTimeout(250);
+  await page.click('#wm-delsheet-confirm');
+  await page.waitForTimeout(700);
+  R.afterDelete = await page.evaluate(async (arg) => {
+    const db = WM.store.createStore(); await db.openDatabase();
+    const deletedImage = await db.getImage(arg.deletedImageId);
+    const decoyImage = await db.getImage(arg.decoyImageId);
+    const deletedSheet = await db.getSheet(arg.deletedSheetId);
+    db.closeDatabase();
+    return { deletedImageGone: deletedImage === null,
+      decoyImageIntact: !!(decoyImage && decoyImage.blob && decoyImage.blob.size > 0),
+      deletedSheetGone: deletedSheet === null };
+  }, { deletedImageId: R.created.imageId, deletedSheetId: R.created.sheetId,
+       decoyImageId: R.decoy.imageId });
+
+  // ── failure cleanup vs success retention, back to back ──
+  await page.evaluate(() => { document.getElementById('wm-sheets').hidden = true; });
+  await page.click('#wm-sheets-open');
+  await page.waitForTimeout(300);
+  await page.click('#wm-sheets-add');
+  await page.waitForFunction(() => !document.getElementById('wm-addsheet').hidden, { timeout: 10000 });
+  await page.fill('#wm-addsheet-name', 'Doomed');
+  const countBeforeDoomed = await page.evaluate(() => window.__pp.imageCount
+    ? window.__pp.imageCount() : new Promise((resolve, reject) => {
+      const req = indexedDB.open(WM.store.DB_NAME);
+      req.onsuccess = () => { const dbi = req.result;
+        const t = dbi.transaction(['images'], 'readonly');
+        const r = t.objectStore('images').count();
+        r.onsuccess = () => { dbi.close(); resolve(r.result); };
+        r.onerror = () => { dbi.close(); reject(r.error); }; };
+      req.onerror = () => reject(req.error);
+    }));
+  await page.evaluate(async () => {
+    const orig = WM.model.validateSheet;
+    window.__restoreValidate = () => { WM.model.validateSheet = orig; };
+    WM.model.validateSheet = () => ({ valid: false, problems: ['injected failure'] });
+    const c = document.createElement('canvas'); c.width = 300; c.height = 200;
+    const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 300, 200);
+    const b = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
+    const input = document.getElementById('wm-addsheet-file');
+    const dt = new DataTransfer();
+    dt.items.add(new File([b], 'doomed.jpg', { type: 'image/jpeg' }));
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.waitForFunction(() =>
+    document.getElementById('wm-addsheet-error').textContent.indexOf('injected') !== -1,
+    { timeout: 15000 });
+  await page.evaluate(() => window.__restoreValidate());
+  const countAfterDoomed = await page.evaluate(() => new Promise((resolve, reject) => {
+    const req = indexedDB.open(WM.store.DB_NAME);
+    req.onsuccess = () => { const dbi = req.result;
+      const t = dbi.transaction(['images'], 'readonly');
+      const r = t.objectStore('images').count();
+      r.onsuccess = () => { dbi.close(); resolve(r.result); };
+      r.onerror = () => { dbi.close(); reject(r.error); }; };
+    req.onerror = () => reject(req.error);
+  }));
+  // a SUCCESSFUL add immediately after must retain its image
+  await page.fill('#wm-addsheet-name', 'Survivor');
+  await page.evaluate(async () => {
+    const c = document.createElement('canvas'); c.width = 320; c.height = 240;
+    const g = c.getContext('2d'); g.fillStyle = '#161'; g.fillRect(0, 0, 320, 240);
+    const b = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
+    const input = document.getElementById('wm-addsheet-file');
+    const dt = new DataTransfer();
+    dt.items.add(new File([b], 'survivor.jpg', { type: 'image/jpeg' }));
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.waitForFunction(() => document.getElementById('wm-addsheet').hidden, { timeout: 15000 });
+  await page.waitForTimeout(700);
+  R.survivor = { state: await page.evaluate(() => window.__pp.state()) };
+  // ...and its image must still be there after one more away-and-back
+  await switchTo('Blank Base');
+  R.survivorReturn = await switchTo('Survivor');
+  R.cleanup = { before: countBeforeDoomed, afterDoomed: countAfterDoomed };
+
+  await ctx.close();
+  await browser.close();
+
+  const everyTrip = (fn) => R.trips.every(fn);
+  const checks = [
+    ['a new Photo Sheet shows REAL pixels at the stored dimensions',
+      R.created.kind === 'photo' && R.created.shown === true
+        && R.created.naturalW === R.created.record.w
+        && R.created.record.size > 0],
+    ['on the Blank sheet the photo is fully gone from the DOM',
+      everyTrip((t) => t.onBlank.shown === false && t.onBlank.src === null
+        && t.onBlank.imageId === null)],
+    ['EVERY return renders the photo again with real pixels',
+      everyTrip((t) => t.back.shown === true && t.back.naturalW === R.created.record.w
+        && t.back.naturalH === R.created.record.h)],
+    ['every return is the SAME sheet with the SAME imageId',
+      everyTrip((t) => t.back.sheetId === R.created.sheetId
+        && t.back.imageId === R.created.imageId)],
+    ['the persisted record survives every switch, byte size unchanged',
+      everyTrip((t) => t.back.record && t.back.record.size === R.created.record.size)],
+    ['no reprocessing and no duplication — image count constant across trips',
+      R.countAfterTrips === R.countAfterCreate],
+    ['each return decodes through a FRESH display URL with zero image errors',
+      R.events.errors === 0 && R.events.distinctUrls >= 4],
+    ['after a full reload the photo returns from pure persistence',
+      R.afterReload.sheetId === R.created.sheetId
+        && R.afterReload.imageId === R.created.imageId
+        && R.afterReload.record === true && R.afterReload.shown === true
+        && R.afterReload.naturalW === R.created.record.w],
+    ['after the reload, away-and-back still brings the photo back',
+      R.afterReloadReturn.shown === true
+        && R.afterReloadReturn.imageId === R.created.imageId
+        && R.reloadErrors === 0],
+    ['deleting the Photo Sheet cascades exactly ITS image record',
+      R.afterDelete.deletedSheetGone === true && R.afterDelete.deletedImageGone === true
+        && R.afterDelete.decoyImageIntact === true],
+    ['a FAILED add still removes its orphan image',
+      R.cleanup.afterDoomed === R.cleanup.before],
+    ['a SUCCESSFUL add right after a failed one keeps its image and displays it',
+      R.survivor.state.shown === true && R.survivor.state.record !== null],
+    ['the successful image also survives away-and-back — success is never orphan-cleaned',
+      R.survivorReturn.shown === true
+        && R.survivorReturn.imageId === R.survivor.state.imageId
+        && R.survivorReturn.record !== null],
+    ['no page errors through the persistence flows', errs.length === 0],
+  ];
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
 (async () => {
-  const engines = [['chromium', playwright.chromium], ['webkit', playwright.webkit]];
+  const engines = [['chromium', withExecOverride('chromium', playwright.chromium)], ['webkit', playwright.webkit]];
   let failures = 0;
 
   for (const [name, engine] of engines) {
-    for (const [suite, fn] of [['image + EXIF', run], ['viewport + pointers', runViewport], ['wire labels', runLabels], ['label text', runLabelText], ['arrows', runArrows], ['arrow tip', runArrowTip], ['sketch', runSketch], ['hit priority', runPriority], ['control layout', runControlLayout], ['sketch text', runText], ['wire lookup', runLookup], ['lookup aftermath', runLookupAftermath]]) {
+    for (const [suite, fn] of [['image + EXIF', run], ['viewport + pointers', runViewport], ['wire labels', runLabels], ['label text', runLabelText], ['arrows', runArrows], ['arrow tip', runArrowTip], ['sketch', runSketch], ['hit priority', runPriority], ['control layout', runControlLayout], ['sketch text', runText], ['wire lookup', runLookup], ['lookup aftermath', runLookupAftermath], ['sheets manager', runSheets], ['sheets photo paths', runSheetsPhoto], ['sheets isolation', runSheetsIsolation], ['sheets lookup sync', runSheetsLookupSync], ['sheets touch mutations', runSheetsTouchMutations], ['post-switch interactions', runPostSwitchInteractions], ['photo persistence', runPhotoPersistence]]) {
     const result = await fn(name, engine);
     console.log(`\n=== ${name.toUpperCase()} — ${suite} ===`);
     if (!result.available) {

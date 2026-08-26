@@ -182,6 +182,35 @@
     vector-effect: non-scaling-stroke; pointer-events: none;
   }
 
+  /* ── Sheets Manager ── */
+  .sheet-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 10px 12px; margin-bottom: 8px;
+  }
+  .sheet-row.current { border-color: var(--accent); }
+  .sheet-main { flex: 1; min-width: 0; }
+  .sheet-name {
+    font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 13px;
+    color: var(--text); overflow-wrap: anywhere;
+  }
+  .sheet-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .badge {
+    display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 3px;
+    background: rgba(255,199,0,0.18); color: var(--accent);
+    font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 9px;
+    letter-spacing: 0.4px; vertical-align: middle;
+  }
+  .sheet-actions-col { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+  .sheet-actions-col button {
+    padding: 6px 8px; font-size: 10px; min-width: 62px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); border-radius: 3px; cursor: pointer;
+    font-family: 'Montserrat', sans-serif; font-weight: 700;
+  }
+  .sheet-actions-col button[disabled] { opacity: 0.3; cursor: default; }
+  .sheet-list { max-height: 44dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
   /* ── Wire Lookup (temporary dev UI) ── */
   .lookup-row { display: flex; gap: 8px; margin-bottom: 10px; }
   .lookup-row input { flex: 1; min-width: 0; }
@@ -369,6 +398,7 @@
       <button type="button" id="wm-delete-arrow" hidden>Delete Arrow</button>
       <button type="button" id="wm-sketch-toggle">Sketch</button>
       <button type="button" id="wm-lookup-open">Lookup</button>
+      <button type="button" id="wm-sheets-open">Sheets</button>
     </div>
     <div class="tray" id="wm-sketch-tray">
       <button type="button" id="wm-blank-sheet">New Blank Sheet</button>
@@ -1326,6 +1356,57 @@ window.WM = (function () {
       }
 
       // ── Annotations ─────────────────────────────────────────────────────
+      /**
+       * Rewrite the order of a job's sheets in ONE transaction.
+       *
+       * Move-up/move-down previously issued one independent putSheet per sheet.
+       * Each was its own transaction, so a failure partway through could leave two
+       * sheets holding the same order permanently. This validates the whole list
+       * first and then writes it all-or-nothing.
+       *
+       * @param {string} jobId
+       * @param {string[]} orderedSheetIds every sheet of the job, in the new order
+       */
+      function reorderSheets(jobId, orderedSheetIds) {
+        if (!jobId) return reject(ERR.BAD_ARGUMENT, 'reorderSheets requires a jobId');
+        if (!Array.isArray(orderedSheetIds) || orderedSheetIds.length === 0) {
+          return reject(ERR.BAD_ARGUMENT, 'reorderSheets requires a non-empty id list');
+        }
+        const seen = new Set();
+        for (const id of orderedSheetIds) {
+          if (!id || typeof id !== 'string') {
+            return reject(ERR.BAD_ARGUMENT, 'reorderSheets requires string sheet ids');
+          }
+          if (seen.has(id)) {
+            return reject(ERR.BAD_ARGUMENT, `reorderSheets received duplicate sheet id ${id}`);
+          }
+          seen.add(id);
+        }
+
+        return tx(['sheets'], 'readwrite', async (s) => {
+          const records = [];
+          for (const id of orderedSheetIds) {
+            const sheet = await s.sheets.get(id);
+            if (!sheet) {
+              throw new StoreError(ERR.NOT_FOUND,
+                `reorderSheets: sheet ${id} does not exist`, { sheetId: id });
+            }
+            if (sheet.jobId !== jobId) {
+              throw new StoreError(ERR.BAD_ARGUMENT,
+                `reorderSheets: sheet ${id} belongs to job ${sheet.jobId}, not ${jobId}`,
+                { sheetId: id, jobId: sheet.jobId });
+            }
+            records.push(sheet);
+          }
+          // Every id validated before a single write happens, so a rejection
+          // leaves the stored order exactly as it was.
+          for (let i = 0; i < records.length; i++) {
+            await s.sheets.put({ ...records[i], order: i });
+          }
+          return records.length;
+        });
+      }
+
       function putAnnotation(annotation) {
         try {
           assertValid('annotation', annotation, model.validateAnnotation);
@@ -1450,7 +1531,7 @@ window.WM = (function () {
         closeDatabase,
         isOpen: () => conn !== null,
         putJob, getJob, listJobs, deleteJob,
-        putSheet, getSheet, listSheets, deleteSheet,
+        putSheet, getSheet, listSheets, deleteSheet, reorderSheets,
         putAnnotation, getAnnotation, listAnnotations, deleteAnnotation,
         getMeta, setMeta,
         putImage, getImage, deleteImage,
@@ -3546,6 +3627,174 @@ window.WM = (function () {
     };
   };
 
+  // ---- src/wiremap/sheets.js ----
+  __reg["sheets"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Wire Map — sheet manager logic (WM-8).
+     *
+     * Pure. No DOM, no IndexedDB.
+     *
+     * Owns the decisions the Sheets Manager has to get right — what a valid sheet
+     * name is, what order the sheets are in after a move or a delete, and which
+     * sheet becomes current when the open one is removed. The controller does the
+     * store work; nothing here knows how sheets are stored.
+     */
+
+    /** Names are short labels on a phone screen, not descriptions. */
+    const MAX_NAME_LENGTH = 80;
+
+    /** A job must always keep at least one sheet in WM-8. */
+    const MIN_SHEETS = 1;
+
+    function asText(value) {
+      return typeof value === 'string' ? value : '';
+    }
+
+    /**
+     * Normalize a sheet name for storage.
+     * @returns {string|null} null when nothing usable remains.
+     */
+    function normalizeName(raw) {
+      const trimmed = asText(raw).trim();
+      if (!trimmed) return null;
+      return trimmed.slice(0, MAX_NAME_LENGTH);
+    }
+
+    function isValidName(raw) {
+      return normalizeName(raw) !== null;
+    }
+
+    /**
+     * Sort by stored order, then id, and renumber to 0..n-1.
+     *
+     * Compact integers keep the list deterministic and make move-up/move-down a
+     * swap rather than fractional arithmetic. Ties break on id so a store that has
+     * somehow ended up with duplicate order values still produces one stable
+     * answer rather than a different one each read.
+     */
+    function normalizeOrder(sheets) {
+      return (sheets || [])
+        .filter((s) => s && s.id)
+        .slice()
+        .sort((a, b) => {
+          const ao = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
+          const bo = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER;
+          return (ao - bo) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+        })
+        .map((s, i) => ({ ...s, order: i }));
+    }
+
+    function indexOfSheet(sheets, sheetId) {
+      for (let i = 0; i < sheets.length; i++) if (sheets[i].id === sheetId) return i;
+      return -1;
+    }
+
+    function canMoveUp(sheets, sheetId) {
+      return indexOfSheet(normalizeOrder(sheets), sheetId) > 0;
+    }
+
+    function canMoveDown(sheets, sheetId) {
+      const ordered = normalizeOrder(sheets);
+      const i = indexOfSheet(ordered, sheetId);
+      return i >= 0 && i < ordered.length - 1;
+    }
+
+    /**
+     * Swap a sheet with its neighbour.
+     * Returns a fresh normalized list; the input is never mutated.
+     */
+    function move(sheets, sheetId, delta) {
+      const ordered = normalizeOrder(sheets);
+      const i = indexOfSheet(ordered, sheetId);
+      const j = i + delta;
+      if (i < 0 || j < 0 || j >= ordered.length) return ordered;
+      const next = ordered.slice();
+      const tmp = next[i];
+      next[i] = next[j];
+      next[j] = tmp;
+      return next.map((s, k) => ({ ...s, order: k }));
+    }
+
+    function moveUp(sheets, sheetId) { return move(sheets, sheetId, -1); }
+    function moveDown(sheets, sheetId) { return move(sheets, sheetId, 1); }
+
+    /** The order value a newly added sheet should take: last. */
+    function nextOrder(sheets) {
+      return normalizeOrder(sheets).length;
+    }
+
+    /** Whether the job can afford to lose this sheet. */
+    function canDelete(sheets) {
+      return normalizeOrder(sheets).length > MIN_SHEETS;
+    }
+
+    /**
+     * Which sheet should become current after deleting one.
+     *
+     * Prefer the next sheet, fall back to the previous. Deleting a sheet the user
+     * is not looking at must not move them, so that case returns the current id
+     * unchanged.
+     *
+     * @returns {{allowed:boolean, reason?:string, nextCurrentId:string|null, remaining:Array}}
+     */
+    function planDelete(sheets, sheetId, currentSheetId) {
+      const ordered = normalizeOrder(sheets);
+      const i = indexOfSheet(ordered, sheetId);
+      if (i < 0) {
+        return { allowed: false, reason: 'Sheet not found.', nextCurrentId: currentSheetId, remaining: ordered };
+      }
+      if (ordered.length <= MIN_SHEETS) {
+        return { allowed: false, reason: 'At least one Sheet is required.',
+          nextCurrentId: currentSheetId, remaining: ordered };
+      }
+      const remaining = ordered.filter((s) => s.id !== sheetId).map((s, k) => ({ ...s, order: k }));
+      if (sheetId !== currentSheetId) {
+        return { allowed: true, nextCurrentId: currentSheetId, remaining };
+      }
+      const successor = ordered[i + 1] || ordered[i - 1];
+      return { allowed: true, nextCurrentId: successor ? successor.id : null, remaining };
+    }
+
+    /** Human label for a sheet kind, for the list row. */
+    function kindLabel(kind) {
+      if (kind === 'blank') return 'Blank';
+      if (kind === 'photo') return 'Photo';
+      if (kind === 'image') return 'Image';
+      return asText(kind) || 'Sheet';
+    }
+
+    /**
+     * Apply a rename without mutating the original.
+     * Returns null when the name is invalid or unchanged — the caller then knows
+     * to skip the store write entirely.
+     */
+    function renamed(sheet, raw, now) {
+      if (!sheet) return null;
+      const name = normalizeName(raw);
+      if (!name || name === sheet.name) return null;
+      return { ...sheet, name, updatedAt: Number.isFinite(now) ? now : sheet.updatedAt };
+    }
+
+    module.exports = {
+      MAX_NAME_LENGTH,
+      MIN_SHEETS,
+      normalizeName,
+      isValidName,
+      normalizeOrder,
+      indexOfSheet,
+      canMoveUp,
+      canMoveDown,
+      moveUp,
+      moveDown,
+      nextOrder,
+      canDelete,
+      planDelete,
+      kindLabel,
+      renamed,
+    };
+  };
+
   // ---- src/wiremap/app.js ----
   __reg["app"] = function (module, exports, require) {
     'use strict';
@@ -4517,8 +4766,19 @@ window.WM = (function () {
         currentSheetId = sheetId || null;
         showGrid = !!(options && options.blank);
         undoStack.bindSheet(undo, currentSheetId);
-        sketchInteraction.disarmTool(sketchState);
+        // A sheet switch must not carry ANY interaction state across: no armed
+        // creation mode and no selection. A stale arrow selection is the worst
+        // case — the Delete Arrow handler deletes by raw id, so a selection that
+        // survived a switch would remove an annotation on the sheet the user
+        // just left. The disarm wrappers are used (not the raw interaction
+        // modules) so the toolbar hooks fire and the delete buttons hide.
+        disarmPlacement();
+        disarmArrow();
+        disarmSketch();
+        routeInteraction.select(routeState, null);
+        if (hooks.onArrowSelected) hooks.onArrowSelected(null);
         sketchInteraction.clearSelection(sketchState);
+        if (hooks.onSketchSelected) hooks.onSketchSelected(null);
       }
 
       // ── Undo, sketch mutations only ──────────────────────────────────────
@@ -5143,11 +5403,72 @@ window.WM = (function () {
   api["sketchInteraction"] = __require("sketchInteraction");
   api["undoStack"] = __require("undoStack");
   api["search"] = __require("search");
+  api["sheets"] = __require("sheets");
   api["app"] = __require("app");
   return api;
 })();
 </script>
 <!-- WM-CORE:END -->
+
+  <!-- WM-8 Sheets Manager. -->
+  <div class="sheet-backdrop" id="wm-sheets" hidden>
+    <div class="sheet-panel" role="dialog" aria-label="Sheets">
+      <div class="sheet-title">SHEETS</div>
+      <div class="result-count" id="wm-sheets-status"></div>
+      <div class="sheet-list" id="wm-sheets-list"></div>
+      <div class="sheet-actions">
+        <button type="button" class="primary" id="wm-sheets-add">+ Add Sheet</button>
+        <button type="button" id="wm-sheets-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WM-8 Add Sheet. -->
+  <div class="sheet-backdrop" id="wm-addsheet" hidden>
+    <div class="sheet-panel" role="dialog" aria-label="Add Sheet">
+      <div class="sheet-title">ADD SHEET</div>
+      <div class="field"><label for="wm-addsheet-name">Sheet name *</label>
+        <input id="wm-addsheet-name" type="text" autocomplete="off" maxlength="80"
+               placeholder="1F Plan"></div>
+      <div class="sheet-error" id="wm-addsheet-error"></div>
+      <div class="sheet-actions">
+        <button type="button" class="primary" id="wm-addsheet-blank">Blank Sheet</button>
+        <button type="button" id="wm-addsheet-cancel">Cancel</button>
+      </div>
+      <div class="sheet-actions" style="margin-top:8px">
+        <label class="filebtn" for="wm-addsheet-file" id="wm-addsheet-photo-label"
+               style="flex:1;text-align:center">Choose Image / Take Photo</label>
+        <input id="wm-addsheet-file" type="file" accept="image/*" hidden>
+      </div>
+    </div>
+  </div>
+
+  <!-- WM-8 Rename Sheet. -->
+  <div class="sheet-backdrop" id="wm-rename" hidden>
+    <div class="sheet-panel" role="dialog" aria-label="Rename Sheet">
+      <div class="sheet-title">RENAME SHEET</div>
+      <div class="field"><label for="wm-rename-name">Sheet name *</label>
+        <input id="wm-rename-name" type="text" autocomplete="off" maxlength="80"></div>
+      <div class="sheet-error" id="wm-rename-error"></div>
+      <div class="sheet-actions">
+        <button type="button" class="primary" id="wm-rename-save">Save</button>
+        <button type="button" id="wm-rename-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WM-8 Delete confirmation. -->
+  <div class="sheet-backdrop" id="wm-delsheet" hidden>
+    <div class="sheet-panel" role="dialog" aria-label="Delete Sheet">
+      <div class="sheet-title" id="wm-delsheet-title">DELETE SHEET</div>
+      <div class="result-line" id="wm-delsheet-body" style="margin-bottom:10px"></div>
+      <div class="sheet-error" id="wm-delsheet-error"></div>
+      <div class="sheet-actions">
+        <button type="button" class="danger" id="wm-delsheet-confirm" style="flex:1">Delete</button>
+        <button type="button" id="wm-delsheet-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <!-- WM-7 Wire Lookup. Temporary dev UI alongside the probe. -->
   <div class="sheet-backdrop" id="wm-lookup" hidden>
@@ -5852,6 +6173,295 @@ window.WM = (function () {
         .then(function () { report('Focused ' + r.label); })
         .catch(fail);
     }
+
+    // ── WM-8 Sheets Manager ──
+    var sheetsModal = document.getElementById('wm-sheets');
+    var sheetsList = document.getElementById('wm-sheets-list');
+    var sheetsStatus = document.getElementById('wm-sheets-status');
+    var addModal = document.getElementById('wm-addsheet');
+    var addName = document.getElementById('wm-addsheet-name');
+    var addError = document.getElementById('wm-addsheet-error');
+    var addFile = document.getElementById('wm-addsheet-file');
+    var renameModal = document.getElementById('wm-rename');
+    var renameName = document.getElementById('wm-rename-name');
+    var renameError = document.getElementById('wm-rename-error');
+    var delModal = document.getElementById('wm-delsheet');
+    var delBody = document.getElementById('wm-delsheet-body');
+    var delError = document.getElementById('wm-delsheet-error');
+    var renameTarget = null;
+    var deleteTarget = null;
+
+    /** Read the current job's sheets. Metadata only — no image blobs. */
+    function readSheets() {
+      return withDb(function (db) {
+        return db.getMeta(META_CURRENT_SHEET).then(function (sheetId) {
+          if (!sheetId) return null;
+          return db.getSheet(sheetId).then(function (sheet) {
+            if (!sheet) return null;
+            return db.listSheets(sheet.jobId).then(function (list) {
+              return { jobId: sheet.jobId, currentId: sheetId,
+                sheets: WM.sheets.normalizeOrder(list) };
+            });
+          });
+        });
+      });
+    }
+
+    function clearNode(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+
+    /** One list row. Every user string goes through textContent. */
+    function sheetRow(sheet, state) {
+      var row = document.createElement('div');
+      row.className = 'sheet-row' + (sheet.id === state.currentId ? ' current' : '');
+      row.setAttribute('data-sheet-id', sheet.id);
+
+      var main = document.createElement('div');
+      main.className = 'sheet-main';
+      var nameEl = document.createElement('div');
+      nameEl.className = 'sheet-name';
+      nameEl.textContent = sheet.name;
+      if (sheet.id === state.currentId) {
+        var badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.textContent = 'CURRENT';
+        nameEl.appendChild(badge);
+      }
+      var meta = document.createElement('div');
+      meta.className = 'sheet-meta';
+      meta.textContent = WM.sheets.kindLabel(sheet.kind);
+      main.appendChild(nameEl);
+      main.appendChild(meta);
+      main.addEventListener('click', function () { openSheet(sheet.id, state.currentId); });
+      row.appendChild(main);
+
+      var col = document.createElement('div');
+      col.className = 'sheet-actions-col';
+      var mkBtn = function (text, disabled, fn) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = text;
+        if (disabled) btn.disabled = true; else btn.addEventListener('click', fn);
+        return btn;
+      };
+      col.appendChild(mkBtn('Up', !WM.sheets.canMoveUp(state.sheets, sheet.id),
+        function () { applyOrder(state.jobId, WM.sheets.moveUp(state.sheets, sheet.id)); }));
+      col.appendChild(mkBtn('Down', !WM.sheets.canMoveDown(state.sheets, sheet.id),
+        function () { applyOrder(state.jobId, WM.sheets.moveDown(state.sheets, sheet.id)); }));
+      col.appendChild(mkBtn('Rename', false, function () { openRename(sheet); }));
+      col.appendChild(mkBtn('Delete', !WM.sheets.canDelete(state.sheets),
+        function () { openDelete(sheet, state); }));
+      row.appendChild(col);
+      return row;
+    }
+
+    function renderSheets() {
+      return readSheets().then(function (state) {
+        clearNode(sheetsList);
+        if (!state) {
+          sheetsStatus.textContent = 'No current job \u2014 import a plan or create a blank sheet.';
+          return null;
+        }
+        sheetsStatus.textContent = state.sheets.length
+          + (state.sheets.length === 1 ? ' sheet' : ' sheets');
+        state.sheets.forEach(function (sh) { sheetsList.appendChild(sheetRow(sh, state)); });
+        return state;
+      }).catch(function (e) {
+        sheetsStatus.textContent = 'Could not read sheets: ' + ((e && e.message) || String(e));
+        return null;
+      });
+    }
+
+    /** Persist a reordered list, then rerender. Ids and content are untouched. */
+    function applyOrder(jobId, ordered) {
+      // One transaction: a partial failure cannot leave duplicate order values.
+      return withDb(function (db) {
+        return db.reorderSheets(jobId, ordered.map(function (s) { return s.id; }));
+      }).then(renderSheets).catch(fail);
+    }
+
+    /**
+     * Open a sheet through the SAME production loader Lookup uses. Tapping the
+     * sheet that is already current just closes the manager — reloading would
+     * throw away the user's zoom for no reason.
+     */
+    function openSheet(sheetId, currentId) {
+      sheetsModal.hidden = true;
+      // Deliberately silent: writing to the status line grows the dev bar,
+      // which the ResizeObserver answers with a refit — that would throw away
+      // the zoom this branch exists to preserve.
+      if (sheetId === currentId) return Promise.resolve();
+      return withDb(function (db) { return db.setMeta(META_CURRENT_SHEET, sheetId); })
+        .then(function () { return loadCurrentSheet(null); })
+        .catch(fail);
+    }
+
+    // ── add ──
+    function openAdd() {
+      addName.value = '';
+      addError.textContent = '';
+      addModal.hidden = false;
+      addName.focus();
+    }
+    function closeAdd() { addModal.hidden = true; }
+
+    function createSheetRecord(db, state, name, kind, imageId, width, height) {
+      var now = Date.now();
+      return WM.model.createSheet({ id: uid('sheet'), jobId: state.jobId, name: name,
+        kind: kind, imageId: imageId, width: width, height: height,
+        order: WM.sheets.nextOrder(state.sheets), now: now });
+    }
+
+    document.getElementById('wm-addsheet-blank').addEventListener('click', function () {
+      var name = WM.sheets.normalizeName(addName.value);
+      if (!name) { addError.textContent = 'Sheet name is required.'; addName.focus(); return; }
+      readSheets().then(function (state) {
+        if (!state) { addError.textContent = 'No current job.'; return; }
+        var sheet = createSheetRecord(null, state, name, 'blank', null, 2000, 1500);
+        var check = WM.model.validateSheet(sheet);
+        if (!check.valid) { addError.textContent = check.problems.join('; '); return; }
+        return withDb(function (db) {
+          return db.putSheet(sheet).then(function () {
+            return db.setMeta(META_CURRENT_SHEET, sheet.id);
+          });
+        }).then(function () {
+          closeAdd();
+          sheetsModal.hidden = true;
+          return loadCurrentSheet(null);
+        });
+      }).catch(function (e) { addError.textContent = (e && e.message) || String(e); });
+    });
+
+    /**
+     * Photo sheets reuse the WM-3 pipeline unchanged. The image is stored
+     * first, so if sheet persistence then fails the orphan blob is removed
+     * rather than left behind.
+     */
+    addFile.addEventListener('change', function () {
+      var file = addFile.files && addFile.files[0];
+      addFile.value = '';
+      if (!file) return;                     // cancelled: nothing created
+      var name = WM.sheets.normalizeName(addName.value);
+      if (!name) { addError.textContent = 'Sheet name is required.'; addName.focus(); return; }
+      addError.textContent = 'Processing\u2026';
+      var processed = null;
+      var imageId = uid('img');
+      readSheets().then(function (state) {
+        if (!state) throw new Error('No current job.');
+        return WM.image.processImage(file)
+          .then(function (res) { processed = res; return WM.image.assertQuotaFor(res.bytes); })
+          .then(function () {
+            return withDb(function (db) {
+              return db.putImage(WM.image.buildImageRecord({ id: imageId, blob: processed.blob,
+                mime: processed.mime, width: processed.width, height: processed.height,
+                bytes: processed.bytes, createdAt: Date.now() }))
+                .then(function () {
+                  var sheet = createSheetRecord(db, state, name, 'photo', imageId,
+                    processed.width, processed.height);
+                  var check = WM.model.validateSheet(sheet);
+                  if (!check.valid) throw new Error(check.problems.join('; '));
+                  return db.putSheet(sheet).then(function () {
+                    return db.setMeta(META_CURRENT_SHEET, sheet.id);
+                  });
+                })
+                .catch(function (e) {
+                  // Clean up the blob so a failed add cannot orphan it.
+                  return db.deleteImage(imageId).then(function () { throw e; },
+                    function () { throw e; });
+                });
+            });
+          });
+      }).then(function () {
+        closeAdd();
+        sheetsModal.hidden = true;
+        return loadCurrentSheet(null);
+      }).catch(function (e) {
+        addError.textContent = 'Could not add sheet: ' + ((e && e.message) || String(e));
+      });
+    });
+
+    // ── rename ──
+    function openRename(sheet) {
+      renameTarget = sheet;
+      renameName.value = sheet.name;
+      renameError.textContent = '';
+      renameModal.hidden = false;
+      renameName.focus();
+    }
+    document.getElementById('wm-rename-cancel').addEventListener('click', function () {
+      renameModal.hidden = true; renameTarget = null;
+    });
+    document.getElementById('wm-rename-save').addEventListener('click', function () {
+      if (!renameTarget) return;
+      if (!WM.sheets.isValidName(renameName.value)) {
+        renameError.textContent = 'Sheet name is required.'; renameName.focus(); return;
+      }
+      var next = WM.sheets.renamed(renameTarget, renameName.value, Date.now());
+      if (!next) {                            // unchanged: no store write at all
+        renameModal.hidden = true; renameTarget = null; renderSheets(); return;
+      }
+      withDb(function (db) { return db.putSheet(next); })
+        .then(function () {
+          renameModal.hidden = true; renameTarget = null;
+          return renderSheets();
+        })
+        .catch(function (e) { renameError.textContent = (e && e.message) || String(e); });
+    });
+
+    // ── delete ──
+    function openDelete(sheet, state) {
+      deleteTarget = { sheet: sheet, state: state };
+      clearNode(delBody);
+      var q = document.createElement('div');
+      q.textContent = 'Delete \u201C' + sheet.name + '\u201D?';
+      var warn = document.createElement('div');
+      warn.className = 'result-notes';
+      warn.textContent = 'This permanently removes the sheet, its annotations and its stored image.';
+      delBody.appendChild(q);
+      delBody.appendChild(warn);
+      delError.textContent = '';
+      delModal.hidden = false;
+    }
+    document.getElementById('wm-delsheet-cancel').addEventListener('click', function () {
+      delModal.hidden = true; deleteTarget = null;
+    });
+    document.getElementById('wm-delsheet-confirm').addEventListener('click', function () {
+      if (!deleteTarget) return;
+      var sheet = deleteTarget.sheet;
+      var state = deleteTarget.state;
+      var plan = WM.sheets.planDelete(state.sheets, sheet.id, state.currentId);
+      if (!plan.allowed) { delError.textContent = plan.reason; return; }
+      withDb(function (db) {
+        // Existing WM-2 cascade removes annotations and the image blob.
+        return db.deleteSheet(sheet.id).then(function () {
+          return plan.remaining.reduce(function (chain, sh) {
+            return chain.then(function () { return db.putSheet(sh); });
+          }, Promise.resolve());
+        }).then(function () {
+          if (plan.nextCurrentId && plan.nextCurrentId !== state.currentId) {
+            return db.setMeta(META_CURRENT_SHEET, plan.nextCurrentId);
+          }
+          return null;
+        });
+      }).then(function () {
+        delModal.hidden = true;
+        deleteTarget = null;
+        if (plan.nextCurrentId !== state.currentId) {
+          sheetsModal.hidden = true;
+          return loadCurrentSheet(null);
+        }
+        return renderSheets();
+      }).catch(function (e) { delError.textContent = (e && e.message) || String(e); });
+    });
+
+    document.getElementById('wm-sheets-open').addEventListener('click', function () {
+      sheetsModal.hidden = false;
+      renderSheets();
+    });
+    document.getElementById('wm-sheets-close').addEventListener('click', function () {
+      sheetsModal.hidden = true;
+    });
+    document.getElementById('wm-sheets-add').addEventListener('click', openAdd);
+    document.getElementById('wm-addsheet-cancel').addEventListener('click', closeAdd);
 
     document.getElementById('wm-lookup-open').addEventListener('click', function () {
       lookup.hidden = false;

@@ -967,8 +967,19 @@ function createStageController(options) {
     currentSheetId = sheetId || null;
     showGrid = !!(options && options.blank);
     undoStack.bindSheet(undo, currentSheetId);
-    sketchInteraction.disarmTool(sketchState);
+    // A sheet switch must not carry ANY interaction state across: no armed
+    // creation mode and no selection. A stale arrow selection is the worst
+    // case — the Delete Arrow handler deletes by raw id, so a selection that
+    // survived a switch would remove an annotation on the sheet the user
+    // just left. The disarm wrappers are used (not the raw interaction
+    // modules) so the toolbar hooks fire and the delete buttons hide.
+    disarmPlacement();
+    disarmArrow();
+    disarmSketch();
+    routeInteraction.select(routeState, null);
+    if (hooks.onArrowSelected) hooks.onArrowSelected(null);
     sketchInteraction.clearSelection(sketchState);
+    if (hooks.onSketchSelected) hooks.onSketchSelected(null);
   }
 
   // ── Undo, sketch mutations only ──────────────────────────────────────
