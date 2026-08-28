@@ -45,7 +45,7 @@ tools/build-calc.js
 
 ## Status
 
-**388 tests · 0 failures · 0 todo · build:check passing.** Every identified
+**390 tests · 0 failures · 0 todo · build:check passing.** Every identified
 correctness defect (P0-1 through P0-4 and P1-1) is closed and guarded by a hard
 test. No defects are parked as `todo`.
 
