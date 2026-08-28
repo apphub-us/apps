@@ -29,7 +29,8 @@ src/calc/
   conduitFill.js  Chapter 9 Tables 1/4/5, 376.22
   boxFill.js      full 314.16(A)/(B) box fill: allowances, summation,
                   fits verdict, max-conductor headroom
-  voltageDrop.js  VD formula + minimum size search
+  voltageDrop.js  shared VD formula + standalone VD/ampacity conductor
+                  analysis and recommendation
   wireSizing.js   full conductor selection: ampacity, 110.14(C) terminal
                   limits, 240.4(D), continuous load, NYC feeder minimum,
                   voltage drop, governing constraint
@@ -44,7 +45,7 @@ tools/build-calc.js
 
 ## Status
 
-**366 tests · 0 failures · 0 todo · build:check passing.** Every identified
+**388 tests · 0 failures · 0 todo · build:check passing.** Every identified
 correctness defect (P0-1 through P0-4 and P1-1) is closed and guarded by a hard
 test. No defects are parked as `todo`.
 
@@ -56,7 +57,12 @@ test. No defects are parked as `todo`.
 | Box Fill | **fully** |
 | Motor | **fully** |
 | Grounding | **fully** |
-| standalone Voltage Drop | not fully migrated |
+| standalone Voltage Drop | **fully** |
+
+All seven calculators tracked in the calculator-engine migration now use the
+shared deterministic engine as the production source of electrical decisions.
+(Pull Box is a separate hidden panel outside this migration's scope — see the
+note near the end of this file.)
 
 Where a calculator is not fully migrated it still computes locally. Its shared
 module exists and is tested, so completing the migration is transport work
@@ -193,6 +199,54 @@ unsupported conductor size). Apart from the out-of-range defect described
 above, these were UI-unreachable hardening cases and no shipped Grounding
 decision changed.
 
+**Standalone Voltage Drop architecture.** Production `vdUpdateCalc()` is a
+thin adapter: it reads and normalizes the six existing inputs, builds one
+structured request, calls `EC.voltageDrop.analyzeVoltageDrop` exactly once,
+and renders the structured result and comparison rows. This calculator is a
+conductor recommender with a full comparison table, not a single-conductor
+voltage-drop calculator: from amps, ONE-WAY distance in feet (the shared
+formula applies the phase multiplier — never re-enter total circuit length),
+voltage (120/208/240/277/480), phase (single/three), material (Copper /
+Aluminum) and a 2%/3%/5% target, it selects the minimum conductor satisfying
+BOTH the voltage-drop target and the 75°C ampacity requirement. The shared
+engine owns the material resistance constant (Cu K = 12.9, Al K = 21.2), the
+conductor circular-mil lookup, the phase multiplier (2 single-phase, 1.732
+three-phase), voltage-drop volts and percent, voltage at load, the target
+comparison, the 75°C ampacity check, the joint recommendation and the full
+21-row comparison result. Production standalone Voltage Drop no longer
+contains independent VD_K or VD_CM tables, 75°C ampacity tables, phase
+multiplier logic, the voltage-drop / percentage / voltage-at-load formulas,
+the target comparison or the conductor recommendation scan — it formats and
+renders only.
+
+Wire Sizer and standalone Voltage Drop both consume the shared Voltage Drop
+calculation infrastructure; the standalone orchestration was added without
+changing Wire Sizer's established contract, and Wire Sizer's cross-regressions
+and parity harness remained green. One display-compatibility note from the
+migration: the single-conductor shared helper returns rounded values, while
+the legacy standalone panel rounded raw numbers once for display — the helper
+now also exposes backwards-compatible exact numerical fields, so the
+standalone adapter performs one final display rounding and reproduces legacy
+output byte for byte. This was display/architecture behavior, not an
+electrical correctness defect, and Wire Sizer's rounded-field contract did not
+change. No shipped electrical-math correctness defect was found during this
+migration; engine validation was hardened for unsupported or malformed inputs
+(invalid phase, invalid material, invalid conductor and input states), which
+were UI-unreachable and changed no shipped decision.
+
+Migration guards: `test/voltageDropParity.test.js` compares the old
+production decisions against the shared engine across the complete supported
+option domain plus seeded cases — roughly 52,500 comparison-row checks;
+`test/voltageDropProduction.test.js` executes the shipped `vdUpdateCalc()`,
+proves via a poisoned-engine result that both the result grid and the
+comparison table render what the engine returns, and pins exactly one
+`EC.voltageDrop.analyzeVoltageDrop` call per calculation. Explicit Wire Sizer
+cross-regressions accompany the shared change.
+
+The standalone Voltage Drop panel remains in the codebase but is not reachable
+from Home; its engine path is now fully migrated and tested, and whether to
+expose the panel is a separate product decision.
+
 The engine is injected into `mobile.html` between `EC-CALC:START/END` markers by
 `tools/build-calc.js`. Never hand-edit that block.
 
@@ -208,7 +262,10 @@ The former two-row navigation and its arrow toggle are gone; all routing goes
 through `openTool()`, shared by Home tiles and PINNED.
 
 The standalone Voltage Drop panel and Pull Box remain in the codebase but are
-not reachable from Home, pending separate verification.
+not reachable from Home. Standalone Voltage Drop's engine path is now fully
+migrated and tested (see Status); exposing it is a separate product decision.
+Pull Box was not part of the seven-calculator engine migration and remains
+pending separate verification.
 
 
 ## Service worker
