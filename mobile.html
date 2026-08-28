@@ -3075,6 +3075,510 @@ window.EC = (function () {
     module.exports = { selectConductor, SIZE_ORDER };
   };
 
+  // ---- src/calc/pullBox.js ----
+  __reg["pullBox"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Pull Box V2 — data model + validation foundation (PBV2-1).
+     *
+     * PBV2-0 frozen contract: rows are first-class entities (stable opaque id,
+     * wall, display order); entries reference a rowId and never store a wall;
+     * connections are strictly two distinct endpoints. This module owns the
+     * canonical trade-size keys, the wall/dimension orientation, deterministic
+     * ordering, request validation, and pure geometric classification of a
+     * connection (STRAIGHT / ANGLE / U) derived from wall relationships.
+     *
+     * NO electrical formulas live here yet. The 8x straight rule, the 6x row
+     * rule, entry spacing, and width/height governing are FUTURE milestones
+     * (PBV2-2..5); this file deliberately contains no NEC arithmetic.
+     *
+     * Independence: this module has no relationship to the legacy hidden Pull
+     * Box panel and must never import or mirror its formulas.
+     */
+
+    /** Canonical trade-size identity: STRING key → inches. Keys are the only
+     *  accepted persisted representation — numeric 0.5 or alias '0.5' are
+     *  invalid, which keeps identity deterministic across storage and UI. */
+    const TRADE_SIZE_IN = {
+      '1/2': 0.5,
+      '3/4': 0.75,
+      '1': 1,
+      '1-1/4': 1.25,
+      '1-1/2': 1.5,
+      '2': 2,
+      '2-1/2': 2.5,
+      '3': 3,
+      '3-1/2': 3.5,
+      '4': 4,
+      '5': 5,
+      '6': 6,
+    };
+
+    /** Canonical ascending display/iteration order for trade sizes. Object key
+     *  enumeration reorders integer-like keys, so ordered consumers must use
+     *  this list, never Object.keys(TRADE_SIZE_IN). */
+    const TRADE_SIZE_KEYS = ['1/2', '3/4', '1', '1-1/4', '1-1/2', '2', '2-1/2',
+      '3', '3-1/2', '4', '5', '6'];
+
+    /** Deterministic wall iteration order — one canonical sequence everywhere. */
+    const WALL_ORDER = ['left', 'right', 'top', 'bottom'];
+
+    /** Canonical orientation: which box dimension a wall's requirements govern.
+     *  left/right walls → width, top/bottom walls → height. The engine, UI and
+     *  schematic must all read this map rather than re-deriving it. */
+    const WALL_DIMENSION = {
+      left: 'width',
+      right: 'width',
+      top: 'height',
+      bottom: 'height',
+    };
+
+    /** Surfaces reserved for future depth work — rejected with their own reason
+     *  so the diagnostic lane stays distinct from a typo like 'north'. */
+    const RESERVED_SURFACES = ['back', 'front'];
+
+    const OPPOSITE_WALL = { left: 'right', right: 'left', top: 'bottom', bottom: 'top' };
+
+    function isNonEmptyId(v) {
+      return typeof v === 'string' && v.trim().length > 0;
+    }
+
+    function fail(reason, extra) {
+      return Object.assign({ ok: false, reason }, extra || {});
+    }
+
+    /**
+     * Validate a PBV2 request. Deterministic: first violation wins, in the
+     * documented order (request shape → rows → entries → NO_ENTRIES →
+     * connections → warnings). Never throws on malformed user data, never
+     * mutates the input, never invents rows, walls, or trade sizes.
+     *
+     * Success: { ok: true, warnings: [...] }
+     * Failure: { ok: false, reason: <frozen code>, ...context }
+     */
+    function validatePullBoxRequest(request) {
+      // A. request shape
+      if (request === null || typeof request !== 'object' || Array.isArray(request)) {
+        return fail('MALFORMED_REQUEST', { detail: 'request must be a plain object' });
+      }
+      const { rows, entries, connections } = request;
+      // B. the three collections must be arrays
+      if (!Array.isArray(rows)) return fail('MALFORMED_REQUEST', { detail: 'rows must be an array' });
+      if (!Array.isArray(entries)) return fail('MALFORMED_REQUEST', { detail: 'entries must be an array' });
+      if (!Array.isArray(connections)) return fail('MALFORMED_REQUEST', { detail: 'connections must be an array' });
+
+      // C-E. rows: shape/id → wall → order → uniqueness
+      const rowById = new Map();
+      const orderSeen = new Map(); // wall → Set(order)
+      for (const row of rows) {
+        if (row === null || typeof row !== 'object' || Array.isArray(row)) {
+          return fail('MALFORMED_REQUEST', { detail: 'row must be a plain object' });
+        }
+        if (!isNonEmptyId(row.id)) {
+          return fail('MALFORMED_REQUEST', { detail: 'row.id must be a non-empty string' });
+        }
+        if (RESERVED_SURFACES.indexOf(row.wall) !== -1) {
+          return fail('UNSUPPORTED_SURFACE', { rowId: row.id, wall: row.wall });
+        }
+        if (WALL_ORDER.indexOf(row.wall) === -1) {
+          return fail('INVALID_WALL', { rowId: row.id, wall: row.wall });
+        }
+        if (typeof row.order !== 'number' || !Number.isFinite(row.order)
+          || !Number.isInteger(row.order) || row.order < 0) {
+          return fail('INVALID_ROW_ORDER', { rowId: row.id, order: row.order });
+        }
+        if (rowById.has(row.id)) return fail('DUPLICATE_ROW_ID', { rowId: row.id });
+        const seen = orderSeen.get(row.wall) || new Set();
+        if (seen.has(row.order)) {
+          // duplicate order on the SAME wall; the same order on different walls
+          // is valid and covered by tests
+          return fail('INVALID_ROW_ORDER', {
+            rowId: row.id, wall: row.wall, order: row.order, detail: 'duplicate order on one wall',
+          });
+        }
+        seen.add(row.order);
+        orderSeen.set(row.wall, seen);
+        rowById.set(row.id, row);
+      }
+
+      // F-I. entries: shape/id → uniqueness → row reference → trade size
+      const entryById = new Map();
+      for (const entry of entries) {
+        if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+          return fail('MALFORMED_REQUEST', { detail: 'entry must be a plain object' });
+        }
+        if (!isNonEmptyId(entry.id)) {
+          return fail('MALFORMED_REQUEST', { detail: 'entry.id must be a non-empty string' });
+        }
+        if (entryById.has(entry.id)) return fail('DUPLICATE_ENTRY_ID', { entryId: entry.id });
+        if (!isNonEmptyId(entry.rowId) || !rowById.has(entry.rowId)) {
+          return fail('ROW_UNKNOWN', { entryId: entry.id, rowId: entry.rowId });
+        }
+        if (typeof entry.tradeSize !== 'string'
+          || !Object.prototype.hasOwnProperty.call(TRADE_SIZE_IN, entry.tradeSize)) {
+          return fail('INVALID_TRADE_SIZE', { entryId: entry.id, tradeSize: entry.tradeSize });
+        }
+        entryById.set(entry.id, entry);
+      }
+
+      // J. an empty box has nothing to size
+      if (entries.length === 0) return fail('NO_ENTRIES');
+
+      // K-P. connections: shape/id → id uniqueness → arity → endpoints exist →
+      // self → duplicate unordered pair
+      const connIds = new Set();
+      const pairKeys = new Set();
+      const connectedEntryIds = new Set();
+      for (const conn of connections) {
+        if (conn === null || typeof conn !== 'object' || Array.isArray(conn)) {
+          return fail('MALFORMED_REQUEST', { detail: 'connection must be a plain object' });
+        }
+        if (!isNonEmptyId(conn.id)) {
+          return fail('MALFORMED_REQUEST', { detail: 'connection.id must be a non-empty string' });
+        }
+        if (connIds.has(conn.id)) return fail('DUPLICATE_CONNECTION_ID', { connectionId: conn.id });
+        connIds.add(conn.id);
+        if (!Array.isArray(conn.entryIds)) {
+          return fail('MALFORMED_REQUEST', { connectionId: conn.id, detail: 'entryIds must be an array' });
+        }
+        if (conn.entryIds.length !== 2) {
+          // MVP: pull connections have exactly two distinct endpoints. Splice
+          // modeling is deferred; a future splice entity may exist separately.
+          return fail('CONNECTION_ARITY', { connectionId: conn.id, arity: conn.entryIds.length });
+        }
+        const [a, b] = conn.entryIds;
+        for (const endpoint of [a, b]) {
+          if (!isNonEmptyId(endpoint) || !entryById.has(endpoint)) {
+            return fail('CONNECTION_UNKNOWN_ENTRY', { connectionId: conn.id, entryId: endpoint });
+          }
+        }
+        if (a === b) return fail('CONNECTION_SELF', { connectionId: conn.id, entryId: a });
+        // undirected pair identity: [e1,e2] and [e2,e1] are the same connection
+        const key = a < b ? a + '\u0000' + b : b + '\u0000' + a;
+        if (pairKeys.has(key)) {
+          return fail('DUPLICATE_CONNECTION', { connectionId: conn.id, entryIds: [a, b] });
+        }
+        pairKeys.add(key);
+        connectedEntryIds.add(a);
+        connectedEntryIds.add(b);
+      }
+
+      // Q. warnings — unconnected entries are VALID (they still count toward
+      // future same-row sums) but are surfaced once, grouped, in deterministic
+      // sorted-id order rather than one warning object per entry.
+      const warnings = [];
+      const unconnected = entries
+        .map((e) => e.id)
+        .filter((id) => !connectedEntryIds.has(id))
+        .slice()
+        .sort();
+      if (unconnected.length > 0) {
+        warnings.push({ code: 'UNCONNECTED_ENTRY', entryIds: unconnected });
+      }
+
+      return { ok: true, warnings };
+    }
+
+    /** Pure lookup: entry → its row (or null). Does not mutate anything. */
+    function rowForEntry(entry, rows) {
+      for (const row of rows) if (row.id === entry.rowId) return row;
+      return null;
+    }
+
+    /**
+     * Deterministic row ordering: wall in WALL_ORDER, then order ascending,
+     * then id. Returns a NEW array; input untouched.
+     */
+    function sortRows(rows) {
+      return rows.slice().sort((x, y) => {
+        const w = WALL_ORDER.indexOf(x.wall) - WALL_ORDER.indexOf(y.wall);
+        if (w !== 0) return w;
+        if (x.order !== y.order) return x.order - y.order;
+        return x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+      });
+    }
+
+    /**
+     * Deterministic entry ordering: parent row per sortRows, then entry id.
+     * Returns a NEW array; inputs untouched. Insertion order is never identity.
+     */
+    function sortEntries(entries, rows) {
+      const rank = new Map();
+      sortRows(rows).forEach((row, i) => rank.set(row.id, i));
+      return entries.slice().sort((x, y) => {
+        const r = (rank.get(x.rowId) ?? Infinity) - (rank.get(y.rowId) ?? Infinity);
+        if (r !== 0) return r;
+        return x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+      });
+    }
+
+    /**
+     * Geometric classification of one connection, derived purely from the two
+     * endpoint walls. Endpoint order never matters.
+     *
+     *   same wall                    → U
+     *   opposite walls (L/R or T/B)  → STRAIGHT (+ the dimension its axis spans)
+     *   adjacent walls               → ANGLE
+     *
+     * Returns { ok: true, type, wallA, wallB, dimension } where wallA/wallB are
+     * the endpoints' walls in the connection's entryIds order and dimension is
+     * present for STRAIGHT only (from WALL_DIMENSION). Unknown endpoints return
+     * a structured failure; NO electrical arithmetic happens here.
+     */
+    function classifyConnection(connection, entries, rows) {
+      const byId = new Map(entries.map((e) => [e.id, e]));
+      const walls = [];
+      for (const id of connection.entryIds) {
+        const entry = byId.get(id);
+        if (!entry) return fail('CONNECTION_UNKNOWN_ENTRY', { connectionId: connection.id, entryId: id });
+        const row = rowForEntry(entry, rows);
+        if (!row) return fail('ROW_UNKNOWN', { entryId: id, rowId: entry.rowId });
+        walls.push(row.wall);
+      }
+      const [wallA, wallB] = walls;
+      if (wallA === wallB) {
+        return { ok: true, type: 'U', wallA, wallB };
+      }
+      if (OPPOSITE_WALL[wallA] === wallB) {
+        return { ok: true, type: 'STRAIGHT', wallA, wallB, dimension: WALL_DIMENSION[wallA] };
+      }
+      return { ok: true, type: 'ANGLE', wallA, wallB };
+    }
+
+    /**
+     * Pull Box V2 top-level calculation (PBV2-2: STRAIGHT pulls only).
+     *
+     * Validates first (structured validation failures pass through unchanged —
+     * no electrical work happens on invalid input), classifies every connection
+     * through classifyConnection, and computes NEC 314.28(A)(1) straight-pull
+     * requirements: 8 x the larger trade size of the connected pair, attributed
+     * to the dimension the connection's axis spans (left/right -> width,
+     * top/bottom -> height, via WALL_DIMENSION).
+     *
+     * PBV2-3 adds the NEC 314.28(A)(2) DIMENSIONAL row rule for ANGLE and U
+     * pulls. A (wall, row) is TRIGGERED when at least one of its entries
+     * participates in an ANGLE or U connection; once triggered, the arithmetic
+     * includes EVERY entry in that row — straight-connected and unconnected
+     * entries alike (trigger and sum are different questions):
+     *
+     *   minimumInches = 6 x largest-in-row + sum(ALL OTHER entries, same row,
+     *                   same wall only)
+     *
+     * The largest is counted once in the 6x term and never again in the sum;
+     * with equal largest sizes exactly one of them is excluded (chosen
+     * deterministically by entry id) and the rest stay in the sum. One
+     * requirement exists per triggered row — never per connection — with id
+     * 'angle-u-row:<rowId>'.
+     *
+     * PBV2-4 adds the separate NEC 314.28(A)(2) raceway-entry SPACING
+     * requirement: one requirement PER angle/U connection (never per row),
+     * 6 x the larger trade size of the connected pair, id 'spacing:<connId>'.
+     * Spacing is a distinct physical constraint — it is never merged into
+     * minimumWidthIn/minimumHeightIn. Straight connections generate none.
+     * Because entry XY positions are unmodeled, the engine states the required
+     * minimum and flags SPACING_VERIFY_IN_LAYOUT: physical compliance must be
+     * verified in the actual box layout. With spacing implemented, every valid
+     * request within the modeled geometry is fully evaluated and
+     * completeForRequest is true.
+     *
+     * Requirement ids are deterministic and semantic — 'straight:<connectionId>'
+     * — never positional, never random, so the same request in any array order
+     * yields identical ids. Requirement arrays are sorted by requirement id.
+     *
+     * Result (frozen PBV2-0 shape, populated as far as PBV2-2 goes):
+     *   { ok: true,
+     *     minimumWidthIn, minimumHeightIn,          // number | null (never 0-for-none)
+     *     widthRequirements, heightRequirements,    // sorted by requirement id
+     *     governingWidthRequirementId, governingHeightRequirementId,
+     *     spacingRequirements: [],                  // PBV2-4
+     *     completeForRequest,                       // false when ANGLE/U deferred
+     *     warnings, scopeNotes }
+     */
+    function calculatePullBox(request) {
+      const validation = validatePullBoxRequest(request);
+      if (!validation.ok) return validation;
+
+      const { rows, entries, connections } = request;
+
+      const widthRequirements = [];
+      const heightRequirements = [];
+      const angleUConnIds = [];              // angle/U connections (spacing + triggers)
+      const spacingRequirements = [];
+      const triggersByRowId = new Map();     // rowId -> Set(connectionId)
+      const byId = new Map(entries.map((e) => [e.id, e]));
+
+      for (const conn of connections) {
+        const cls = classifyConnection(conn, entries, rows);
+        // validation already guaranteed endpoints/rows resolve; classification
+        // cannot fail here, so no second error path is invented
+        if (cls.type !== 'STRAIGHT') {
+          // ANGLE or U: both endpoint rows become triggered for the A(2)
+          // dimensional row rule; the connection itself is recorded for the
+          // spacing milestone and for triggerConnectionIds explainability.
+          angleUConnIds.push(conn.id);
+          for (const id of conn.entryIds) {
+            const rid = byId.get(id).rowId;
+            if (!triggersByRowId.has(rid)) triggersByRowId.set(rid, new Set());
+            triggersByRowId.get(rid).add(conn.id);
+          }
+          // ── A(2) entry spacing (PBV2-4): per connection, 6 x larger of the
+          // pair. entryIds are presented lexicographically sorted because the
+          // connection is undirected — presentation metadata only.
+          const [pA, pB] = conn.entryIds.map((id) => byId.get(id));
+          const larger = TRADE_SIZE_IN[pA.tradeSize] >= TRADE_SIZE_IN[pB.tradeSize]
+            ? pA.tradeSize : pB.tradeSize;
+          spacingRequirements.push({
+            id: 'spacing:' + conn.id,
+            kind: 'ENTRY_SPACING',
+            connectionType: cls.type,
+            connectionId: conn.id,
+            entryIds: conn.entryIds.slice().sort(),
+            largerTradeSize: larger,
+            multiplier: 6,
+            minimumInches: 6 * TRADE_SIZE_IN[larger],
+            codeRef: { code: 'NEC', section: '314.28(A)(2)' },
+          });
+          continue;
+        }
+        const [a, b] = conn.entryIds.map((id) => byId.get(id));
+        const aIn = TRADE_SIZE_IN[a.tradeSize];
+        const bIn = TRADE_SIZE_IN[b.tradeSize];
+        const largest = aIn >= bIn ? a.tradeSize : b.tradeSize;
+        const requirement = {
+          id: 'straight:' + conn.id,
+          kind: 'STRAIGHT',
+          dimension: cls.dimension,
+          connectionId: conn.id,
+          // undirected connection: presentation order is lexicographic, like
+          // ENTRY_SPACING, so endpoint order never changes any result byte
+          entryIds: conn.entryIds.slice().sort(),
+          largestTradeSize: largest,
+          otherTradeSizes: [],
+          multiplier: 8,
+          minimumInches: 8 * Math.max(aIn, bIn),
+          codeRef: { code: 'NEC', section: '314.28(A)(1)' },
+        };
+        (cls.dimension === 'width' ? widthRequirements : heightRequirements)
+          .push(requirement);
+      }
+
+      // ── 314.28(A)(2) dimensional row requirements ─────────────────────────
+      // One requirement per TRIGGERED (wall,row), grouped strictly by rowId —
+      // row.order is display metadata and never electrical identity.
+      for (const rowObj of sortRows(rows)) {
+        const trigger = triggersByRowId.get(rowObj.id);
+        if (!trigger) continue;   // untriggered rows generate nothing
+        const rowEntries = entries
+          .filter((e) => e.rowId === rowObj.id)
+          .slice()
+          .sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
+        // largest by inches; equal-largest tie excludes exactly ONE, chosen
+        // deterministically as the tied entry with the smallest entry id
+        let largestEntry = null;
+        for (const e of rowEntries) {
+          if (largestEntry === null
+            || TRADE_SIZE_IN[e.tradeSize] > TRADE_SIZE_IN[largestEntry.tradeSize]) {
+            largestEntry = e;
+          }
+        }
+        const others = rowEntries.filter((e) => e !== largestEntry);
+        // deterministic display order: size descending, entry id for ties;
+        // duplicates preserved
+        const othersSorted = others.slice().sort((x, y) => {
+          const d = TRADE_SIZE_IN[y.tradeSize] - TRADE_SIZE_IN[x.tradeSize];
+          if (d !== 0) return d;
+          return x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+        });
+        let sumOthers = 0;
+        for (const e of others) sumOthers += TRADE_SIZE_IN[e.tradeSize];
+        const requirement = {
+          id: 'angle-u-row:' + rowObj.id,
+          kind: 'ANGLE_U_ROW',
+          dimension: WALL_DIMENSION[rowObj.wall],
+          wall: rowObj.wall,
+          rowId: rowObj.id,
+          rowOrder: rowObj.order,
+          entryIds: rowEntries.map((e) => e.id),
+          largestTradeSize: largestEntry.tradeSize,
+          otherTradeSizes: othersSorted.map((e) => e.tradeSize),
+          multiplier: 6,
+          minimumInches: 6 * TRADE_SIZE_IN[largestEntry.tradeSize] + sumOthers,
+          triggerConnectionIds: Array.from(trigger).sort(),
+          codeRef: { code: 'NEC', section: '314.28(A)(2)' },
+        };
+        (requirement.dimension === 'width' ? widthRequirements : heightRequirements)
+          .push(requirement);
+      }
+
+      const byIdAsc = (x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0);
+      widthRequirements.sort(byIdAsc);
+      heightRequirements.sort(byIdAsc);
+
+      // Governing per dimension, independently: max minimumInches; ties break by
+      // ascending requirement id (arrays are id-sorted, so first max wins).
+      const governing = (reqs) => {
+        let win = null;
+        for (const r of reqs) if (win === null || r.minimumInches > win.minimumInches) win = r;
+        return win;
+      };
+      const gw = governing(widthRequirements);
+      const gh = governing(heightRequirements);
+
+      spacingRequirements.sort(byIdAsc);
+
+      const scopeNotes = [];
+      if (spacingRequirements.length > 0) {
+        // The required minimums are calculated; entry positions are unmodeled,
+        // so physical compliance is verified in the actual box layout.
+        scopeNotes.push({ code: 'SPACING_VERIFY_IN_LAYOUT' });
+      }
+      if (widthRequirements.length === 0) scopeNotes.push({ code: 'NO_WIDTH_CANDIDATES' });
+      if (heightRequirements.length === 0) scopeNotes.push({ code: 'NO_HEIGHT_CANDIDATES' });
+      scopeNotes.push({ code: 'DEPTH_NOT_CALCULATED' });
+      scopeNotes.push({ code: 'A3_NOT_EVALUATED' });
+
+      return {
+        ok: true,
+        minimumWidthIn: gw ? gw.minimumInches : null,
+        minimumHeightIn: gh ? gh.minimumInches : null,
+        widthRequirements,
+        heightRequirements,
+        governingWidthRequirementId: gw ? gw.id : null,
+        governingHeightRequirementId: gh ? gh.id : null,
+        spacingRequirements,
+        // FROZEN SEMANTICS: completeForRequest means exactly "all electrical
+        // calculations supported by the PBV2 MVP model have been evaluated for
+        // the supplied valid request" — nothing more. It does NOT mean code
+        // compliance verified, physical installation verified, both dimensions
+        // available, actual spacing verified, depth verified, or the A(3)
+        // listed-product exception checked. A valid request can be complete
+        // and still carry null dimensions, UNCONNECTED_ENTRY,
+        // NO_WIDTH/HEIGHT_CANDIDATES, SPACING_VERIFY_IN_LAYOUT,
+        // DEPTH_NOT_CALCULATED and A3_NOT_EVALUATED: those describe supplied-
+        // data limits, physical-verification boundaries, or deliberately
+        // out-of-scope rules — not an unfinished engine. Validation already
+        // rejects everything outside the modeled geometry (back/front
+        // surfaces, splice arity), so every valid request is fully evaluable.
+        completeForRequest: true,
+        warnings: validation.warnings,
+        scopeNotes,
+      };
+    }
+
+    module.exports = {
+      TRADE_SIZE_IN,
+      TRADE_SIZE_KEYS,
+      calculatePullBox,
+      WALL_ORDER,
+      WALL_DIMENSION,
+      validatePullBoxRequest,
+      classifyConnection,
+      sortRows,
+      sortEntries,
+      rowForEntry,
+    };
+  };
+
   var api = {};
   api["tables"] = __require("tables");
   api["ampacity"] = __require("ampacity");
@@ -3084,6 +3588,7 @@ window.EC = (function () {
   api["motor"] = __require("motor");
   api["grounding"] = __require("grounding");
   api["wireSizing"] = __require("wireSizing");
+  api["pullBox"] = __require("pullBox");
   return api;
 })();
 </script>
@@ -7739,6 +8244,303 @@ function initOutletsIfNeeded() {
 // Tab switching handled by origSwitch above
 
 </script>
+
+<!-- ══════════════════ PULL BOX V2 (PBV2-6) — DEV-ONLY EDITOR ══════════════════
+     Development-only schematic editor for Pull / Junction Box Sizing.
+     Unreachable from Home/nav; opens only via pbv2ShouldOpen() (local hosts).
+     Engine: EC.pullBox (injected shared module). No connections, no results,
+     no visible code references in this milestone. -->
+<style>
+#pbv2-overlay{position:fixed;inset:0;z-index:9000;display:none;flex-direction:column;background:var(--bg,#0a0a0a);color:var(--text,#eee);overflow-y:auto;-webkit-overflow-scrolling:touch;font-family:Inter,sans-serif}
+#pbv2-overlay.show{display:flex}
+.pbv2-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #222}
+.pbv2-title{font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;flex:1}
+.pbv2-dev{font-size:10px;letter-spacing:1px;color:var(--accent,#ffc700);border:1px solid var(--accent,#ffc700);border-radius:3px;padding:2px 6px}
+.pbv2-btn{min-height:44px;min-width:44px;background:#161616;color:var(--text,#eee);border:1px solid #2a2a2a;border-radius:8px;font-size:14px;padding:8px 12px;cursor:pointer}
+.pbv2-btn:focus-visible{outline:2px solid var(--accent,#ffc700);outline-offset:2px}
+.pbv2-grid{display:grid;grid-template-columns:minmax(64px,88px) 1fr minmax(64px,88px);grid-template-rows:auto 1fr auto;gap:6px;padding:10px;flex:1;min-height:420px}
+.pbv2-lane{background:#101010;border:1px solid #222;border-radius:10px;padding:6px;min-height:56px}
+.pbv2-lane-top{grid-column:2;grid-row:1}
+.pbv2-lane-bottom{grid-column:2;grid-row:3}
+.pbv2-lane-left{grid-column:1;grid-row:2}
+.pbv2-lane-right{grid-column:3;grid-row:2}
+.pbv2-center{grid-column:2;grid-row:2;border:2px dashed #2c2c2c;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#555;font-size:11px;text-align:center;padding:8px}
+.pbv2-wallname{font-size:10px;letter-spacing:1px;color:#888;display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:4px}
+.pbv2-addrow{min-height:28px;min-width:44px;background:none;border:none;color:var(--accent,#ffc700);font-size:11px;padding:8px 4px;cursor:pointer}
+.pbv2-row{border-top:1px dashed #262626;padding-top:4px;margin-top:4px}
+.pbv2-row:first-of-type{border-top:none;margin-top:0;padding-top:0}
+.pbv2-rowlabel{font-size:10px;color:#777;display:flex;align-items:center;justify-content:space-between}
+.pbv2-rowdel{background:none;border:none;color:#c0392b;font-size:11px;min-height:28px;min-width:28px;padding:6px;cursor:pointer}
+.pbv2-entries{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pbv2-lane-left .pbv2-entries,.pbv2-lane-right .pbv2-entries{flex-direction:column}
+.pbv2-entry{width:44px;height:44px;border-radius:50%;background:#191919;border:2px solid var(--accent,#ffc700);color:var(--text,#eee);font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1;cursor:pointer;padding:0}
+.pbv2-entry:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.pbv2-add{width:44px;height:44px;border-radius:50%;background:none;border:2px dashed #3a3a3a;color:#888;font-size:20px;cursor:pointer}
+.pbv2-modal-list{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.pbv2-note{font-size:12px;color:#888;margin:8px 0}
+</style>
+<div id="pbv2-overlay" role="region" aria-label="Pull / Junction Box Sizing editor">
+  <div class="pbv2-head">
+    <div class="pbv2-title">Pull / Junction Box Sizing</div>
+    <span class="pbv2-dev">DEV</span>
+    <button class="pbv2-btn" type="button" onclick="pbv2ResetConfirm()">Reset</button>
+    <button class="pbv2-btn" type="button" aria-label="Close editor" onclick="document.getElementById('pbv2-overlay').classList.remove('show')">✕</button>
+  </div>
+  <div class="pbv2-grid" id="pbv2-grid"></div>
+  <div class="pbv2-note" style="padding:0 14px 90px">Tap a wall's + to add a raceway. Tap a raceway to edit it. Rows keep raceways in the same line on a wall.</div>
+</div>
+<div class="modal-overlay" id="pbv2-modal" style="display:none;z-index:9500">
+  <div class="modal" id="pbv2-modal-box" role="dialog" aria-modal="true" aria-labelledby="pbv2-modal-title">
+    <div id="pbv2-modal-title" style="font-weight:600;margin-bottom:4px"></div>
+    <div id="pbv2-modal-body"></div>
+    <button class="modal-btn" type="button" onclick="pbv2CloseModal()">CANCEL</button>
+  </div>
+</div>
+<script>
+'use strict';
+// ── PBV2 editor state: EXACTLY the frozen engine model, nothing parallel ──
+var PBV2 = null;
+var pbv2Seq = 0;
+function pbv2NextId(prefix) { pbv2Seq++; return 'pbv2-' + prefix + '-' + pbv2Seq; }
+
+// ── Pure state helpers (testable without DOM; mutate the passed state) ──
+function pbv2InitialState(nextId) {
+  var rows = [];
+  var walls = ['left', 'right', 'top', 'bottom'];
+  for (var i = 0; i < walls.length; i++) {
+    rows.push({ id: nextId('row'), wall: walls[i], order: 0 });
+  }
+  return { rows: rows, entries: [], connections: [] };
+}
+function pbv2RowById(state, rowId) {
+  for (var i = 0; i < state.rows.length; i++) if (state.rows[i].id === rowId) return state.rows[i];
+  return null;
+}
+function pbv2AddRow(state, wall, id) {
+  var max = -1;
+  for (var i = 0; i < state.rows.length; i++) {
+    if (state.rows[i].wall === wall && state.rows[i].order > max) max = state.rows[i].order;
+  }
+  var row = { id: id, wall: wall, order: max + 1 };
+  state.rows.push(row);
+  return row;
+}
+function pbv2AddEntry(state, rowId, tradeSize, id) {
+  var entry = { id: id, rowId: rowId, tradeSize: tradeSize };
+  state.entries.push(entry);
+  return entry;
+}
+function pbv2ChangeSize(state, entryId, tradeSize) {
+  for (var i = 0; i < state.entries.length; i++) {
+    if (state.entries[i].id === entryId) { state.entries[i].tradeSize = tradeSize; return true; }
+  }
+  return false;
+}
+function pbv2ChangeRow(state, entryId, newRowId) {
+  var entry = null;
+  for (var i = 0; i < state.entries.length; i++) if (state.entries[i].id === entryId) entry = state.entries[i];
+  if (!entry) return false;
+  var from = pbv2RowById(state, entry.rowId);
+  var to = pbv2RowById(state, newRowId);
+  if (!from || !to || from.wall !== to.wall) return false;   // same-wall only (PBV2-6)
+  entry.rowId = newRowId;
+  return true;
+}
+function pbv2DeleteEntry(state, entryId) {
+  state.entries = state.entries.filter(function (e) { return e.id !== entryId; });
+  // future-safe: no orphan connections may survive an endpoint delete
+  state.connections = state.connections.filter(function (c) {
+    return c.entryIds.indexOf(entryId) === -1;
+  });
+}
+function pbv2DeleteRow(state, rowId) {
+  var row = pbv2RowById(state, rowId);
+  if (!row) return false;
+  var siblings = state.rows.filter(function (r) { return r.wall === row.wall; });
+  if (siblings.length <= 1) return false;   // UI keeps one row per wall (editor rule only)
+  var doomed = state.entries.filter(function (e) { return e.rowId === rowId; })
+    .map(function (e) { return e.id; });
+  state.entries = state.entries.filter(function (e) { return e.rowId !== rowId; });
+  state.connections = state.connections.filter(function (c) {
+    return doomed.indexOf(c.entryIds[0]) === -1 && doomed.indexOf(c.entryIds[1]) === -1;
+  });
+  state.rows = state.rows.filter(function (r) { return r.id !== rowId; });
+  return true;
+}
+function pbv2RowLabel(state, rowId) {
+  var row = pbv2RowById(state, rowId);
+  if (!row) return '';
+  var orders = state.rows.filter(function (r) { return r.wall === row.wall; })
+    .map(function (r) { return r.order; }).sort(function (a, b) { return a - b; });
+  return 'Row ' + (orders.indexOf(row.order) + 1);   // label from sorted order, not raw order
+}
+// ── Dev-only gate: local hosts only; production hostname can never open it ──
+function pbv2DevHost(hostname) {
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') return true;
+  if (/^10\.\d+\.\d+\.\d+$/.test(hostname)) return true;
+  if (/^192\.168\.\d+\.\d+$/.test(hostname)) return true;
+  var m = hostname.match(/^172\.(\d+)\.\d+\.\d+$/);
+  if (m) { var o = parseInt(m[1], 10); return o >= 16 && o <= 31; }
+  return false;
+}
+function pbv2ShouldOpen(loc) {
+  if (!pbv2DevHost(loc.hostname)) return false;
+  var q = (loc.search || '') + (loc.hash || '');
+  return q.indexOf('pbv2=1') !== -1;
+}
+
+// ── Rendering: state → DOM, one deterministic path, no electrical logic ──
+function pbv2Esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+function pbv2Render() {
+  var grid = document.getElementById('pbv2-grid');
+  if (!grid || !PBV2) return;
+  var wallsMeta = [
+    { wall: 'top', cls: 'pbv2-lane-top' },
+    { wall: 'left', cls: 'pbv2-lane-left' },
+    { wall: 'right', cls: 'pbv2-lane-right' },
+    { wall: 'bottom', cls: 'pbv2-lane-bottom' },
+  ];
+  var htmlOut = '<div class="pbv2-center">Pull / Junction Box<br>schematic — positions are<br>not to scale</div>';
+  for (var w = 0; w < wallsMeta.length; w++) {
+    var wall = wallsMeta[w].wall;
+    var rows = PBV2.rows.filter(function (r) { return r.wall === wall; })
+      .sort(function (a, b) { return a.order - b.order; });
+    var lane = '<div class="pbv2-lane ' + wallsMeta[w].cls + '">'
+      + '<div class="pbv2-wallname"><span>' + wall.toUpperCase() + '</span>'
+      + '<button class="pbv2-addrow" type="button" aria-label="Add row to ' + wall + ' wall" '
+      + 'onclick="pbv2UiAddRow(\'' + wall + '\')">+ Row</button></div>';
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var multi = rows.length > 1;
+      lane += '<div class="pbv2-row">';
+      if (multi) {
+        lane += '<div class="pbv2-rowlabel"><span>' + pbv2RowLabel(PBV2, row.id) + '</span>'
+          + '<button class="pbv2-rowdel" type="button" aria-label="Delete '
+          + pbv2RowLabel(PBV2, row.id) + ' on ' + wall + ' wall" '
+          + 'onclick="pbv2UiDeleteRow(\'' + row.id + '\')">remove</button></div>';
+      }
+      lane += '<div class="pbv2-entries">';
+      var entries = PBV2.entries.filter(function (e) { return e.rowId === row.id; });
+      for (var j = 0; j < entries.length; j++) {
+        lane += '<button class="pbv2-entry" type="button" aria-label="'
+          + pbv2Esc(entries[j].tradeSize) + ' inch raceway, ' + wall + ' wall, '
+          + pbv2RowLabel(PBV2, row.id) + '" onclick="pbv2UiInspect(\'' + entries[j].id + '\')">'
+          + pbv2Esc(entries[j].tradeSize) + '&Prime;</button>';
+      }
+      lane += '<button class="pbv2-add" type="button" aria-label="Add raceway to '
+        + wall + ' wall ' + pbv2RowLabel(PBV2, row.id) + '" '
+        + 'onclick="pbv2UiAddEntry(\'' + row.id + '\')">+</button>';
+      lane += '</div></div>';
+    }
+    lane += '</div>';
+    htmlOut += lane;
+  }
+  grid.innerHTML = htmlOut;
+}
+
+// ── Modal helpers (reuse the app modal pattern) ──
+function pbv2OpenModal(title, bodyHtml) {
+  document.getElementById('pbv2-modal-title').textContent = title;
+  document.getElementById('pbv2-modal-body').innerHTML = bodyHtml;
+  document.getElementById('pbv2-modal').style.display = 'flex';
+}
+function pbv2CloseModal() { document.getElementById('pbv2-modal').style.display = 'none'; }
+function pbv2SizeButtons(handlerName, arg) {
+  var keys = EC.pullBox.TRADE_SIZE_KEYS;   // engine is the ONLY size source
+  var out = '<div class="pbv2-modal-list">';
+  for (var i = 0; i < keys.length; i++) {
+    out += '<button class="pbv2-btn" type="button" onclick="' + handlerName
+      + '(\'' + arg + '\',\'' + keys[i] + '\')">' + keys[i] + '&Prime;</button>';
+  }
+  return out + '</div>';
+}
+
+// ── UI actions ──
+function pbv2UiAddRow(wall) {
+  pbv2AddRow(PBV2, wall, pbv2NextId('row'));
+  pbv2Render();
+}
+function pbv2UiAddEntry(rowId) {
+  pbv2OpenModal('Add raceway — trade size', pbv2SizeButtons('pbv2UiAddEntryPick', rowId));
+}
+function pbv2UiAddEntryPick(rowId, size) {
+  pbv2AddEntry(PBV2, rowId, size, pbv2NextId('entry'));
+  pbv2CloseModal();
+  pbv2Render();
+}
+function pbv2UiInspect(entryId) {
+  var entry = null;
+  for (var i = 0; i < PBV2.entries.length; i++) if (PBV2.entries[i].id === entryId) entry = PBV2.entries[i];
+  if (!entry) return;
+  var row = pbv2RowById(PBV2, entry.rowId);
+  var sameWallRows = PBV2.rows.filter(function (r) { return r.wall === row.wall; });
+  var body = '<div class="pbv2-note">' + pbv2Esc(entry.tradeSize) + '&Prime; raceway · '
+    + row.wall + ' wall · ' + pbv2RowLabel(PBV2, row.id) + '</div>'
+    + '<button class="modal-btn" type="button" onclick="pbv2UiChangeSize(\'' + entryId + '\')">CHANGE SIZE</button>';
+  if (sameWallRows.length > 1) {
+    body += '<button class="modal-btn" type="button" onclick="pbv2UiChangeRow(\'' + entryId + '\')">CHANGE ROW</button>';
+  } else {
+    body += '<div class="pbv2-note">Add another row on this wall to enable moving between rows.</div>';
+  }
+  body += '<button class="modal-btn" type="button" style="color:#c0392b" onclick="pbv2UiDeleteEntry(\'' + entryId + '\')">DELETE RACEWAY</button>';
+  pbv2OpenModal('Raceway', body);
+}
+function pbv2UiChangeSize(entryId) {
+  pbv2OpenModal('Change size', pbv2SizeButtons('pbv2UiChangeSizePick', entryId));
+}
+function pbv2UiChangeSizePick(entryId, size) {
+  pbv2ChangeSize(PBV2, entryId, size);
+  pbv2CloseModal();
+  pbv2Render();
+}
+function pbv2UiChangeRow(entryId) {
+  var entry = null;
+  for (var i = 0; i < PBV2.entries.length; i++) if (PBV2.entries[i].id === entryId) entry = PBV2.entries[i];
+  if (!entry) return;
+  var wall = pbv2RowById(PBV2, entry.rowId).wall;
+  var rows = PBV2.rows.filter(function (r) { return r.wall === wall; })
+    .sort(function (a, b) { return a.order - b.order; });
+  var body = '<div class="pbv2-modal-list">';
+  for (var j = 0; j < rows.length; j++) {
+    var disabled = rows[j].id === entry.rowId ? ' disabled' : '';
+    body += '<button class="pbv2-btn" type="button"' + disabled
+      + ' onclick="pbv2UiChangeRowPick(\'' + entryId + '\',\'' + rows[j].id + '\')">'
+      + pbv2RowLabel(PBV2, rows[j].id) + (disabled ? ' (current)' : '') + '</button>';
+  }
+  pbv2OpenModal('Move to row', body + '</div>');
+}
+function pbv2UiChangeRowPick(entryId, rowId) {
+  pbv2ChangeRow(PBV2, entryId, rowId);
+  pbv2CloseModal();
+  pbv2Render();
+}
+function pbv2UiDeleteEntry(entryId) {
+  pbv2DeleteEntry(PBV2, entryId);
+  pbv2CloseModal();
+  pbv2Render();
+}
+function pbv2UiDeleteRow(rowId) {
+  var hasEntries = PBV2.entries.some(function (e) { return e.rowId === rowId; });
+  if (hasEntries && !window.confirm('Delete this row and its raceways?')) return;
+  pbv2DeleteRow(PBV2, rowId);
+  pbv2Render();
+}
+function pbv2ResetConfirm() {
+  if (PBV2 && PBV2.entries.length > 0 && !window.confirm('Reset the box? All raceways will be removed.')) return;
+  pbv2Seq = 0;
+  PBV2 = pbv2InitialState(pbv2NextId);
+  pbv2Render();
+}
+// ── Dev-only activation ──
+(function () {
+  if (pbv2ShouldOpen(window.location)) {
+    PBV2 = pbv2InitialState(pbv2NextId);
+    document.getElementById('pbv2-overlay').classList.add('show');
+    pbv2Render();
+  }
+})();
+</script>
+
 </body>
 
 <script>

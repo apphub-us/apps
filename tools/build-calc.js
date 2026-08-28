@@ -46,6 +46,7 @@ const MODULES = [
   'motor',
   'grounding',
   'wireSizing',
+  'pullBox',
 ];
 
 function readModule(name) {
