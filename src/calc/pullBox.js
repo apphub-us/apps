@@ -370,7 +370,9 @@ function calculatePullBox(request) {
       kind: 'STRAIGHT',
       dimension: cls.dimension,
       connectionId: conn.id,
-      entryIds: [conn.entryIds[0], conn.entryIds[1]],
+      // undirected connection: presentation order is lexicographic, like
+      // ENTRY_SPACING, so endpoint order never changes any result byte
+      entryIds: conn.entryIds.slice().sort(),
       largestTradeSize: largest,
       otherTradeSizes: [],
       multiplier: 8,
@@ -465,11 +467,19 @@ function calculatePullBox(request) {
     governingWidthRequirementId: gw ? gw.id : null,
     governingHeightRequirementId: gh ? gh.id : null,
     spacingRequirements,
-    // Every valid request within the modeled MVP geometry (straight, angle,
-    // U, mixed) is now fully evaluated: validation already rejects the
-    // unsupported (back/front surfaces, splice arity), and the standing
-    // scope boundaries (DEPTH_NOT_CALCULATED, A3_NOT_EVALUATED,
-    // SPACING_VERIFY_IN_LAYOUT) document limits, not missing calculation.
+    // FROZEN SEMANTICS: completeForRequest means exactly "all electrical
+    // calculations supported by the PBV2 MVP model have been evaluated for
+    // the supplied valid request" — nothing more. It does NOT mean code
+    // compliance verified, physical installation verified, both dimensions
+    // available, actual spacing verified, depth verified, or the A(3)
+    // listed-product exception checked. A valid request can be complete
+    // and still carry null dimensions, UNCONNECTED_ENTRY,
+    // NO_WIDTH/HEIGHT_CANDIDATES, SPACING_VERIFY_IN_LAYOUT,
+    // DEPTH_NOT_CALCULATED and A3_NOT_EVALUATED: those describe supplied-
+    // data limits, physical-verification boundaries, or deliberately
+    // out-of-scope rules — not an unfinished engine. Validation already
+    // rejects everything outside the modeled geometry (back/front
+    // surfaces, splice arity), so every valid request is fully evaluable.
     completeForRequest: true,
     warnings: validation.warnings,
     scopeNotes,
