@@ -35,7 +35,8 @@ src/calc/
                   voltage drop, governing constraint
   motor.js        Article 430 single-motor sizing: table FLC, conductors,
                   overload, branch protection, disconnect
-  grounding.js    250.122, 250.66, 250.122(B)
+  grounding.js    250.122 EGC, 250.122(B) proportional upsizing,
+                  250.66 GEC + electrode caps
 test/             one suite per module, plus guards on the shipped app,
                   the production paths, the build, the service worker and the UI
 tools/build-calc.js
@@ -43,7 +44,7 @@ tools/build-calc.js
 
 ## Status
 
-**344 tests · 0 failures · 0 todo · build:check passing.** Every identified
+**366 tests · 0 failures · 0 todo · build:check passing.** Every identified
 correctness defect (P0-1 through P0-4 and P1-1) is closed and guarded by a hard
 test. No defects are parked as `todo`.
 
@@ -54,7 +55,8 @@ test. No defects are parked as `todo`.
 | Wire Sizer | **fully** |
 | Box Fill | **fully** |
 | Motor | **fully** |
-| Grounding, standalone Voltage Drop | not fully migrated |
+| Grounding | **fully** |
+| standalone Voltage Drop | not fully migrated |
 
 Where a calculator is not fully migrated it still computes locally. Its shared
 module exists and is tested, so completing the migration is transport work
@@ -144,6 +146,52 @@ The Motor migration also added deterministic validation for malformed inputs
 (invalid phase, invalid material, invalid service-factor multiplier, invalid
 nameplate-current states). These were UI-unreachable hardening cases, and no
 shipped Motor decision changed.
+
+**Grounding architecture.** Production `gndCalc()` is a thin adapter: it reads
+and normalizes the existing Grounding controls, builds one structured request,
+calls `EC.grounding.calculateGrounding` exactly once, and renders the
+structured result. The shared engine owns every supported Grounding electrical
+decision. Supported scope: Table 250.122 Equipment Grounding Conductor sizing,
+250.122(B) proportional EGC upsizing, Table 250.66 Grounding Electrode
+Conductor sizing, and the 250.66(A)/(B)/(C) electrode caps (rod/plate,
+concrete-encased, ground ring). No NYC-specific Grounding override is
+currently implemented, and the UI does not implement broader Article 250
+features such as bonding jumpers, separately derived systems, service bonding,
+parallel-raceway EGC calculations, or transformer/generator grounding. The
+engine keeps the two rule paths explicitly separate — EGC sized from the
+overcurrent device under Table 250.122, GEC sized from the service conductor
+under Table 250.66 — and production no longer decides between them; nothing is
+a generic "ground wire size". Proportional 250.122(B) upsizing is
+engine-owned end to end: the required-vs-installed phase-conductor comparison,
+the circular-mil ratio, the required EGC circular-mil area, the next supported
+EGC size selection, and out-of-range detection. Production Grounding no longer
+contains an independent Table 250.122 or Table 250.66 copy, CM map,
+proportional ratio formula, conductor-size scan, material decision logic or
+final sizing logic — the app aliases the shared size list for select
+population and keeps parsing/rendering only.
+
+One shipped correctness defect was found and fixed during this migration: in a
+reachable 250.122(B) case where the proportional required EGC area exceeded
+the largest conductor size supported by the calculator, the old production
+path could silently fall back to the base Table 250.122 EGC size while still
+presenting it as the upsized result. The corrected engine returns
+`finalSize: null`, `exceedsAvailableSizes: true` and the preserved
+`requiredCM`, and production now reports neutrally that the required EGC area
+exceeds the largest conductor size supported by the calculator.
+
+Migration guards: `test/groundingParity.test.js` compares the old production
+decisions against the shared engine across the complete supported UI domain;
+`test/groundingProduction.test.js` executes the shipped `gndCalc()`, proves
+via a poisoned-engine result that both result panels render what the engine
+returns, pins exactly one `EC.grounding.calculateGrounding` call per
+Calculate, and holds a shipped regression for the former 250.122(B)
+out-of-range fallback.
+
+The Grounding migration also added deterministic engine validation for
+malformed inputs (invalid OCPD, invalid material, invalid electrode,
+unsupported conductor size). Apart from the out-of-range defect described
+above, these were UI-unreachable hardening cases and no shipped Grounding
+decision changed.
 
 The engine is injected into `mobile.html` between `EC-CALC:START/END` markers by
 `tools/build-calc.js`. Never hand-edit that block.
