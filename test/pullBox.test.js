@@ -552,9 +552,7 @@ describe('PBV2-2 — straight-pull calculation', () => {
     assert.strictEqual(r.widthRequirements.length, 1);
   });
 
-  test('ANGLE/U spacing (only) is deferred, machine-readably — dimensions ARE calculated', () => {
-    // Since PBV2-3 the A(2) dimensional row rule computes; the remaining
-    // deferral is the separate entry-to-entry spacing requirement (PBV2-4).
+  test('ANGLE/U requests are now FULLY evaluated: dimensions + spacing, no deferral notes', () => {
     const r = calculatePullBox({
       rows: [row('rL', 'left', 0), row('rR', 'right', 0), row('rT', 'top', 0)],
       entries: [entry('a', 'rL', '4'), entry('b', 'rR', '4'),
@@ -562,18 +560,17 @@ describe('PBV2-2 — straight-pull calculation', () => {
       connections: [conn('cS', 'a', 'b'), conn('cAngle', 'a2', 't'),
         conn('cU', 'a3', 'a')],
     });
-    assert.strictEqual(r.ok, true, 'angle/U presence must not reject the request');
+    assert.strictEqual(r.ok, true);
     // width candidates: straight 8x4=32 and left row (4,2,3) 6x4+2+3=29
     assert.strictEqual(r.minimumWidthIn, 32);
-    assert.strictEqual(r.minimumHeightIn, 12, 'top row 6x2 now computes');
-    assert.strictEqual(r.completeForRequest, false, 'spacing still pending');
-    assert.deepStrictEqual(
-      r.scopeNotes.find((n) => n.code === 'A2_SPACING_NOT_CALCULATED'),
-      { code: 'A2_SPACING_NOT_CALCULATED', connectionIds: ['cAngle', 'cU'] },
-      'sorted angle/U connection ids only');
-    assert.ok(!r.scopeNotes.some((n) => n.code === 'ANGLE_U_NOT_CALCULATED'),
-      'the PBV2-2 deferral note is gone — dimensions are no longer deferred');
-    assert.strictEqual(r.spacingRequirements.length, 0);
+    assert.strictEqual(r.minimumHeightIn, 12);
+    assert.strictEqual(r.completeForRequest, true, 'spacing is now implemented');
+    // REGRESSION: both temporary milestone notes are gone forever
+    assert.ok(!r.scopeNotes.some((n) => n.code === 'A2_SPACING_NOT_CALCULATED'));
+    assert.ok(!r.scopeNotes.some((n) => n.code === 'ANGLE_U_NOT_CALCULATED'));
+    assert.strictEqual(r.spacingRequirements.length, 2, 'one per angle/U connection');
+    assert.deepStrictEqual(r.spacingRequirements.map((s) => s.id),
+      ['spacing:cAngle', 'spacing:cU'], 'id-sorted');
   });
 
   test('completeForRequest is true only for all-straight requests', () => {
@@ -683,26 +680,25 @@ describe('PBV2-2 — straight-pull calculation', () => {
     }
   });
 
-  test('MILESTONE BOUNDARY: A(2) row rule is implemented, spacing is not', () => {
-    // Behavioral, not token-scanning where possible: A(2) dimensional
-    // evidence must exist; spacing must not.
-    const fs = require('node:fs');
-    const source = fs.readFileSync(require.resolve('../src/calc/pullBox.js'), 'utf8');
-    const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-    assert.ok(code.includes('8 *'), 'straight multiplier present');
-    assert.ok(code.includes('6 *'), 'A(2) row multiplier present (PBV2-3)');
-    assert.ok(code.includes('ANGLE_U_ROW'), 'row requirement kind present');
-    assert.ok(code.includes('314.28(A)(2)'), 'structured A(2) codeRef present');
-    // spacing stays out until PBV2-4: no spacing requirement ids, and every
-    // successful result returns an empty spacingRequirements array
-    assert.ok(!code.includes("'spacing:"), 'no spacing requirement ids yet');
+  test('MILESTONE BOUNDARY: straight, A(2) row AND A(2) spacing are all implemented', () => {
+    // Behavioral: one angle connection must yield the dimensional row
+    // requirements AND exactly one spacing requirement with the structured
+    // A(2) codeRef and 6x-larger behavior.
     const api = require('../src/calc/pullBox');
     const r = api.calculatePullBox({
       rows: [row('rL', 'left', 0), row('rT', 'top', 0)],
-      entries: [entry('a', 'rL', '2'), entry('t', 'rT', '2')],
+      entries: [entry('a', 'rL', '4'), entry('t', 'rT', '2')],
       connections: [conn('c1', 'a', 't')],
     });
-    assert.deepStrictEqual(r.spacingRequirements, []);
+    assert.strictEqual(r.widthRequirements[0].minimumInches, 24, '6x4 row');
+    assert.strictEqual(r.heightRequirements[0].minimumInches, 12, '6x2 row');
+    assert.strictEqual(r.spacingRequirements.length, 1);
+    assert.strictEqual(r.spacingRequirements[0].minimumInches, 24, '6x larger of pair');
+    assert.deepStrictEqual(r.spacingRequirements[0].codeRef,
+      { code: 'NEC', section: '314.28(A)(2)' });
+    // spacing never merges into dimensions
+    assert.strictEqual(r.minimumWidthIn, 24);
+    assert.strictEqual(r.minimumHeightIn, 12);
   });
 });
 
@@ -917,7 +913,8 @@ describe('PBV2-3 — A(2) row requirements', () => {
       r.widthRequirements.map((q) => [q.id, q.minimumInches]),
       [['angle-u-row:rL', 26], ['straight:cS', 32]],
       'both candidates present, id-sorted');
-    assert.strictEqual(r.completeForRequest, false);
+    assert.strictEqual(r.completeForRequest, true,
+      'fully evaluated since PBV2-4 (spacing implemented)');
   });
 
   test('CROSS-KIND TIE-BREAK: equal 24" straight and row pick the first id', () => {
@@ -1028,5 +1025,284 @@ describe('PBV2-3 — A(2) row requirements', () => {
       }
     };
     walk(r);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-4 — A(2) raceway-entry spacing engine
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-4 — entry-spacing requirements', () => {
+  const { calculatePullBox } = require('../src/calc/pullBox');
+
+  function angleBox(wallA, sizeA, wallB, sizeB) {
+    return {
+      rows: [row('rA', wallA, 0), row('rB', wallB, 0)],
+      entries: [entry('a', 'rA', sizeA), entry('b', 'rB', sizeB)],
+      connections: [conn('c1', 'a', 'b')],
+    };
+  }
+
+  test('INDEPENDENT PINS: all twelve 6x spacing values, hand-stated constants', () => {
+    const expected = {
+      '1/2': 3, '3/4': 4.5, '1': 6, '1-1/4': 7.5, '1-1/2': 9, '2': 12,
+      '2-1/2': 15, '3': 18, '3-1/2': 21, '4': 24, '5': 30, '6': 36,
+    };
+    for (const [size, inches] of Object.entries(expected)) {
+      const r = calculatePullBox(angleBox('left', size, 'top', size));
+      assert.strictEqual(r.spacingRequirements.length, 1, size);
+      assert.strictEqual(r.spacingRequirements[0].minimumInches, inches, size);
+      assert.strictEqual(r.spacingRequirements[0].largerTradeSize, size, size);
+    }
+  });
+
+  test('ANGLE spacing: three distinct constraints, none merged', () => {
+    // LEFT 2" ↔ TOP 2": width row 12", height row 12", spacing 12" — three
+    // separate results with separate meanings.
+    const r = calculatePullBox(angleBox('left', '2', 'top', '2'));
+    assert.strictEqual(r.widthRequirements[0].minimumInches, 12);
+    assert.strictEqual(r.heightRequirements[0].minimumInches, 12);
+    assert.deepStrictEqual(r.spacingRequirements[0], {
+      id: 'spacing:c1',
+      kind: 'ENTRY_SPACING',
+      connectionType: 'ANGLE',
+      connectionId: 'c1',
+      entryIds: ['a', 'b'],
+      largerTradeSize: '2',
+      multiplier: 6,
+      minimumInches: 12,
+      codeRef: { code: 'NEC', section: '314.28(A)(2)' },
+    });
+  });
+
+  test('UNEQUAL ANGLE spacing uses the larger: 4"↔2" → 24", both endpoint orders', () => {
+    const fwd = calculatePullBox(angleBox('left', '4', 'top', '2'));
+    assert.strictEqual(fwd.spacingRequirements[0].minimumInches, 24, 'never 12');
+    assert.strictEqual(fwd.spacingRequirements[0].largerTradeSize, '4');
+    const rev = calculatePullBox(angleBox('left', '2', 'top', '4'));
+    assert.strictEqual(rev.spacingRequirements[0].minimumInches, 24);
+    assert.strictEqual(rev.spacingRequirements[0].largerTradeSize, '4');
+    assert.deepStrictEqual(rev.spacingRequirements[0].entryIds, ['a', 'b'],
+      'undirected: presentation ids sorted lexicographically');
+  });
+
+  test('U spacing [3,3]: dimension 21" and spacing 18" stay separate', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0)],
+      entries: [entry('a', 'rL', '3'), entry('b', 'rL', '3')],
+      connections: [conn('cU', 'a', 'b')],
+    });
+    assert.strictEqual(r.widthRequirements[0].minimumInches, 21, '6x3 + 3');
+    assert.strictEqual(r.spacingRequirements[0].minimumInches, 18, '6x3');
+    assert.strictEqual(r.spacingRequirements[0].connectionType, 'U');
+    assert.strictEqual(r.minimumWidthIn, 21, 'spacing never inflates the dimension');
+  });
+
+  test('UNEQUAL U [4,2]: dimension 26", spacing 24", pinned independently', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0)],
+      entries: [entry('a', 'rL', '4'), entry('b', 'rL', '2')],
+      connections: [conn('cU', 'a', 'b')],
+    });
+    assert.strictEqual(r.widthRequirements[0].minimumInches, 26);
+    assert.strictEqual(r.spacingRequirements[0].minimumInches, 24);
+    assert.strictEqual(r.spacingRequirements[0].largerTradeSize, '4');
+  });
+
+  test('MULTIPLE ANGLE/U SAME ROW: one row requirement, one spacing PER connection', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rT', 'top', 0)],
+      entries: [entry('L3', 'rL', '3'), entry('L2', 'rL', '2'), entry('L1', 'rL', '1'),
+        entry('T2', 'rT', '2')],
+      connections: [conn('cU', 'L3', 'L2'), conn('cA', 'L1', 'T2')],
+    });
+    assert.strictEqual(r.widthRequirements.filter((q) => q.rowId === 'rL').length, 1,
+      'row aggregation level unchanged');
+    assert.strictEqual(r.spacingRequirements.length, 2, 'connection aggregation level');
+    assert.deepStrictEqual(r.spacingRequirements.map((s) => [s.id, s.minimumInches]),
+      [['spacing:cA', 12], ['spacing:cU', 18]], 'id-sorted: 6x2 and 6x3');
+  });
+
+  test('STRAIGHT produces NO spacing; all-straight requests stay complete and note-free', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0)],
+      entries: [entry('a', 'rL', '4'), entry('b', 'rR', '4')],
+      connections: [conn('cS', 'a', 'b')],
+    });
+    assert.strictEqual(r.minimumWidthIn, 32);
+    assert.deepStrictEqual(r.spacingRequirements, [], 'no redundant 24" spacing');
+    assert.strictEqual(r.completeForRequest, true);
+    assert.ok(!r.scopeNotes.some((n) => n.code === 'SPACING_VERIFY_IN_LAYOUT'),
+      'the layout-verification note appears only when spacing requirements exist');
+  });
+
+  test('MIXED STRAIGHT + ANGLE (frozen design fixture): one spacing item, complete', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0), row('rT', 'top', 0)],
+      entries: [entry('L4', 'rL', '4'), entry('L2', 'rL', '2'),
+        entry('R4', 'rR', '4'), entry('T2', 'rT', '2')],
+      connections: [conn('cS', 'L4', 'R4'), conn('cA', 'L2', 'T2')],
+    });
+    assert.strictEqual(r.minimumWidthIn, 32);
+    assert.strictEqual(r.minimumHeightIn, 12);
+    assert.strictEqual(r.spacingRequirements.length, 1);
+    assert.strictEqual(r.spacingRequirements[0].connectionId, 'cA');
+    assert.strictEqual(r.spacingRequirements[0].minimumInches, 12);
+    assert.strictEqual(r.completeForRequest, true);
+  });
+
+  test('MIXED STRAIGHT + U: both dimensional engines run, only U gets spacing', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0)],
+      entries: [entry('a', 'rL', '3'), entry('b', 'rR', '3'),
+        entry('u1', 'rL', '2'), entry('u2', 'rL', '1')],
+      connections: [conn('cS', 'a', 'b'), conn('cU', 'u1', 'u2')],
+    });
+    // straight 8x3=24; left row triggered by U: entries 3,2,1 → 6x3+2+1=21
+    assert.strictEqual(r.minimumWidthIn, 24);
+    assert.strictEqual(r.governingWidthRequirementId, 'straight:cS');
+    assert.strictEqual(r.spacingRequirements.length, 1);
+    assert.strictEqual(r.spacingRequirements[0].id, 'spacing:cU');
+    assert.strictEqual(r.spacingRequirements[0].minimumInches, 12, '6x2 larger of U pair');
+    assert.strictEqual(r.completeForRequest, true);
+  });
+
+  test('ANGLE + U: two spacing requirements, id-ordered, both A(2)-cited, complete', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rB', 'bottom', 0)],
+      entries: [entry('L5', 'rL', '5'), entry('L1', 'rL', '1'),
+        entry('B2', 'rB', '2')],
+      connections: [conn('zU', 'L5', 'L1'), conn('aA', 'L1', 'B2')],
+    });
+    assert.deepStrictEqual(r.spacingRequirements.map((s) => s.id),
+      ['spacing:aA', 'spacing:zU']);
+    assert.deepStrictEqual(r.spacingRequirements.map((s) => s.minimumInches),
+      [12, 30], '6x2 angle, 6x5 U');
+    for (const s of r.spacingRequirements) {
+      assert.deepStrictEqual(s.codeRef, { code: 'NEC', section: '314.28(A)(2)' });
+    }
+    assert.strictEqual(r.completeForRequest, true);
+  });
+
+  test('SHARED ENTRY: each connection keeps its own spacing obligation', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rT', 'top', 0), row('rB', 'bottom', 0)],
+      entries: [entry('hub', 'rL', '2'), entry('T4', 'rT', '4'), entry('B3', 'rB', '3')],
+      connections: [conn('c1', 'hub', 'T4'), conn('c2', 'hub', 'B3')],
+    });
+    assert.strictEqual(r.spacingRequirements.length, 2, 'no dedup on shared endpoint');
+    assert.deepStrictEqual(r.spacingRequirements.map((s) => s.minimumInches),
+      [24, 18], '6x4 and 6x3, each from its own pair');
+  });
+
+  test('SPACING_VERIFY_IN_LAYOUT appears exactly when spacing requirements exist', () => {
+    const withSpacing = calculatePullBox(angleBox('left', '2', 'top', '2'));
+    assert.ok(withSpacing.scopeNotes.some((n) => n.code === 'SPACING_VERIFY_IN_LAYOUT'));
+    assert.ok(!withSpacing.scopeNotes.some((n) => n.code === 'A2_SPACING_NOT_CALCULATED'),
+      'the temporary PBV2-3 note no longer exists anywhere');
+    const straightOnly = calculatePullBox({
+      rows: [row('rT', 'top', 0), row('rB', 'bottom', 0)],
+      entries: [entry('a', 'rT', '1'), entry('b', 'rB', '1')],
+      connections: [conn('c1', 'a', 'b')],
+    });
+    assert.ok(!straightOnly.scopeNotes.some((n) => n.code === 'SPACING_VERIFY_IN_LAYOUT'));
+  });
+
+  test('PBV2-3 DIMENSIONAL REGRESSIONS stand untouched beside spacing', () => {
+    // U [4,3,2]: dimension 29" (U between 3 and 2 → spacing 6x3=18")
+    const u432 = calculatePullBox({
+      rows: [row('rL', 'left', 0)],
+      entries: [entry('a', 'rL', '4'), entry('b', 'rL', '3'), entry('c', 'rL', '2')],
+      connections: [conn('cU', 'b', 'c')],
+    });
+    assert.strictEqual(u432.widthRequirements[0].minimumInches, 29);
+    assert.strictEqual(u432.spacingRequirements[0].minimumInches, 18);
+    // legacy angle regression: left [4,2] row stays 26, never 29
+    const pb2 = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0), row('rT', 'top', 0)],
+      entries: [entry('L4', 'rL', '4'), entry('L2', 'rL', '2'),
+        entry('R3', 'rR', '3'), entry('T2', 'rT', '2')],
+      connections: [conn('cA', 'L2', 'T2')],
+    });
+    assert.strictEqual(
+      pb2.widthRequirements.find((q) => q.rowId === 'rL').minimumInches, 26);
+    assert.strictEqual(pb2.spacingRequirements[0].minimumInches, 12, '6x2 pair');
+  });
+
+  test('IMMUTABILITY: deep-frozen mixed request with spacing calculates cleanly', () => {
+    const q = {
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0), row('rT', 'top', 0)],
+      entries: [entry('L4', 'rL', '4'), entry('L2', 'rL', '2'),
+        entry('R4', 'rR', '4'), entry('T2', 'rT', '2'), entry('U1', 'rL', '1')],
+      connections: [conn('cS', 'L4', 'R4'), conn('cA', 'L2', 'T2'),
+        conn('cU', 'L2', 'U1')],
+    };
+    Object.freeze(q); Object.freeze(q.rows); Object.freeze(q.entries);
+    Object.freeze(q.connections);
+    q.rows.forEach(Object.freeze); q.entries.forEach(Object.freeze);
+    q.connections.forEach((c) => { Object.freeze(c); Object.freeze(c.entryIds); });
+    const snapshot = JSON.stringify(q);
+    const r = calculatePullBox(q);
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.spacingRequirements.length, 2);
+    assert.strictEqual(JSON.stringify(q), snapshot);
+  });
+
+  test('DETERMINISM: shuffles never move spacing ids, order, or values', () => {
+    let seed = 0x5AC4;
+    const rnd = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 0x100000000;
+    };
+    const shuffle = (arr) => {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rnd() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+    const base = {
+      rows: [row('rL', 'left', 0), row('rL2', 'left', 1), row('rR', 'right', 0),
+        row('rT', 'top', 0), row('rB', 'bottom', 0)],
+      entries: [entry('L4', 'rL', '4'), entry('L2', 'rL', '2'),
+        entry('L1', 'rL', '1'), entry('X3', 'rL2', '3'),
+        entry('R4', 'rR', '4'), entry('T2', 'rT', '2'), entry('B5', 'rB', '5')],
+      connections: [conn('cS', 'L4', 'R4'), conn('cA', 'L2', 'T2'),
+        conn('cU', 'L1', 'L2'), conn('cA2', 'B5', 'X3')],
+    };
+    const ref = calculatePullBox(base);
+    assert.strictEqual(ref.spacingRequirements.length, 3);
+    for (let i = 0; i < 20; i++) {
+      const r = calculatePullBox({
+        rows: shuffle(base.rows),
+        entries: shuffle(base.entries),
+        connections: shuffle(base.connections),
+      });
+      assert.deepStrictEqual(r, ref, 'shuffle #' + i);
+    }
+  });
+
+  test('FINITENESS: fractional spacing values are exact, nothing NaN/Infinity', () => {
+    const r = calculatePullBox(angleBox('left', '3/4', 'top', '1-1/4'));
+    assert.strictEqual(r.spacingRequirements[0].minimumInches, 7.5, '6 x 1.25');
+    const walk = (o) => {
+      for (const v of Object.values(o)) {
+        if (typeof v === 'number') assert.ok(Number.isFinite(v));
+        else if (v && typeof v === 'object') walk(v);
+      }
+    };
+    walk(r);
+  });
+
+  test('VALIDATION PASSTHROUGH: spacing never runs on invalid connections', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0)],
+      entries: [entry('a', 'rL', '2')],
+      connections: [conn('c1', 'a', 'ghost')],
+    });
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.reason, 'CONNECTION_UNKNOWN_ENTRY');
+    assert.strictEqual(r.spacingRequirements, undefined);
   });
 });

@@ -291,10 +291,16 @@ function classifyConnection(connection, entries, rows) {
  * requirement exists per triggered row — never per connection — with id
  * 'angle-u-row:<rowId>'.
  *
- * What remains deferred in PBV2-3 is ONLY the separate A(2) entry-to-entry
- * spacing requirement (PBV2-4): results carry A2_SPACING_NOT_CALCULATED
- * listing the angle/U connection ids, spacingRequirements stays [], and
- * completeForRequest stays false for any request containing angle/U pulls.
+ * PBV2-4 adds the separate NEC 314.28(A)(2) raceway-entry SPACING
+ * requirement: one requirement PER angle/U connection (never per row),
+ * 6 x the larger trade size of the connected pair, id 'spacing:<connId>'.
+ * Spacing is a distinct physical constraint — it is never merged into
+ * minimumWidthIn/minimumHeightIn. Straight connections generate none.
+ * Because entry XY positions are unmodeled, the engine states the required
+ * minimum and flags SPACING_VERIFY_IN_LAYOUT: physical compliance must be
+ * verified in the actual box layout. With spacing implemented, every valid
+ * request within the modeled geometry is fully evaluated and
+ * completeForRequest is true.
  *
  * Requirement ids are deterministic and semantic — 'straight:<connectionId>'
  * — never positional, never random, so the same request in any array order
@@ -317,7 +323,8 @@ function calculatePullBox(request) {
 
   const widthRequirements = [];
   const heightRequirements = [];
-  const angleUConnIds = [];              // spacing deferred to PBV2-4
+  const angleUConnIds = [];              // angle/U connections (spacing + triggers)
+  const spacingRequirements = [];
   const triggersByRowId = new Map();     // rowId -> Set(connectionId)
   const byId = new Map(entries.map((e) => [e.id, e]));
 
@@ -335,6 +342,23 @@ function calculatePullBox(request) {
         if (!triggersByRowId.has(rid)) triggersByRowId.set(rid, new Set());
         triggersByRowId.get(rid).add(conn.id);
       }
+      // ── A(2) entry spacing (PBV2-4): per connection, 6 x larger of the
+      // pair. entryIds are presented lexicographically sorted because the
+      // connection is undirected — presentation metadata only.
+      const [pA, pB] = conn.entryIds.map((id) => byId.get(id));
+      const larger = TRADE_SIZE_IN[pA.tradeSize] >= TRADE_SIZE_IN[pB.tradeSize]
+        ? pA.tradeSize : pB.tradeSize;
+      spacingRequirements.push({
+        id: 'spacing:' + conn.id,
+        kind: 'ENTRY_SPACING',
+        connectionType: cls.type,
+        connectionId: conn.id,
+        entryIds: conn.entryIds.slice().sort(),
+        largerTradeSize: larger,
+        multiplier: 6,
+        minimumInches: 6 * TRADE_SIZE_IN[larger],
+        codeRef: { code: 'NEC', section: '314.28(A)(2)' },
+      });
       continue;
     }
     const [a, b] = conn.entryIds.map((id) => byId.get(id));
@@ -419,14 +443,13 @@ function calculatePullBox(request) {
   const gw = governing(widthRequirements);
   const gh = governing(heightRequirements);
 
+  spacingRequirements.sort(byIdAsc);
+
   const scopeNotes = [];
-  if (angleUConnIds.length > 0) {
-    // The A(2) DIMENSION is calculated above; what remains deferred is only
-    // the separate entry-to-entry spacing requirement (PBV2-4).
-    scopeNotes.push({
-      code: 'A2_SPACING_NOT_CALCULATED',
-      connectionIds: angleUConnIds.slice().sort(),
-    });
+  if (spacingRequirements.length > 0) {
+    // The required minimums are calculated; entry positions are unmodeled,
+    // so physical compliance is verified in the actual box layout.
+    scopeNotes.push({ code: 'SPACING_VERIFY_IN_LAYOUT' });
   }
   if (widthRequirements.length === 0) scopeNotes.push({ code: 'NO_WIDTH_CANDIDATES' });
   if (heightRequirements.length === 0) scopeNotes.push({ code: 'NO_HEIGHT_CANDIDATES' });
@@ -441,11 +464,13 @@ function calculatePullBox(request) {
     heightRequirements,
     governingWidthRequirementId: gw ? gw.id : null,
     governingHeightRequirementId: gh ? gh.id : null,
-    spacingRequirements: [],   // PBV2-4
-    // Straight-only requests are fully evaluated. Any angle/U request stays
-    // incomplete in PBV2-3: its dimensional rule IS calculated, but the A(2)
-    // spacing requirement is not — PBV2-4 is expected to flip this.
-    completeForRequest: angleUConnIds.length === 0,
+    spacingRequirements,
+    // Every valid request within the modeled MVP geometry (straight, angle,
+    // U, mixed) is now fully evaluated: validation already rejects the
+    // unsupported (back/front surfaces, splice arity), and the standing
+    // scope boundaries (DEPTH_NOT_CALCULATED, A3_NOT_EVALUATED,
+    // SPACING_VERIFY_IN_LAYOUT) document limits, not missing calculation.
+    completeForRequest: true,
     warnings: validation.warnings,
     scopeNotes,
   };
