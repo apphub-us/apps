@@ -266,9 +266,119 @@ function classifyConnection(connection, entries, rows) {
   return { ok: true, type: 'ANGLE', wallA, wallB };
 }
 
+/**
+ * Pull Box V2 top-level calculation (PBV2-2: STRAIGHT pulls only).
+ *
+ * Validates first (structured validation failures pass through unchanged —
+ * no electrical work happens on invalid input), classifies every connection
+ * through classifyConnection, and computes NEC 314.28(A)(1) straight-pull
+ * requirements: 8 x the larger trade size of the connected pair, attributed
+ * to the dimension the connection's axis spans (left/right -> width,
+ * top/bottom -> height, via WALL_DIMENSION).
+ *
+ * ANGLE and U connections are ACCEPTED but NOT CALCULATED in this milestone:
+ * the result carries a machine-readable ANGLE_U_NOT_CALCULATED scope note
+ * listing them, and completeForRequest=false, so no consumer can mistake a
+ * partial result for a finished sizing. Their 314.28(A)(2) row arithmetic is
+ * PBV2-3; entry spacing is PBV2-4. No 6x arithmetic exists in this file.
+ *
+ * Requirement ids are deterministic and semantic — 'straight:<connectionId>'
+ * — never positional, never random, so the same request in any array order
+ * yields identical ids. Requirement arrays are sorted by requirement id.
+ *
+ * Result (frozen PBV2-0 shape, populated as far as PBV2-2 goes):
+ *   { ok: true,
+ *     minimumWidthIn, minimumHeightIn,          // number | null (never 0-for-none)
+ *     widthRequirements, heightRequirements,    // sorted by requirement id
+ *     governingWidthRequirementId, governingHeightRequirementId,
+ *     spacingRequirements: [],                  // PBV2-4
+ *     completeForRequest,                       // false when ANGLE/U deferred
+ *     warnings, scopeNotes }
+ */
+function calculatePullBox(request) {
+  const validation = validatePullBoxRequest(request);
+  if (!validation.ok) return validation;
+
+  const { rows, entries, connections } = request;
+
+  const widthRequirements = [];
+  const heightRequirements = [];
+  const deferred = [];   // ANGLE/U connection ids, deferred this milestone
+
+  for (const conn of connections) {
+    const cls = classifyConnection(conn, entries, rows);
+    // validation already guaranteed endpoints/rows resolve; classification
+    // cannot fail here, so no second error path is invented
+    if (cls.type !== 'STRAIGHT') {
+      deferred.push(conn.id);
+      continue;
+    }
+    const byId = new Map(entries.map((e) => [e.id, e]));
+    const [a, b] = conn.entryIds.map((id) => byId.get(id));
+    const aIn = TRADE_SIZE_IN[a.tradeSize];
+    const bIn = TRADE_SIZE_IN[b.tradeSize];
+    const largest = aIn >= bIn ? a.tradeSize : b.tradeSize;
+    const requirement = {
+      id: 'straight:' + conn.id,
+      kind: 'STRAIGHT',
+      dimension: cls.dimension,
+      connectionId: conn.id,
+      entryIds: [conn.entryIds[0], conn.entryIds[1]],
+      largestTradeSize: largest,
+      otherTradeSizes: [],
+      multiplier: 8,
+      minimumInches: 8 * Math.max(aIn, bIn),
+      codeRef: { code: 'NEC', section: '314.28(A)(1)' },
+    };
+    (cls.dimension === 'width' ? widthRequirements : heightRequirements)
+      .push(requirement);
+  }
+
+  const byIdAsc = (x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0);
+  widthRequirements.sort(byIdAsc);
+  heightRequirements.sort(byIdAsc);
+
+  // Governing per dimension, independently: max minimumInches; ties break by
+  // ascending requirement id (arrays are id-sorted, so first max wins).
+  const governing = (reqs) => {
+    let win = null;
+    for (const r of reqs) if (win === null || r.minimumInches > win.minimumInches) win = r;
+    return win;
+  };
+  const gw = governing(widthRequirements);
+  const gh = governing(heightRequirements);
+
+  const scopeNotes = [];
+  if (deferred.length > 0) {
+    scopeNotes.push({
+      code: 'ANGLE_U_NOT_CALCULATED',
+      connectionIds: deferred.slice().sort(),
+    });
+  }
+  if (widthRequirements.length === 0) scopeNotes.push({ code: 'NO_WIDTH_CANDIDATES' });
+  if (heightRequirements.length === 0) scopeNotes.push({ code: 'NO_HEIGHT_CANDIDATES' });
+  scopeNotes.push({ code: 'DEPTH_NOT_CALCULATED' });
+  scopeNotes.push({ code: 'A3_NOT_EVALUATED' });
+
+  return {
+    ok: true,
+    minimumWidthIn: gw ? gw.minimumInches : null,
+    minimumHeightIn: gh ? gh.minimumInches : null,
+    widthRequirements,
+    heightRequirements,
+    governingWidthRequirementId: gw ? gw.id : null,
+    governingHeightRequirementId: gh ? gh.id : null,
+    spacingRequirements: [],
+    completeForRequest: deferred.length === 0,
+    warnings: validation.warnings,
+    scopeNotes,
+  };
+}
+
 module.exports = {
   TRADE_SIZE_IN,
   TRADE_SIZE_KEYS,
+  calculatePullBox,
   WALL_ORDER,
   WALL_DIMENSION,
   validatePullBoxRequest,

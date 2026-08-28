@@ -402,10 +402,291 @@ describe('PBV2-1 — no electrical logic yet', () => {
     const api = require('../src/calc/pullBox');
     assert.deepStrictEqual(Object.keys(api).sort(), [
       'TRADE_SIZE_IN', 'TRADE_SIZE_KEYS', 'WALL_DIMENSION', 'WALL_ORDER',
-      'classifyConnection', 'rowForEntry', 'sortEntries', 'sortRows',
-      'validatePullBoxRequest',
+      'calculatePullBox', 'classifyConnection', 'rowForEntry', 'sortEntries',
+      'sortRows', 'validatePullBoxRequest',
     ]);
-    assert.strictEqual(typeof api.calculatePullBox, 'undefined',
-      'calculatePullBox is a future milestone (PBV2-2+), not PBV2-1');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-2 — Straight Pull engine (NEC 314.28(A)(1))
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-2 — straight-pull calculation', () => {
+  const { calculatePullBox } = require('../src/calc/pullBox');
+
+  /** Two rows per axis; helper to build a two-entry straight box. */
+  function straightBox(wallA, sizeA, wallB, sizeB) {
+    return {
+      rows: [row('rA', wallA, 0), row('rB', wallB, 0)],
+      entries: [entry('a', 'rA', sizeA), entry('b', 'rB', sizeB)],
+      connections: [conn('c1', 'a', 'b')],
+    };
+  }
+
+  test('INDEPENDENT PINS: all twelve trade sizes, hand-stated expected values', () => {
+    // Explicit constants — NOT derived from TRADE_SIZE_IN — so the test
+    // checks the rule, not the function against itself. 8 x trade size:
+    const expected = {
+      '1/2': 4, '3/4': 6, '1': 8, '1-1/4': 10, '1-1/2': 12, '2': 16,
+      '2-1/2': 20, '3': 24, '3-1/2': 28, '4': 32, '5': 40, '6': 48,
+    };
+    for (const [size, inches] of Object.entries(expected)) {
+      const r = calculatePullBox(straightBox('left', size, 'right', size));
+      assert.strictEqual(r.ok, true, size);
+      assert.strictEqual(r.minimumWidthIn, inches, size);
+      assert.strictEqual(r.widthRequirements[0].minimumInches, inches, size);
+      assert.strictEqual(r.widthRequirements[0].multiplier, 8, size);
+    }
+  });
+
+  test('unequal endpoints use the LARGER trade size, both endpoint orders', () => {
+    const fwd = calculatePullBox(straightBox('left', '4', 'right', '2'));
+    assert.strictEqual(fwd.minimumWidthIn, 32, '8 x 4, not 8 x 2');
+    assert.strictEqual(fwd.widthRequirements[0].largestTradeSize, '4');
+    const rev = calculatePullBox(straightBox('left', '2', 'right', '4'));
+    assert.strictEqual(rev.minimumWidthIn, 32);
+    assert.strictEqual(rev.widthRequirements[0].largestTradeSize, '4');
+  });
+
+  test('ORIENTATION PINS: axis decides the dimension, endpoint order never does', () => {
+    for (const [wallA, wallB, dim] of [
+      ['left', 'right', 'width'], ['right', 'left', 'width'],
+      ['top', 'bottom', 'height'], ['bottom', 'top', 'height'],
+    ]) {
+      const r = calculatePullBox(straightBox(wallA, '3', wallB, '3'));
+      const reqs = dim === 'width' ? r.widthRequirements : r.heightRequirements;
+      assert.strictEqual(reqs.length, 1, wallA + '/' + wallB);
+      assert.strictEqual(reqs[0].dimension, dim, wallA + '/' + wallB);
+      const other = dim === 'width' ? r.heightRequirements : r.widthRequirements;
+      assert.strictEqual(other.length, 0);
+    }
+  });
+
+  test('requirement shape carries the full frozen explainability contract', () => {
+    const r = calculatePullBox(straightBox('top', '5', 'bottom', '3'));
+    assert.deepStrictEqual(r.heightRequirements[0], {
+      id: 'straight:c1',
+      kind: 'STRAIGHT',
+      dimension: 'height',
+      connectionId: 'c1',
+      entryIds: ['a', 'b'],
+      largestTradeSize: '5',
+      otherTradeSizes: [],
+      multiplier: 8,
+      minimumInches: 40,
+      codeRef: { code: 'NEC', section: '314.28(A)(1)' },
+    });
+  });
+
+  test('multiple straight pulls on ONE dimension: the larger governs', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0)],
+      entries: [entry('a4', 'rL', '4'), entry('b4', 'rR', '4'),
+        entry('a2', 'rL', '2'), entry('b2', 'rR', '2')],
+      connections: [conn('cBig', 'a4', 'b4'), conn('cSmall', 'a2', 'b2')],
+    });
+    assert.strictEqual(r.minimumWidthIn, 32);
+    assert.strictEqual(r.governingWidthRequirementId, 'straight:cBig');
+    assert.deepStrictEqual(r.widthRequirements.map((q) => q.minimumInches).sort((x, y) => x - y),
+      [16, 32]);
+  });
+
+  test('width and height are governed INDEPENDENTLY', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0),
+        row('rT', 'top', 0), row('rB', 'bottom', 0)],
+      entries: [entry('a', 'rL', '4'), entry('b', 'rR', '4'),
+        entry('c', 'rT', '3'), entry('d', 'rB', '3')],
+      connections: [conn('cW', 'a', 'b'), conn('cH', 'c', 'd')],
+    });
+    assert.strictEqual(r.minimumWidthIn, 32);
+    assert.strictEqual(r.minimumHeightIn, 24);
+    assert.strictEqual(r.governingWidthRequirementId, 'straight:cW');
+    assert.strictEqual(r.governingHeightRequirementId, 'straight:cH');
+    assert.strictEqual(r.completeForRequest, true);
+  });
+
+  test('tie between equal requirements breaks by ascending requirement id', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0)],
+      entries: [entry('a1', 'rL', '3'), entry('b1', 'rR', '3'),
+        entry('a2', 'rL', '3'), entry('b2', 'rR', '3')],
+      connections: [conn('cZeta', 'a1', 'b1'), conn('cAlpha', 'a2', 'b2')],
+    });
+    assert.strictEqual(r.minimumWidthIn, 24);
+    assert.strictEqual(r.governingWidthRequirementId, 'straight:cAlpha',
+      'deterministic tie-break: first in id order, never input order');
+  });
+
+  test('an entry may serve multiple straight pulls (no invented topology rule)', () => {
+    // LEFT 4" connected to RIGHT 4" and separately to RIGHT 2".
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0)],
+      entries: [entry('a', 'rL', '4'), entry('b', 'rR', '4'), entry('b2', 'rR', '2')],
+      connections: [conn('c1', 'a', 'b'), conn('c2', 'a', 'b2')],
+    });
+    assert.strictEqual(r.widthRequirements.length, 2);
+    assert.deepStrictEqual(r.widthRequirements.map((q) => q.minimumInches), [32, 32],
+      'both pairs contain the 4-inch entry, so both are 8 x 4');
+    assert.strictEqual(r.minimumWidthIn, 32);
+  });
+
+  test('NO-CANDIDATE semantics: null + scope note, never zero', () => {
+    const r = calculatePullBox(straightBox('left', '2', 'right', '2'));
+    assert.strictEqual(r.minimumHeightIn, null);
+    assert.strictEqual(r.governingHeightRequirementId, null);
+    assert.ok(r.scopeNotes.some((n) => n.code === 'NO_HEIGHT_CANDIDATES'));
+    assert.ok(!r.scopeNotes.some((n) => n.code === 'NO_WIDTH_CANDIDATES'));
+  });
+
+  test('an unconnected entry NEVER creates a dimension requirement', () => {
+    // A 6" raceway sitting on the left wall with no pull relationship.
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0)],
+      entries: [entry('big', 'rL', '6'), entry('a', 'rL', '2'), entry('b', 'rR', '2')],
+      connections: [conn('c1', 'a', 'b')],
+    });
+    assert.strictEqual(r.minimumWidthIn, 16, 'the 6-inch entry contributes nothing');
+    assert.deepStrictEqual(r.warnings, [{ code: 'UNCONNECTED_ENTRY', entryIds: ['big'] }]);
+    assert.strictEqual(r.widthRequirements.length, 1);
+  });
+
+  test('ANGLE/U connections are deferred, machine-readably, not silently', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0), row('rT', 'top', 0)],
+      entries: [entry('a', 'rL', '4'), entry('b', 'rR', '4'),
+        entry('t', 'rT', '2'), entry('a2', 'rL', '2'), entry('a3', 'rL', '3')],
+      connections: [conn('cS', 'a', 'b'), conn('cAngle', 'a2', 't'),
+        conn('cU', 'a3', 'a')],
+    });
+    assert.strictEqual(r.ok, true, 'angle/U presence must not reject the request');
+    assert.strictEqual(r.minimumWidthIn, 32, 'straight math still computes');
+    assert.strictEqual(r.completeForRequest, false);
+    assert.deepStrictEqual(
+      r.scopeNotes.find((n) => n.code === 'ANGLE_U_NOT_CALCULATED'),
+      { code: 'ANGLE_U_NOT_CALCULATED', connectionIds: ['cAngle', 'cU'] },
+      'sorted connection ids, deterministic');
+    assert.strictEqual(r.spacingRequirements.length, 0);
+  });
+
+  test('completeForRequest is true only for all-straight requests', () => {
+    const allStraight = calculatePullBox(straightBox('left', '3', 'right', '3'));
+    assert.strictEqual(allStraight.completeForRequest, true);
+    assert.ok(!allStraight.scopeNotes.some((n) => n.code === 'ANGLE_U_NOT_CALCULATED'));
+  });
+
+  test('validation failures pass through unchanged — no electrical work on bad input', () => {
+    const cases = [
+      [null, 'MALFORMED_REQUEST'],
+      [{ rows: [], entries: [], connections: [] }, 'NO_ENTRIES'],
+      [{ rows: [row('r1', 'north', 0)], entries: [entry('e', 'r1', '2')],
+        connections: [] }, 'INVALID_WALL'],
+      [{ rows: [row('r1', 'left', 0)], entries: [entry('e', 'r1', '7')],
+        connections: [] }, 'INVALID_TRADE_SIZE'],
+    ];
+    for (const [req, reason] of cases) {
+      const r = calculatePullBox(req);
+      assert.strictEqual(r.ok, false, reason);
+      assert.strictEqual(r.reason, reason);
+      assert.strictEqual(r.minimumWidthIn, undefined, 'no partial result fields');
+    }
+    // duplicate pair + unknown entry passthrough
+    const dup = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0)],
+      entries: [entry('a', 'rL', '2'), entry('b', 'rR', '2')],
+      connections: [conn('c1', 'a', 'b'), conn('c2', 'b', 'a')],
+    });
+    assert.strictEqual(dup.reason, 'DUPLICATE_CONNECTION');
+    const ghost = calculatePullBox({
+      rows: [row('rL', 'left', 0)],
+      entries: [entry('a', 'rL', '2')],
+      connections: [conn('c1', 'a', 'ghost')],
+    });
+    assert.strictEqual(ghost.reason, 'CONNECTION_UNKNOWN_ENTRY');
+  });
+
+  test('IMMUTABILITY: a deep-frozen request calculates without mutation', () => {
+    const q = {
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0), row('rT', 'top', 0)],
+      entries: [entry('a', 'rL', '4'), entry('b', 'rR', '2'), entry('t', 'rT', '1')],
+      connections: [conn('c1', 'a', 'b'), conn('c2', 'a', 't')],
+    };
+    Object.freeze(q); Object.freeze(q.rows); Object.freeze(q.entries);
+    Object.freeze(q.connections);
+    q.rows.forEach(Object.freeze); q.entries.forEach(Object.freeze);
+    q.connections.forEach((c) => { Object.freeze(c); Object.freeze(c.entryIds); });
+    const snapshot = JSON.stringify(q);
+    const r = calculatePullBox(q);
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(JSON.stringify(q), snapshot);
+  });
+
+  test('DETERMINISM: shuffled inputs yield deep-equal results, ids included', () => {
+    let seed = 0xAB22;
+    const rnd = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 0x100000000;
+    };
+    const shuffle = (arr) => {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rnd() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+    const base = {
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0),
+        row('rT', 'top', 0), row('rB', 'bottom', 0)],
+      entries: [entry('a', 'rL', '4'), entry('b', 'rR', '4'),
+        entry('c', 'rT', '3'), entry('d', 'rB', '3'),
+        entry('u1', 'rL', '2'), entry('u2', 'rL', '1'),
+        entry('x', 'rL', '5')],
+      connections: [conn('cW', 'a', 'b'), conn('cH', 'c', 'd'),
+        conn('cU', 'u1', 'u2'), conn('cA', 'x', 'c')],
+    };
+    const ref = calculatePullBox(base);
+    for (let i = 0; i < 20; i++) {
+      const r = calculatePullBox({
+        rows: shuffle(base.rows),
+        entries: shuffle(base.entries),
+        connections: shuffle(base.connections),
+      });
+      assert.deepStrictEqual(r, ref, 'shuffle #' + i);
+    }
+  });
+
+  test('FINITENESS: no NaN, no Infinity, no numeric strings anywhere in the result', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0), row('rT', 'top', 0)],
+      entries: [entry('a', 'rL', '6'), entry('b', 'rR', '1/2'), entry('t', 'rT', '2')],
+      connections: [conn('c1', 'a', 'b'), conn('c2', 'a', 't')],
+    });
+    const walk = (o) => {
+      for (const v of Object.values(o)) {
+        if (typeof v === 'number') assert.ok(Number.isFinite(v), 'non-finite number');
+        else if (v && typeof v === 'object') walk(v);
+      }
+    };
+    walk(r);
+    assert.strictEqual(typeof r.minimumWidthIn, 'number');
+    for (const q of r.widthRequirements) {
+      assert.strictEqual(typeof q.minimumInches, 'number');
+      assert.ok(q.minimumInches > 0);
+    }
+  });
+
+  test('NO A(2) LEAKAGE: the module still contains no 6x row arithmetic', () => {
+    const fs = require('node:fs');
+    const source = fs.readFileSync(require.resolve('../src/calc/pullBox.js'), 'utf8');
+    // strip comments before scanning so milestone documentation is exempt
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    for (const banned of ['6 *', '* 6', 'ANGLE_U_ROW', '314.28(A)(2)',
+      'spacing:', 'otherInRow']) {
+      assert.ok(!code.includes(banned),
+        'premature A(2) implementation detected: ' + banned);
+    }
+    assert.ok(code.includes('8 *'), 'the straight multiplier lives in code');
   });
 });
