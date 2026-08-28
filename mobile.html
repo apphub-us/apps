@@ -25,7 +25,7 @@
     --accent2: #e6b400;
     --text: #e8e8e8;
     --text-dim: #a8a8a8;
-    --text-dimmer: #858585;
+    --text-dimmer: #9a9a9a;  /* 5.65:1 on --surface2, the darkest surface it sits on */
     --danger: #e05252;
     --success: #52c07a;
     --warn: #e8c23a;
@@ -54,6 +54,46 @@
     display: flex; align-items: center; justify-content: space-between;
     flex-shrink: 0;
   }
+  .editions { display: flex; align-items: center; gap: 6px; }
+  .edition {
+    font-family: 'Montserrat', sans-serif; font-weight: 800;
+    font-size: 9px; letter-spacing: 0.4px; text-transform: uppercase;
+    padding: 3px 7px; border-radius: 3px; white-space: nowrap;
+    border: 1px solid transparent;
+  }
+  .edition-nycec { color: var(--nycec); background: rgba(74,158,255,0.12); border-color: rgba(74,158,255,0.3); }
+  .edition-nec   { color: var(--nec);   background: rgba(255,107,26,0.12); border-color: rgba(255,107,26,0.3); }
+
+  /* ── HOME ── */
+  .home-section-label {
+    font-family: 'Montserrat', sans-serif; font-weight: 800;
+    font-size: 10px; letter-spacing: 0.5px; color: var(--accent);
+    margin-bottom: 8px; padding: 0 2px;
+  }
+  /* PINNED is the electrician's own shelf, so it reads in plain bright text
+     while catalogue headings carry the accent. Inverting the usual relationship
+     separates the two without introducing another colour. */
+  .home-pinned-label {
+    font-family: 'Montserrat', sans-serif; font-weight: 800;
+    font-size: 10px; letter-spacing: 0.5px; color: var(--text);
+  }
+  .home-divider { height: 1px; background: var(--border); margin: 0 2px 20px; }
+  .home-group + .home-group { margin-top: 20px; }
+  .home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .tile {
+    display: flex; flex-direction: column; justify-content: center; gap: 3px;
+    min-height: 56px; padding: 10px 12px; text-align: left; cursor: pointer;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent); border-radius: 4px;
+  }
+  .tile:active { background: #2a2a2a; }
+  .tile-name { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 14px; color: var(--text); line-height: 1.15; }
+  .tile-desc { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dimmer); line-height: 1.3; }
+  /* Pinned tiles are tinted so the block reads as one personal group. */
+  .tile-pinned { background: rgba(255,199,0,0.07); border-color: rgba(255,199,0,0.22); border-left-color: var(--accent); }
+  .tile-pinned:active { background: rgba(255,199,0,0.14); }
+
   .logo { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 15px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--accent); }
   .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--nycec); display: inline-block; margin-right: 6px; }
   .status-txt { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 9px; letter-spacing: 0.3px; color: var(--text-dim); }
@@ -83,13 +123,14 @@
   .bottom-nav::-webkit-scrollbar { display: none; }
 
   .nav-item {
-    display: flex; align-items: center; justify-content: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     min-width: 48px; flex: 1;
     font-family: 'Montserrat', sans-serif; font-size: 10px; letter-spacing: 0.3px;
     font-weight: 600; text-transform: uppercase;
     color: var(--text-dimmer); padding: 0 4px; cursor: pointer;
-    border-top: 2px solid transparent; transition: all 0.15s;
+    border-top: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
   }
+  .nav-item svg { width: 19px; height: 19px; fill: currentColor; display: block; }
   .nav-item.active { color: var(--accent); border-top-color: var(--accent); font-weight: 800; }
   .nav-item:active { background: rgba(255,199,0,0.06); }
 
@@ -360,19 +401,42 @@
 </div>
 
 <!-- ── HEADER ── -->
-<header>
-  <div class="logo">Empire Code</div>
-  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
-    <div><span class="status-dot"></span><span class="status-txt" style="color:var(--nycec)">NYCEC 2025</span></div>
-    <div><span style="width:6px;height:6px;border-radius:50%;background:var(--nec);display:inline-block;margin-right:6px"></span><span style="font-family:'Montserrat',sans-serif;font-weight:800;font-size:9px;letter-spacing:0.3px;color:var(--nec)">NEC 2020</span></div>
-  </div>
-</header>
+  <header>
+    <div class="logo">Empire Code</div>
+    <!-- Edition badges. The former dots were removed: nothing behind them was
+         live, and a dot beside a label reads as a status light. -->
+    <div class="editions">
+      <span class="edition edition-nycec">NYCEC 2025</span>
+      <span class="edition edition-nec">NEC 2020</span>
+    </div>
+  </header>
 
 <!-- ── CONTENT ── -->
 <div class="content">
 
 <!-- ══ AI CHAT ══ -->
-<div class="panel active" id="panel-chat">
+<!-- ══ HOME ══ -->
+<div class="panel active" id="panel-home">
+  <div class="scroll-body" style="padding:14px">
+
+    <div id="pinnedWrap" style="display:none;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 2px">
+        <span class="home-pinned-label" id="pinnedHeading">PINNED</span>
+        <span id="pinnedEditBtn" onclick="pinToggleEdit()" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);cursor:pointer;padding:4px 2px">Edit</span>
+      </div>
+      <div id="pinnedList" class="home-grid"></div>
+    </div>
+    <div id="pinnedPicker" style="display:none;margin-bottom:14px">
+      <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:8px;padding:0 2px">Tap to pin or unpin &mdash; shortcuts appear at the top of Home.</div>
+      <div id="pinnedOptions" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <div class="home-divider" id="pinnedDivider"></div>
+
+    <div id="homeGroups"></div>
+  </div>
+</div>
+
+<div class="panel" id="panel-chat">
   <div class="trending-bar">
     <span class="trending-label">Trending</span>
     <div id="trendingBtns" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch"><span style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">—</span></div>
@@ -386,17 +450,7 @@
       <button class="welcome-ex" onclick="quickAsk('GFCI requirements for kitchen in commercial?')">GFCI requirements for kitchen in commercial?</button>
       <button class="welcome-ex" onclick="quickAsk('How many #12 THHN fit in 3/4 EMT?')">How many #12 THHN fit in 3/4" EMT?</button>
     </div>
-    <div id="pinnedWrap" style="display:none;width:100%;max-width:460px;align-self:center;margin-top:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 2px">
-        <span style="font-family:Montserrat,sans-serif;font-weight:800;font-size:10px;letter-spacing:0.5px;color:var(--accent)">PINNED</span>
-        <span id="pinnedEditBtn" onclick="pinToggleEdit()" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);cursor:pointer">Edit</span>
-      </div>
-      <div id="pinnedList" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
-    </div>
-    <div id="pinnedPicker" style="display:none;width:100%;max-width:460px;align-self:center;margin-top:14px">
-      <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:8px;padding:0 2px">Tap to pin or unpin \u2014 shortcuts appear here on the home screen.</div>
-      <div id="pinnedOptions" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-    </div>
+    
   </div>
   <div class="input-area">
     <div class="input-row">
@@ -460,11 +514,27 @@
       </select>
     </div>
     <div class="ctrl">
-      <span class="ctrl-lbl">Rooftop Conduit</span>
-      <select id="ampSun" onchange="ampUpdateCalc()">
-        <option value="0">No</option>
-        <option value="33">Yes (+33°F adder)</option>
+      <span class="ctrl-lbl">On or Above Roof</span>
+      <select id="ampRoof" onchange="ampRoofChanged()">
+        <option value="no" selected>No</option>
+        <option value="yes">Yes</option>
       </select>
+    </div>
+    <div class="ctrl" id="ampRoofSunWrap" style="display:none">
+      <span class="ctrl-lbl">Direct Sunlight</span>
+      <select id="ampRoofSun" onchange="ampUpdateCalc()">
+        <option value="yes" selected>Yes</option>
+        <option value="no">No</option>
+      </select>
+    </div>
+    <div class="ctrl" id="ampRoofClearWrap" style="display:none">
+      <span class="ctrl-lbl">Clearance Above Roof</span>
+      <select id="ampRoofClearance" onchange="ampUpdateCalc()">
+        <option value="0">In contact with roof</option>
+        <option value="0.5" selected>Less than 7/8"</option>
+        <option value="0.875">7/8" or more</option>
+      </select>
+      <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">Roof surface to bottom of raceway or cable — NEC 310.15(B)(2)</div>
     </div>
     <div class="fav-bar">
       <button class="reset-btn" onclick="ampReset()">Reset</button>
@@ -806,6 +876,35 @@
       <span class="ctrl-lbl">Load (Amps)</span>
       <input type="number" id="wsLoad" placeholder="e.g. 200" min="1" max="2000" oninput="wsCalc()">
     </div>
+      <div class="ctrl">
+        <span class="ctrl-lbl">Continuous Portion (A)</span>
+        <input type="number" id="wsContinuous" placeholder="0" min="0" max="2000" oninput="wsCalc()">
+        <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">NEC Art. 100: a load whose maximum current is expected to continue for 3 hours or more. Sized at 125% per 210.19(A)(1) / 215.2(A)(1).</div>
+      </div>
+      <div class="ctrl">
+        <span class="ctrl-lbl">Circuit Type</span>
+        <select id="wsCircuitType" onchange="wsCalc()">
+          <option value="BRANCH_CIRCUIT" selected>Branch Circuit &mdash; 210.19 / 210.20</option>
+          <option value="FEEDER">Feeder &mdash; 215.2 / 215.3</option>
+        </select>
+      </div>
+      <div class="ctrl" id="wsDwellingWrap" style="display:none">
+        <span class="ctrl-lbl">Feeds a Dwelling Unit?</span>
+        <select id="wsDwelling" onchange="wsCalc()">
+          <option value="" selected>&mdash; Select &mdash;</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+        <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">NYCEC 215.2(A)(1): a feeder supplying a dwelling unit shall be 3 conductors, minimum 8 AWG Cu or 6 AWG Al.</div>
+      </div>
+      <div class="ctrl">
+        <span class="ctrl-lbl">100%-Rated Assembly</span>
+        <select id="wsHundredPct" onchange="wsCalc()">
+          <option value="no" selected>No &mdash; apply the 125% rule</option>
+          <option value="yes">Yes &mdash; assembly AND OCPD listed for 100%</option>
+        </select>
+        <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">Only Yes if the complete assembly, including the overcurrent device, is listed for continuous operation at 100% of its rating. Rare below 400 A.</div>
+      </div>
     <div class="ctrl">
       <span class="ctrl-lbl">One-Way Distance (ft)</span>
       <input type="number" id="wsFeet" placeholder="optional" min="0" oninput="wsCalc()" style="width:110px">
@@ -951,7 +1050,7 @@
             <div id="gfciRoomList" style="display:flex;flex-direction:column;gap:6px"></div>
           </div>
           <div id="gfciDetailView" style="display:none">
-            <div onclick="gfciBack()" style="display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);position:sticky;top:0;background:var(--bg);z-index:2">\u2039 All rooms</div>
+            <div onclick="gfciBack()" style="display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);position:sticky;top:0;background:var(--bg);z-index:2">&lsaquo; All rooms</div>
             <div id="gfciContent" style="padding:16px 14px"></div>
           </div>
         </div>
@@ -981,7 +1080,7 @@
         <div class="rules-bar">
           <div class="rules-row">
             <span class="pill pill-nec" onclick="necLink('NEC 430.6(A)(1) — motor conductors and branch-circuit protection are sized from the TABLE full-load current, not the nameplate')">430.6(A)(1)</span>
-            <span class="rule-txt">Size from TABLE FLC \u2014 not the nameplate</span>
+            <span class="rule-txt">Size from TABLE FLC &mdash; not the nameplate</span>
           </div>
           <div class="rules-row">
             <span class="pill pill-nec" onclick="necLink('NEC 430.32 — motor overload protection is based on the nameplate full-load amps')">430.32</span>
@@ -1011,8 +1110,8 @@
           <div class="ctrl" style="flex:1;min-width:150px">
             <span class="ctrl-lbl">Motor Type</span>
             <select id="mt-type" onchange="mtCalc()" style="width:100%">
-              <option value="designB" selected>Squirrel cage \u2014 Design B, energy efficient</option>
-              <option value="other">Squirrel cage \u2014 other than Design B</option>
+              <option value="designB" selected>Squirrel cage &mdash; Design B, energy efficient</option>
+              <option value="other">Squirrel cage &mdash; other than Design B</option>
               <option value="wound">Wound rotor</option>
               <option value="dc">DC (constant voltage)</option>
             </select>
@@ -1020,7 +1119,7 @@
           <div class="ctrl" style="flex:1;min-width:150px">
             <span class="ctrl-lbl">Protective Device</span>
             <select id="mt-ocpd" onchange="mtCalc()" style="width:100%">
-              <option value="inverse" selected>Inverse time breaker \u2014 most common</option>
+              <option value="inverse" selected>Inverse time breaker &mdash; most common</option>
               <option value="dual">Dual element (time delay) fuse</option>
               <option value="nontd">Non-time-delay fuse</option>
               <option value="inst">Instantaneous trip breaker (MCP)</option>
@@ -1028,7 +1127,7 @@
           </div>
         </div>
 
-        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin-top:4px">Overload only \u2014 read these off the motor nameplate</div>
+        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin-top:4px">Overload only &mdash; read these off the motor nameplate</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <div class="ctrl" style="flex:1;min-width:130px">
             <span class="ctrl-lbl">Nameplate FLA</span>
@@ -1038,7 +1137,7 @@
           <div class="ctrl" style="flex:1;min-width:150px">
             <span class="ctrl-lbl">Service Factor / Temp Rise</span>
             <select id="mt-sf" onchange="mtCalc()" style="width:100%">
-              <option value="1.25" selected>SF 1.15 or greater, or rise \u2264 40\u00B0C</option>
+              <option value="1.25" selected>SF 1.15 or greater, or rise &le; 40&deg;C</option>
               <option value="1.15">All other motors</option>
             </select>
           </div>
@@ -1255,24 +1354,1740 @@
 </div><!-- end .content -->
 
 <!-- ── BOTTOM NAV ── -->
-<nav class="bottom-nav">
-  <div class="nav-item active" id="mnav-chat" onclick="switchTab('chat',this)">AI Chat</div>
-  <div class="nav-item" id="mnav-wiresizer" onclick="switchTab('wiresizer',this)">Sizer</div>
-  <div class="nav-item" id="mnav-conduit" onclick="switchTab('conduit',this)">Fill Calc</div>
-  <div class="nav-item" id="mnav-ampacity" onclick="switchTab('ampacity',this)">Ampacity</div>
-  <div class="nav-item" id="mnav-boxfill" onclick="switchTab('boxfill',this)">Box Fill</div>
-  <div class="nav-item" id="mnav-more-arrow" onclick="toggleMoreNav()" style="font-size:16px;font-weight:700">›</div>
-</nav>
-<nav class="bottom-nav" id="secondary-nav" style="display:none">
-  <div class="nav-item" id="mnav-back-arrow" onclick="toggleMoreNav()" style="font-size:16px;font-weight:700">‹</div>
-  <div class="nav-item" id="mnav-loadcalc" onclick="switchTabMore('loadcalc')">Load</div>
-  <div class="nav-item" id="mnav-motor" onclick="switchTabMore('motor')">Motor</div>
-  <div class="nav-item" id="mnav-bender" onclick="switchTabMore('bender')">Bend</div>
-  <div class="nav-item" id="mnav-converter" onclick="switchTabMore('converter')">Convert</div>
-  <div class="nav-item" id="mnav-coderef" onclick="switchTabMore('coderef')">Code</div>
-  <div class="nav-item" id="mnav-outlets" onclick="switchTabMore('outlets')">NEMA</div>
-</nav>
+  <!-- One fixed row. The former two-row / arrow mechanism is gone: every tool
+       is reached from Home, which stays the parent section while a calculator
+       is open. -->
+  <nav class="bottom-nav">
+    <div class="nav-item active" id="mnav-home" onclick="switchTab('home',this)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.2 12 4l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+      <span>Home</span>
+    </div>
+    <div class="nav-item" id="mnav-chat" onclick="switchTab('chat',this)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9l-5 4V5a1 1 0 0 1 1-1z"/></svg>
+      <span>AI Chat</span>
+    </div>
+    <div class="nav-item" id="mnav-coderef" onclick="openTool('coderef')">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.2 7.4C9.3 6.1 6.8 5.4 4 5.4A1.4 1.4 0 0 0 2.6 6.8v10.8A1.4 1.4 0 0 0 4 19c2.6 0 5 .6 7.2 1.8z"/><path d="M12.8 7.4c1.9-1.3 4.4-2 7.2-2a1.4 1.4 0 0 1 1.4 1.4v10.8A1.4 1.4 0 0 1 20 19c-2.6 0-5 .6-7.2 1.8z"/></svg>
+      <span>Code</span>
+    </div>
+  </nav>
 
+
+<!-- EC-CALC:START — generated, do not edit by hand -->
+<script>
+/* GENERATED by tools/build-calc.js — edit src/calc/*.js instead.
+   Run `npm run build` after changing any calculator source.
+   `npm run build:check` fails if this block is stale. */
+window.EC = (function () {
+  "use strict";
+  var __reg = {}, __cache = {};
+  function __require(p) {
+    var key = String(p).replace(/^\.\//, "").replace(/\.js$/, "");
+    if (__cache[key]) return __cache[key].exports;
+    if (!__reg[key]) throw new Error("EC: unknown module " + key);
+    var m = { exports: {} };
+    __cache[key] = m;
+    __reg[key](m, m.exports, __require);
+    return m.exports;
+  }
+
+  // ---- src/calc/tables.js ----
+  __reg["tables"] = function (module, exports, require) {
+    // NEC/NYCEC data tables — the single source of truth.
+    //
+    // Bootstrapped by extraction from mobile.html, now maintained HERE. The app
+    // aliases these via the injected engine, so a change lands in production by
+    // running `npm run build`.
+    //
+    // AMP_TEMP_LOOKUP was corrected against the complete NEC 2020
+    // Table 310.15(B)(1); the extracted original was missing 7 of its 16 bands.
+
+    const AMP_CU = {
+      '14':  {t60:15,  t75:20,  t90:25},
+      '12':  {t60:20,  t75:25,  t90:30},
+      '10':  {t60:30,  t75:35,  t90:40},
+      '8':   {t60:40,  t75:50,  t90:55},
+      '6':   {t60:55,  t75:65,  t90:75},
+      '4':   {t60:70,  t75:85,  t90:95},
+      '3':   {t60:85,  t75:100, t90:115},
+      '2':   {t60:95,  t75:115, t90:130},
+      '1':   {t60:110, t75:130, t90:145},
+      '1/0': {t60:125, t75:150, t90:170},
+      '2/0': {t60:145, t75:175, t90:195},
+      '3/0': {t60:165, t75:200, t90:225},
+      '4/0': {t60:195, t75:230, t90:260},
+      '250': {t60:215, t75:255, t90:290},
+      '300': {t60:240, t75:285, t90:320},
+      '350': {t60:260, t75:310, t90:350},
+      '400': {t60:280, t75:335, t90:380},
+      '500': {t60:320, t75:380, t90:430},
+      '600': {t60:355, t75:420, t90:475},
+      '700': {t60:385, t75:460, t90:520},
+      '750': {t60:400, t75:475, t90:535}
+    };
+
+    const AMP_AL = {
+      '12':  {t60:15,  t75:20,  t90:25},
+      '10':  {t60:25,  t75:30,  t90:35},
+      '8':   {t60:30,  t75:40,  t90:45},
+      '6':   {t60:40,  t75:50,  t90:55},
+      '4':   {t60:55,  t75:65,  t90:75},
+      '3':   {t60:65,  t75:75,  t90:85},
+      '2':   {t60:75,  t75:90,  t90:100},
+      '1':   {t60:85,  t75:100, t90:115},
+      '1/0': {t60:100, t75:120, t90:135},
+      '2/0': {t60:115, t75:135, t90:150},
+      '3/0': {t60:130, t75:155, t90:175},
+      '4/0': {t60:150, t75:180, t90:205},
+      '250': {t60:170, t75:205, t90:230},
+      '300': {t60:190, t75:230, t90:255},
+      '350': {t60:210, t75:250, t90:280},
+      '400': {t60:225, t75:270, t90:305},
+      '500': {t60:260, t75:310, t90:350},
+      '600': {t60:285, t75:340, t90:385},
+      '700': {t60:310, t75:375, t90:420},
+      '750': {t60:320, t75:385, t90:435}
+    };
+
+    const AMP_TEMP_LOOKUP = {
+      // NEC 2020 Table 310.15(B)(1) — Ambient Temperature Correction Factors
+      // based on 30°C (86°F). COMPLETE table, 5°C bands.
+      // Key = INCLUSIVE UPPER BOUND of the band, °F. Lookup must select the first
+      // band whose bound >= ambient, never the nearest key.
+      // null = no factor published for that conductor rating at that ambient:
+      // the conductor rating is not permitted there. This is NOT the same as the
+      // ambient being off the end of the table.
+      // Values verified against NEC Equation 310.15(B): sqrt((Tc - Ta) / (Tc - 30)).
+      50:  { c: 10, band: '10°C or less / 50°F or less', f60: 1.29, f75: 1.20, f90: 1.15 },
+      59:  { c: 15, band: '11-15°C / 51-59°F',   f60: 1.22, f75: 1.15, f90: 1.12 },
+      68:  { c: 20, band: '16-20°C / 60-68°F',   f60: 1.15, f75: 1.11, f90: 1.08 },
+      77:  { c: 25, band: '21-25°C / 69-77°F',   f60: 1.08, f75: 1.05, f90: 1.04 },
+      86:  { c: 30, band: '26-30°C / 78-86°F',   f60: 1.00, f75: 1.00, f90: 1.00 },
+      95:  { c: 35, band: '31-35°C / 87-95°F',   f60: 0.91, f75: 0.94, f90: 0.96 },
+      104: { c: 40, band: '36-40°C / 96-104°F',  f60: 0.82, f75: 0.88, f90: 0.91 },
+      113: { c: 45, band: '41-45°C / 105-113°F', f60: 0.71, f75: 0.82, f90: 0.87 },
+      122: { c: 50, band: '46-50°C / 114-122°F', f60: 0.58, f75: 0.75, f90: 0.82 },
+      131: { c: 55, band: '51-55°C / 123-131°F', f60: 0.41, f75: 0.67, f90: 0.76 },
+      140: { c: 60, band: '56-60°C / 132-140°F', f60: null, f75: 0.58, f90: 0.71 },
+      149: { c: 65, band: '61-65°C / 141-149°F', f60: null, f75: 0.47, f90: 0.65 },
+      158: { c: 70, band: '66-70°C / 150-158°F', f60: null, f75: 0.33, f90: 0.58 },
+      167: { c: 75, band: '71-75°C / 159-167°F', f60: null, f75: null, f90: 0.50 },
+      176: { c: 80, band: '76-80°C / 168-176°F', f60: null, f75: null, f90: 0.41 },
+      185: { c: 85, band: '81-85°C / 177-185°F', f60: null, f75: null, f90: 0.29 }
+    };
+
+    const CF_AREA = {
+      emt:   {'0.5':{t:0.304,f40:0.122,f31:0.094,f53:0.161},'0.75':{t:0.533,f40:0.213,f31:0.165,f53:0.283},'1':{t:0.864,f40:0.346,f31:0.268,f53:0.458},'1.25':{t:1.496,f40:0.598,f31:0.464,f53:0.793},'1.5':{t:2.036,f40:0.814,f31:0.631,f53:1.079},'2':{t:3.356,f40:1.342,f31:1.040,f53:1.778},'2.5':{t:5.858,f40:2.343,f31:1.816,f53:3.105},'3':{t:8.846,f40:3.538,f31:2.742,f53:4.688},'3.5':{t:11.545,f40:4.618,f31:3.579,f53:6.119},'4':{t:14.753,f40:5.901,f31:4.573,f53:7.819}},
+      imc:   {'0.5':{t:0.342,f40:0.137,f31:0.106,f53:0.181},'0.75':{t:0.586,f40:0.235,f31:0.182,f53:0.311},'1':{t:0.959,f40:0.384,f31:0.297,f53:0.508},'1.25':{t:1.647,f40:0.659,f31:0.511,f53:0.873},'1.5':{t:2.225,f40:0.890,f31:0.690,f53:1.179},'2':{t:3.630,f40:1.452,f31:1.125,f53:1.924},'2.5':{t:5.135,f40:2.054,f31:1.592,f53:2.722},'3':{t:7.922,f40:3.169,f31:2.456,f53:4.199},'3.5':{t:10.584,f40:4.234,f31:3.281,f53:5.609},'4':{t:13.631,f40:5.452,f31:4.226,f53:7.224}},
+      rmc:   {'0.5':{t:0.314,f40:0.125,f31:0.097,f53:0.166},'0.75':{t:0.549,f40:0.220,f31:0.170,f53:0.291},'1':{t:0.887,f40:0.355,f31:0.275,f53:0.470},'1.25':{t:1.526,f40:0.610,f31:0.473,f53:0.809},'1.5':{t:2.071,f40:0.828,f31:0.642,f53:1.098},'2':{t:3.408,f40:1.363,f31:1.056,f53:1.806},'2.5':{t:4.866,f40:1.946,f31:1.508,f53:2.579},'3':{t:7.499,f40:3.000,f31:2.325,f53:3.974},'3.5':{t:10.010,f40:4.004,f31:3.103,f53:5.305},'4':{t:12.882,f40:5.153,f31:3.993,f53:6.827}},
+      ent:   {'0.5':{t:0.285,f40:0.114,f31:0.088,f53:0.151},'0.75':{t:0.508,f40:0.203,f31:0.157,f53:0.269},'1':{t:0.832,f40:0.333,f31:0.258,f53:0.441},'1.25':{t:1.453,f40:0.581,f31:0.450,f53:0.770},'1.5':{t:1.986,f40:0.794,f31:0.616,f53:1.053},'2':{t:3.291,f40:1.316,f31:1.020,f53:1.744}},
+      pvc40: {'0.5':{t:0.285,f40:0.114,f31:0.088,f53:0.151},'0.75':{t:0.508,f40:0.203,f31:0.157,f53:0.269},'1':{t:0.832,f40:0.333,f31:0.258,f53:0.441},'1.25':{t:1.453,f40:0.581,f31:0.450,f53:0.770},'1.5':{t:1.986,f40:0.794,f31:0.616,f53:1.053},'2':{t:3.291,f40:1.316,f31:1.020,f53:1.744},'2.5':{t:4.695,f40:1.878,f31:1.455,f53:2.488},'3':{t:7.268,f40:2.907,f31:2.253,f53:3.852},'3.5':{t:9.737,f40:3.895,f31:3.018,f53:5.161},'4':{t:12.554,f40:5.022,f31:3.892,f53:6.654}},
+      pvc80: {'0.5':{t:0.217,f40:0.087,f31:0.067,f53:0.115},'0.75':{t:0.409,f40:0.164,f31:0.127,f53:0.217},'1':{t:0.688,f40:0.275,f31:0.213,f53:0.365},'1.25':{t:1.237,f40:0.495,f31:0.383,f53:0.656},'1.5':{t:1.711,f40:0.684,f31:0.530,f53:0.907},'2':{t:2.874,f40:1.150,f31:0.891,f53:1.523},'2.5':{t:4.119,f40:1.648,f31:1.277,f53:2.183},'3':{t:6.442,f40:2.577,f31:1.997,f53:3.414},'3.5':{t:8.688,f40:3.475,f31:2.693,f53:4.605},'4':{t:11.258,f40:4.503,f31:3.490,f53:5.967}}
+    };
+
+    const CF_WIRE = {
+      thhn: {'14':0.0097,'12':0.0133,'10':0.0211,'8':0.0366,'6':0.0507,'4':0.0824,'3':0.0973,'2':0.1158,'1':0.1562,'1/0':0.1855,'2/0':0.2223,'3/0':0.2679,'4/0':0.3237,'250':0.3970,'300':0.4608,'350':0.5242,'400':0.5863,'500':0.7073},
+      thw:  {'14':0.0139,'12':0.0181,'10':0.0243,'8':0.0437,'6':0.0726,'4':0.1087,'3':0.1263,'2':0.1473,'1':0.1901,'1/0':0.2223,'2/0':0.2624,'3/0':0.3117,'4/0':0.3718,'250':0.4596,'300':0.5281,'350':0.5958,'400':0.6619,'500':0.7901},
+      xhhw: {'14':0.0097,'12':0.0133,'10':0.0211,'8':0.0366,'6':0.0590,'4':0.0814,'3':0.0962,'2':0.1146,'1':0.1534,'1/0':0.1825,'2/0':0.2190,'3/0':0.2642,'4/0':0.3197,'250':0.3904,'300':0.4536,'350':0.5166,'400':0.5782,'500':0.6984}
+    };
+
+    const BF_VOL = { '14':2.00, '12':2.25, '10':2.50, '8':3.00, '6':5.00 };
+
+    const BF_BOXES = {
+      sq_4x1_25:      { label:'4" Square 1-1/4"',         vol:21.0 },
+      sq_4x1_5:       { label:'4" Square 1-1/2"',         vol:25.5 },
+      sq_4x2_125:     { label:'4" Square 2-1/8"',         vol:30.3 },
+      sq_4_11_16x1_5: { label:'4-11/16" Square 1-1/2"',  vol:42.0 },
+      sq_4_11_16x2_125:{ label:'4-11/16" Square 2-1/8"', vol:60.0 },
+      oct_4x1_25:     { label:'4" Octagon 1-1/4"',        vol:15.5 },
+      oct_4x1_5:      { label:'4" Octagon 1-1/2"',        vol:21.5 },
+      oct_4x2_125:    { label:'4" Octagon 2-1/8"',        vol:30.3 },
+      dev_3x2x1_5:    { label:'Device 3×2×1-1/2"',        vol:7.5  },
+      dev_3x2x2:      { label:'Device 3×2×2"',            vol:10.0 },
+      dev_3x2x2_25:   { label:'Device 3×2×2-1/4"',        vol:10.5 },
+      dev_3x2x2_5:    { label:'Device 3×2×2-1/2"',        vol:12.5 },
+      dev_3x2x2_75:   { label:'Device 3×2×2-3/4"',        vol:14.0 },
+      dev_3x2x3_5:    { label:'Device 3×2×3-1/2"',        vol:18.0 },
+      handy_1_5:      { label:'Handy Box 1-1/2"',          vol:10.3 },
+      handy_1_875:    { label:'Handy Box 1-7/8"',          vol:13.0 },
+      pl_sg_14:       { label:'Plastic 1-Gang 14 cu in',   vol:14.0 },
+      pl_sg_18:       { label:'Plastic 1-Gang 18 cu in',   vol:18.0 },
+      pl_sg_20:       { label:'Plastic 1-Gang 20 cu in',   vol:20.0 },
+      pl_sg_22:       { label:'Plastic 1-Gang 22 cu in',   vol:22.0 },
+      pl_dg_30:       { label:'Plastic 2-Gang 30 cu in',   vol:30.0 },
+      pl_dg_34:       { label:'Plastic 2-Gang 34 cu in',   vol:34.0 },
+      pl_dg_40:       { label:'Plastic 2-Gang 40 cu in',   vol:40.0 },
+      pl_tg_42:       { label:'Plastic 3-Gang 42 cu in',   vol:42.0 },
+      pl_tg_50:       { label:'Plastic 3-Gang 50 cu in',   vol:50.0 },
+      pl_oct_15:      { label:'Plastic Round/Oct 15 cu in',vol:15.0 },
+      pl_oct_20:      { label:'Plastic Round/Oct 20 cu in',vol:20.0 }
+    };
+
+    const VD_CM = {
+      '14':   4110,   '12':   6530,   '10':  10380,  '8':   16510,
+      '6':   26240,   '4':   41740,   '3':   52620,  '2':   66360,
+      '1':   83690,   '1/0': 105600,  '2/0': 133100, '3/0': 167800,
+      '4/0': 211600,  '250': 250000,  '300': 300000, '350': 350000,
+      '400': 400000,  '500': 500000,  '600': 600000, '700': 700000,
+      '750': 750000
+    };
+
+    const VD_K = { cu: 12.9, al: 21.2 };
+
+    const MT_FLC_1PH = {
+      '1/6':[4.4,2.5,2.4,2.2], '1/4':[5.8,3.3,3.2,2.9], '1/3':[7.2,4.1,4.0,3.6],
+      '1/2':[9.8,5.6,5.4,4.9], '3/4':[13.8,7.9,7.6,6.9], '1':[16,9.2,8.8,8.0],
+      '1.5':[20,11.5,11.0,10], '2':[24,13.8,13.2,12], '3':[34,19.6,18.7,17],
+      '5':[56,32.2,30.8,28], '7.5':[80,46.0,44.0,40], '10':[100,57.5,55.0,50]
+    };
+
+    const MT_V_1PH = ['115','200','208','230'];
+
+    const MT_FLC_3PH = {
+      '1/2':[4.4,2.5,2.4,2.2,1.1,0.9], '3/4':[6.4,3.7,3.5,3.2,1.6,1.3],
+      '1':[8.4,4.8,4.6,4.2,2.1,1.7],   '1.5':[12,6.9,6.6,6,3,2.4],
+      '2':[13.6,7.8,7.5,6.8,3.4,2.7],  '3':[null,11,10.6,9.6,4.8,3.9],
+      '5':[null,17.5,16.7,15.2,7.6,6.1],'7.5':[null,25.3,24.2,22,11,9],
+      '10':[null,32.2,30.8,28,14,11],  '15':[null,48.3,46.2,42,21,17],
+      '20':[null,62.1,59.4,54,27,22],  '25':[null,78.2,74.8,68,34,27],
+      '30':[null,92,88,80,40,32],      '40':[null,120,114,104,52,41],
+      '50':[null,150,143,130,65,52],   '60':[null,177,169,154,77,62],
+      '75':[null,221,211,192,96,77],   '100':[null,285,273,248,124,99],
+      '125':[null,359,343,312,156,125],'150':[null,414,396,360,180,144],
+      '200':[null,552,528,480,240,192]
+    };
+
+    const MT_V_3PH = ['115','200','208','230','460','575'];
+
+    const MT_PCT = {
+      designB: { nontd:300, dual:175, inst:1100, inverse:250 },
+      other:   { nontd:300, dual:175, inst:800,  inverse:250 },
+      wound:   { nontd:150, dual:150, inst:800,  inverse:150 },
+      dc:      { nontd:150, dual:150, inst:250,  inverse:150 }
+    };
+
+    const MT_STD = [15,20,25,30,35,40,45,50,60,70,80,90,100,110,125,150,175,200,225,250,
+                  300,350,400,450,500,600,700,800,1000,1200,1600,2000,2500,3000,4000,5000,6000];
+
+    const GND_EGC = [
+      [15,'14','12'], [20,'12','10'], [60,'10','8'], [100,'8','6'], [200,'6','4'],
+      [300,'4','2'], [400,'3','1'], [500,'2','1/0'], [600,'1','2/0'], [800,'1/0','3/0'],
+      [1000,'2/0','4/0'], [1200,'3/0','250'], [1600,'4/0','350'], [2000,'250','400'],
+      [2500,'350','600'], [3000,'400','600'], [4000,'500','750'], [5000,'700','1200'],
+      [6000,'800','1250']
+    ];
+
+    const GND_CM = {
+      '14':4110,'12':6530,'10':10380,'8':16510,'6':26240,'4':41740,'3':52620,'2':66360,
+      '1':83690,'1/0':105600,'2/0':133100,'3/0':167800,'4/0':211600,'250':250000,
+      '300':300000,'350':350000,'400':400000,'500':500000,'600':600000,'700':700000,
+      '750':750000,'900':900000,'1000':1000000,'1100':1100000,'1200':1200000,
+      '1250':1250000,'1750':1750000
+    };
+
+    const GND_GEC_CU = [
+      [66360,'8','6'], [105600,'6','4'], [167800,'4','2'], [350000,'2','1/0'],
+      [600000,'1/0','3/0'], [1100000,'2/0','4/0'], [Infinity,'3/0','250']
+    ];
+
+    const GND_GEC_AL = [
+      [105600,'8','6'], [167800,'6','4'], [250000,'4','2'], [500000,'2','1/0'],
+      [900000,'1/0','3/0'], [1750000,'2/0','4/0'], [Infinity,'3/0','250']
+    ];
+
+    const GND_SIZES = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0',
+                     '250','300','350','400','500','600','700','750'];
+
+    const WW_AREAS = {
+      thhn: {'14':0.0097,'12':0.0133,'10':0.0211,'8':0.0366,'6':0.0507,'4':0.0824,'3':0.0973,'2':0.1158,'1':0.1562,'1/0':0.1855,'2/0':0.2223,'3/0':0.2660,'4/0':0.3237,'250':0.3970,'300':0.4608,'350':0.5242,'500':0.7073},
+      thw:  {'14':0.0097,'12':0.0133,'10':0.0211,'8':0.0437,'6':0.0590,'4':0.0814,'3':0.0962,'2':0.1146,'1':0.1534,'1/0':0.1825,'2/0':0.2190,'3/0':0.2642,'4/0':0.3197,'250':0.3904,'300':0.4536,'350':0.5166,'500':0.6939},
+      xhhw: {'14':0.0097,'12':0.0133,'10':0.0211,'8':0.0366,'6':0.0507,'4':0.0824,'3':0.0973,'2':0.1158,'1':0.1562,'1/0':0.1855,'2/0':0.2223,'3/0':0.2660,'4/0':0.3237,'250':0.3970,'300':0.4608,'350':0.5242,'500':0.7073}
+    };
+
+    module.exports = { AMP_CU, AMP_AL, AMP_TEMP_LOOKUP, CF_AREA, CF_WIRE, BF_VOL, BF_BOXES, VD_CM, VD_K, MT_FLC_1PH, MT_V_1PH, MT_FLC_3PH, MT_V_3PH, MT_PCT, MT_STD, GND_EGC, GND_CM, GND_GEC_CU, GND_GEC_AL, GND_SIZES, WW_AREAS };
+  };
+
+  // ---- src/calc/ampacity.js ----
+  __reg["ampacity"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Ampacity — NEC 310.15, Table 310.16, Table 310.15(B)(1), 110.14(C), 240.4
+     *
+     * Pure functions. No DOM, no network, no globals.
+     *
+     * PORTING NOTE
+     * ------------
+     * These are faithful ports of the logic currently shipping in mobile.html,
+     * EXCEPT where a divergence is marked `DIVERGENCE:` with evidence. Behaviour
+     * that the audit flagged as suspect is preserved here and covered by a `todo`
+     * test so the finding stays visible without blocking CI.
+     */
+
+    const { AMP_CU, AMP_AL, AMP_TEMP_LOOKUP } = require('./tables');
+
+    /** NEC 240.6(A) standard overcurrent device ratings. */
+    const STANDARD_OCPD = [15, 20, 25, 30, 35, 40, 45, 50, 60, 70, 80, 90, 100, 110,
+      125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500, 600];
+
+    /**
+     * NEC 2020 240.4(D) — Small Conductors.
+     *
+     * "Unless specifically permitted in 240.4(E) or 240.4(G), the overcurrent
+     * protection shall not exceed that required by (D)(1) through (D)(7) AFTER any
+     * correction factors for ambient temperature and number of conductors have
+     * been applied."
+     *
+     * This limits the OVERCURRENT DEVICE, not the conductor's ampacity. #12 THHN
+     * really is 30 A in Table 310.16; the rule caps the breaker at 20 A.
+     *
+     * Material-specific — aluminium and copper-clad aluminium are lower than copper
+     * at the same size. NYC: NYCEC 2025 does not amend Article 240.
+     */
+    const SMALL_CONDUCTOR_OCPD_LIMIT = {
+      cu: { '18': 7, '16': 10, '14': 15, '12': 20, '10': 30 },
+      al: { '12': 15, '10': 25 },
+    };
+
+    /**
+     * Maximum overcurrent device permitted by 240.4(D) for a conductor size.
+     * @returns {number|null} null when the size is outside the small-conductor rule
+     */
+    function smallConductorOcpdLimit(size, material) {
+      const table = material === 'al' ? SMALL_CONDUCTOR_OCPD_LIMIT.al : SMALL_CONDUCTOR_OCPD_LIMIT.cu;
+      const limit = table[size];
+      return limit === undefined ? null : limit;
+    }
+
+    /** Back-compat alias for the copper table. Prefer smallConductorOcpdLimit(). */
+    const SMALL_CONDUCTOR_MAX = SMALL_CONDUCTOR_OCPD_LIMIT.cu;
+
+    /**
+     * NEC 2020 Table 310.15(B)(1) band upper bounds, °F. Ascending.
+     * The correct lookup is "first band whose bound >= ambient", never nearest.
+     */
+    const TEMP_BANDS = [50, 59, 68, 77, 86, 95, 104, 113, 122, 131, 140, 149, 158, 167, 176, 185];
+
+    /** Highest ambient the table covers at all. */
+    const MAX_TABLE_AMBIENT_F = 185;
+
+    function insulationColumn(insulType) {
+      if (insulType === 'tw') return 't60';
+      if (insulType === 'thw') return 't75';
+      return 't90'; // thhn, thwn-2, xhhw-2
+    }
+
+    function insulationFactorKey(insulType) {
+      if (insulType === 'tw') return 'f60';
+      if (insulType === 'thw') return 'f75';
+      return 'f90';
+    }
+
+    /** Conductor temperature rating implied by the insulation, °C. */
+    function insulationRatingC(insulType) {
+      if (insulType === 'tw') return 60;
+      if (insulType === 'thw') return 75;
+      return 90;
+    }
+
+    /**
+     * Ambient temperature correction factor, NEC Table 310.15(B)(1).
+     *
+     * Returns a structured outcome rather than a bare number, because three
+     * different things can happen and they are NOT interchangeable:
+     *
+     *   ok: true                          a table factor applies
+     *   AMBIENT_ABOVE_TABLE               ambient exceeds 185°F — past the end of
+     *                                     the table for every conductor rating
+     *   TABLE_FACTOR_UNAVAILABLE_FOR_RATING
+     *                                     the band exists but the table prints "—"
+     *                                     for this conductor rating, e.g. a 60°C
+     *                                     conductor at 140°F.
+     *
+     * The second condition reports ONLY what the table says. NEC 2020 310.15(B)
+     * permits correction by the table OR by the equation given in that section, so
+     * a dash does not by itself make the installation non-compliant: within a band
+     * the equation can still yield a usable factor (a 60°C conductor at 133°F
+     * computes to ~0.36 where the table prints "—", because the table publishes the
+     * worst case of each 5°C band). This module does not implement the equation
+     * method, so it says what the table does and stops there.
+     *
+     * @param {number} ambientF
+     * @param {string} insulType 'tw' | 'thw' | 'thhn' | 'xhhw'
+     * @returns {{ok:boolean, factor?:number, band?:string, reason?:string, conductorRatingC?:number}}
+     */
+    function lookupTempCorrection(ambientF, insulType) {
+      if (!Number.isFinite(ambientF)) {
+        return { ok: false, reason: 'INVALID_AMBIENT' };
+      }
+      const key = insulationFactorKey(insulType);
+      const ratingC = insulationRatingC(insulType);
+
+      for (const bound of TEMP_BANDS) {
+        if (ambientF <= bound) {
+          const row = AMP_TEMP_LOOKUP[bound];
+          if (!row) return { ok: false, reason: 'BAND_MISSING_FROM_TABLE' };
+          const factor = row[key];
+          if (factor === null || factor === undefined) {
+            return {
+              ok: false,
+              reason: 'TABLE_FACTOR_UNAVAILABLE_FOR_RATING',
+              band: row.band,
+              conductorRatingC: ratingC,
+            };
+          }
+          return { ok: true, factor, band: row.band, conductorRatingC: ratingC };
+        }
+      }
+      return { ok: false, reason: 'AMBIENT_ABOVE_TABLE', maxTableAmbientF: MAX_TABLE_AMBIENT_F };
+    }
+
+    /**
+     * Convenience wrapper returning just the number, or null when no factor
+     * applies for any reason. Prefer lookupTempCorrection() where the caller
+     * needs to tell the two failure modes apart.
+     */
+    function tempCorrectionFactor(ambientF, insulType) {
+      const r = lookupTempCorrection(ambientF, insulType);
+      return r.ok ? r.factor : null;
+    }
+
+    /**
+     * NEC 2020 310.15(B)(2) "Rooftop" — structured rule metadata.
+     *
+     * Provenance
+     *   NEC 2020 §310.15(B)(2). Renumbered from 2017 §310.15(B)(3)(c); the tiered
+     *   adder Table 310.15(B)(3)(c) of the 2014 NEC was deleted in 2017 and the
+     *   single 33°C (60°F) adder retained.
+     *   NYC: NYCEC 2025 adopts the 2020 NEC. Its amendment list (§ 28-1101.3)
+     *   touches Article 310 only at Tables 310.16, 310.17 and 310.20 (deleting
+     *   Type XHWN from the 90°C columns). 310.15(B)(2) is NOT amended, so the
+     *   national rule applies unchanged in New York City.
+     *   Forward note: the 2023 NEC lowers the threshold to 3/4 in. NYC is on the
+     *   2020 NEC, so 7/8 in. is correct here until NYC adopts a later edition.
+     */
+    const ROOFTOP_RULE = {
+      code: 'NEC 2020 310.15(B)(2)',
+      adderF: 60,              // 33°C
+      minClearanceInches: 0.875, // 7/8 in. (23 mm)
+      exceptInsulation: ['xhhw'], // Type XHHW-2
+      nycAmended: false,
+    };
+
+    /**
+     * Decide whether the rooftop temperature adder applies.
+     *
+     * All four conditions must hold: on or above a roof, exposed to direct
+     * sunlight, clearance below the minimum, and a conductor type not excepted.
+     * The reason code is returned either way so the UI can explain itself.
+     *
+     * @param {object} [rooftop]
+     * @param {boolean} [rooftop.onOrAboveRoof]
+     * @param {boolean} [rooftop.directSunlight]
+     * @param {number}  [rooftop.clearanceInches] roof surface to bottom of raceway
+     * @param {string} insulation
+     * @returns {{applied:boolean, adderF:number, reason:string}}
+     */
+    function evaluateRooftopAdjustment(rooftop, insulation) {
+      if (!rooftop || !rooftop.onOrAboveRoof) {
+        return { applied: false, adderF: 0, reason: 'NOT_ON_ROOF' };
+      }
+      if (!rooftop.directSunlight) {
+        return { applied: false, adderF: 0, reason: 'NO_DIRECT_SUNLIGHT' };
+      }
+      const clearance = Number(rooftop.clearanceInches);
+      if (!Number.isFinite(clearance)) {
+        return { applied: false, adderF: 0, reason: 'CLEARANCE_UNKNOWN' };
+      }
+      if (clearance >= ROOFTOP_RULE.minClearanceInches) {
+        // "less than 7/8 in." — exactly 7/8 is compliant clearance.
+        return { applied: false, adderF: 0, reason: 'CLEARANCE_AT_OR_ABOVE_MINIMUM' };
+      }
+      if (ROOFTOP_RULE.exceptInsulation.indexOf(insulation) !== -1) {
+        return { applied: false, adderF: 0, reason: 'XHHW2_EXCEPTION' };
+      }
+      return { applied: true, adderF: ROOFTOP_RULE.adderF, reason: 'APPLIED' };
+    }
+
+    /**
+     * Full ampacity calculation for one conductor size.
+     *
+     * @param {object} input
+     * @param {string} input.size            e.g. '12', '3/0', '250'
+     * @param {string} [input.material]      'cu' | 'al'            (default 'cu')
+     * @param {string} [input.insulation]    'tw'|'thw'|'thhn'|'xhhw' (default 'thhn')
+     * @param {number} [input.ambientF]      ambient °F             (default 86)
+     * @param {number} [input.adjustmentFactor] NEC Table 310.15(C)(1) CCC factor (default 1.0)
+     * @param {number} [input.rooftopAdderF] °F added to ambient    (default 0)
+     * @param {number} [input.terminalRatingC] 60 or 75             (default 75)
+     * @returns {object} structured result
+     */
+    function calculateAmpacity(input) {
+      const {
+        size,
+        material = 'cu',
+        insulation = 'thhn',
+        ambientF = 86,
+        adjustmentFactor = 1.0,
+        terminalRatingC = 75,
+        /**
+         * Rooftop conditions per NEC 310.15(B)(2). The adder is DERIVED from these,
+         * never passed in — there is exactly one implementation of the rule.
+         * Omit entirely for a non-rooftop installation.
+         */
+        rooftop = null,
+      } = input || {};
+
+      const table = material === 'al' ? AMP_AL : AMP_CU;
+      const row = table[size];
+      if (!row) {
+        return { ok: false, reason: 'SIZE_NOT_IN_TABLE', size, material };
+      }
+
+      const baseAmpacity = row[insulationColumn(insulation)];
+      const roof = evaluateRooftopAdjustment(rooftop, insulation);
+      const effectiveAmbientF = ambientF + roof.adderF;
+      const temp = lookupTempCorrection(effectiveAmbientF, insulation);
+
+      if (!temp.ok) {
+        return {
+          ok: false,
+          reason: temp.reason,
+          // Context for callers rendering per-size rows: the size exists and has
+          // a table value even though no correction factor is published for it.
+          baseAmpacity,
+          terminalLimit: terminalRatingC === 60 ? row.t60 : row.t75,
+          conductorRatingC: temp.conductorRatingC,
+          temperatureBand: temp.band,
+          ambientF,
+          rooftopAdjustmentApplied: roof.applied,
+          rooftopAdderF: roof.adderF,
+          rooftopAdjustmentReason: roof.reason,
+          rooftopRule: ROOFTOP_RULE.code,
+          effectiveAmbientF,
+          note: temp.reason === 'AMBIENT_ABOVE_TABLE'
+            ? 'Above ' + MAX_TABLE_AMBIENT_F + '°F, NEC Table 310.15(B)(1) publishes no factor for any conductor rating.'
+            : 'No correction factor is provided in Table 310.15(B)(1) for a '
+              + temp.conductorRatingC + '°C conductor at the calculated ambient temperature ('
+              + temp.band + '). NEC 310.15(B) also permits correction by equation; this tool '
+              + 'reports the table only.',
+        };
+      }
+
+      const correction = temp.factor;
+      const afterCorrection = baseAmpacity * correction;
+      const afterAdjustment = afterCorrection * adjustmentFactor;
+
+      // NEC 110.14(C) termination limit. See audit P1-3: which column applies is
+      // equipment-dependent, not conductor-dependent.
+      const terminalLimit = terminalRatingC === 60 ? row.t60 : row.t75;
+      const finalAmpacity = Math.min(afterAdjustment, terminalLimit);
+
+      return {
+        ok: true,
+        size,
+        material,
+        insulation,
+        baseAmpacity,
+        correctionFactor: correction,
+        temperatureBand: temp.band,
+        conductorRatingC: temp.conductorRatingC,
+        adjustmentFactor,
+        ambientF,
+        rooftopAdjustmentApplied: roof.applied,
+        rooftopAdderF: roof.adderF,
+        rooftopAdjustmentReason: roof.reason,
+        rooftopRule: ROOFTOP_RULE.code,
+        effectiveAmbientF,
+        afterCorrection: round2(afterCorrection),
+        afterAdjustment: round2(afterAdjustment),
+        terminalLimit,
+        terminalLimitGoverns: terminalLimit < afterAdjustment,
+        finalAmpacity: round2(finalAmpacity),
+        /**
+         * Unrounded value. round2() above is for display; flooring it can differ
+         * from flooring the raw product by 1 A because IEEE-754 makes
+         * 100 * 0.58 = 57.999999999999993. Callers reproducing pre-migration
+         * behaviour must floor THIS field. Tracked as P1-9.
+         */
+        finalAmpacityRaw: finalAmpacity,
+        derated: correction < 1.0 || adjustmentFactor < 1.0,
+      };
+    }
+
+    /**
+     * Maximum overcurrent device for a conductor, per NEC 240.4.
+     *
+     * @param {number} ampacity   conductor ampacity after all correction/adjustment
+     * @param {string} size       conductor size (for the 240.4(D) small-conductor rule)
+     * @param {object} [opts]
+     * @param {boolean} [opts.allowNextSizeUp] apply 240.4(B) (default true)
+     * @returns {object}
+     */
+    function maxOvercurrentDevice(ampacity, size, opts = {}) {
+      const { allowNextSizeUp = true, material = 'cu' } = opts;
+
+      let rating;
+      const exact = STANDARD_OCPD.includes(ampacity);
+
+      if (exact) {
+        rating = ampacity;
+      } else if (allowNextSizeUp && ampacity < 800) {
+        // NEC 240.4(B): next standard size up is permitted when the conductor
+        // ampacity does not correspond to a standard rating and the circuit is
+        // not a multi-outlet receptacle branch circuit.
+        rating = STANDARD_OCPD.find((b) => b >= ampacity) ?? null;
+      } else {
+        // NEC 240.4(C) / >800 A: next standard size DOWN.
+        rating = [...STANDARD_OCPD].reverse().find((b) => b <= ampacity) ?? null;
+      }
+
+      // NEC 240.4(D) overrides everything above for small conductors. It is NOT
+      // qualified by 240.4(B), so the next-size-up rule cannot lift this cap.
+      const smallCap = smallConductorOcpdLimit(size, material);
+      let cappedBySmallConductorRule = false;
+      if (smallCap !== null && rating !== null && rating > smallCap) {
+        rating = smallCap;
+        cappedBySmallConductorRule = true;
+      }
+
+      return { rating, cappedBySmallConductorRule, exactMatch: exact };
+    }
+
+    function round2(n) {
+      return Math.round(n * 100) / 100;
+    }
+
+    module.exports = {
+      calculateAmpacity,
+      tempCorrectionFactor,
+      lookupTempCorrection,
+      TEMP_BANDS,
+      MAX_TABLE_AMBIENT_F,
+      maxOvercurrentDevice,
+      smallConductorOcpdLimit,
+      SMALL_CONDUCTOR_OCPD_LIMIT,
+      evaluateRooftopAdjustment,
+      ROOFTOP_RULE,
+      insulationColumn,
+      STANDARD_OCPD,
+      SMALL_CONDUCTOR_MAX,
+    };
+  };
+
+  // ---- src/calc/voltageDrop.js ----
+  __reg["voltageDrop"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Voltage drop — VD = (multiplier x K x I x L) / CM
+     * NEC 210.19(A) / 215.2(A) informational notes (base NEC, not enforceable).
+     * NYCEC 210.19(A) / 215.2(A)(1): 5% total, service point to farthest outlet,
+     * feeder + branch combined — MANDATORY in NYC.
+     */
+    const { VD_CM, VD_K, AMP_CU, AMP_AL } = require('./tables');
+
+    const PHASE_MULTIPLIER = { 1: 2, 3: 1.732 }; // 1.732 is trade-standard for sqrt(3)
+
+    /**
+     * Ascending conductor order. VD_CM is keyed in source order, NOT by size, so
+     * iterating Object.keys() returns an oversized conductor. This list is the
+     * single source of search order.
+     */
+    const ASCENDING_SIZES = ['14', '12', '10', '8', '6', '4', '3', '2', '1', '1/0',
+      '2/0', '3/0', '4/0', '250', '300', '350', '400', '500', '600', '700', '750'];
+
+    function calculateVoltageDrop(input) {
+      const { amps, feet, voltage, phase = 1, material = 'cu', size } = input || {};
+      const cm = VD_CM[size];
+      const K = VD_K[material];
+      if (!cm) return { ok: false, reason: 'SIZE_NOT_IN_TABLE', size };
+      if (K === undefined) return { ok: false, reason: 'UNKNOWN_MATERIAL', material };
+      if (!(amps > 0)) return { ok: false, reason: 'INVALID_AMPS', amps };
+      if (!(feet > 0)) return { ok: false, reason: 'INVALID_DISTANCE', feet };
+      if (!(voltage > 0)) return { ok: false, reason: 'INVALID_VOLTAGE', voltage };
+
+      const mult = PHASE_MULTIPLIER[Number(phase)];
+      if (!mult) return { ok: false, reason: 'INVALID_PHASE', phase };
+
+      const drop = (mult * K * amps * feet) / cm;
+      return {
+        ok: true,
+        multiplier: mult, K, circularMils: cm,
+        voltageDrop: round3(drop),
+        percentDrop: round3((drop / voltage) * 100),
+        voltageAtLoad: round2(voltage - drop),
+        // Exact values for consumers that format for display themselves: a
+        // renderer must round ONCE from the raw number (round3 then toFixed can
+        // move the last display digit — e.g. 7.35461 -> 7.355 -> "7.36" where
+        // single rounding gives "7.35").
+        voltageDropExact: drop,
+        percentDropExact: (drop / voltage) * 100,
+        voltageAtLoadExact: voltage - drop,
+      };
+    }
+
+    /** Smallest conductor meeting a voltage-drop limit. */
+    function minSizeForVoltageDrop(input) {
+      const { amps, feet, voltage, phase = 1, material = 'cu', maxPercent = 5, sizes } = input || {};
+      const list = sizes || ASCENDING_SIZES;
+      for (const size of list) {
+        const r = calculateVoltageDrop({ amps, feet, voltage, phase, material, size });
+        if (r.ok && r.percentDrop <= maxPercent) return { ok: true, size, ...r };
+      }
+      return { ok: false, reason: 'NO_SIZE_MEETS_LIMIT', maxPercent };
+    }
+    /**
+     * The standalone Voltage Drop panel's full decision: a joint VD + 75C-column
+     * ampacity recommendation plus a per-size comparison row set. Owns everything
+     * the panel decides — the minimum-circular-mil inversion, per-size drop /
+     * percent / voltage-at-load (via calculateVoltageDrop, the ONE formula
+     * implementation), the 75C ampacity check from the shared AMP tables (never a
+     * second copy), the pass/fail against the target, and the recommendation.
+     *
+     * Selection and pass/fail use RAW (unrounded) arithmetic, exactly like the
+     * legacy panel: percent <= target is algebraically cm >= minCircularMils, so
+     * one inversion serves both and no rounded display value ever decides
+     * anything.
+     */
+    function analyzeVoltageDrop(input) {
+      const {
+        amps, feet, voltage, phase = 1, material = 'cu', maxPercent,
+      } = input || {};
+      const K = VD_K[material];
+      if (K === undefined) return { ok: false, reason: 'UNKNOWN_MATERIAL', material };
+      const mult = PHASE_MULTIPLIER[Number(phase)];
+      if (!mult) return { ok: false, reason: 'INVALID_PHASE', phase };
+      if (typeof amps !== 'number' || !Number.isFinite(amps) || amps <= 0) {
+        return { ok: false, reason: 'INVALID_AMPS', amps };
+      }
+      if (typeof feet !== 'number' || !Number.isFinite(feet) || feet <= 0) {
+        return { ok: false, reason: 'INVALID_DISTANCE', feet };
+      }
+      if (typeof voltage !== 'number' || !Number.isFinite(voltage) || voltage <= 0) {
+        return { ok: false, reason: 'INVALID_VOLTAGE', voltage };
+      }
+      if (typeof maxPercent !== 'number' || !Number.isFinite(maxPercent) || maxPercent <= 0) {
+        return { ok: false, reason: 'INVALID_TARGET', maxPercent };
+      }
+
+      const ampTable = material === 'cu' ? AMP_CU : AMP_AL;
+      const maxVoltageDrop = voltage * (maxPercent / 100);
+      // The one algebraic inversion of the drop formula: the smallest circular-mil
+      // area whose raw drop meets the target.
+      const minCM = (mult * K * amps * feet) / maxVoltageDrop;
+
+      let recommendedSize = null;
+      const rows = ASCENDING_SIZES.map((size) => {
+        const cm = VD_CM[size];
+        const r = calculateVoltageDrop({ amps, feet, voltage, phase, material, size });
+        const ampacity75C = ampTable[size] ? ampTable[size].t75 : 0;
+        const ampacityOK = ampacity75C >= amps;
+        const passesVdTarget = cm >= minCM;         // raw algebra, never rounded %
+        const meetsBoth = passesVdTarget && ampacityOK;
+        if (recommendedSize === null && meetsBoth) recommendedSize = size;
+        return {
+          size,
+          circularMils: cm,
+          // exact values: display rounding is the renderer's single-step job
+          voltageDrop: r.voltageDropExact,
+          percentDrop: r.percentDropExact,
+          voltageAtLoad: r.voltageAtLoadExact,
+          ampacity75C,
+          ampacityOK,
+          passesVdTarget,
+          meetsBoth,
+        };
+      });
+      rows.forEach((row) => { row.isRecommended = row.size === recommendedSize; });
+
+      return {
+        ok: true,
+        material, K,
+        phase: Number(phase), multiplier: mult,
+        amps, feet, voltage, maxPercent,
+        maxVoltageDrop: round3(maxVoltageDrop),
+        minCircularMils: Math.ceil(minCM),
+        recommendedSize,
+        recommended: recommendedSize === null ? null
+          : rows.find((row) => row.size === recommendedSize),
+        rows,
+      };
+    }
+
+    const round2 = (n) => Math.round(n * 100) / 100;
+    const round3 = (n) => Math.round(n * 1000) / 1000;
+    module.exports = {
+      calculateVoltageDrop, minSizeForVoltageDrop, analyzeVoltageDrop,
+      PHASE_MULTIPLIER, ASCENDING_SIZES,
+    };
+  };
+
+  // ---- src/calc/conduitFill.js ----
+  __reg["conduitFill"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Conduit & Wireway fill — NEC Chapter 9 Tables 1, 4, 5; NEC 376.22
+     * Pure functions. No DOM.
+     */
+    const { CF_AREA, CF_WIRE, WW_AREAS } = require('./tables');
+
+    /** NEC Chapter 9, Table 1 — permitted fill by conductor count. */
+    function fillPercent(numConductors) {
+      if (numConductors === 1) return 53;
+      if (numConductors === 2) return 31;
+      return 40;
+    }
+
+    /**
+     * Uniform-conductor conduit fill (all conductors same size and type).
+     *
+     * LIMITATION (P1-2): the shipped app only supports uniform fill. Real runs mix
+     * sizes (e.g. 3x #12 + 1x #10 EGC). Use calculateConduitFillMixed for those.
+     */
+    function calculateConduitFill(input) {
+      const { conduitType, conduitSize, wireType, wireSize, numConductors } = input || {};
+
+      const conduit = CF_AREA[conduitType] && CF_AREA[conduitType][conduitSize];
+      const wireArea = CF_WIRE[wireType] && CF_WIRE[wireType][wireSize];
+      if (!conduit) return { ok: false, reason: 'CONDUIT_NOT_IN_TABLE', conduitType, conduitSize };
+      if (!wireArea) return { ok: false, reason: 'WIRE_NOT_IN_TABLE', wireType, wireSize };
+      if (!Number.isInteger(numConductors) || numConductors < 1) {
+        return { ok: false, reason: 'INVALID_CONDUCTOR_COUNT', numConductors };
+      }
+
+      const pct = fillPercent(numConductors);
+      const allowedArea = conduit[pct === 53 ? 'f53' : pct === 31 ? 'f31' : 'f40'];
+      const usedArea = wireArea * numConductors;
+      const rawMax = allowedArea / wireArea;
+
+      // NEC 2020 Chapter 9, Note 7: for conductors or cables ALL OF THE SAME SIZE,
+      // a calculation resulting in a decimal greater than or equal to 0.8 rounds UP
+      // to the next whole conductor. The note's second sentence extends the same
+      // threshold to the single-conductor case, so 0.87 permits one conductor.
+      //
+      // The epsilon matters: 6.8 - 6 evaluates to 0.7999999999999998 in IEEE-754,
+      // so a bare `>= 0.8` would reject a value that is exactly on the threshold.
+      const NOTE7_THRESHOLD = 0.8;
+      const NOTE7_EPSILON = 1e-9;
+      const frac = rawMax - Math.floor(rawMax);
+      const note7Applies = frac >= NOTE7_THRESHOLD - NOTE7_EPSILON;
+      const maxConductors = note7Applies ? Math.ceil(rawMax) : Math.floor(rawMax);
+
+      return {
+        ok: true,
+        fillRulePercent: pct,
+        totalConduitArea: conduit.t,
+        allowedArea,
+        eachWireArea: wireArea,
+        usedArea: round4(usedArea),
+        fillPercentUsed: round1((usedArea / conduit.t) * 100),
+        maxConductors,
+        maxConductorsRaw: round2(rawMax),
+        note7Applied: note7Applies,
+        note7Fraction: Math.round(frac * 100) / 100,
+        fits: usedArea <= allowedArea,
+      };
+    }
+
+    /**
+     * Mixed-conductor conduit fill — NEC Chapter 9 Table 1 with Note 6.
+     * @param {Array<{wireType:string,wireSize:string,qty:number}>} conductors
+     */
+    function calculateConduitFillMixed(input) {
+      const { conduitType, conduitSize, conductors } = input || {};
+      const conduit = CF_AREA[conduitType] && CF_AREA[conduitType][conduitSize];
+      if (!conduit) return { ok: false, reason: 'CONDUIT_NOT_IN_TABLE', conduitType, conduitSize };
+      if (!Array.isArray(conductors) || conductors.length === 0) {
+        return { ok: false, reason: 'NO_CONDUCTORS' };
+      }
+
+      let usedArea = 0;
+      let total = 0;
+      const breakdown = [];
+      for (const c of conductors) {
+        const a = CF_WIRE[c.wireType] && CF_WIRE[c.wireType][c.wireSize];
+        if (!a) return { ok: false, reason: 'WIRE_NOT_IN_TABLE', wireType: c.wireType, wireSize: c.wireSize };
+        if (!Number.isInteger(c.qty) || c.qty < 1) {
+          return { ok: false, reason: 'INVALID_CONDUCTOR_COUNT', qty: c.qty };
+        }
+        usedArea += a * c.qty;
+        total += c.qty;
+        breakdown.push({ ...c, eachArea: a, subtotal: round4(a * c.qty) });
+      }
+
+      const pct = fillPercent(total);
+      const allowedArea = conduit[pct === 53 ? 'f53' : pct === 31 ? 'f31' : 'f40'];
+
+      return {
+        ok: true,
+        totalConductors: total,
+        fillRulePercent: pct,
+        allowedArea,
+        usedArea: round4(usedArea),
+        fillPercentUsed: round1((usedArea / conduit.t) * 100),
+        fits: usedArea <= allowedArea,
+        breakdown,
+      };
+    }
+
+    /** NEC 376.22(A) — sheet-metal wireway, 20% of interior cross-section. */
+    function calculateWirewayFill(input) {
+      const { width, height, wireType, wireSize, numConductors } = input || {};
+      const areas = WW_AREAS[wireType];
+      const wireArea = areas && areas[wireSize];
+      if (!wireArea) return { ok: false, reason: 'WIRE_NOT_IN_TABLE', wireType, wireSize };
+      if (!(width > 0) || !(height > 0)) return { ok: false, reason: 'INVALID_DIMENSIONS' };
+
+      const interior = width * height;
+      const allowedArea = interior * 0.20;
+      const usedArea = wireArea * numConductors;
+
+      return {
+        ok: true,
+        interiorArea: round2(interior),
+        allowedArea: round4(allowedArea),
+        usedArea: round4(usedArea),
+        fillPercentUsed: round1((usedArea / interior) * 100),
+        maxConductors: Math.floor(allowedArea / wireArea),
+        fits: usedArea <= allowedArea,
+      };
+    }
+
+    const round1 = (n) => Math.round(n * 10) / 10;
+    const round2 = (n) => Math.round(n * 100) / 100;
+    const round4 = (n) => Math.round(n * 10000) / 10000;
+
+    module.exports = { calculateConduitFill, calculateConduitFillMixed, calculateWirewayFill, fillPercent };
+  };
+
+  // ---- src/calc/boxFill.js ----
+  __reg["boxFill"] = function (module, exports, require) {
+    'use strict';
+    /** Box fill — NEC 314.16(A) and (B). Pure functions. */
+    const { BF_VOL, BF_BOXES } = require('./tables');
+
+    /**
+     * @param {object} input
+     * @param {string} input.boxKey
+     * @param {string} input.largestWireSize  governs device/clamp/EGC allowances
+     * @param {number} input.numConductors    314.16(B)(1)
+     * @param {number} [input.numDevices]     314.16(B)(4) — 2x each
+     * @param {boolean}[input.hasClamps]      314.16(B)(2) — 1x total
+     * @param {boolean}[input.hasEgc]         314.16(B)(5) — 1x total
+     * @param {number} [input.numSupportFittings] 314.16(B)(3) — 1x each
+     * @param {number} [input.extensionVolume]
+     */
+    function calculateBoxFill(input) {
+      const {
+        boxKey, largestWireSize, numConductors = 0, numDevices = 0,
+        hasClamps = false, hasEgc = false, numSupportFittings = 0, extensionVolume = 0,
+      } = input || {};
+
+      const box = BF_BOXES[boxKey];
+      const volPerWire = BF_VOL[largestWireSize];
+      if (!box) return { ok: false, reason: 'BOX_NOT_IN_TABLE', boxKey };
+      if (!volPerWire) return { ok: false, reason: 'WIRE_NOT_IN_TABLE', largestWireSize };
+      // Counts are allowances under 314.16(B): whole, non-negative, finite.
+      // Structured failure — never NaN totals, never a negative fill volume.
+      for (const [name, value] of [['numConductors', numConductors],
+        ['numDevices', numDevices], ['numSupportFittings', numSupportFittings]]) {
+        if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value)) {
+          return { ok: false, reason: 'INVALID_COUNT', field: name, value };
+        }
+        if (value < 0) return { ok: false, reason: 'NEGATIVE_COUNT', field: name, value };
+      }
+      if (typeof extensionVolume !== 'number' || !Number.isFinite(extensionVolume)
+        || extensionVolume < 0) {
+        return { ok: false, reason: 'INVALID_EXTENSION', extensionVolume };
+      }
+
+      const conductorVolume = numConductors * volPerWire;
+      const deviceVolume = numDevices * 2 * volPerWire;
+      const clampVolume = (hasClamps ? 1 : 0) * volPerWire;
+      const egcVolume = (hasEgc ? 1 : 0) * volPerWire;
+      const fittingVolume = numSupportFittings * volPerWire;
+
+      const usedVolume = conductorVolume + deviceVolume + clampVolume + egcVolume + fittingVolume;
+      const boxVolume = box.vol + extensionVolume;
+      const nonConductor = deviceVolume + clampVolume + egcVolume + fittingVolume;
+
+      return {
+        ok: true,
+        boxVolume: round2(boxVolume),
+        volPerWire,
+        conductorVolume: round2(conductorVolume),
+        deviceVolume: round2(deviceVolume),
+        clampVolume: round2(clampVolume),
+        egcVolume: round2(egcVolume),
+        fittingVolume: round2(fittingVolume),
+        usedVolume: round2(usedVolume),
+        remaining: round2(boxVolume - usedVolume),
+        fillPercent: round1((usedVolume / boxVolume) * 100),
+        maxConductors: Math.max(0, Math.floor((boxVolume - nonConductor) / volPerWire)),
+        fits: usedVolume <= boxVolume,
+      };
+    }
+    const round1 = (n) => Math.round(n * 10) / 10;
+    const round2 = (n) => Math.round(n * 100) / 100;
+    module.exports = { calculateBoxFill };
+  };
+
+  // ---- src/calc/motor.js ----
+  __reg["motor"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Motors — NEC Article 430.
+     * 430.6(A)(1)  conductors + branch protection use TABLE FLC, not nameplate
+     * 430.22       conductors at 125% of table FLC
+     * 430.32       overload from NAMEPLATE FLA
+     * 430.52       branch-circuit short-circuit / ground-fault protection
+     * 430.110      disconnect at least 115% of FLC
+     */
+    const { MT_FLC_1PH, MT_V_1PH, MT_FLC_3PH, MT_V_3PH, MT_PCT, MT_STD, AMP_CU, AMP_AL } = require('./tables');
+    const { SIZE_ORDER } = require('./wireSizing');
+
+    function nextStandard(x) {
+      for (const s of MT_STD) if (s >= x) return s;
+      return null;
+    }
+
+    function tableFLC(hp, volts, phase) {
+      const table = phase === 1 ? MT_FLC_1PH : MT_FLC_3PH;
+      const volt = phase === 1 ? MT_V_1PH : MT_V_3PH;
+      const row = table[String(hp)];
+      if (!row) return null;
+      const i = volt.indexOf(String(volts));
+      if (i < 0) return null;
+      const v = row[i];
+      return (v === null || v === undefined) ? null : v;
+    }
+
+    /**
+     * @param {object} input
+     * @param {string|number} input.hp
+     * @param {number} input.volts
+     * @param {number} input.phase           1 | 3
+     * @param {string} [input.motorType]     'designB'|'other'|'wound'|'dc'
+     * @param {string} [input.ocpdType]      'inverse'|'dual'|'nontd'|'inst'
+     * @param {number} [input.nameplateFLA]  required for the overload figure
+     * @param {number} [input.serviceFactorMultiplier] 1.25 (SF>=1.15 or rise<=40C) else 1.15
+     * @param {string} [input.material]
+     */
+    function calculateMotorCircuit(input) {
+      const {
+        hp, volts, phase, motorType = 'designB', ocpdType = 'inverse',
+        nameplateFLA = null, serviceFactorMultiplier = 1.25, material = 'cu',
+      } = input || {};
+
+      const ph = Number(phase);
+      if (ph !== 1 && ph !== 3) {
+        // The old ternary treated ANYTHING non-1 as three-phase; a malformed
+        // phase silently landed in Table 430.250. Structured rejection instead.
+        return { ok: false, reason: 'INVALID_PHASE', phase };
+      }
+      if (material !== 'cu' && material !== 'al') {
+        return { ok: false, reason: 'INVALID_MATERIAL', material };
+      }
+      if (typeof serviceFactorMultiplier !== 'number'
+        || !Number.isFinite(serviceFactorMultiplier) || serviceFactorMultiplier <= 0) {
+        return { ok: false, reason: 'INVALID_SERVICE_FACTOR', serviceFactorMultiplier };
+      }
+
+      const flc = tableFLC(hp, volts, ph);
+      if (flc === null) return { ok: false, reason: 'NOT_IN_TABLE', hp, volts, phase: ph };
+
+      const minConductorAmpacity = flc * 1.25;              // 430.22
+      // Deliberately a simple 75C-column pick, matching the tool's stated output
+      // ("Copper at 75C, before any derating"): the motor calculator gives the
+      // Article 430 sizing baseline; derating and terminal machinery live in the
+      // Ampacity and Wire Sizer tools. Conductor ordering is the ONE shared
+      // SIZE_ORDER — never a second local list.
+      const table = material === 'al' ? AMP_AL : AMP_CU;
+      let conductorSize = null;
+      for (const s of SIZE_ORDER) {
+        if (table[s] && table[s].t75 >= minConductorAmpacity) { conductorSize = s; break; }
+      }
+
+      const pct = MT_PCT[motorType] && MT_PCT[motorType][ocpdType];
+      if (pct === undefined) return { ok: false, reason: 'UNKNOWN_DEVICE', motorType, ocpdType };
+      const maxProtection = flc * pct / 100;                // 430.52 Table
+      const standardProtection = nextStandard(maxProtection); // 430.52(C)(1) Ex.1
+      const disconnect = nextStandard(flc * 1.15);          // 430.110
+
+      const nameplateProvided = typeof nameplateFLA === 'number'
+        && Number.isFinite(nameplateFLA) && nameplateFLA > 0;
+      const overload = nameplateProvided
+        ? round2(nameplateFLA * serviceFactorMultiplier)    // 430.32 — NAMEPLATE
+        : null;
+
+      return {
+        ok: true,
+        tableFLC: flc,
+        tableRef: ph === 1 ? 'NEC Table 430.248' : 'NEC Table 430.250',
+        minConductorAmpacity: round2(minConductorAmpacity),
+        conductorSize,
+        protectionPercent: pct,
+        maxProtection: round2(maxProtection),
+        standardProtection,
+        disconnectRating: disconnect,
+        overloadMax: overload,
+        overloadBasis: 'nameplate',
+        overloadPercentApplied: Math.round(serviceFactorMultiplier * 100),
+        serviceFactorMultiplier,
+        nameplateProvided,
+        nameplateDiffersFromTable: nameplateProvided && Math.abs(nameplateFLA - flc) > 0.05,
+      };
+    }
+    const round2 = (n) => Math.round(n * 100) / 100;
+    module.exports = { calculateMotorCircuit, tableFLC, nextStandard };
+  };
+
+  // ---- src/calc/grounding.js ----
+  __reg["grounding"] = function (module, exports, require) {
+    'use strict';
+    /** Grounding — NEC Table 250.122 (EGC), Table 250.66 (GEC), 250.122(B). */
+    const { GND_EGC, GND_CM, GND_GEC_CU, GND_GEC_AL, GND_SIZES } = require('./tables');
+
+    /** Table 250.122 — EGC from overcurrent device rating. */
+    function egcSize(ocpdRating, material = 'cu') {
+      for (const row of GND_EGC) {
+        if (ocpdRating <= row[0]) return material === 'cu' ? row[1] : row[2];
+      }
+      return null; // above 6000 A
+    }
+
+    /**
+     * 250.122(B) — where ungrounded conductors are increased in size, the EGC
+     * increases proportionally by circular-mil area.
+     */
+    function egcUpsized(ocpdRating, requiredSize, installedSize, material = 'cu') {
+      const base = egcSize(ocpdRating, material);
+      if (!base) return { ok: false, reason: 'OCPD_ABOVE_TABLE', ocpdRating };
+      const reqCM = GND_CM[requiredSize];
+      const instCM = GND_CM[installedSize];
+      if (!reqCM || !instCM) return { ok: false, reason: 'SIZE_NOT_IN_TABLE' };
+
+      const ratio = instCM / reqCM;
+      if (ratio <= 1.0001) {
+        return { ok: true, baseSize: base, ratio: 1, finalSize: base, upsizeApplied: false };
+      }
+      const need = GND_CM[base] * ratio;
+      let finalSize = null;
+      for (const s of GND_SIZES) if (GND_CM[s] >= need) { finalSize = s; break; }
+      return { ok: true, baseSize: base, ratio: round3(ratio), requiredCM: Math.round(need), finalSize, upsizeApplied: true };
+    }
+
+    /** Table 250.66 — GEC from largest service conductor. */
+    function gecSize(serviceSize, serviceMaterial = 'cu') {
+      const cm = GND_CM[serviceSize];
+      if (!cm) return { ok: false, reason: 'SIZE_NOT_IN_TABLE', serviceSize };
+      const table = serviceMaterial === 'cu' ? GND_GEC_CU : GND_GEC_AL;
+      for (const row of table) {
+        if (cm <= row[0]) return { ok: true, copper: row[1], aluminum: row[2] };
+      }
+      return { ok: false, reason: 'NO_ROW' };
+    }
+
+    /** 250.66(A)(B)(C) — permitted reductions by electrode type. */
+    const ELECTRODE_CAP = { rod: '6', ufer: '4', ring: '2' };
+    function gecWithElectrodeCap(serviceSize, serviceMaterial, electrode) {
+      const base = gecSize(serviceSize, serviceMaterial);
+      if (!base.ok) return base;
+      const cap = ELECTRODE_CAP[electrode];
+      if (!cap) return { ...base, capApplied: false, finalCopper: base.copper };
+      const capBeneficial = GND_CM[cap] < GND_CM[base.copper];
+      return {
+        ...base,
+        capApplied: capBeneficial,
+        finalCopper: capBeneficial ? cap : base.copper,
+      };
+    }
+    const CAP_REFERENCE = {
+      rod: 'NEC 250.66(A)', ufer: 'NEC 250.66(B)', ring: 'NEC 250.66(C)',
+    };
+
+    /**
+     * One structured decision for the whole Grounding panel. Production's single
+     * Calculate action refreshes EGC, 250.122(B) upsizing, GEC and the electrode
+     * cap together, so ONE orchestrator call returns all of it — the UI never
+     * selects which Article 250 rule applies. EGC (Table 250.122, from the
+     * overcurrent device) and GEC (Table 250.66, from the service conductor) stay
+     * explicitly separate sections of the result: different destination,
+     * different table, never a generic "ground wire size".
+     *
+     * @param {object} input
+     * @param {number} input.ocpdRating          EGC basis — breaker/fuse rating
+     * @param {string} input.egcMaterial         'cu' | 'al'
+     * @param {string} input.requiredPhaseSize   minimum ungrounded conductor
+     * @param {string} input.installedPhaseSize  actually installed conductor
+     * @param {string} input.serviceSize         largest service conductor (GEC basis)
+     * @param {string} input.serviceMaterial     'cu' | 'al'
+     * @param {string} input.electrode           'water' | 'rod' | 'ufer' | 'ring'
+     */
+    function calculateGrounding(input) {
+      const {
+        ocpdRating, egcMaterial = 'cu', requiredPhaseSize, installedPhaseSize,
+        serviceSize, serviceMaterial = 'cu', electrode = 'water',
+      } = input || {};
+
+      if (typeof ocpdRating !== 'number' || !Number.isFinite(ocpdRating) || ocpdRating <= 0) {
+        return { ok: false, reason: 'INVALID_OCPD', ocpdRating };
+      }
+      if (egcMaterial !== 'cu' && egcMaterial !== 'al') {
+        return { ok: false, reason: 'INVALID_MATERIAL', field: 'egcMaterial', material: egcMaterial };
+      }
+      if (serviceMaterial !== 'cu' && serviceMaterial !== 'al') {
+        return { ok: false, reason: 'INVALID_MATERIAL', field: 'serviceMaterial', material: serviceMaterial };
+      }
+      if (electrode !== 'water' && !ELECTRODE_CAP[electrode]) {
+        return { ok: false, reason: 'INVALID_ELECTRODE', electrode };
+      }
+      for (const [field, size] of [['requiredPhaseSize', requiredPhaseSize],
+        ['installedPhaseSize', installedPhaseSize], ['serviceSize', serviceSize]]) {
+        if (!GND_CM[size]) return { ok: false, reason: 'SIZE_NOT_IN_TABLE', field, size };
+      }
+
+      const egc = egcUpsized(ocpdRating, requiredPhaseSize, installedPhaseSize, egcMaterial);
+      if (!egc.ok) return egc;               // OCPD_ABOVE_TABLE, field-tagged sizes
+      const gec = gecWithElectrodeCap(serviceSize, serviceMaterial, electrode);
+      if (!gec.ok) return gec;
+
+      const capSize = ELECTRODE_CAP[electrode] || null;
+      return {
+        ok: true,
+        egc: {
+          mode: 'EGC',
+          tableReference: 'NEC Table 250.122',
+          ocpdRating,
+          material: egcMaterial,
+          baseSize: egc.baseSize,
+          requiredPhaseSize,
+          installedPhaseSize,
+          ratio: egc.ratio,
+          upsizeApplied: egc.upsizeApplied,
+          requiredCM: egc.upsizeApplied ? egc.requiredCM : null,
+          finalSize: egc.finalSize,
+          // The honest no-fit answer: the proportional requirement exceeds every
+          // supported conductor size. finalSize is null — never silently the base.
+          exceedsAvailableSizes: egc.upsizeApplied && egc.finalSize === null,
+          rule: egc.upsizeApplied ? 'NEC 250.122(B)' : null,
+        },
+        gec: {
+          mode: 'GEC',
+          tableReference: 'NEC Table 250.66',
+          serviceSize,
+          serviceMaterial,
+          copper: gec.copper,
+          aluminum: gec.aluminum,
+          electrode,
+          capSize,
+          capReference: CAP_REFERENCE[electrode] || null,
+          capApplied: gec.capApplied,
+          finalCopper: gec.finalCopper,
+        },
+      };
+    }
+
+    const round3 = (n) => Math.round(n * 1000) / 1000;
+    module.exports = {
+      egcSize, egcUpsized, gecSize, gecWithElectrodeCap, ELECTRODE_CAP,
+      calculateGrounding,
+    };
+  };
+
+  // ---- src/calc/wireSizing.js ----
+  __reg["wireSizing"] = function (module, exports, require) {
+    'use strict';
+    /**
+     * Conductor selection — the tool the app calls "Wire Sizer".
+     *
+     * A conductor must satisfy ALL of:
+     *   1. Ampacity after correction + adjustment  >= required ampacity
+     *   2. NEC 240.4(D) small-conductor OCPD limit >= load           (P0-2 in audit:
+     *      the shipped app omits this and can return #14 for a 20 A load)
+     *   3. Voltage drop <= limit, when a distance is supplied
+     *
+     * Required ampacity per NEC 210.19(A)(1) / 215.2(A)(1):
+     *      noncontinuous + 1.25 x continuous
+     * The shipped app has no continuous-load input at all (P0-3 in audit).
+     */
+
+    const { AMP_CU, AMP_AL, VD_CM } = require('./tables');
+    const { calculateAmpacity, smallConductorOcpdLimit, STANDARD_OCPD } = require('./ampacity');
+    const { calculateVoltageDrop } = require('./voltageDrop');
+
+    /**
+     * NYCEC 2025 § 215.2(A)(1), NYC amendment:
+     *   "The minimum feeder size feeding a dwelling unit shall be 3 conductors
+     *    with minimum 8 AWG copper or 6 AWG aluminum or copper-clad aluminum
+     *    conductors."
+     *
+     * A minimum SIZE floor, not an ampacity, terminal or overcurrent rule. It is
+     * applied only after the NEC calculation has produced a size, and only raises
+     * that size — it never lowers it.
+     *
+     * A 2019 NYC DOB code interpretation confirms the scope: the minimum applies
+     * to a feeder supplying a DWELLING UNIT, not to every feeder. A feeder to,
+     * say, a lighting-control panel may still be #10 or #12.
+     *
+     * The "3 conductors" element is part of the rule but concerns circuit
+     * arrangement, which this tool does not model; it is surfaced in the note.
+     */
+    const NYC_DWELLING_FEEDER_MINIMUM = {
+      code: 'NYCEC 2025 215.2(A)(1) (NYC amendment)',
+      cu: '8',
+      al: '6',
+      conductorCount: 3,
+    };
+
+    const SIZE_ORDER = ['14', '12', '10', '8', '6', '4', '3', '2', '1', '1/0', '2/0',
+      '3/0', '4/0', '250', '300', '350', '400', '500', '600', '700', '750'];
+
+    /**
+     * @param {object} input
+     * @param {number} input.load               total load, A
+     * @param {number} [input.continuousLoad]   portion that is continuous, A (default 0)
+     * @param {number} [input.feet]             one-way distance; 0/omitted skips the VD check
+     * @param {number} [input.voltage]          default 208 (NYC)
+     * @param {number|string} [input.phase]     1 | 3
+     * @param {string} [input.material]         'cu' | 'al'
+     * @param {string} [input.insulation]       'tw' | 'thw' | 'thhn' | 'xhhw'
+     * @param {number} [input.ambientF]
+     * @param {number} [input.adjustmentFactor] Table 310.15(C)(1)
+     * @param {number} [input.maxVoltDropPercent] default 5 (NYCEC mandatory total)
+     * @param {number} [input.terminalRatingC]  60 | 75
+     */
+    function selectConductor(input) {
+      const {
+        // Preferred, explicit model. A circuit can carry both kinds at once.
+        continuousLoadA = null,
+        noncontinuousLoadA = null,
+        // Legacy convenience: a single total plus the continuous portion.
+        load = null, continuousLoad = null,
+        feet = 0, voltage = 208, phase = 1,
+        material = 'cu', insulation = 'thhn', ambientF = 86,
+        adjustmentFactor = 1.0, maxVoltDropPercent = 5, terminalRatingC = 75,
+        /** 'BRANCH_CIRCUIT' (210.19/210.20) or 'FEEDER' (215.2/215.3). */
+        circuitType = 'BRANCH_CIRCUIT',
+        /**
+         * NEC 210.19(A)(1) Exception No.1 / 215.2(A)(1) Exception No.1.
+         * True ONLY when the user states that the complete assembly, INCLUDING the
+         * overcurrent devices, is listed for operation at 100% of its rating.
+         * Never inferred from breaker brand, conductor type or load.
+         */
+        assemblyRatedFor100PercentContinuousOperation = false,
+        proposedOcpd = null,
+        /** 'NYC' applies the NYCEC amendments; 'NEC' uses the base code only. */
+        jurisdiction = 'NYC',
+        /**
+         * NYCEC 215.2(A)(1) minimum. null means the question was not answered, in
+         * which case the minimum is NOT applied and the note says so — the answer
+         * is never assumed in either direction.
+         */
+        feedsDwellingUnit = null,
+      } = input || {};
+
+      // Resolve the two load models into continuous + noncontinuous amperes.
+      let contA;
+      let noncontA;
+      if (continuousLoadA !== null || noncontinuousLoadA !== null) {
+        contA = continuousLoadA || 0;
+        noncontA = noncontinuousLoadA || 0;
+      } else if (load !== null) {
+        if (load < 0) {
+          return { ok: false, reason: 'NEGATIVE_LOAD', load };
+        }
+        contA = continuousLoad || 0;
+        if (contA > load) {
+          return { ok: false, reason: 'INVALID_CONTINUOUS_LOAD', continuousLoad: contA, load };
+        }
+        noncontA = load - contA;
+      } else {
+        return { ok: false, reason: 'NO_LOAD_SUPPLIED' };
+      }
+      if (contA < 0 || noncontA < 0) {
+        return { ok: false, reason: 'NEGATIVE_LOAD', contA, noncontA };
+      }
+      const totalActualLoadA = round2(contA + noncontA);
+      if (!(totalActualLoadA > 0)) return { ok: false, reason: 'INVALID_LOAD', load: totalActualLoadA };
+      if (circuitType !== 'BRANCH_CIRCUIT' && circuitType !== 'FEEDER') {
+        return { ok: false, reason: 'INVALID_CIRCUIT_TYPE', circuitType };
+      }
+      if (material !== 'cu' && material !== 'al') {
+        return { ok: false, reason: 'INVALID_MATERIAL', material };
+      }
+      if (!(feet >= 0) || !Number.isFinite(feet)) {
+        return { ok: false, reason: 'INVALID_DISTANCE', feet };
+      }
+      if (feet > 0) {
+        if (!(voltage > 0) || !Number.isFinite(voltage)) {
+          return { ok: false, reason: 'INVALID_VOLTAGE', voltage };
+        }
+        if (Number(phase) !== 1 && Number(phase) !== 3) {
+          return { ok: false, reason: 'INVALID_PHASE', phase };
+        }
+      }
+      if (!(adjustmentFactor > 0) || !Number.isFinite(adjustmentFactor)) {
+        return { ok: false, reason: 'INVALID_ADJUSTMENT_FACTOR', adjustmentFactor };
+      }
+
+      const hundredPercentRatedExceptionApplied =
+        assemblyRatedFor100PercentContinuousOperation === true && contA > 0;
+      const continuousLoadMultiplier = hundredPercentRatedExceptionApplied ? 1.0 : 1.25;
+
+      // Test (a): noncontinuous + multiplier x continuous, judged against the table
+      // ampacity limited by 110.14(C) and NOT reduced by adjustment/correction.
+      const continuousLoadSizingRequirementA = round2(noncontA + continuousLoadMultiplier * contA);
+      // Test (b): the actual load, judged against the ampacity AFTER those factors.
+      const conditionsOfUseRequirementA = totalActualLoadA;
+
+      const requiredConductorAmpacityA =
+        Math.max(continuousLoadSizingRequirementA, conditionsOfUseRequirementA);
+
+      // NYC minimum feeder size. Evaluated separately from every ampacity concept.
+      const feedsDwellingUnitStated = feedsDwellingUnit === true || feedsDwellingUnit === false;
+      const nycDwellingFeederMinimumApplies =
+        jurisdiction === 'NYC' && circuitType === 'FEEDER' && feedsDwellingUnit === true;
+      const nycDwellingFeederMinimumSize = nycDwellingFeederMinimumApplies
+        ? (material === 'al' ? NYC_DWELLING_FEEDER_MINIMUM.al : NYC_DWELLING_FEEDER_MINIMUM.cu)
+        : null;
+
+      const codeReferences = circuitType === 'FEEDER'
+        ? ['NEC 215.2(A)(1)(a)', 'NEC 215.2(A)(1)(b)', 'NEC 215.3', 'NEC 110.14(C)', 'NEC 240.4(D)']
+        : ['NEC 210.19(A)(1)(a)', 'NEC 210.19(A)(1)(b)', 'NEC 210.20(A)', 'NEC 110.14(C)', 'NEC 240.4(D)'];
+      if (nycDwellingFeederMinimumApplies) codeReferences.push(NYC_DWELLING_FEEDER_MINIMUM.code);
+
+      const sizes = material === 'al' ? SIZE_ORDER.filter((s) => s !== '14') : SIZE_ORDER;
+      const table = material === 'al' ? AMP_AL : AMP_CU;
+      const evaluated = [];
+      let winner = null;
+
+      for (const size of sizes) {
+        if (!table[size]) continue;
+
+        const amp = calculateAmpacity({
+          size, material, insulation, ambientF, adjustmentFactor, terminalRatingC,
+        });
+        if (!amp.ok) {
+          // No published correction factor for this conductor rating at this
+          // ambient (e.g. 140°F with TW). The conductor cannot qualify, but the
+          // row is still reported — with zero usable ampacity, exactly as the
+          // pre-migration app showed it — so the renderer never reaches into the
+          // tables itself. OCPD and voltage drop are still evaluated for the row
+          // display; they cannot make it pass.
+          const cap = smallConductorOcpdLimit(size, material);
+          const derived = STANDARD_OCPD.find((b) => b >= continuousLoadSizingRequirementA) ?? null;
+          const degradedOcpdOK = (cap === null) || (derived !== null && derived <= cap);
+          let dvd = null;
+          let dvdOK = true;
+          if (feet > 0 && VD_CM[size]) {
+            dvd = calculateVoltageDrop({
+              amps: totalActualLoadA, feet, voltage, phase, material, size,
+            });
+            dvdOK = dvd.ok && dvd.percentDrop <= maxVoltDropPercent;
+          }
+          evaluated.push({
+            size,
+            ampacityDeterminable: false,
+            ampacityUnavailableReason: amp.reason,
+            baseAmpacity: amp.baseAmpacity !== undefined ? amp.baseAmpacity : null,
+            temperatureCorrectionFactor: 0,
+            adjustmentFactor,
+            terminalLimit: amp.terminalLimit !== undefined ? amp.terminalLimit : null,
+            terminalLimitGoverns: false,
+            calculatedAmpacity: 0,
+            terminalLimitedAmpacity: 0,
+            tableAmpacityAtTerminal: 0,
+            continuousTestOK: false,
+            conditionsOfUseTestOK: false,
+            finalAmpacity: 0,
+            ampacityOK: false,
+            ampacityWouldPassWithoutTerminalLimit: false,
+            rejectedOnlyByTerminalLimit: false,
+            smallConductorRuleApplies: cap !== null,
+            maxOcpdUnder240_4_D: cap,
+            selectedOcpd: null,
+            derivedOcpdForSizing: derived,
+            ocpdCheckValue: derived,
+            ocpdBasis: contA > 0 ? 'CONTINUOUS_LOAD_RULE_MINIMUM' : 'SMALLEST_STANDARD_FOR_CURRENT_LOAD',
+            ocpdOK: degradedOcpdOK,
+            voltDropPercent: dvd && dvd.ok ? dvd.percentDrop : null,
+            voltDropVolts: dvd && dvd.ok ? dvd.voltageDrop : null,
+            voltageAtLoad: dvd && dvd.ok ? dvd.voltageAtLoad : null,
+            vdOK: dvdOK,
+            conductorAccepted: false,
+            passes: false,
+            reason: 'AMPACITY_NOT_DETERMINABLE',
+          });
+          continue;
+        }
+
+        // ── the six concepts, kept distinct ──────────────────────────────
+        // 1. calculated ampacity      base x correction x adjustment
+        // 2. terminal-limited ampacity after NEC 110.14(C)
+        // 3. minimum conductor size    driven by requiredAmpacity
+        // 4. max OCPD under 240.4(D)   material-specific, small conductors only
+        // 5. selected OCPD             smallest standard device that can serve the load
+        // 6. acceptance + reason
+        const calculatedAmpacity = amp.afterAdjustment;
+        const terminalLimitedAmpacity = amp.finalAmpacity;
+
+        // Test (a) is judged against the TABLE ampacity capped by 110.14(C), with
+        // no adjustment or correction applied. Test (b) is judged against the
+        // ampacity after those factors. Collapsing the two would either oversize
+        // (derating a figure already multiplied by 125%) or undersize.
+        const tableAmpacityAtTerminal = Math.min(amp.baseAmpacity, amp.terminalLimit);
+        const continuousTestOK = tableAmpacityAtTerminal >= continuousLoadSizingRequirementA;
+        const conditionsOfUseTestOK = terminalLimitedAmpacity >= conditionsOfUseRequirementA;
+        const ampacityOK = continuousTestOK && conditionsOfUseTestOK;
+        // The same two tests with NO 110.14(C) cap: base table value for test (a),
+        // corrected/adjusted value for test (b). Diagnostic only — never used for
+        // acceptance — so a renderer can state, without re-deciding, that a
+        // conductor was rejected ONLY because of the terminal limitation.
+        const ampacityWouldPassWithoutTerminalLimit =
+          amp.baseAmpacity >= continuousLoadSizingRequirementA
+          && calculatedAmpacity >= conditionsOfUseRequirementA;
+        const rejectedOnlyByTerminalLimit = !ampacityOK && ampacityWouldPassWithoutTerminalLimit;
+
+        // Overcurrent device. 210.20(A) / 215.3: the rating shall not be less than
+        // noncontinuous + 125% continuous. Where the caller supplied a device we
+        // report it; otherwise we derive the smallest standard device satisfying
+        // that rule PURELY as a check basis. This tool does not size breakers.
+        const callerSupplied = proposedOcpd !== null && proposedOcpd !== undefined;
+        const selectedOcpd = callerSupplied ? proposedOcpd : null;
+        const derivedOcpdForSizing = callerSupplied
+          ? null
+          : (STANDARD_OCPD.find((b) => b >= continuousLoadSizingRequirementA) ?? null);
+        const ocpdCheckValue = callerSupplied ? selectedOcpd : derivedOcpdForSizing;
+        const ocpdBasis = callerSupplied
+          ? 'CALLER_SUPPLIED'
+          : (contA > 0 ? 'CONTINUOUS_LOAD_RULE_MINIMUM' : 'SMALLEST_STANDARD_FOR_CURRENT_LOAD');
+
+        const maxOcpdUnder240_4_D = smallConductorOcpdLimit(size, material);
+        const smallConductorRuleApplies = maxOcpdUnder240_4_D !== null;
+        const ocpdOK = ocpdCheckValue === null
+          ? false
+          : (!smallConductorRuleApplies || ocpdCheckValue <= maxOcpdUnder240_4_D);
+
+        let vd = null;
+        let vdOK = true;
+        if (feet > 0 && VD_CM[size]) {
+          // totalActualLoadA, never the legacy `load` field: with the preferred
+          // continuous/noncontinuous input model `load` is null, and a null here
+          // silently failed every voltage-drop check (P1-10).
+          vd = calculateVoltageDrop({
+            amps: totalActualLoadA, feet, voltage, phase, material, size,
+          });
+          vdOK = vd.ok && vd.percentDrop <= maxVoltDropPercent;
+        }
+
+        const passes = ampacityOK && ocpdOK && vdOK;
+        const reason = passes ? 'ACCEPTED'
+          : !continuousTestOK ? 'FAILS_CONTINUOUS_LOAD_SIZING'
+          : !conditionsOfUseTestOK ? 'FAILS_CONDITIONS_OF_USE'
+          : !ocpdOK ? 'OCPD_EXCEEDS_240_4_D_LIMIT'
+          : 'VOLTAGE_DROP_EXCEEDS_LIMIT';
+
+        evaluated.push({
+          size,
+          baseAmpacity: amp.baseAmpacity,
+          temperatureCorrectionFactor: amp.correctionFactor,
+          adjustmentFactor: amp.adjustmentFactor,
+          terminalLimit: amp.terminalLimit,
+          terminalLimitGoverns: amp.terminalLimitGoverns,
+          calculatedAmpacity,
+          terminalLimitedAmpacity,
+          tableAmpacityAtTerminal,
+          continuousTestOK,
+          conditionsOfUseTestOK,
+          finalAmpacity: terminalLimitedAmpacity, // retained for existing callers
+          ampacityOK,
+          ampacityWouldPassWithoutTerminalLimit,
+          rejectedOnlyByTerminalLimit,
+          smallConductorRuleApplies,
+          maxOcpdUnder240_4_D,
+          selectedOcpd,           // non-null ONLY when the caller supplied one
+          derivedOcpdForSizing,   // non-null ONLY when inferred as a check basis
+          ocpdCheckValue,         // whichever of the two was compared to the limit
+          ocpdBasis,
+          ocpdOK,
+          voltDropPercent: vd && vd.ok ? vd.percentDrop : null,
+          voltDropVolts: vd && vd.ok ? vd.voltageDrop : null,
+          voltageAtLoad: vd && vd.ok ? vd.voltageAtLoad : null,
+          vdOK,
+          conductorAccepted: passes,
+          passes,
+          reason,
+        });
+        if (passes && !winner) winner = size;
+      }
+
+      // The NEC calculation is complete at this point. The NYC floor is a separate
+      // step applied on top of it: it can only raise the selected size.
+      const requiredConductorSizeBeforeNYCMinimum = winner;
+      if (nycDwellingFeederMinimumApplies && winner) {
+        const minIdx = SIZE_ORDER.indexOf(nycDwellingFeederMinimumSize);
+        if (minIdx > SIZE_ORDER.indexOf(winner)) winner = nycDwellingFeederMinimumSize;
+      }
+      const finalSelectedConductor = winner;
+
+      const win = evaluated.find((e) => e.size === winner) || null;
+
+      // ── governing constraint (deterministic, explainable) ────────────────
+      // Stage sizes: the smallest conductor that satisfies each cumulative set of
+      // constraints in fixed order AMPACITY → 240.4(D) OCPD → VOLTAGE DROP, then
+      // the NYC floor. Each stage can only hold or raise the size; the final
+      // selection is the last stage. The governing constraint is the LAST stage
+      // that actually raised it — every earlier constraint was already satisfied
+      // at the smaller size, so it cannot be the binding one.
+      const stageIndex = (pred) => {
+        const hit = evaluated.find(pred);
+        return hit ? SIZE_ORDER.indexOf(hit.size) : Infinity;
+      };
+      const idxAmpacityStage = stageIndex((e) => e.ampacityOK);
+      const idxAmpacityUncapped = stageIndex((e) => e.ampacityWouldPassWithoutTerminalLimit);
+      const terminalLimitRaisedAmpacityStage =
+        idxAmpacityStage !== Infinity && idxAmpacityStage > idxAmpacityUncapped;
+      const idxOcpdStage = stageIndex((e) => e.ampacityOK && e.ocpdOK);
+      const idxVdStage = stageIndex((e) => e.ampacityOK && e.ocpdOK && e.vdOK);
+      const sizeRequiredByAmpacity =
+        idxAmpacityStage === Infinity ? null : SIZE_ORDER[idxAmpacityStage];
+      const sizeRequiredWithOcpdRule =
+        idxOcpdStage === Infinity ? null : SIZE_ORDER[idxOcpdStage];
+      const sizeRequiredWithVoltageDrop =
+        idxVdStage === Infinity ? null : SIZE_ORDER[idxVdStage];
+
+      let governingConstraint = null;
+      const governingConstraints = [];
+      if (finalSelectedConductor) {
+        const finalIdx = SIZE_ORDER.indexOf(finalSelectedConductor);
+        if (idxAmpacityStage === finalIdx) {
+          governingConstraints.push('AMPACITY');
+          // Refine, don't replace: AMPACITY stays in the list (the ampacity
+          // family is what binds), and TERMINAL_LIMIT is appended when the
+          // 110.14(C) cap is specifically what pushed the stage up — so the
+          // singular governingConstraint names the true cause.
+          if (terminalLimitRaisedAmpacityStage) governingConstraints.push('TERMINAL_LIMIT');
+        }
+        if (idxOcpdStage === finalIdx && idxOcpdStage > idxAmpacityStage) {
+          governingConstraints.push('OCPD_240_4_D');
+        }
+        if (idxVdStage === finalIdx && idxVdStage > idxOcpdStage) {
+          governingConstraints.push('VOLTAGE_DROP');
+        }
+        if (nycDwellingFeederMinimumApplies
+          && requiredConductorSizeBeforeNYCMinimum !== finalSelectedConductor) {
+          governingConstraints.push('NYC_DWELLING_FEEDER_MINIMUM');
+        }
+        governingConstraint = governingConstraints[governingConstraints.length - 1] || 'AMPACITY';
+      }
+
+      // Which test actually drives the conductor size? The two requirement figures
+      // are judged against different ampacities — the continuous test against the
+      // un-derated table value, conditions-of-use against the derated one — so
+      // comparing the two amperages directly would be meaningless. Instead find the
+      // smallest conductor that satisfies each test on its own; whichever is larger
+      // is the binding constraint.
+      const firstPassing = (pred) => {
+        const hit = evaluated.find(pred);
+        return hit ? SIZE_ORDER.indexOf(hit.size) : Infinity;
+      };
+      const idxContinuous = firstPassing((e) => e.continuousTestOK);
+      const idxConditions = firstPassing((e) => e.conditionsOfUseTestOK);
+      const governingTest = idxConditions > idxContinuous
+        ? 'CONDITIONS_OF_USE'
+        : idxContinuous > idxConditions
+          ? 'CONTINUOUS_LOAD_SIZING'
+          : (contA > 0 ? 'CONTINUOUS_LOAD_SIZING' : 'CONDITIONS_OF_USE');
+
+      return {
+        ok: true,
+        continuousLoadA: contA,
+        noncontinuousLoadA: noncontA,
+        totalActualLoadA,
+        continuousLoadSizingRequirementA,
+        conditionsOfUseRequirementA,
+        requiredConductorAmpacityA,
+        governingTest,
+        circuitType,
+        continuousLoadRuleApplied: contA > 0,
+        continuousLoadMultiplier,
+        hundredPercentRatedExceptionApplied,
+        jurisdiction,
+        feedsDwellingUnit,
+        feedsDwellingUnitStated,
+        nycDwellingFeederMinimumApplies,
+        nycDwellingFeederMinimumSize,
+        requiredConductorSizeBeforeNYCMinimum,
+        finalSelectedConductor,
+        codeReferences,
+        // Input echoes the renderer needs verbatim (never re-derived in the UI).
+        material,
+        insulation,
+        ambientF,
+        adjustmentFactor,
+        terminalRatingC,
+        voltage,
+        feet,
+        phase: Number(phase),
+        maxVoltDropPercent,
+        temperatureCorrectionFactor: win ? win.temperatureCorrectionFactor
+          : (evaluated[0] ? evaluated[0].temperatureCorrectionFactor : null),
+        // Governing-constraint decomposition.
+        sizeRequiredByAmpacity,
+        sizeRequiredByAmpacityIgnoringTerminalLimit:
+          idxAmpacityUncapped === Infinity ? null : SIZE_ORDER[idxAmpacityUncapped],
+        terminalLimitRaisedAmpacityStage,
+        sizeRequiredWithOcpdRule,
+        sizeRequiredWithVoltageDrop,
+        governingConstraint,
+        governingConstraints,
+        terminalLimitGovernsOnSelected: win ? win.terminalLimitGoverns : null,
+        // retained for existing callers
+        load: totalActualLoadA,
+        requiredAmpacity: requiredConductorAmpacityA,
+        recommendedSize: winner,
+        recommended: win,
+        note: 'Overcurrent protection limited per NEC 240.4(D). This tool does not '
+          + 'size the overcurrent device: where none was supplied, the smallest '
+          + 'standard device able to carry the present load is derived solely to '
+          + 'test the 240.4(D) ceiling. Continuous-load factors are not applied. '
+          + 'Equipment-specific exceptions in 240.4(E) (taps) and 240.4(G) (motors, '
+          + 'A/C and similar) are NOT evaluated here. Equipment-specific rules — '
+          + 'EVSE, HVAC, fixed electric space heating and similar — may impose '
+          + 'further requirements this generic tool cannot determine from its inputs.'
+          + (nycDwellingFeederMinimumApplies
+            ? ' NYCEC 215.2(A)(1) sets a minimum of 3 conductors at ' 
+              + nycDwellingFeederMinimumSize + ' AWG for a feeder supplying a dwelling unit; '
+              + 'this tool applies the size floor but does not verify the 3-conductor arrangement.'
+            : (jurisdiction === 'NYC' && circuitType === 'FEEDER' && !feedsDwellingUnitStated
+              ? ' NYCEC 215.2(A)(1) sets a minimum feeder size (3 conductors, 8 AWG Cu / 6 AWG Al) '
+                + 'where the feeder supplies a dwelling unit. That was not stated, so the minimum '
+                + 'was NOT applied — set feedsDwellingUnit explicitly.'
+              : '')),    limitingFactor: win
+          ? (win.voltDropPercent !== null && win.voltDropPercent > maxVoltDropPercent * 0.9
+            ? 'VOLTAGE_DROP' : 'AMPACITY')
+          : null,
+        evaluated,
+      };
+    }
+
+    const round2 = (n) => Math.round(n * 100) / 100;
+    module.exports = { selectConductor, SIZE_ORDER };
+  };
+
+  var api = {};
+  api["tables"] = __require("tables");
+  api["ampacity"] = __require("ampacity");
+  api["voltageDrop"] = __require("voltageDrop");
+  api["conduitFill"] = __require("conduitFill");
+  api["boxFill"] = __require("boxFill");
+  api["motor"] = __require("motor");
+  api["grounding"] = __require("grounding");
+  api["wireSizing"] = __require("wireSizing");
+  return api;
+})();
+</script>
+<!-- EC-CALC:END -->
 
 <!-- ── FIREBASE (lazy) ── -->
 <script>
@@ -1323,6 +3138,99 @@ window.addEventListener('load', function() {
 </script>
 
 <script>
+// ══ HOME — TOOL CATALOGUE AND CENTRAL ROUTING ═════════════
+// One definition of every user-facing tool and one way to open it. Home tiles
+// and PINNED shortcuts both go through openTool(), so routing can never drift
+// between the two surfaces.
+//
+// `open` reuses the EXISTING panels and subtab functions. Nothing here creates
+// a calculator, moves calculation logic, or duplicates a container.
+var TOOL_GROUPS = [
+  { title: 'CONDUCTORS & CIRCUITS', tools: ['wiresizer', 'ampacity', 'loadcalc'] },
+  { title: 'RACEWAYS & BOXES',      tools: ['conduit', 'wireway', 'boxfill'] },
+  { title: 'EQUIPMENT & GROUNDING', tools: ['motor', 'grounding', 'outlets'] },
+  { title: 'FIELD TOOLS',           tools: ['bender', 'converter'] }
+];
+
+var TOOLS = {
+  wiresizer: { label: 'Wire Sizer', desc: 'Ampacity + voltage drop',
+    open: function () { switchTab('wiresizer', null); } },
+  ampacity:  { label: 'Ampacity', desc: 'Derating + terminal limits',
+    open: function () { switchTab('ampacity', null); } },
+  loadcalc:  { label: 'Load Calc', desc: 'Service & feeder demand',
+    open: function () { switchTabMore('loadcalc'); } },
+
+  conduit:   { label: 'Conduit Fill', desc: 'NEC Ch. 9 fill',
+    open: function () { switchTab('conduit', null); if (typeof fillCalcMode === 'function') fillCalcMode('conduit'); } },
+  // Same panel as Conduit Fill, opened with the Wireway mode already active.
+  wireway:   { label: 'Wireway Fill', desc: '20% raceway fill',
+    open: function () { switchTab('conduit', null); if (typeof fillCalcMode === 'function') fillCalcMode('wireway'); } },
+  boxfill:   { label: 'Box Fill', desc: 'NEC 314.16 volume',
+    open: function () { switchTab('boxfill', null); } },
+
+  motor:     { label: 'Motor 430', desc: 'Conductors + protection',
+    open: function () { switchTabMore('motor'); } },
+  // Deep-link into the EXISTING grounding calculator topic. No second
+  // container, no duplicated logic.
+  grounding: { label: 'Grounding', desc: 'EGC & GEC sizing',
+    open: function () {
+      switchTabMore('coderef');
+      if (typeof codeSubTab === 'function') codeSubTab('grounding');
+      if (typeof groundingSelectTopic === 'function') groundingSelectTopic('calc');
+    } },
+  // "NEMA" only. Not "NEMA Outlets" — an outlet is not the same thing as a
+  // plug or a receptacle, and this app should not blur that.
+  outlets:   { label: 'NEMA', desc: 'Plugs & receptacles',
+    open: function () { switchTabMore('outlets'); } },
+
+  bender:    { label: 'Conduit Bender', desc: '90s, offsets & saddles',
+    open: function () { switchTabMore('bender'); } },
+  converter: { label: 'Converter', desc: 'Power, torque & units',
+    open: function () { switchTabMore('converter'); } },
+
+  // Reached from the bottom nav, not shown as a Home tile.
+  coderef:   { label: 'Code Reference', navOnly: true,
+    open: function () { switchTabMore('coderef'); } }
+};
+
+/** The single entry point for opening any tool. */
+function openTool(toolId) {
+  var t = TOOLS[toolId];
+  if (!t) return false;
+  t.open();
+  // Home stays the parent section for anything opened from Home; the Code
+  // bottom-nav item owns itself.
+  var parent = toolId === 'coderef' ? 'mnav-coderef' : 'mnav-home';
+  document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.remove('active'); });
+  var item = document.getElementById(parent);
+  if (item) item.classList.add('active');
+  return true;
+}
+
+function tileMarkup(id, pinned) {
+  var t = TOOLS[id];
+  if (!t) return '';
+  return '<button data-tool="' + id + '" onclick="openTool(\'' + id + '\')" ' +
+    'class="tile' + (pinned ? ' tile-pinned' : '') + '">' +
+    '<span class="tile-name">' + t.label + '</span>' +
+    (t.desc ? '<span class="tile-desc">' + t.desc + '</span>' : '') +
+    '</button>';
+}
+
+function homeRender() {
+  var host = document.getElementById('homeGroups');
+  if (!host) return;
+  host.innerHTML = TOOL_GROUPS.map(function (g) {
+    return '<div class="home-group">' +
+      '<div class="home-section-label">' + g.title + '</div>' +
+      '<div class="home-grid">' +
+      g.tools.map(function (id) { return tileMarkup(id, false); }).join('') +
+      '</div></div>';
+  }).join('');
+}
+
+window.addEventListener('DOMContentLoaded', homeRender);
+
 // ══ PINNED SHORTCUTS ══════════════════════════════════════
 // There are now a dozen tools across two nav rows. This lets an electrician
 // put the three or four they actually use on the home screen.
@@ -1331,18 +3239,12 @@ window.addEventListener('load', function() {
 var PIN_KEY = 'ec_pinned';
 
 // kind 'main' = primary bottom nav, 'more' = behind the › toggle
-var PIN_TOOLS = [
-  { id:'wiresizer', label:'Wire Sizer', kind:'main' },
-  { id:'conduit',   label:'Fill Calc',  kind:'main' },
-  { id:'ampacity',  label:'Ampacity',   kind:'main' },
-  { id:'boxfill',   label:'Box Fill',   kind:'main' },
-  { id:'loadcalc',  label:'Load Calc',  kind:'more' },
-  { id:'motor',     label:'Motor 430',  kind:'more' },
-  { id:'bender',    label:'Bender',     kind:'more' },
-  { id:'converter', label:'Converter',  kind:'more' },
-  { id:'coderef',   label:'Code Ref',   kind:'more' },
-  { id:'outlets',   label:'NEMA',       kind:'more' }
-];
+// The pinnable set. Labels and routing come from TOOLS, so a shortcut and a
+// Home tile can never disagree. The `kind: main/more` routing hint is gone —
+// openTool() is now the single mechanism.
+var PIN_TOOLS = ['wiresizer', 'conduit', 'wireway', 'ampacity', 'boxfill',
+  'loadcalc', 'motor', 'grounding', 'bender', 'converter', 'outlets']
+  .map(function (id) { return { id: id, label: (TOOLS[id] || {}).label || id }; });
 
 var pinEditing = false;
 
@@ -1361,14 +3263,7 @@ function pinSet(list) {
 }
 
 function pinGo(id) {
-  var tool = PIN_TOOLS.filter(function(t){ return t.id === id; })[0];
-  if (!tool) return;
-  if (tool.kind === 'main') {
-    switchTab(id, document.getElementById('mnav-' + id));
-  } else {
-    // sections under › live inside panel-more, so open that then the sub-tab
-    switchTabMore(id);
-  }
+  openTool(id);
 }
 
 function pinRender() {
@@ -1377,19 +3272,24 @@ function pinRender() {
   if (!wrap || !list) return;
 
   var pinned = pinGet();
-  wrap.style.display = (pinned.length || pinEditing) ? '' : 'none';
+  var show = pinned.length > 0 || pinEditing;
+  wrap.style.display = show ? '' : 'none';
+  var divider = document.getElementById('pinnedDivider');
+  if (divider) divider.style.display = show ? '' : 'none';
 
-  list.innerHTML = pinned.map(function(id){
-    var t = PIN_TOOLS.filter(function(x){ return x.id === id; })[0];
+  var heading = document.getElementById('pinnedHeading');
+  if (heading) heading.textContent = pinned.length ? 'PINNED \u00B7 ' + pinned.length : 'PINNED';
+
+  list.innerHTML = pinned.map(function (id) {
+    var t = TOOLS[id];
     if (!t) return '';
     if (pinEditing) {
-      return '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:12px 12px">' +
-        '<span style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;color:var(--text)">' + t.label + '</span>' +
-        '<button onclick="pinRemove(\'' + t.id + '\')" style="background:none;border:1px solid var(--border);color:var(--danger);font-size:12px;cursor:pointer;padding:2px 8px;border-radius:4px;line-height:1.4">\u2715</button>' +
+      return '<div class="tile tile-pinned" style="flex-direction:row;align-items:center;justify-content:space-between;gap:6px">' +
+        '<span class="tile-name">' + t.label + '</span>' +
+        '<button onclick="pinRemove(\'' + id + '\')" style="background:none;border:1px solid var(--border);color:var(--danger);font-size:12px;cursor:pointer;padding:3px 9px;border-radius:3px;line-height:1.4">\u2715</button>' +
         '</div>';
     }
-    return '<button onclick="pinGo(\'' + t.id + '\')" style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:4px;padding:14px 12px;text-align:left;cursor:pointer;font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;color:var(--text)">' +
-      t.label + '</button>';
+    return tileMarkup(id, true);
   }).join('');
 
   var picker = document.getElementById('pinnedPicker');
@@ -1433,12 +3333,10 @@ function pinRemove(id) {
   pinRender();
 }
 
-function pinHide() {
-  ['pinnedWrap','pinnedPicker'].forEach(function(id){
-    var el = document.getElementById(id);
-    if (el) el.remove();
-  });
-}
+// PINNED now lives on Home, not inside the chat transcript, so starting a
+// conversation must leave it alone. Kept as a no-op so the existing call sites
+// in addMessage() and showTyping() stay valid.
+function pinHide() { /* intentionally does nothing — see UX-1 */ }
 
 function pinToggleEdit() {
   pinEditing = !pinEditing;
@@ -1507,45 +3405,13 @@ function switchTab(name, el) {
   var nav = document.getElementById('mnav-' + name);
   if (nav) { nav.classList.add('active'); }
   else if (el) { el.classList.add('active'); }
-  // Close secondary nav if switching to primary tab
-  var primaryTabs = ['chat','wiresizer','conduit','ampacity','boxfill'];
-  if (primaryTabs.indexOf(name) >= 0 && moreNavOpen) {
-    moreNavOpen = false;
-    var primary = document.querySelector('.bottom-nav:not(#secondary-nav)');
-    var secondary = document.getElementById('secondary-nav');
-    if (primary) primary.style.display = 'flex';
-    if (secondary) secondary.style.display = 'none';
-  }
 }
 
-// ── MORE NAV TOGGLE ──────────────────────────────────────
-function toggleMoreNav() {
-  moreNavOpen = !moreNavOpen;
-  var primary = document.querySelector('.bottom-nav:not(#secondary-nav)');
-  var secondary = document.getElementById('secondary-nav');
-  if (moreNavOpen) {
-    if (primary) primary.style.display = 'none';
-    if (secondary) secondary.style.display = 'flex';
-    syncMoreNav();
-  } else {
-    if (primary) primary.style.display = 'flex';
-    if (secondary) secondary.style.display = 'none';
-    document.querySelectorAll('#secondary-nav .nav-item').forEach(function(n){ n.classList.remove('active'); });
-  }
-}
+// The two-row / arrow navigation was removed in UX-1. Home is now the parent
+// section and openTool() is the single routing entry point.
 
 function switchTabMore(name) {
   switchTab('more', null);
-  // Reaching a "more" section from a pinned shortcut has to open the secondary
-  // row too, otherwise the bottom bar shows the primary tabs while a more
-  // section is on screen.
-  if (!moreNavOpen) {
-    var primary = document.querySelector('.bottom-nav:not(#secondary-nav)');
-    var secondary = document.getElementById('secondary-nav');
-    if (primary) primary.style.display = 'none';
-    if (secondary) secondary.style.display = 'flex';
-    moreNavOpen = true;
-  }
   moreTab(name);   // moreTab handles the nav highlight via syncMoreNav
 }
 
@@ -1570,16 +3436,8 @@ function moreTab(name) {
 
 // Keep the secondary bottom nav in step with whichever section is showing,
 // so re-opening it via › lands on a highlighted item rather than a blank row.
-function syncMoreNav() {
-  var onMore = document.getElementById('panel-more');
-  onMore = onMore && onMore.classList.contains('active');
-  document.querySelectorAll('#secondary-nav .nav-item').forEach(function(n){
-    n.classList.remove('active');
-  });
-  if (!onMore) return;
-  var item = document.getElementById('mnav-' + currentMoreTab);
-  if (item) item.classList.add('active');
-}
+// Home owns the highlight for anything opened from Home; openTool() sets it.
+function syncMoreNav() { /* no secondary row since UX-1 */ }
 
 // ── CHAT ─────────────────────────────────────────────────
 var API_KEY = localStorage.getItem('nec_ai_key') || '';
@@ -1962,19 +3820,21 @@ function cfUpdateCalc() {
     cfRenderTable(ct);
   }
 
-  var cdd = CF_AREA[ct] && CF_AREA[ct][cs];
-  var wa = CF_WIRE[wt][ws];
-  var box = document.getElementById('cfResultBox');
-  if (!cdd || !wa) { box.classList.remove('show'); return; }
+  // ── Shared calculation engine — src/calc/conduitFill.js ──
+    // One implementation of Chapter 9 Table 1 and Note 7.
+    var box = document.getElementById('cfResultBox');
+    var __cf = EC.conduitFill.calculateConduitFill({
+      conduitType: ct, conduitSize: cs, wireType: wt, wireSize: ws, numConductors: nw
+    });
+    if (!__cf.ok) { box.classList.remove('show'); return; }
 
-  var fKey = nw===1?'f53':nw===2?'f31':'f40';
-  var fPct = nw===1?53:nw===2?31:40;
-  var avail = cdd[fKey];
-  var used = wa * nw;
-  var pct = (used / cdd.t * 100).toFixed(1);
-  var maxN = Math.floor(avail / wa);
-  var fits = used <= avail;
-  var sc = fits ? 'result-ok' : 'result-over';
+    var fPct  = __cf.fillRulePercent;
+    var avail = __cf.allowedArea;
+    var used  = __cf.usedArea;
+    var pct   = __cf.fillPercentUsed.toFixed(1);
+    var maxN  = __cf.maxConductors;
+    var fits  = __cf.fits;
+    var sc = fits ? 'result-ok' : 'result-over';
   box.classList.toggle('ready', fits);
   box.classList.toggle('fail', !fits);
 
@@ -1982,9 +3842,13 @@ function cfUpdateCalc() {
     '<div class="result-item"><div class="result-item-label">Status</div><div class="result-item-value '+sc+'">'+(fits?'✓ FITS':'✗ OVER')+'</div></div>'+
     '<div class="result-item"><div class="result-item-label">Fill Used</div><div class="result-item-value '+sc+'">'+pct+'%</div></div>'+
     '<div class="result-item"><div class="result-item-label">Max Wires ('+fPct+'% rule)</div><div class="result-item-value result-ok">'+maxN+'</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Each Wire Area</div><div class="result-item-value">'+wa.toFixed(4)+' in²</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Each Wire Area</div><div class="result-item-value">'+__cf.eachWireArea.toFixed(4)+' in²</div></div>'+
     '<div class="result-item"><div class="result-item-label">Total Wire Area</div><div class="result-item-value">'+used.toFixed(4)+' in²</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Allowed Area</div><div class="result-item-value">'+avail.toFixed(4)+' in²</div></div>';
+    '<div class="result-item"><div class="result-item-label">Allowed Area</div><div class="result-item-value">'+avail.toFixed(4)+' in²</div></div>'+
+      (__cf.note7Applied
+        ? '<div class="result-item" style="grid-column:1/-1"><div class="result-item-label">NEC Ch.9 Note 7</div>'+
+          '<div class="result-item-value" style="font-size:12px;color:var(--text-dim)">Calculated '+__cf.maxConductorsRaw.toFixed(2)+' rounds up to '+maxN+' \u2014 decimal is 0.8 or larger and all conductors are the same size.</div></div>'
+        : '');
   box.classList.add('show');
 }
 
@@ -1994,65 +3858,36 @@ cfUpdateCalc();
 
 // ── BOX FILL DATA ────────────────────────────────────────
 // Conductor volume allowances in³ — NEC 314.16(B)(1) Table
-var BF_VOL = { '14':2.00, '12':2.25, '10':2.50, '8':3.00, '6':5.00 };
-
-// Box volumes in³ — NEC Table 314.16(A) + common plastic sizes
-var BF_BOXES = {
-  sq_4x1_25:      { label:'4" Square 1-1/4"',         vol:21.0 },
-  sq_4x1_5:       { label:'4" Square 1-1/2"',         vol:25.5 },
-  sq_4x2_125:     { label:'4" Square 2-1/8"',         vol:30.3 },
-  sq_4_11_16x1_5: { label:'4-11/16" Square 1-1/2"',  vol:42.0 },
-  sq_4_11_16x2_125:{ label:'4-11/16" Square 2-1/8"', vol:60.0 },
-  oct_4x1_25:     { label:'4" Octagon 1-1/4"',        vol:15.5 },
-  oct_4x1_5:      { label:'4" Octagon 1-1/2"',        vol:21.5 },
-  oct_4x2_125:    { label:'4" Octagon 2-1/8"',        vol:30.3 },
-  dev_3x2x1_5:    { label:'Device 3×2×1-1/2"',        vol:7.5  },
-  dev_3x2x2:      { label:'Device 3×2×2"',            vol:10.0 },
-  dev_3x2x2_25:   { label:'Device 3×2×2-1/4"',        vol:10.5 },
-  dev_3x2x2_5:    { label:'Device 3×2×2-1/2"',        vol:12.5 },
-  dev_3x2x2_75:   { label:'Device 3×2×2-3/4"',        vol:14.0 },
-  dev_3x2x3_5:    { label:'Device 3×2×3-1/2"',        vol:18.0 },
-  handy_1_5:      { label:'Handy Box 1-1/2"',          vol:10.3 },
-  handy_1_875:    { label:'Handy Box 1-7/8"',          vol:13.0 },
-  pl_sg_14:       { label:'Plastic 1-Gang 14 cu in',   vol:14.0 },
-  pl_sg_18:       { label:'Plastic 1-Gang 18 cu in',   vol:18.0 },
-  pl_sg_20:       { label:'Plastic 1-Gang 20 cu in',   vol:20.0 },
-  pl_sg_22:       { label:'Plastic 1-Gang 22 cu in',   vol:22.0 },
-  pl_dg_30:       { label:'Plastic 2-Gang 30 cu in',   vol:30.0 },
-  pl_dg_34:       { label:'Plastic 2-Gang 34 cu in',   vol:34.0 },
-  pl_dg_40:       { label:'Plastic 2-Gang 40 cu in',   vol:40.0 },
-  pl_tg_42:       { label:'Plastic 3-Gang 42 cu in',   vol:42.0 },
-  pl_tg_50:       { label:'Plastic 3-Gang 50 cu in',   vol:50.0 },
-  pl_oct_15:      { label:'Plastic Round/Oct 15 cu in',vol:15.0 },
-  pl_oct_20:      { label:'Plastic Round/Oct 20 cu in',vol:20.0 }
-};
+// NEC 314.16 data comes from the injected shared engine — one source.
+var BF_VOL = EC.tables.BF_VOL;
+var BF_BOXES = EC.tables.BF_BOXES;
 
 function bfUpdateCalc() {
+  // ── THIN ADAPTER ─────────────────────────────────────────────────────
+  // Reads the form, builds ONE structured request, calls the shared engine,
+  // renders the structured result. Every 314.16 decision — allowances,
+  // summation, remaining, fill percent, max conductors and the fits verdict —
+  // lives in EC.boxFill.calculateBoxFill. Nothing below re-decides any of it.
   var boxKey    = document.getElementById('bfBoxType').value;
   var wireSize  = document.getElementById('bfWireSize').value;
   var numCond   = parseInt(document.getElementById('bfConductors').value) || 0;
   var numDev    = parseInt(document.getElementById('bfDevices').value) || 0;
-  var hasClamps = parseInt(document.getElementById('bfClamps').value) || 0;
-  var hasEgc    = parseInt(document.getElementById('bfEgc').value) || 0;
-
+  var hasClamps = (parseInt(document.getElementById('bfClamps').value) || 0) > 0;
+  var hasEgc    = (parseInt(document.getElementById('bfEgc').value) || 0) > 0;
   var extVol    = parseFloat(document.getElementById('bfExtension').value) || 0;
-  var box = BF_BOXES[boxKey];
-  var volPerWire = BF_VOL[wireSize];
-  if (!box || !volPerWire) return;
 
-  // NEC 314.16(B) calculation
-  var condVol   = numCond * volPerWire;                    // (B)(1) conductors
-  var devVol    = numDev * 2 * volPerWire;                 // (B)(4) devices = 2×largest
-  var clampVol  = hasClamps * volPerWire;                  // (B)(2) clamps = 1×largest
-  var egcVol    = hasEgc * volPerWire;                     // (B)(5) EGC = 1×largest
-  var totalUsed = condVol + devVol + clampVol + egcVol;
-  var boxVol    = box.vol + extVol;  // NEC 314.16(A)(1) — extension adds volume
-  var remaining = boxVol - totalUsed;
-  var pct       = (totalUsed / boxVol * 100).toFixed(1);
-  var fits      = totalUsed <= boxVol;
-  var maxCond   = Math.floor((boxVol - devVol - clampVol - egcVol) / volPerWire);
-  if (maxCond < 0) maxCond = 0;
+  var r = EC.boxFill.calculateBoxFill({
+    boxKey: boxKey,
+    largestWireSize: wireSize,
+    numConductors: numCond,
+    numDevices: numDev,
+    hasClamps: hasClamps,
+    hasEgc: hasEgc,
+    extensionVolume: extVol
+  });
+  if (!r.ok) return;   // same quiet behavior the panel always had on bad input
 
+  var fits = r.fits;
   var sc = fits ? 'result-ok' : 'result-over';
 
   var bfBox = document.getElementById('bfResultBox');
@@ -2064,28 +3899,29 @@ function bfUpdateCalc() {
   var extLabel = extVol > 0 ? ' (+'+extVol.toFixed(1)+' ext)' : '';
   document.getElementById('bfResultGrid').innerHTML =
     '<div class="result-item"><div class="result-item-label">Status</div><div class="result-item-value '+sc+'">'+(fits?'✓ FITS':'✗ OVER')+'</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Total Volume</div><div class="result-item-value">'+boxVol.toFixed(1)+' in³'+extLabel+'</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Volume Used</div><div class="result-item-value '+sc+'">'+totalUsed.toFixed(2)+' in³</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Remaining</div><div class="result-item-value '+(remaining>=0?'result-ok':'result-over')+'">'+remaining.toFixed(2)+' in³</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Fill %</div><div class="result-item-value '+sc+'">'+pct+'%</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Max #'+wireSize+' Conductors</div><div class="result-item-value result-ok">'+maxCond+'</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Conductors ('+condVol.toFixed(2)+' in³)</div><div class="result-item-value">'+numCond+' × '+volPerWire+'"</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Devices ('+devVol.toFixed(2)+' in³)</div><div class="result-item-value">'+numDev+' × '+(2*volPerWire)+'"</div></div>';
+    '<div class="result-item"><div class="result-item-label">Total Volume</div><div class="result-item-value">'+r.boxVolume.toFixed(1)+' in³'+extLabel+'</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Volume Used</div><div class="result-item-value '+sc+'">'+r.usedVolume.toFixed(2)+' in³</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Remaining</div><div class="result-item-value '+(r.remaining>=0?'result-ok':'result-over')+'">'+r.remaining.toFixed(2)+' in³</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Fill %</div><div class="result-item-value '+sc+'">'+r.fillPercent.toFixed(1)+'%</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Max #'+wireSize+' Conductors</div><div class="result-item-value result-ok">'+r.maxConductors+'</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Conductors ('+r.conductorVolume.toFixed(2)+' in³)</div><div class="result-item-value">'+numCond+' × '+r.volPerWire+'"</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Devices ('+r.deviceVolume.toFixed(2)+' in³)</div><div class="result-item-value">'+numDev+' × '+(2*r.volPerWire)+'"</div></div>';
 }
 
 function bfInitRefTables() {
   // Conductor volume reference table
-  var wires = [
-    {s:'14',v:2.00}, {s:'12',v:2.25}, {s:'10',v:2.50}, {s:'8',v:3.00}, {s:'6',v:5.00}
-  ];
+  // Reference rows come straight from the shared NEC table — no third copy
+  // of the 314.16(B) volumes anywhere in the app.
+  var wireKeys = Object.keys(EC.tables.BF_VOL);
   var tbody = '';
-  for (var i = 0; i < wires.length; i++) {
-    var w = wires[i];
+  for (var i = 0; i < wireKeys.length; i++) {
+    var ws = wireKeys[i];
+    var wv = EC.tables.BF_VOL[ws];
     tbody += '<tr>'+
-      '<td class="wire-col">#'+w.s+' AWG</td>'+
-      '<td class="hi">'+w.v.toFixed(2)+' in³</td>'+
-      '<td>'+(w.v*2).toFixed(2)+' in³</td>'+
-      '<td>'+w.v.toFixed(2)+' in³</td>'+
+      '<td class="wire-col">#'+ws+' AWG</td>'+
+      '<td class="hi">'+wv.toFixed(2)+' in³</td>'+
+      '<td>'+(wv*2).toFixed(2)+' in³</td>'+
+      '<td>'+wv.toFixed(2)+' in³</td>'+
     '</tr>';
   }
   document.getElementById('bfRefTable').innerHTML = tbody;
@@ -2185,34 +4021,19 @@ var AMP_BREAKER_AL = {
 
 // Temp correction factors — NEC Table 310.15(B)(1)
 // ambient°C → {f60, f75, f90}
-var AMP_TEMP_FACTORS = [
-  {f:'10°C / 50°F', f60:1.29, f75:1.20, f90:1.15},
-  {f:'15°C / 59°F', f60:1.22, f75:1.15, f90:1.12},
-  {f:'20°C / 68°F', f60:1.15, f75:1.11, f90:1.08},
-  {f:'25°C / 77°F', f60:1.08, f75:1.05, f90:1.04},
-  {f:'30°C / 86°F', f60:1.00, f75:1.00, f90:1.00},
-  {f:'35°C / 95°F', f60:0.91, f75:0.94, f90:0.96},
-  {f:'40°C / 104°F',f60:0.82, f75:0.88, f90:0.91},
-  {f:'45°C / 113°F',f60:0.71, f75:0.82, f90:0.87},
-  {f:'50°C / 122°F',f60:0.58, f75:0.75, f90:0.82},
-  {f:'55°C / 131°F',f60:0.41, f75:0.67, f90:0.76},
-  {f:'60°C / 140°F',f60:0,    f75:0.58, f90:0.71}
-];
+// Derived from the shared table so the on-screen reference can never drift
+// from the values the calculator actually uses.
+var AMP_TEMP_FACTORS = Object.keys(EC.tables.AMP_TEMP_LOOKUP)
+  .map(function (k) { return parseInt(k, 10); })
+  .sort(function (a, b) { return a - b; })
+  .map(function (k) {
+    var r = EC.tables.AMP_TEMP_LOOKUP[k];
+    return { f: r.band, f60: r.f60, f75: r.f75, f90: r.f90 };
+  });
 
 // Temp correction lookup by ambient°F
-var AMP_TEMP_LOOKUP = {
-  50:  {f60:1.29,f75:1.20,f90:1.15},
-  60:  {f60:1.22,f75:1.15,f90:1.12},
-  70:  {f60:1.15,f75:1.11,f90:1.08},
-  77:  {f60:1.08,f75:1.05,f90:1.04},
-  86:  {f60:1.00,f75:1.00,f90:1.00},
-  95:  {f60:0.91,f75:0.94,f90:0.96},
-  104: {f60:0.82,f75:0.88,f90:0.91},
-  113: {f60:0.71,f75:0.82,f90:0.87},
-  122: {f60:0.58,f75:0.75,f90:0.82},
-  131: {f60:0.41,f75:0.67,f90:0.76},
-  140: {f60:0,   f75:0.58,f90:0.71}
-};
+// Deduplicated — single source of truth is src/calc/tables.js
+var AMP_TEMP_LOOKUP = EC.tables.AMP_TEMP_LOOKUP;
 
 var currentAmpMat = 'cu';
 
@@ -2225,20 +4046,10 @@ function ampSwitchMat(mat, el) {
   ampUpdateCalc();
 }
 
-function ampGetTempFactor(ambF, insulType) {
-  // Find closest temp
-  var keys = [50,60,70,77,86,95,104,113,122,131,140];
-  var closest = keys[0];
-  for (var i = 0; i < keys.length; i++) {
-    if (Math.abs(keys[i] - ambF) < Math.abs(closest - ambF)) closest = keys[i];
-  }
-  var row = AMP_TEMP_LOOKUP[closest];
-  if (!row) return 1.0;
-  if (insulType === 'tw') return row.f60;
-  if (insulType === 'thw') return row.f75;
-  return row.f90; // thhn, xhhw
-}
-
+// Body moved to src/calc/ampacity.js. This shim stays because wsCalc still
+// calls it and Wire Sizer is NOT migrated yet. It delegates to the shared
+// engine's legacy path, so there is one implementation, not two.
+// Delete this shim when Wire Sizer is migrated.
 function ampGetBaseCol(insulType) {
   if (insulType === 'tw') return 't60';
   if (insulType === 'thw') return 't75';
@@ -2298,7 +4109,9 @@ function ampUpdateCalc() {
   var material  = document.getElementById('ampMaterial').value;
   var ambF      = parseInt(document.getElementById('ampTemp').value);
   var bundle    = parseFloat(document.getElementById('ampBundle').value);
-  var sunAdder  = parseInt(document.getElementById('ampSun').value) || 0;
+  var roofOn    = (document.getElementById('ampRoof') || {}).value === 'yes';
+  var roofSun   = (document.getElementById('ampRoofSun') || {}).value !== 'no';
+  var roofClear = parseFloat((document.getElementById('ampRoofClearance') || {}).value);
 
   // Sync table
   if (material !== currentAmpMat) {
@@ -2319,19 +4132,46 @@ function ampUpdateCalc() {
   }
   if (ampBox) { ampBox.classList.remove('fail'); ampBox.classList.add('ready'); }
 
-  var col = ampGetBaseCol(insulType);
-  var baseAmp = row[col];
+  // ── Shared calculation engine — src/calc/ampacity.js ──
+  // True band lookup against the complete NEC 2020 Table 310.15(B)(1).
+  var __amp = EC.ampacity.calculateAmpacity({
+    size: wireSize,
+    material: material,
+    insulation: insulType,
+    ambientF: ambF,
+    rooftop: roofOn ? {
+      onOrAboveRoof: true,
+      directSunlight: roofSun,
+      clearanceInches: isNaN(roofClear) ? 0 : roofClear
+    } : null,
+    adjustmentFactor: bundle,
+    terminalRatingC: insulType === 'tw' ? 60 : 75,
+  });
 
-  // Rooftop adder — add to ambient before correction
-  var effectiveAmbF = ambF + sunAdder;
-  var tempFactor = ampGetTempFactor(effectiveAmbF, insulType);
-  var derated = baseAmp * tempFactor * bundle;
+  if (!__amp.ok) {
+      if (ampBox) { ampBox.classList.remove('ready'); ampBox.classList.add('fail'); }
+      var why = __amp.reason === 'TABLE_FACTOR_UNAVAILABLE_FOR_RATING'
+        ? ('No correction factor is provided in Table 310.15(B)(1) for this '
+           + __amp.conductorRatingC + '\u00B0C conductor at '
+           + __amp.effectiveAmbientF + '\u00B0F (' + __amp.temperatureBand + ')')
+        : ('Ambient ' + __amp.effectiveAmbientF
+           + '\u00B0F is above the range of NEC Table 310.15(B)(1)');
+      document.getElementById('ampResultGrid').innerHTML =
+        '<div class="result-item"><div class="result-item-label">No Table Factor</div>' +
+        '<div class="result-item-value result-over" style="font-size:13px">' + why + '</div></div>';
+      return;
+    }
 
-  // Terminal limit — most equipment is 75°C rated
-  // Per NEC 110.14(C): use 60°C column for equipment ≤100A, 75°C for >100A
+    var col = ampGetBaseCol(insulType);
+  var baseAmp = __amp.baseAmpacity;
+  var effectiveAmbF = __amp.effectiveAmbientF;
+  var tempFactor = __amp.correctionFactor;
+  var derated = __amp.afterAdjustment;
   var termLimit60 = row.t60;
   var termLimit75 = row.t75;
-  var finalAmp = Math.floor(Math.min(derated, insulType === 'tw' ? termLimit60 : termLimit75));
+  // Floor the RAW value, not the rounded one — preserves pre-migration
+  // results exactly where IEEE-754 rounding differs by 1 A (P1-9).
+  var finalAmp = Math.floor(__amp.finalAmpacityRaw);
   window.ampFinalAmp = finalAmp;
   // Store typical field use as number for V-Drop
   var material = document.getElementById('ampMaterial').value;
@@ -2356,15 +4196,26 @@ function ampUpdateCalc() {
       breaker = standardBreakers.filter(function(b){ return b >= finalAmp; })[0] || finalAmp;
     }
     // But still respect NEC 240.4(D) for small conductors
-    var maxSmall = {'14':15,'12':20,'10':30};
-    if (maxSmall[wireSize]) breaker = maxSmall[wireSize];
+    // NEC 240.4(D) — one implementation, in the shared engine, and
+    // material-aware: #12 Al is capped at 15 A, not 20 A like copper.
+    var smallCap = EC.ampacity.smallConductorOcpdLimit(wireSize, material);
+    if (smallCap !== null && breaker > smallCap) breaker = smallCap;
     breakerStr = breaker + 'A';
   }
 
   // Add note about breaker selection
   var breakerNote = isDerating ? ' (derated — protect at or below)' : ' (NEC 240.4(B))';
   var tempFactorStr = tempFactor.toFixed(2);
-  var sunStr = sunAdder > 0 ? ' +'+sunAdder+'°F rooftop adder → '+effectiveAmbF+'°F effective' : '';
+  var ROOF_WHY = {
+    NOT_ON_ROOF: '', NO_DIRECT_SUNLIGHT: 'no direct sunlight',
+    CLEARANCE_AT_OR_ABOVE_MINIMUM: 'clearance 7/8\" or more',
+    XHHW2_EXCEPTION: 'XHHW-2 excepted', CLEARANCE_UNKNOWN: 'clearance not given'
+  };
+  var sunStr = __amp.rooftopAdjustmentApplied
+    ? ' +' + __amp.rooftopAdderF + '°F rooftop adder → ' + effectiveAmbF + '°F effective'
+    : (roofOn && ROOF_WHY[__amp.rooftopAdjustmentReason]
+        ? ' rooftop adder not applied — ' + ROOF_WHY[__amp.rooftopAdjustmentReason]
+        : '');
 
   document.getElementById('ampResultGrid').innerHTML =
     '<div class="result-item"><div class="result-item-label">Base Ampacity ('+col.replace('t','')+'°C)</div><div class="result-item-value hi">'+baseAmp+'A</div></div>'+
@@ -2413,12 +4264,15 @@ function ampRenderTempTable() {
   var tbody = '';
   for (var i = 0; i < AMP_TEMP_FACTORS.length; i++) {
     var r = AMP_TEMP_FACTORS[i];
-    var isStd = r.f === '30°C / 86°F';
+      var isStd = r.f.indexOf('26-30') === 0;
+      // null = no factor published for that conductor rating in this band.
+      // Render an em dash, never 0.00 which would read as 'zero amps'.
+      var cell = function (v) { return (v === null || v === undefined) ? '\u2014' : v.toFixed(2); };
     tbody += '<tr>'+
       '<td class="wire-col">'+(isStd?'<strong>':'')+r.f+(isStd?' (standard)':'')+(isStd?'</strong>':'')+'</td>'+
-      '<td>'+(r.f60>0?r.f60.toFixed(2):'—')+'</td>'+
-      '<td>'+r.f75.toFixed(2)+'</td>'+
-      '<td class="hi">'+r.f90.toFixed(2)+'</td>'+
+        '<td>'+cell(r.f60)+'</td>'+
+        '<td>'+cell(r.f75)+'</td>'+
+        '<td class="hi">'+cell(r.f90)+'</td>'+
     '</tr>';
   }
   document.getElementById('ampTempTable').innerHTML = tbody;
@@ -2431,37 +4285,20 @@ ampUpdateCalc();
 
 // ── VOLTAGE DROP DATA ─────────────────────────────────────
 // Circular mils — NEC Chapter 9 Table 8
-var VD_CM = {
-  '14':   4110,   '12':   6530,   '10':  10380,  '8':   16510,
-  '6':   26240,   '4':   41740,   '3':   52620,  '2':   66360,
-  '1':   83690,   '1/0': 105600,  '2/0': 133100, '3/0': 167800,
-  '4/0': 211600,  '250': 250000,  '300': 300000, '350': 350000,
-  '400': 400000,  '500': 500000,  '600': 600000, '700': 700000,
-  '750': 750000
-};
+// Voltage-drop data comes from the injected shared engine — one source.
 
-var VD_SIZES = [
-  {k:'14',l:'#14 AWG'},{k:'12',l:'#12 AWG'},{k:'10',l:'#10 AWG'},
-  {k:'8',l:'#8 AWG'},{k:'6',l:'#6 AWG'},{k:'4',l:'#4 AWG'},
-  {k:'3',l:'#3 AWG'},{k:'2',l:'#2 AWG'},{k:'1',l:'#1 AWG'},
-  {k:'1/0',l:'1/0 AWG'},{k:'2/0',l:'2/0 AWG'},{k:'3/0',l:'3/0 AWG'},
-  {k:'4/0',l:'4/0 AWG'},{k:'250',l:'250 kcmil'},{k:'300',l:'300 kcmil'},
-  {k:'350',l:'350 kcmil'},{k:'400',l:'400 kcmil'},{k:'500',l:'500 kcmil'},
-  {k:'600',l:'600 kcmil'},{k:'700',l:'700 kcmil'},{k:'750',l:'750 kcmil'}
-];
-
-// K constants
-var VD_K = { cu: 12.9, al: 21.2 };
-
-function vdCalcDrop(amps, feet, voltage, phase, material, cm) {
-  var K = VD_K[material];
-  var multiplier = phase === '3' ? 1.732 : 2;
-  var vDrop = (multiplier * K * amps * feet) / cm;
-  var pct = (vDrop / voltage) * 100;
-  return { vDrop: vDrop, pct: pct };
+function vdLabel(s) {
+  if (s.indexOf('/') >= 0) return s + ' AWG';
+  return parseInt(s) >= 250 ? s + ' kcmil' : '#' + s + ' AWG';
 }
 
 function vdUpdateCalc() {
+  // ── THIN ADAPTER ─────────────────────────────────────────────────────
+  // Reads the form, builds ONE structured request, calls the shared engine,
+  // renders the structured result. Every voltage-drop decision — the drop
+  // formula, phase multiplier, K constant, circular mils, the minimum-CM
+  // requirement, the 75\u00B0C ampacity check and the joint recommendation —
+  // lives in EC.voltageDrop.analyzeVoltageDrop. Nothing below re-decides any.
   var amps    = parseFloat(document.getElementById('vdAmps').value) || 0;
   var feet    = parseFloat(document.getElementById('vdFeet').value) || 0;
   var voltage = parseFloat(document.getElementById('vdVoltage').value);
@@ -2469,82 +4306,57 @@ function vdUpdateCalc() {
   var mat     = document.getElementById('vdMaterial').value;
   var maxPct  = parseFloat(document.getElementById('vdMaxPct').value);
 
-  if (!amps || !feet) return;
+  var r = EC.voltageDrop.analyzeVoltageDrop({
+    amps: amps,
+    feet: feet,
+    voltage: voltage,
+    phase: parseInt(phase, 10),
+    material: mat,
+    maxPercent: maxPct
+  });
+  if (!r.ok) return;   // same quiet behavior the panel always had on bad input
 
-  var K = VD_K[mat];
-  var multiplier = phase === '3' ? 1.732 : 2;
-  var maxVDrop = voltage * (maxPct / 100);
-
-  // Ampacity lookup for VD table (75°C column)
-  var VD_AMP_CU = {'14':20,'12':25,'10':35,'8':50,'6':65,'4':85,'3':100,'2':115,'1':130,'1/0':150,'2/0':175,'3/0':200,'4/0':230,'250':255,'300':285,'350':310,'400':335,'500':380,'600':420,'700':460,'750':475};
-  var VD_AMP_AL = {'12':20,'10':30,'8':40,'6':50,'4':65,'3':75,'2':90,'1':100,'1/0':120,'2/0':135,'3/0':155,'4/0':180,'250':205,'300':230,'350':250,'400':270,'500':310,'600':340,'700':375,'750':385};
-  var ampTable = mat === 'cu' ? VD_AMP_CU : VD_AMP_AL;
-
-  // Find minimum size that meets BOTH voltage drop AND ampacity
-  var minSize = null;
-  var minCM = (multiplier * K * amps * feet) / maxVDrop;
-
-  for (var i = 0; i < VD_SIZES.length; i++) {
-    var cm = VD_CM[VD_SIZES[i].k];
-    var wireAmp = ampTable[VD_SIZES[i].k] || 0;
-    if (cm >= minCM && wireAmp >= amps) {
-      minSize = VD_SIZES[i];
-      break;
-    }
-  }
-
-  // Calculate for recommended size
-  var recResult = minSize ? vdCalcDrop(amps, feet, voltage, phase, mat, VD_CM[minSize.k]) : null;
-
-  var sc = minSize ? 'result-ok' : 'result-over';
-  var sizeLabel = minSize ? minSize.l : 'NONE — run parallel';
-  var dropLabel = recResult ? recResult.vDrop.toFixed(2)+'V ('+recResult.pct.toFixed(2)+'%)' : '—';
-  var voltAtLoad = recResult ? (voltage - recResult.vDrop).toFixed(1)+'V' : '—';
+  var rec = r.recommended;
+  var sc = rec ? 'result-ok' : 'result-over';
+  var sizeLabel = rec ? vdLabel(rec.size) : 'NONE \u2014 run parallel';
+  var dropLabel = rec ? rec.voltageDrop.toFixed(2)+'V ('+rec.percentDrop.toFixed(2)+'%)' : '\u2014';
+  var voltAtLoad = rec ? rec.voltageAtLoad.toFixed(1)+'V' : '\u2014';
 
   document.getElementById('vdResultGrid').innerHTML =
     '<div class="result-item"><div class="result-item-label">Min Wire Size</div><div class="result-item-value '+sc+'" style="font-size:22px">'+sizeLabel+'</div></div>'+
     '<div class="result-item"><div class="result-item-label">Voltage Drop</div><div class="result-item-value result-ok">'+dropLabel+'</div></div>'+
     '<div class="result-item"><div class="result-item-label">Voltage at Load</div><div class="result-item-value result-ok">'+voltAtLoad+'</div></div>'+
-    '<div class="result-item"><div class="result-item-label">Min CM Required</div><div class="result-item-value">'+Math.ceil(minCM).toLocaleString()+' CM</div></div>'+
+    '<div class="result-item"><div class="result-item-label">Min CM Required</div><div class="result-item-value">'+r.minCircularMils.toLocaleString()+' CM</div></div>'+
     '<div class="result-item"><div class="result-item-label">Load</div><div class="result-item-value">'+amps+'A @ '+voltage+'V</div></div>'+
     '<div class="result-item"><div class="result-item-label">Distance</div><div class="result-item-value">'+feet+' ft ('+Math.round(feet*2)+' ft total)</div></div>';
 
-  // Build comparison table
   document.getElementById('vdTableTitle').textContent =
-    'WIRE SIZE COMPARISON — ' + amps + 'A @ ' + voltage + 'V, ' + feet + 'ft, ' + (mat==='cu'?'Copper':'Aluminum');
+    'WIRE SIZE COMPARISON \u2014 ' + amps + 'A @ ' + voltage + 'V, ' + feet + 'ft, ' + (mat==='cu'?'Copper':'Aluminum');
 
   var tbody = '';
-  for (var j = 0; j < VD_SIZES.length; j++) {
-    var sz = VD_SIZES[j];
-    var cm = VD_CM[sz.k];
-    var res = vdCalcDrop(amps, feet, voltage, phase, mat, cm);
-    var vd = res.vDrop;
-    var pct = res.pct;
-    var vAtLoad = voltage - vd;
-    var wireAmp = ampTable[sz.k] || 0;
-    var ampOK = wireAmp >= amps;
-    var isRec = minSize && sz.k === minSize.k;
-    var passes = pct <= maxPct;
+  for (var j = 0; j < r.rows.length; j++) {
+    var row = r.rows[j];
     var statusColor, statusText;
-    if (!ampOK) {
+    if (!row.ampacityOK) {
       statusColor = 'var(--danger)';
-      statusText = '✗ AMPACITY';
-    } else if (passes) {
+      statusText = '\u2717 AMPACITY';
+    } else if (row.passesVdTarget) {
       statusColor = 'var(--success)';
-      statusText = '✓ OK';
+      statusText = '\u2713 OK';
     } else {
       statusColor = 'var(--danger)';
-      statusText = '✗ VD OVER';
+      statusText = '\u2717 VD OVER';
     }
-    var pctColor = !ampOK ? 'var(--danger)' : pct <= 3 ? 'var(--success)' : pct <= 5 ? 'var(--warn)' : 'var(--danger)';
-    var isHighlight = !isRec && window.vdHighlightSize && sz.k === window.vdHighlightSize;
-    var rowStyle = isRec ? ' style="background:rgba(255,199,0,0.08);border-left:3px solid var(--accent)"' : (isHighlight ? ' style="background:rgba(74,158,255,0.08);border-left:3px solid var(--nycec)"' : (!ampOK ? ' style="opacity:0.4"' : ''));
+    var pctColor = !row.ampacityOK ? 'var(--danger)' : row.percentDrop <= 3 ? 'var(--success)' : row.percentDrop <= 5 ? 'var(--warn)' : 'var(--danger)';
+    var isRec = row.isRecommended;
+    var isHighlight = !isRec && window.vdHighlightSize && row.size === window.vdHighlightSize;
+    var rowStyle = isRec ? ' style="background:rgba(255,199,0,0.08);border-left:3px solid var(--accent)"' : (isHighlight ? ' style="background:rgba(74,158,255,0.08);border-left:3px solid var(--nycec)"' : (!row.ampacityOK ? ' style="opacity:0.4"' : ''));
     tbody += '<tr'+rowStyle+'>'+
-      '<td class="wire-col">'+(isRec?'★ ':'')+(isHighlight?'→ ':'')+sz.l+(isRec?' ← RECOMMENDED':'')+(isHighlight?' ← FROM FILL CALC':'')+'</td>'+
-      '<td>'+cm.toLocaleString()+' CM</td>'+
-      '<td>'+vd.toFixed(2)+'V</td>'+
-      '<td style="color:'+pctColor+';font-weight:'+(pct<=maxPct?'600':'400')+'">'+pct.toFixed(2)+'%</td>'+
-      '<td>'+vAtLoad.toFixed(1)+'V</td>'+
+      '<td class="wire-col">'+(isRec?'\u2605 ':'')+(isHighlight?'\u2192 ':'')+vdLabel(row.size)+(isRec?' \u2190 RECOMMENDED':'')+(isHighlight?' \u2190 FROM FILL CALC':'')+'</td>'+
+      '<td>'+row.circularMils.toLocaleString()+' CM</td>'+
+      '<td>'+row.voltageDrop.toFixed(2)+'V</td>'+
+      '<td style="color:'+pctColor+';font-weight:'+(row.passesVdTarget?'600':'400')+'">'+row.percentDrop.toFixed(2)+'%</td>'+
+      '<td>'+row.voltageAtLoad.toFixed(1)+'V</td>'+
       '<td style="color:'+statusColor+';font-weight:600">'+statusText+'</td>'+
     '</tr>';
   }
@@ -3981,7 +5793,9 @@ function favGetValues(type) {
     material: document.getElementById('ampMaterial').value,
     temp: document.getElementById('ampTemp').value,
     bundle: document.getElementById('ampBundle').value,
-    sun: document.getElementById('ampSun').value
+    roof: (document.getElementById('ampRoof') || {}).value,
+    roofSun: (document.getElementById('ampRoofSun') || {}).value,
+    roofClearance: (document.getElementById('ampRoofClearance') || {}).value
   };
   if (type === 'cf') return {
     conduitType: document.getElementById('cfConduitType').value,
@@ -4024,7 +5838,10 @@ function favSetValues(type, vals) {
     if (vals.material) document.getElementById('ampMaterial').value = vals.material;
     if (vals.temp) document.getElementById('ampTemp').value = vals.temp;
     document.getElementById('ampBundle').value = vals.bundle || '1.00';
-    document.getElementById('ampSun').value = vals.sun || '0';
+    if (document.getElementById('ampRoof')) document.getElementById('ampRoof').value = vals.roof || 'no';
+    if (document.getElementById('ampRoofSun')) document.getElementById('ampRoofSun').value = vals.roofSun || 'yes';
+    if (document.getElementById('ampRoofClearance')) document.getElementById('ampRoofClearance').value = vals.roofClearance || '0.5';
+    if (typeof ampRoofChanged === 'function') ampRoofChanged();
     ampUpdateCalc();
   } else if (type === 'cf') {
     document.getElementById('cfConduitType').value = vals.conduitType || 'emt';
@@ -4355,13 +6172,25 @@ function bfReset() {
   document.getElementById('bfExtension').value = '0';
   bfUpdateCalc();
 }
+function ampRoofChanged() {
+  var on = document.getElementById('ampRoof').value === 'yes';
+  ['ampRoofSunWrap', 'ampRoofClearWrap'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = on ? '' : 'none';
+  });
+  ampUpdateCalc();
+}
+
 function ampReset() {
   document.getElementById('ampWireSize').selectedIndex = 0;
   document.getElementById('ampInsul').value = 'thhn';
   document.getElementById('ampMaterial').value = 'cu';
   document.getElementById('ampTemp').value = '86';
   document.getElementById('ampBundle').value = '1.00';
-  document.getElementById('ampSun').value = '0';
+  document.getElementById('ampRoof').value = 'no';
+  if (document.getElementById('ampRoofSun')) document.getElementById('ampRoofSun').value = 'yes';
+  if (document.getElementById('ampRoofClearance')) document.getElementById('ampRoofClearance').value = '0.5';
+  ampRoofChanged();
   ampUpdateCalc();
 }
 function vdReset() {
@@ -4405,48 +6234,18 @@ var cvUpdating = false;
 // branch-circuit protection; the nameplate is used only for overload (430.32).
 
 // Table 430.248 — single-phase, full-load current (A)
-var MT_FLC_1PH = {
-  '1/6':[4.4,2.5,2.4,2.2], '1/4':[5.8,3.3,3.2,2.9], '1/3':[7.2,4.1,4.0,3.6],
-  '1/2':[9.8,5.6,5.4,4.9], '3/4':[13.8,7.9,7.6,6.9], '1':[16,9.2,8.8,8.0],
-  '1.5':[20,11.5,11.0,10], '2':[24,13.8,13.2,12], '3':[34,19.6,18.7,17],
-  '5':[56,32.2,30.8,28], '7.5':[80,46.0,44.0,40], '10':[100,57.5,55.0,50]
-};
-var MT_V_1PH = ['115','200','208','230'];
-
-// Table 430.250 — three-phase, induction squirrel cage / wound rotor (A)
-var MT_FLC_3PH = {
-  '1/2':[4.4,2.5,2.4,2.2,1.1,0.9], '3/4':[6.4,3.7,3.5,3.2,1.6,1.3],
-  '1':[8.4,4.8,4.6,4.2,2.1,1.7],   '1.5':[12,6.9,6.6,6,3,2.4],
-  '2':[13.6,7.8,7.5,6.8,3.4,2.7],  '3':[null,11,10.6,9.6,4.8,3.9],
-  '5':[null,17.5,16.7,15.2,7.6,6.1],'7.5':[null,25.3,24.2,22,11,9],
-  '10':[null,32.2,30.8,28,14,11],  '15':[null,48.3,46.2,42,21,17],
-  '20':[null,62.1,59.4,54,27,22],  '25':[null,78.2,74.8,68,34,27],
-  '30':[null,92,88,80,40,32],      '40':[null,120,114,104,52,41],
-  '50':[null,150,143,130,65,52],   '60':[null,177,169,154,77,62],
-  '75':[null,221,211,192,96,77],   '100':[null,285,273,248,124,99],
-  '125':[null,359,343,312,156,125],'150':[null,414,396,360,180,144],
-  '200':[null,552,528,480,240,192]
-};
-var MT_V_3PH = ['115','200','208','230','460','575'];
-
-// Table 430.52 — max % of FLC by device type
-var MT_PCT = {
-  designB: { nontd:300, dual:175, inst:1100, inverse:250 },
-  other:   { nontd:300, dual:175, inst:800,  inverse:250 },
-  wound:   { nontd:150, dual:150, inst:800,  inverse:150 },
-  dc:      { nontd:150, dual:150, inst:250,  inverse:150 }
-};
+// Article 430 data comes from the injected shared engine — one source.
+// The selects are populated from these tables, so which HP/voltage
+// combinations exist is decided by the same data the engine computes from.
+var MT_FLC_1PH = EC.tables.MT_FLC_1PH;
+var MT_V_1PH = EC.tables.MT_V_1PH;
+var MT_FLC_3PH = EC.tables.MT_FLC_3PH;
+var MT_V_3PH = EC.tables.MT_V_3PH;
 var MT_OCPD_LABEL = { nontd:'Non-time-delay fuse', dual:'Dual element (time delay) fuse',
                       inst:'Instantaneous trip breaker', inverse:'Inverse time breaker' };
 
 // NEC 240.6(A) standard ampere ratings
-var MT_STD = [15,20,25,30,35,40,45,50,60,70,80,90,100,110,125,150,175,200,225,250,
-              300,350,400,450,500,600,700,800,1000,1200,1600,2000,2500,3000,4000,5000,6000];
 
-function mtNextStd(x) {
-  for (var i = 0; i < MT_STD.length; i++) if (MT_STD[i] >= x) return MT_STD[i];
-  return null;
-}
 
 function mtInit() {
   if (!document.getElementById('mt-phase')) return;
@@ -4491,6 +6290,12 @@ function mtRow(label, value, note, strong) {
 }
 
 function mtCalc() {
+  // ── THIN ADAPTER ─────────────────────────────────────────────────────
+  // Reads the form, builds ONE structured request, calls the shared engine,
+  // renders the structured result. Every Article 430 decision — table FLC,
+  // the 430.22 conductor requirement and size, the 430.52 percentage and
+  // next-standard device, the 430.110 disconnect and the 430.32 overload —
+  // lives in EC.motor.calculateMotorCircuit. Nothing below re-decides any.
   var res = document.getElementById('mt-result');
   if (!res) return;
   var note = document.getElementById('mt-note');
@@ -4500,70 +6305,56 @@ function mtCalc() {
   var hp    = document.getElementById('mt-hp').value;
   var type  = document.getElementById('mt-type').value;
   var dev   = document.getElementById('mt-ocpd').value;
+  var np    = parseFloat(document.getElementById('mt-nameplate').value);
+  var sf    = parseFloat(document.getElementById('mt-sf').value) || 1.25;
 
-  var vList = ph === '1' ? MT_V_1PH : MT_V_3PH;
-  var table = ph === '1' ? MT_FLC_1PH : MT_FLC_3PH;
-  var row = table[hp];
-  var flc = row ? row[vList.indexOf(volts)] : null;
+  var r = EC.motor.calculateMotorCircuit({
+    hp: hp,
+    volts: volts,
+    phase: parseInt(ph, 10),
+    motorType: type,
+    ocpdType: dev,
+    nameplateFLA: isNaN(np) ? null : np,
+    serviceFactorMultiplier: sf
+  });
 
-  if (flc === null || flc === undefined) {
+  if (!r.ok) {
     res.innerHTML = mtRow('Not listed', '\u2014', hp + ' HP at ' + volts + 'V is not in the NEC table for this phase');
     if (note) note.textContent = 'Pick a different voltage or horsepower — this combination has no table entry.';
     return;
   }
 
-  // Conductors — NEC 430.22, 125% of TABLE full-load current
-  var minAmp = flc * 1.25;
-  var wire = null;
-  if (typeof AMP_CU !== 'undefined') {
-    var sizes = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0',
-                 '250','300','350','400','500','600','700','750'];
-    for (var i = 0; i < sizes.length; i++) {
-      var r = AMP_CU[sizes[i]];
-      if (r && r.t75 >= minAmp) { wire = sizes[i]; break; }
-    }
-  }
-  var wireLbl = wire ? (wire.indexOf('/') >= 0 ? wire + ' AWG'
-                        : (parseInt(wire) >= 250 ? wire + ' kcmil' : '#' + wire + ' AWG'))
-                     : 'parallel run needed';
-
-  // Branch-circuit short-circuit / ground-fault — NEC 430.52
-  var pct = MT_PCT[type][dev];
-  var raw = flc * pct / 100;
-  var std = mtNextStd(raw);
-
-  // Disconnect — NEC 430.110, at least 115% of FLC
-  var disc = mtNextStd(flc * 1.15);
+  var wireLbl = r.conductorSize
+    ? (r.conductorSize.indexOf('/') >= 0 ? r.conductorSize + ' AWG'
+        : (parseInt(r.conductorSize) >= 250 ? r.conductorSize + ' kcmil' : '#' + r.conductorSize + ' AWG'))
+    : 'parallel run needed';
 
   var html = '';
-  html += mtRow('Table FLC', flc + ' A',
-    (ph === '1' ? 'NEC Table 430.248' : 'NEC Table 430.250') + ' \u2014 ' + hp + ' HP @ ' + volts + 'V', true);
-  html += mtRow('Min conductor ampacity', minAmp.toFixed(1) + ' A', 'NEC 430.22 \u2014 125% of table FLC');
+  html += mtRow('Table FLC', r.tableFLC + ' A',
+    r.tableRef + ' \u2014 ' + hp + ' HP @ ' + volts + 'V', true);
+  html += mtRow('Min conductor ampacity', r.minConductorAmpacity.toFixed(1) + ' A', 'NEC 430.22 \u2014 125% of table FLC');
   html += mtRow('Conductor size', wireLbl, 'Copper at 75\u00B0C, before any derating');
-  html += mtRow('Max ' + MT_OCPD_LABEL[dev].toLowerCase(), raw.toFixed(1) + ' A',
-    'NEC Table 430.52 \u2014 ' + pct + '% of FLC');
-  html += mtRow('Next standard size', std ? std + ' A' : 'above 6000 A',
+  html += mtRow('Max ' + MT_OCPD_LABEL[dev].toLowerCase(), r.maxProtection.toFixed(1) + ' A',
+    'NEC Table 430.52 \u2014 ' + r.protectionPercent + '% of FLC');
+  html += mtRow('Next standard size', r.standardProtection ? r.standardProtection + ' A' : 'above 6000 A',
     'NEC 240.6(A) \u2014 430.52(C)(1) Ex.1 permits rounding up', true);
-  html += mtRow('Disconnect rating', disc + ' A min', 'NEC 430.110 \u2014 at least 115% of FLC');
+  html += mtRow('Disconnect rating', r.disconnectRating + ' A min', 'NEC 430.110 \u2014 at least 115% of FLC');
 
-  var np = parseFloat(document.getElementById('mt-nameplate').value);
-  var sf = parseFloat(document.getElementById('mt-sf').value);
-  if (!isNaN(np) && np > 0) {
-    var ol = np * sf;
-    html += mtRow('Overload setting', ol.toFixed(1) + ' A max',
-      'NEC 430.32 \u2014 ' + Math.round(sf * 100) + '% of NAMEPLATE ' + np + ' A, not the table', true);
+  if (r.nameplateProvided) {
+    html += mtRow('Overload setting', r.overloadMax.toFixed(1) + ' A max',
+      'NEC 430.32 \u2014 ' + r.overloadPercentApplied + '% of NAMEPLATE ' + np + ' A, not the table', true);
   } else {
     html += mtRow('Overload setting', 'enter nameplate FLA', 'NEC 430.32 uses the nameplate, not the table');
   }
 
   res.innerHTML = html;
 
-  var tip = 'Conductors and the breaker come from the table value (' + flc + ' A). ';
-  if (!isNaN(np) && np > 0 && Math.abs(np - flc) > 0.05) {
+  var tip = 'Conductors and the breaker come from the table value (' + r.tableFLC + ' A). ';
+  if (r.nameplateDiffersFromTable) {
     tip += 'Your nameplate reads ' + np + ' A — that difference is expected and correct: ' +
            'the table figure sizes the wire and breaker, the nameplate sizes the overload. ';
   }
-  tip += 'If the ' + MT_OCPD_LABEL[dev].toLowerCase() + ' at ' + (std || raw.toFixed(0)) +
+  tip += 'If the ' + MT_OCPD_LABEL[dev].toLowerCase() + ' at ' + (r.standardProtection || r.maxProtection.toFixed(0)) +
          ' A will not let the motor start, 430.52(C) Exception 2 allows going higher — ' +
          'up to 400% (inverse time \u2264100 A), 225% (dual element) or 300% (non-time-delay).';
   if (note) note.innerHTML = tip +
@@ -5320,36 +7111,9 @@ var GROUNDING_DATA = {
 // says which is which.
 
 // Table 250.122 — [OCPD not exceeding, Cu, Al]
-var GND_EGC = [
-  [15,'14','12'], [20,'12','10'], [60,'10','8'], [100,'8','6'], [200,'6','4'],
-  [300,'4','2'], [400,'3','1'], [500,'2','1/0'], [600,'1','2/0'], [800,'1/0','3/0'],
-  [1000,'2/0','4/0'], [1200,'3/0','250'], [1600,'4/0','350'], [2000,'250','400'],
-  [2500,'350','600'], [3000,'400','600'], [4000,'500','750'], [5000,'700','1200'],
-  [6000,'800','1250']
-];
-
-// circular mils for every size used here (self-contained so the two tables
-// can't drift if VD_CM is ever edited)
-var GND_CM = {
-  '14':4110,'12':6530,'10':10380,'8':16510,'6':26240,'4':41740,'3':52620,'2':66360,
-  '1':83690,'1/0':105600,'2/0':133100,'3/0':167800,'4/0':211600,'250':250000,
-  '300':300000,'350':350000,'400':400000,'500':500000,'600':600000,'700':700000,
-  '750':750000,'900':900000,'1000':1000000,'1100':1100000,'1200':1200000,
-  '1250':1250000,'1750':1750000
-};
-
-// Table 250.66 — [max service-conductor cmil, GEC Cu, GEC Al]
-var GND_GEC_CU = [
-  [66360,'8','6'], [105600,'6','4'], [167800,'4','2'], [350000,'2','1/0'],
-  [600000,'1/0','3/0'], [1100000,'2/0','4/0'], [Infinity,'3/0','250']
-];
-var GND_GEC_AL = [
-  [105600,'8','6'], [167800,'6','4'], [250000,'4','2'], [500000,'2','1/0'],
-  [900000,'1/0','3/0'], [1750000,'2/0','4/0'], [Infinity,'3/0','250']
-];
-
-var GND_SIZES = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0',
-                 '250','300','350','400','500','600','700','750'];
+// Article 250 data comes from the injected shared engine — one source.
+// The size selects are populated from the same table the engine sizes from.
+var GND_SIZES = EC.tables.GND_SIZES;
 
 function gndLabel(s) {
   if (!s) return '\u2014';
@@ -5422,64 +7186,68 @@ function gndRow(label, value, note, color) {
 }
 
 function gndCalc() {
+  // ── THIN ADAPTER ─────────────────────────────────────────────────────
+  // Reads the form, builds ONE structured request, calls the shared engine,
+  // renders the structured result. Every Article 250 decision — the Table
+  // 250.122 EGC row, the 250.122(B) proportional upsize, the Table 250.66
+  // GEC row and the 250.66(A)/(B)/(C) electrode caps — lives in
+  // EC.grounding.calculateGrounding. Nothing below re-decides any of it.
   if (!document.getElementById('gnd-ocpd')) return;
 
-  // ── EGC, Table 250.122 ──────────────────────────────────
   var ocpd = parseFloat(document.getElementById('gnd-ocpd').value);
   var eMat = document.getElementById('gnd-egc-mat').value;
-  var base = null;
-  for (var i = 0; i < GND_EGC.length; i++) {
-    if (ocpd <= GND_EGC[i][0]) { base = eMat === 'cu' ? GND_EGC[i][1] : GND_EGC[i][2]; break; }
-  }
-
   var req  = document.getElementById('gnd-req').value;
   var inst = document.getElementById('gnd-inst').value;
-  var ratio = GND_CM[inst] / GND_CM[req];
-  var html = gndRow('Base EGC', gndLabel(base), 'Table 250.122 \u2014 from the ' + ocpd + ' A device', 'var(--success)');
+  var svc  = document.getElementById('gnd-svc').value;
+  var sMat = document.getElementById('gnd-svc-mat').value;
+  var elec = document.getElementById('gnd-electrode').value;
 
-  var finalEgc = base;
-  if (ratio > 1.0001) {
-    // 250.122(B): phase conductors upsized -> EGC increases by the same ratio
-    var need = GND_CM[base] * ratio;
-    for (var j = 0; j < GND_SIZES.length; j++) {
-      if (GND_CM[GND_SIZES[j]] >= need) { finalEgc = GND_SIZES[j]; break; }
+  var r = EC.grounding.calculateGrounding({
+    ocpdRating: ocpd,
+    egcMaterial: eMat,
+    requiredPhaseSize: req,
+    installedPhaseSize: inst,
+    serviceSize: svc,
+    serviceMaterial: sMat,
+    electrode: elec
+  });
+  if (!r.ok) return;   // selects constrain every input; stay quiet like always
+
+  // ── EGC, Table 250.122 ──────────────────────────────────
+  var egc = r.egc;
+  var html = gndRow('Base EGC', gndLabel(egc.baseSize), egc.tableReference + ' \u2014 from the ' + ocpd + ' A device', 'var(--success)');
+  if (egc.upsizeApplied) {
+    html += gndRow('Upsize ratio', '\u00D7 ' + egc.ratio.toFixed(2), gndLabel(req) + ' \u2192 ' + gndLabel(inst) + ' by circular mils');
+    if (egc.exceedsAvailableSizes) {
+      html += gndRow('EGC after upsize', 'exceeds table', egc.rule + ' \u2014 required EGC area exceeds the largest conductor size supported by this calculator; review the applicable grounding design requirements', 'var(--danger)');
+    } else {
+      html += gndRow('EGC after upsize', gndLabel(egc.finalSize), egc.rule + ' \u2014 proportional increase required', 'var(--success)');
     }
-    html += gndRow('Upsize ratio', '\u00D7 ' + ratio.toFixed(2), gndLabel(req) + ' \u2192 ' + gndLabel(inst) + ' by circular mils');
-    html += gndRow('EGC after upsize', gndLabel(finalEgc), 'NEC 250.122(B) \u2014 proportional increase required', 'var(--success)');
   } else {
     html += gndRow('Upsize', 'not applied', 'Phase conductors not increased');
   }
   document.getElementById('gnd-egc-out').innerHTML = html;
 
   // ── GEC, Table 250.66 ───────────────────────────────────
-  var svc  = document.getElementById('gnd-svc').value;
-  var sMat = document.getElementById('gnd-svc-mat').value;
-  var elec = document.getElementById('gnd-electrode').value;
-  var tbl  = sMat === 'cu' ? GND_GEC_CU : GND_GEC_AL;
-  var cm   = GND_CM[svc];
-  var gecCu = null, gecAl = null;
-  for (var k = 0; k < tbl.length; k++) {
-    if (cm <= tbl[k][0]) { gecCu = tbl[k][1]; gecAl = tbl[k][2]; break; }
-  }
+  var gec = r.gec;
+  var gh = gndRow('GEC from table', gndLabel(gec.copper) + ' Cu', gec.tableReference + ' \u2014 based on ' + gndLabel(svc) + ' ' + (sMat === 'cu' ? 'Cu' : 'Al') + ' service', 'var(--nycec)');
+  gh += gndRow('If aluminum GEC', gndLabel(gec.aluminum) + ' Al', 'Same row, aluminium column');
 
-  var gh = gndRow('GEC from table', gndLabel(gecCu) + ' Cu', 'Table 250.66 \u2014 based on ' + gndLabel(svc) + ' ' + (sMat === 'cu' ? 'Cu' : 'Al') + ' service', 'var(--nycec)');
-  gh += gndRow('If aluminum GEC', gndLabel(gecAl) + ' Al', 'Same row, aluminium column');
+  var capNote = '';
+  if (elec === 'rod')  capNote = gec.capReference + ' \u2014 to a rod or plate the GEC need not exceed 6 AWG Cu';
+  if (elec === 'ufer') capNote = gec.capReference + ' \u2014 to a concrete-encased electrode it need not exceed 4 AWG Cu';
+  if (elec === 'ring') capNote = gec.capReference + ' \u2014 to a ground ring it need not exceed the ring conductor (min 2 AWG)';
 
-  var capped = null, capNote = '';
-  if (elec === 'rod')  { capped = '6'; capNote = 'NEC 250.66(A) \u2014 to a rod or plate the GEC need not exceed 6 AWG Cu'; }
-  if (elec === 'ufer') { capped = '4'; capNote = 'NEC 250.66(B) \u2014 to a concrete-encased electrode it need not exceed 4 AWG Cu'; }
-  if (elec === 'ring') { capped = '2'; capNote = 'NEC 250.66(C) \u2014 to a ground ring it need not exceed the ring conductor (min 2 AWG)'; }
-
-  if (capped && GND_CM[capped] < GND_CM[gecCu]) {
-    gh += gndRow('Permitted reduction', gndLabel(capped) + ' Cu', capNote, 'var(--success)');
-  } else if (capped) {
-    gh += gndRow('Reduction', 'no benefit', 'Table already calls for ' + gndLabel(gecCu) + ' or smaller');
+  if (gec.capApplied) {
+    gh += gndRow('Permitted reduction', gndLabel(gec.finalCopper) + ' Cu', capNote, 'var(--success)');
+  } else if (gec.capSize) {
+    gh += gndRow('Reduction', 'no benefit', 'Table already calls for ' + gndLabel(gec.copper) + ' or smaller');
   }
   document.getElementById('gnd-gec-out').innerHTML = gh;
 
   // ── note ────────────────────────────────────────────────
   var tip = 'EGC is sized from the <strong style="color:var(--text)">' + ocpd + ' A device</strong>, never from the load or the conductor ampacity. ';
-  if (ratio > 1.0001) {
+  if (egc.upsizeApplied) {
     tip += 'Because the phase conductors were upsized, 250.122(B) requires the EGC to grow by the same ratio \u2014 this is the single most common inspection catch on long runs sized for voltage drop. ';
   }
   tip += 'For parallel runs, 250.122(F) requires a full-size EGC in <strong style="color:var(--text)">every</strong> raceway, not one shared between them.';
@@ -6374,11 +8142,23 @@ function outletRender() {
 
 // ── WIRE SIZER ───────────────────────────────────────────
 function wsCalc() {
+  // ── THIN ADAPTER ─────────────────────────────────────────────────────
+  // Reads the form, builds ONE structured request, calls the shared engine,
+  // renders the structured result. Every electrical decision — candidate
+  // loop, both ampacity tests, terminal limiting, 240.4(D), NYC dwelling
+  // feeder minimum, voltage drop and the final selection — lives in
+  // EC.wireSizing.selectConductor. Nothing below re-decides any of them.
   var load    = parseFloat(document.getElementById('wsLoad').value) || 0;
+  var contA   = parseFloat((document.getElementById('wsContinuous') || {}).value) || 0;
+  var circuitType = (document.getElementById('wsCircuitType') || {}).value || 'BRANCH_CIRCUIT';
+  var dwellingRaw = (document.getElementById('wsDwelling') || {}).value || '';
+  var dwellWrap = document.getElementById('wsDwellingWrap');
+  if (dwellWrap) dwellWrap.style.display = (circuitType === 'FEEDER') ? '' : 'none';
+  var mat     = document.getElementById('wsMaterial').value;
+  var hundredPct = (document.getElementById('wsHundredPct') || {}).value === 'yes';
   var feet    = parseFloat(document.getElementById('wsFeet').value) || 0;
   var voltage = parseFloat(document.getElementById('wsVoltage').value) || 208;
   var phase   = document.getElementById('wsPhase').value;
-  var mat     = document.getElementById('wsMaterial').value;
   var bundle  = parseFloat(document.getElementById('wsBundle').value) || 1.0;
   var temp    = parseInt(document.getElementById('wsTemp').value) || 86;
   var maxVD   = parseFloat(document.getElementById('wsMaxVD').value) || 5;
@@ -6400,49 +8180,45 @@ function wsCalc() {
     return;
   }
 
-  var ampTable = mat === 'cu' ? AMP_CU : AMP_AL;
-  var typicalTable = mat === 'cu' ? AMP_TYPICAL_CU : AMP_TYPICAL_AL;
-  var sizes = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0','250','300','350','400','500','600','700','750'];
-  if (mat === 'al') sizes = sizes.filter(function(s){return s!=='14';});
+  var r = EC.wireSizing.selectConductor({
+    load: load,
+    continuousLoad: contA,
+    feet: feet,
+    voltage: voltage,
+    phase: parseInt(phase, 10) || 1,
+    material: mat,
+    insulation: insul,
+    ambientF: temp,
+    adjustmentFactor: bundle,
+    maxVoltDropPercent: maxVD,
+    terminalRatingC: 75,
+    circuitType: circuitType,
+    assemblyRatedFor100PercentContinuousOperation: hundredPct,
+    jurisdiction: 'NYC',
+    feedsDwellingUnit: dwellingRaw === '' ? null : (dwellingRaw === 'yes')
+  });
 
-  var tempFactor = ampGetTempFactor(temp, insul);
+  if (!r.ok) {
+    document.getElementById('wsResult').innerHTML = '<div style="background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.3);border-left:4px solid var(--danger);border-radius:4px;padding:14px 18px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--danger)">Cannot size: ' + String(r.reason || 'invalid input').replace(/[<>&]/g, '') + '</div>';
+    window.wsSizerWinner = null;
+    return;
+  }
 
-  var t75 = {
-    cu: {'14':20,'12':25,'10':35,'8':50,'6':65,'4':85,'3':100,'2':115,'1':130,'1/0':150,'2/0':175,'3/0':200,'4/0':230,'250':255,'300':285,'350':310,'400':335,'500':380,'600':420,'700':460,'750':475},
-    al: {'12':20,'10':30,'8':40,'6':50,'4':65,'3':75,'2':90,'1':100,'1/0':120,'2/0':135,'3/0':155,'4/0':180,'250':205,'300':230,'350':250,'400':270,'500':310,'600':340,'700':375,'750':385}
-  };
+  var winner = r.finalSelectedConductor;
+  window.wsSizerWinner = winner;
+  var tempFactor = r.temperatureCorrectionFactor === null ? 0 : r.temperatureCorrectionFactor;
 
-  var K = VD_K[mat];
-  var multiplier = phase === '3' ? 1.732 : 2;
-
-  var winner = null;
   var rows = '';
-
-  for (var i = 0; i < sizes.length; i++) {
-    var sz = sizes[i];
-    var baseData = ampTable[sz];
-    if (!baseData) continue;
-
-    var baseCol = ampGetBaseCol(insul);
-    var base = baseData[baseCol];
-    var afterTemp = base * tempFactor;
-    var afterBundle = afterTemp * bundle;
-    var finalAmp = Math.min(afterBundle, t75[mat][sz] || afterBundle);
-    var ampOK = finalAmp >= load;
-
-    var cm = VD_CM[sz];
-    var vd = 0, vdPct = 0;
-    if (feet && cm) {
-      vd = (multiplier * K * load * feet) / cm;
-      vdPct = (vd / voltage) * 100;
-    }
-    var vdOK = !feet || vdPct <= maxVD;
-    var bothOK = ampOK && vdOK;
-    if (bothOK && !winner) { winner = sz; window.wsSizerWinner = sz; }
+  for (var i = 0; i < r.evaluated.length; i++) {
+    var row = r.evaluated[i];
+    var sz = row.size;
+    var finalAmp = row.terminalLimitedAmpacity;
+    var ampOK = row.ampacityOK;
+    var vdOK = row.vdOK;
 
     var isWinner = winner === sz;
     var rowBg = isWinner ? 'background:rgba(82,192,122,0.1);border-left:3px solid var(--success)' : (!ampOK ? 'opacity:0.45' : '');
-    var ampColor = ampOK ? 'var(--success)' : 'var(--danger)';
+    var ampColor = (ampOK && row.ocpdOK) ? 'var(--success)' : 'var(--danger)';
     var vdColor  = vdOK  ? 'var(--success)' : 'var(--danger)';
 
     var sizeLabel = sz;
@@ -6450,23 +8226,29 @@ function wsCalc() {
     else if (parseInt(sz) >= 250) sizeLabel = sz + ' kcmil';
     else sizeLabel = '#' + sz + ' AWG';
 
+    var vdPctCell = (feet && row.voltDropPercent !== null) ? (vdOK?'✓':'✗') + ' ' + row.voltDropPercent.toFixed(2) + '%' : '—';
+    var vdVCell = (feet && row.voltDropVolts !== null) ? row.voltDropVolts.toFixed(2) + 'V' : '—';
+
     rows += '<tr' + (rowBg ? ' style="' + rowBg + '"' : '') + '>' +
       '<td class="wire-col">' + (isWinner ? '★ ' : '') + sizeLabel + (isWinner ? ' ← USE' : '') + '</td>' +
       '<td style="color:' + ampColor + '">' + (ampOK?'✓':'✗') + ' ' + finalAmp.toFixed(0) + 'A</td>' +
-      '<td style="color:var(--text-dim);font-size:10px">' + base + '×' + tempFactor.toFixed(2) + '×' + bundle + '</td>' +
-      '<td style="color:' + vdColor + '">' + (feet ? (vdOK?'✓':'✗') + ' ' + vdPct.toFixed(2) + '%' : '—') + '</td>' +
-      '<td style="color:' + vdColor + '">' + (feet ? vd.toFixed(2) + 'V' : '—') + '</td>' +
+      '<td style="color:var(--text-dim);font-size:10px">' + row.baseAmpacity + '×' + tempFactor.toFixed(2) + '×' + bundle + '</td>' +
+      '<td style="color:' + vdColor + '">' + vdPctCell + '</td>' +
+      '<td style="color:' + vdColor + '">' + vdVCell + '</td>' +
     '</tr>';
   }
 
   var summary = '';
   if (winner) {
-    var wd = ampTable[winner];
-    var wBase = wd[ampGetBaseCol(insul)];
-    var wFinal = Math.min(wBase * tempFactor * bundle, t75[mat][winner] || 9999);
-    var wCM = VD_CM[winner];
-    var wVD = feet ? (multiplier * K * load * feet) / wCM : 0;
-    var wVDpct = feet ? (wVD / voltage) * 100 : 0;
+    var win = null;
+    for (var w = 0; w < r.evaluated.length; w++) {
+      if (r.evaluated[w].size === winner) { win = r.evaluated[w]; break; }
+    }
+    var wBase = win.baseAmpacity;
+    var wFinal = win.terminalLimitedAmpacity;
+    var wVDpct = win.voltDropPercent !== null ? win.voltDropPercent : 0;
+    var wVD = win.voltDropVolts !== null ? win.voltDropVolts : 0;
+    var typicalTable = mat === 'cu' ? AMP_TYPICAL_CU : AMP_TYPICAL_AL;
     var typical = typicalTable[winner] || '—';
     var wLabel = winner.includes('/') ? winner + ' AWG' : (parseInt(winner) >= 250 ? winner + ' kcmil' : '#' + winner + ' AWG');
 
@@ -6477,9 +8259,9 @@ function wsCalc() {
           '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">Ampacity: <strong style="color:var(--success)">' + wFinal.toFixed(0) + 'A</strong> ≥ ' + load + 'A</span>' +
           (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">V-Drop: <strong style="color:var(--success)">' + wVDpct.toFixed(2) + '%</strong> ≤ ' + maxVD + '%</span>' : '') +
           '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">Breaker: <strong style="color:var(--accent)">' + typical + '</strong></span>' +
-          (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">V at load: <strong>' + (voltage - wVD).toFixed(1) + 'V</strong></span>' : '') +
+          (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">V at load: <strong>' + (win.voltageAtLoad !== null ? win.voltageAtLoad.toFixed(1) : voltage.toFixed(1)) + 'V</strong></span>' : '') +
         '</div>' +
-        '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Derating: ' + wBase + 'A base × ' + tempFactor.toFixed(2) + ' (temp@' + temp + '°F) × ' + bundle + ' (bundle) = ' + (wBase * tempFactor * bundle).toFixed(0) + 'A → capped at 75°C terminal: <strong>' + wFinal.toFixed(0) + 'A</strong></div>' +
+        '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Derating: ' + wBase + 'A base × ' + tempFactor.toFixed(2) + ' (temp@' + temp + '°F) × ' + bundle + ' (bundle) = ' + win.calculatedAmpacity.toFixed(0) + 'A → capped at 75°C terminal: <strong>' + wFinal.toFixed(0) + 'A</strong></div>' +
       '</div>';
   } else {
     summary = '<div style="background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.3);border-left:4px solid var(--danger);border-radius:4px;padding:14px 18px;margin-bottom:16px;font-family:IBM Plex Mono,monospace">' +
@@ -6516,7 +8298,7 @@ function wsGoToFillCalc() {
 
 function wsReset() {
   ['wsLoad','wsFeet'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  var defs = {wsVoltage:'208',wsPhase:'1',wsMaterial:'cu',wsBundle:'1.00',wsTemp:'86',wsMaxVD:'5',wsInsul:'thhn'};
+  var defs = {wsVoltage:'208',wsPhase:'1',wsMaterial:'cu',wsBundle:'1.00',wsTemp:'86',wsMaxVD:'5',wsInsul:'thhn',wsContinuous:'',wsCircuitType:'BRANCH_CIRCUIT',wsHundredPct:'no',wsDwelling:''};
   Object.keys(defs).forEach(function(id){ var el=document.getElementById(id); if(el) el.value=defs[id]; });
   var r=document.getElementById('wsResult');
   if(r) r.innerHTML='<div style="color:var(--text-dimmer);font-family:IBM Plex Mono,monospace;font-size:12px;padding:20px;text-align:center">Enter load and distance to calculate</div>';
