@@ -56,5 +56,94 @@ function gecWithElectrodeCap(serviceSize, serviceMaterial, electrode) {
     finalCopper: capBeneficial ? cap : base.copper,
   };
 }
+const CAP_REFERENCE = {
+  rod: 'NEC 250.66(A)', ufer: 'NEC 250.66(B)', ring: 'NEC 250.66(C)',
+};
+
+/**
+ * One structured decision for the whole Grounding panel. Production's single
+ * Calculate action refreshes EGC, 250.122(B) upsizing, GEC and the electrode
+ * cap together, so ONE orchestrator call returns all of it — the UI never
+ * selects which Article 250 rule applies. EGC (Table 250.122, from the
+ * overcurrent device) and GEC (Table 250.66, from the service conductor) stay
+ * explicitly separate sections of the result: different destination,
+ * different table, never a generic "ground wire size".
+ *
+ * @param {object} input
+ * @param {number} input.ocpdRating          EGC basis — breaker/fuse rating
+ * @param {string} input.egcMaterial         'cu' | 'al'
+ * @param {string} input.requiredPhaseSize   minimum ungrounded conductor
+ * @param {string} input.installedPhaseSize  actually installed conductor
+ * @param {string} input.serviceSize         largest service conductor (GEC basis)
+ * @param {string} input.serviceMaterial     'cu' | 'al'
+ * @param {string} input.electrode           'water' | 'rod' | 'ufer' | 'ring'
+ */
+function calculateGrounding(input) {
+  const {
+    ocpdRating, egcMaterial = 'cu', requiredPhaseSize, installedPhaseSize,
+    serviceSize, serviceMaterial = 'cu', electrode = 'water',
+  } = input || {};
+
+  if (typeof ocpdRating !== 'number' || !Number.isFinite(ocpdRating) || ocpdRating <= 0) {
+    return { ok: false, reason: 'INVALID_OCPD', ocpdRating };
+  }
+  if (egcMaterial !== 'cu' && egcMaterial !== 'al') {
+    return { ok: false, reason: 'INVALID_MATERIAL', field: 'egcMaterial', material: egcMaterial };
+  }
+  if (serviceMaterial !== 'cu' && serviceMaterial !== 'al') {
+    return { ok: false, reason: 'INVALID_MATERIAL', field: 'serviceMaterial', material: serviceMaterial };
+  }
+  if (electrode !== 'water' && !ELECTRODE_CAP[electrode]) {
+    return { ok: false, reason: 'INVALID_ELECTRODE', electrode };
+  }
+  for (const [field, size] of [['requiredPhaseSize', requiredPhaseSize],
+    ['installedPhaseSize', installedPhaseSize], ['serviceSize', serviceSize]]) {
+    if (!GND_CM[size]) return { ok: false, reason: 'SIZE_NOT_IN_TABLE', field, size };
+  }
+
+  const egc = egcUpsized(ocpdRating, requiredPhaseSize, installedPhaseSize, egcMaterial);
+  if (!egc.ok) return egc;               // OCPD_ABOVE_TABLE, field-tagged sizes
+  const gec = gecWithElectrodeCap(serviceSize, serviceMaterial, electrode);
+  if (!gec.ok) return gec;
+
+  const capSize = ELECTRODE_CAP[electrode] || null;
+  return {
+    ok: true,
+    egc: {
+      mode: 'EGC',
+      tableReference: 'NEC Table 250.122',
+      ocpdRating,
+      material: egcMaterial,
+      baseSize: egc.baseSize,
+      requiredPhaseSize,
+      installedPhaseSize,
+      ratio: egc.ratio,
+      upsizeApplied: egc.upsizeApplied,
+      requiredCM: egc.upsizeApplied ? egc.requiredCM : null,
+      finalSize: egc.finalSize,
+      // The honest no-fit answer: the proportional requirement exceeds every
+      // supported conductor size. finalSize is null — never silently the base.
+      exceedsAvailableSizes: egc.upsizeApplied && egc.finalSize === null,
+      rule: egc.upsizeApplied ? 'NEC 250.122(B)' : null,
+    },
+    gec: {
+      mode: 'GEC',
+      tableReference: 'NEC Table 250.66',
+      serviceSize,
+      serviceMaterial,
+      copper: gec.copper,
+      aluminum: gec.aluminum,
+      electrode,
+      capSize,
+      capReference: CAP_REFERENCE[electrode] || null,
+      capApplied: gec.capApplied,
+      finalCopper: gec.finalCopper,
+    },
+  };
+}
+
 const round3 = (n) => Math.round(n * 1000) / 1000;
-module.exports = { egcSize, egcUpsized, gecSize, gecWithElectrodeCap, ELECTRODE_CAP };
+module.exports = {
+  egcSize, egcUpsized, gecSize, gecWithElectrodeCap, ELECTRODE_CAP,
+  calculateGrounding,
+};

@@ -2413,8 +2413,97 @@ window.EC = (function () {
         finalCopper: capBeneficial ? cap : base.copper,
       };
     }
+    const CAP_REFERENCE = {
+      rod: 'NEC 250.66(A)', ufer: 'NEC 250.66(B)', ring: 'NEC 250.66(C)',
+    };
+
+    /**
+     * One structured decision for the whole Grounding panel. Production's single
+     * Calculate action refreshes EGC, 250.122(B) upsizing, GEC and the electrode
+     * cap together, so ONE orchestrator call returns all of it — the UI never
+     * selects which Article 250 rule applies. EGC (Table 250.122, from the
+     * overcurrent device) and GEC (Table 250.66, from the service conductor) stay
+     * explicitly separate sections of the result: different destination,
+     * different table, never a generic "ground wire size".
+     *
+     * @param {object} input
+     * @param {number} input.ocpdRating          EGC basis — breaker/fuse rating
+     * @param {string} input.egcMaterial         'cu' | 'al'
+     * @param {string} input.requiredPhaseSize   minimum ungrounded conductor
+     * @param {string} input.installedPhaseSize  actually installed conductor
+     * @param {string} input.serviceSize         largest service conductor (GEC basis)
+     * @param {string} input.serviceMaterial     'cu' | 'al'
+     * @param {string} input.electrode           'water' | 'rod' | 'ufer' | 'ring'
+     */
+    function calculateGrounding(input) {
+      const {
+        ocpdRating, egcMaterial = 'cu', requiredPhaseSize, installedPhaseSize,
+        serviceSize, serviceMaterial = 'cu', electrode = 'water',
+      } = input || {};
+
+      if (typeof ocpdRating !== 'number' || !Number.isFinite(ocpdRating) || ocpdRating <= 0) {
+        return { ok: false, reason: 'INVALID_OCPD', ocpdRating };
+      }
+      if (egcMaterial !== 'cu' && egcMaterial !== 'al') {
+        return { ok: false, reason: 'INVALID_MATERIAL', field: 'egcMaterial', material: egcMaterial };
+      }
+      if (serviceMaterial !== 'cu' && serviceMaterial !== 'al') {
+        return { ok: false, reason: 'INVALID_MATERIAL', field: 'serviceMaterial', material: serviceMaterial };
+      }
+      if (electrode !== 'water' && !ELECTRODE_CAP[electrode]) {
+        return { ok: false, reason: 'INVALID_ELECTRODE', electrode };
+      }
+      for (const [field, size] of [['requiredPhaseSize', requiredPhaseSize],
+        ['installedPhaseSize', installedPhaseSize], ['serviceSize', serviceSize]]) {
+        if (!GND_CM[size]) return { ok: false, reason: 'SIZE_NOT_IN_TABLE', field, size };
+      }
+
+      const egc = egcUpsized(ocpdRating, requiredPhaseSize, installedPhaseSize, egcMaterial);
+      if (!egc.ok) return egc;               // OCPD_ABOVE_TABLE, field-tagged sizes
+      const gec = gecWithElectrodeCap(serviceSize, serviceMaterial, electrode);
+      if (!gec.ok) return gec;
+
+      const capSize = ELECTRODE_CAP[electrode] || null;
+      return {
+        ok: true,
+        egc: {
+          mode: 'EGC',
+          tableReference: 'NEC Table 250.122',
+          ocpdRating,
+          material: egcMaterial,
+          baseSize: egc.baseSize,
+          requiredPhaseSize,
+          installedPhaseSize,
+          ratio: egc.ratio,
+          upsizeApplied: egc.upsizeApplied,
+          requiredCM: egc.upsizeApplied ? egc.requiredCM : null,
+          finalSize: egc.finalSize,
+          // The honest no-fit answer: the proportional requirement exceeds every
+          // supported conductor size. finalSize is null — never silently the base.
+          exceedsAvailableSizes: egc.upsizeApplied && egc.finalSize === null,
+          rule: egc.upsizeApplied ? 'NEC 250.122(B)' : null,
+        },
+        gec: {
+          mode: 'GEC',
+          tableReference: 'NEC Table 250.66',
+          serviceSize,
+          serviceMaterial,
+          copper: gec.copper,
+          aluminum: gec.aluminum,
+          electrode,
+          capSize,
+          capReference: CAP_REFERENCE[electrode] || null,
+          capApplied: gec.capApplied,
+          finalCopper: gec.finalCopper,
+        },
+      };
+    }
+
     const round3 = (n) => Math.round(n * 1000) / 1000;
-    module.exports = { egcSize, egcUpsized, gecSize, gecWithElectrodeCap, ELECTRODE_CAP };
+    module.exports = {
+      egcSize, egcUpsized, gecSize, gecWithElectrodeCap, ELECTRODE_CAP,
+      calculateGrounding,
+    };
   };
 
   // ---- src/calc/wireSizing.js ----
@@ -6977,36 +7066,9 @@ var GROUNDING_DATA = {
 // says which is which.
 
 // Table 250.122 — [OCPD not exceeding, Cu, Al]
-var GND_EGC = [
-  [15,'14','12'], [20,'12','10'], [60,'10','8'], [100,'8','6'], [200,'6','4'],
-  [300,'4','2'], [400,'3','1'], [500,'2','1/0'], [600,'1','2/0'], [800,'1/0','3/0'],
-  [1000,'2/0','4/0'], [1200,'3/0','250'], [1600,'4/0','350'], [2000,'250','400'],
-  [2500,'350','600'], [3000,'400','600'], [4000,'500','750'], [5000,'700','1200'],
-  [6000,'800','1250']
-];
-
-// circular mils for every size used here (self-contained so the two tables
-// can't drift if VD_CM is ever edited)
-var GND_CM = {
-  '14':4110,'12':6530,'10':10380,'8':16510,'6':26240,'4':41740,'3':52620,'2':66360,
-  '1':83690,'1/0':105600,'2/0':133100,'3/0':167800,'4/0':211600,'250':250000,
-  '300':300000,'350':350000,'400':400000,'500':500000,'600':600000,'700':700000,
-  '750':750000,'900':900000,'1000':1000000,'1100':1100000,'1200':1200000,
-  '1250':1250000,'1750':1750000
-};
-
-// Table 250.66 — [max service-conductor cmil, GEC Cu, GEC Al]
-var GND_GEC_CU = [
-  [66360,'8','6'], [105600,'6','4'], [167800,'4','2'], [350000,'2','1/0'],
-  [600000,'1/0','3/0'], [1100000,'2/0','4/0'], [Infinity,'3/0','250']
-];
-var GND_GEC_AL = [
-  [105600,'8','6'], [167800,'6','4'], [250000,'4','2'], [500000,'2','1/0'],
-  [900000,'1/0','3/0'], [1750000,'2/0','4/0'], [Infinity,'3/0','250']
-];
-
-var GND_SIZES = ['14','12','10','8','6','4','3','2','1','1/0','2/0','3/0','4/0',
-                 '250','300','350','400','500','600','700','750'];
+// Article 250 data comes from the injected shared engine — one source.
+// The size selects are populated from the same table the engine sizes from.
+var GND_SIZES = EC.tables.GND_SIZES;
 
 function gndLabel(s) {
   if (!s) return '\u2014';
@@ -7079,64 +7141,68 @@ function gndRow(label, value, note, color) {
 }
 
 function gndCalc() {
+  // ── THIN ADAPTER ─────────────────────────────────────────────────────
+  // Reads the form, builds ONE structured request, calls the shared engine,
+  // renders the structured result. Every Article 250 decision — the Table
+  // 250.122 EGC row, the 250.122(B) proportional upsize, the Table 250.66
+  // GEC row and the 250.66(A)/(B)/(C) electrode caps — lives in
+  // EC.grounding.calculateGrounding. Nothing below re-decides any of it.
   if (!document.getElementById('gnd-ocpd')) return;
 
-  // ── EGC, Table 250.122 ──────────────────────────────────
   var ocpd = parseFloat(document.getElementById('gnd-ocpd').value);
   var eMat = document.getElementById('gnd-egc-mat').value;
-  var base = null;
-  for (var i = 0; i < GND_EGC.length; i++) {
-    if (ocpd <= GND_EGC[i][0]) { base = eMat === 'cu' ? GND_EGC[i][1] : GND_EGC[i][2]; break; }
-  }
-
   var req  = document.getElementById('gnd-req').value;
   var inst = document.getElementById('gnd-inst').value;
-  var ratio = GND_CM[inst] / GND_CM[req];
-  var html = gndRow('Base EGC', gndLabel(base), 'Table 250.122 \u2014 from the ' + ocpd + ' A device', 'var(--success)');
+  var svc  = document.getElementById('gnd-svc').value;
+  var sMat = document.getElementById('gnd-svc-mat').value;
+  var elec = document.getElementById('gnd-electrode').value;
 
-  var finalEgc = base;
-  if (ratio > 1.0001) {
-    // 250.122(B): phase conductors upsized -> EGC increases by the same ratio
-    var need = GND_CM[base] * ratio;
-    for (var j = 0; j < GND_SIZES.length; j++) {
-      if (GND_CM[GND_SIZES[j]] >= need) { finalEgc = GND_SIZES[j]; break; }
+  var r = EC.grounding.calculateGrounding({
+    ocpdRating: ocpd,
+    egcMaterial: eMat,
+    requiredPhaseSize: req,
+    installedPhaseSize: inst,
+    serviceSize: svc,
+    serviceMaterial: sMat,
+    electrode: elec
+  });
+  if (!r.ok) return;   // selects constrain every input; stay quiet like always
+
+  // ── EGC, Table 250.122 ──────────────────────────────────
+  var egc = r.egc;
+  var html = gndRow('Base EGC', gndLabel(egc.baseSize), egc.tableReference + ' \u2014 from the ' + ocpd + ' A device', 'var(--success)');
+  if (egc.upsizeApplied) {
+    html += gndRow('Upsize ratio', '\u00D7 ' + egc.ratio.toFixed(2), gndLabel(req) + ' \u2192 ' + gndLabel(inst) + ' by circular mils');
+    if (egc.exceedsAvailableSizes) {
+      html += gndRow('EGC after upsize', 'exceeds table', egc.rule + ' \u2014 required EGC area exceeds the largest conductor size supported by this calculator; review the applicable grounding design requirements', 'var(--danger)');
+    } else {
+      html += gndRow('EGC after upsize', gndLabel(egc.finalSize), egc.rule + ' \u2014 proportional increase required', 'var(--success)');
     }
-    html += gndRow('Upsize ratio', '\u00D7 ' + ratio.toFixed(2), gndLabel(req) + ' \u2192 ' + gndLabel(inst) + ' by circular mils');
-    html += gndRow('EGC after upsize', gndLabel(finalEgc), 'NEC 250.122(B) \u2014 proportional increase required', 'var(--success)');
   } else {
     html += gndRow('Upsize', 'not applied', 'Phase conductors not increased');
   }
   document.getElementById('gnd-egc-out').innerHTML = html;
 
   // ── GEC, Table 250.66 ───────────────────────────────────
-  var svc  = document.getElementById('gnd-svc').value;
-  var sMat = document.getElementById('gnd-svc-mat').value;
-  var elec = document.getElementById('gnd-electrode').value;
-  var tbl  = sMat === 'cu' ? GND_GEC_CU : GND_GEC_AL;
-  var cm   = GND_CM[svc];
-  var gecCu = null, gecAl = null;
-  for (var k = 0; k < tbl.length; k++) {
-    if (cm <= tbl[k][0]) { gecCu = tbl[k][1]; gecAl = tbl[k][2]; break; }
-  }
+  var gec = r.gec;
+  var gh = gndRow('GEC from table', gndLabel(gec.copper) + ' Cu', gec.tableReference + ' \u2014 based on ' + gndLabel(svc) + ' ' + (sMat === 'cu' ? 'Cu' : 'Al') + ' service', 'var(--nycec)');
+  gh += gndRow('If aluminum GEC', gndLabel(gec.aluminum) + ' Al', 'Same row, aluminium column');
 
-  var gh = gndRow('GEC from table', gndLabel(gecCu) + ' Cu', 'Table 250.66 \u2014 based on ' + gndLabel(svc) + ' ' + (sMat === 'cu' ? 'Cu' : 'Al') + ' service', 'var(--nycec)');
-  gh += gndRow('If aluminum GEC', gndLabel(gecAl) + ' Al', 'Same row, aluminium column');
+  var capNote = '';
+  if (elec === 'rod')  capNote = gec.capReference + ' \u2014 to a rod or plate the GEC need not exceed 6 AWG Cu';
+  if (elec === 'ufer') capNote = gec.capReference + ' \u2014 to a concrete-encased electrode it need not exceed 4 AWG Cu';
+  if (elec === 'ring') capNote = gec.capReference + ' \u2014 to a ground ring it need not exceed the ring conductor (min 2 AWG)';
 
-  var capped = null, capNote = '';
-  if (elec === 'rod')  { capped = '6'; capNote = 'NEC 250.66(A) \u2014 to a rod or plate the GEC need not exceed 6 AWG Cu'; }
-  if (elec === 'ufer') { capped = '4'; capNote = 'NEC 250.66(B) \u2014 to a concrete-encased electrode it need not exceed 4 AWG Cu'; }
-  if (elec === 'ring') { capped = '2'; capNote = 'NEC 250.66(C) \u2014 to a ground ring it need not exceed the ring conductor (min 2 AWG)'; }
-
-  if (capped && GND_CM[capped] < GND_CM[gecCu]) {
-    gh += gndRow('Permitted reduction', gndLabel(capped) + ' Cu', capNote, 'var(--success)');
-  } else if (capped) {
-    gh += gndRow('Reduction', 'no benefit', 'Table already calls for ' + gndLabel(gecCu) + ' or smaller');
+  if (gec.capApplied) {
+    gh += gndRow('Permitted reduction', gndLabel(gec.finalCopper) + ' Cu', capNote, 'var(--success)');
+  } else if (gec.capSize) {
+    gh += gndRow('Reduction', 'no benefit', 'Table already calls for ' + gndLabel(gec.copper) + ' or smaller');
   }
   document.getElementById('gnd-gec-out').innerHTML = gh;
 
   // ── note ────────────────────────────────────────────────
   var tip = 'EGC is sized from the <strong style="color:var(--text)">' + ocpd + ' A device</strong>, never from the load or the conductor ampacity. ';
-  if (ratio > 1.0001) {
+  if (egc.upsizeApplied) {
     tip += 'Because the phase conductors were upsized, 250.122(B) requires the EGC to grow by the same ratio \u2014 this is the single most common inspection catch on long runs sized for voltage drop. ';
   }
   tip += 'For parallel runs, 250.122(F) requires a full-size EGC in <strong style="color:var(--text)">every</strong> raceway, not one shared between them.';
