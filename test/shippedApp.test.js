@@ -28,12 +28,35 @@ function evalSlice(startMark, endMark) {
 }
 
 describe('Shipped app — data integrity guards', { skip: skipAll }, () => {
-  test('AMP_CU 75C values match the extracted single source of truth', () => {
-    const { AMP_CU } = require('../src/calc/tables');
+  test('display AMP_CU and AMP_AL match the shared source COMPLETELY', () => {
+    // The reference-table display consumes all three columns (t60/t75/t90),
+    // so the drift guard is full-row deepStrictEqual, not a t75 spot-check.
+    const { AMP_CU, AMP_AL } = require('../src/calc/tables');
     const app = evalSlice('var AMP_CU', 'var AMP_BREAKER_CU');
-    for (const size of Object.keys(AMP_CU)) {
-      assert.strictEqual(app.AMP_CU[size].t75, AMP_CU[size].t75, `t75 drift at ${size}`);
-    }
+    assert.deepStrictEqual(app.AMP_CU, AMP_CU,
+      'display copy of AMP_CU drifted from src/calc/tables.js');
+    assert.deepStrictEqual(app.AMP_AL, AMP_AL,
+      'display copy of AMP_AL drifted from src/calc/tables.js');
+  });
+
+  test('display CF_AREA and CF_WIRE match the shared source COMPLETELY', () => {
+    // The Conduit Fill CALCULATION delegates to the shared engine; these
+    // hand copies feed only the reference grid. Full-equality guards keep
+    // the displayed reference numbers from ever desynchronizing from the
+    // engine's tables.
+    const { CF_AREA, CF_WIRE } = require('../src/calc/tables');
+    const app = evalSlice('var CF_AREA', 'var CF_SIZE_KEYS');
+    assert.deepStrictEqual(app.CF_AREA, CF_AREA,
+      'display copy of CF_AREA drifted from src/calc/tables.js');
+    assert.deepStrictEqual(app.CF_WIRE, CF_WIRE,
+      'display copy of CF_WIRE drifted from src/calc/tables.js');
+  });
+
+  test('display WW_AREAS matches the shared source COMPLETELY', () => {
+    const { WW_AREAS } = require('../src/calc/tables');
+    const app = evalSlice('var WW_AREAS', 'function wwCalc');
+    assert.deepStrictEqual(app.WW_AREAS, WW_AREAS,
+      'display copy of WW_AREAS drifted from src/calc/tables.js');
   });
 
   test('P2-1 RESOLVED: the second hardcoded 75C table is GONE from wsCalc', () => {
