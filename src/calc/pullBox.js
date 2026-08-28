@@ -276,11 +276,25 @@ function classifyConnection(connection, entries, rows) {
  * to the dimension the connection's axis spans (left/right -> width,
  * top/bottom -> height, via WALL_DIMENSION).
  *
- * ANGLE and U connections are ACCEPTED but NOT CALCULATED in this milestone:
- * the result carries a machine-readable ANGLE_U_NOT_CALCULATED scope note
- * listing them, and completeForRequest=false, so no consumer can mistake a
- * partial result for a finished sizing. Their 314.28(A)(2) row arithmetic is
- * PBV2-3; entry spacing is PBV2-4. No 6x arithmetic exists in this file.
+ * PBV2-3 adds the NEC 314.28(A)(2) DIMENSIONAL row rule for ANGLE and U
+ * pulls. A (wall, row) is TRIGGERED when at least one of its entries
+ * participates in an ANGLE or U connection; once triggered, the arithmetic
+ * includes EVERY entry in that row — straight-connected and unconnected
+ * entries alike (trigger and sum are different questions):
+ *
+ *   minimumInches = 6 x largest-in-row + sum(ALL OTHER entries, same row,
+ *                   same wall only)
+ *
+ * The largest is counted once in the 6x term and never again in the sum;
+ * with equal largest sizes exactly one of them is excluded (chosen
+ * deterministically by entry id) and the rest stay in the sum. One
+ * requirement exists per triggered row — never per connection — with id
+ * 'angle-u-row:<rowId>'.
+ *
+ * What remains deferred in PBV2-3 is ONLY the separate A(2) entry-to-entry
+ * spacing requirement (PBV2-4): results carry A2_SPACING_NOT_CALCULATED
+ * listing the angle/U connection ids, spacingRequirements stays [], and
+ * completeForRequest stays false for any request containing angle/U pulls.
  *
  * Requirement ids are deterministic and semantic — 'straight:<connectionId>'
  * — never positional, never random, so the same request in any array order
@@ -303,17 +317,26 @@ function calculatePullBox(request) {
 
   const widthRequirements = [];
   const heightRequirements = [];
-  const deferred = [];   // ANGLE/U connection ids, deferred this milestone
+  const angleUConnIds = [];              // spacing deferred to PBV2-4
+  const triggersByRowId = new Map();     // rowId -> Set(connectionId)
+  const byId = new Map(entries.map((e) => [e.id, e]));
 
   for (const conn of connections) {
     const cls = classifyConnection(conn, entries, rows);
     // validation already guaranteed endpoints/rows resolve; classification
     // cannot fail here, so no second error path is invented
     if (cls.type !== 'STRAIGHT') {
-      deferred.push(conn.id);
+      // ANGLE or U: both endpoint rows become triggered for the A(2)
+      // dimensional row rule; the connection itself is recorded for the
+      // spacing milestone and for triggerConnectionIds explainability.
+      angleUConnIds.push(conn.id);
+      for (const id of conn.entryIds) {
+        const rid = byId.get(id).rowId;
+        if (!triggersByRowId.has(rid)) triggersByRowId.set(rid, new Set());
+        triggersByRowId.get(rid).add(conn.id);
+      }
       continue;
     }
-    const byId = new Map(entries.map((e) => [e.id, e]));
     const [a, b] = conn.entryIds.map((id) => byId.get(id));
     const aIn = TRADE_SIZE_IN[a.tradeSize];
     const bIn = TRADE_SIZE_IN[b.tradeSize];
@@ -334,6 +357,54 @@ function calculatePullBox(request) {
       .push(requirement);
   }
 
+  // ── 314.28(A)(2) dimensional row requirements ─────────────────────────
+  // One requirement per TRIGGERED (wall,row), grouped strictly by rowId —
+  // row.order is display metadata and never electrical identity.
+  for (const rowObj of sortRows(rows)) {
+    const trigger = triggersByRowId.get(rowObj.id);
+    if (!trigger) continue;   // untriggered rows generate nothing
+    const rowEntries = entries
+      .filter((e) => e.rowId === rowObj.id)
+      .slice()
+      .sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
+    // largest by inches; equal-largest tie excludes exactly ONE, chosen
+    // deterministically as the tied entry with the smallest entry id
+    let largestEntry = null;
+    for (const e of rowEntries) {
+      if (largestEntry === null
+        || TRADE_SIZE_IN[e.tradeSize] > TRADE_SIZE_IN[largestEntry.tradeSize]) {
+        largestEntry = e;
+      }
+    }
+    const others = rowEntries.filter((e) => e !== largestEntry);
+    // deterministic display order: size descending, entry id for ties;
+    // duplicates preserved
+    const othersSorted = others.slice().sort((x, y) => {
+      const d = TRADE_SIZE_IN[y.tradeSize] - TRADE_SIZE_IN[x.tradeSize];
+      if (d !== 0) return d;
+      return x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
+    });
+    let sumOthers = 0;
+    for (const e of others) sumOthers += TRADE_SIZE_IN[e.tradeSize];
+    const requirement = {
+      id: 'angle-u-row:' + rowObj.id,
+      kind: 'ANGLE_U_ROW',
+      dimension: WALL_DIMENSION[rowObj.wall],
+      wall: rowObj.wall,
+      rowId: rowObj.id,
+      rowOrder: rowObj.order,
+      entryIds: rowEntries.map((e) => e.id),
+      largestTradeSize: largestEntry.tradeSize,
+      otherTradeSizes: othersSorted.map((e) => e.tradeSize),
+      multiplier: 6,
+      minimumInches: 6 * TRADE_SIZE_IN[largestEntry.tradeSize] + sumOthers,
+      triggerConnectionIds: Array.from(trigger).sort(),
+      codeRef: { code: 'NEC', section: '314.28(A)(2)' },
+    };
+    (requirement.dimension === 'width' ? widthRequirements : heightRequirements)
+      .push(requirement);
+  }
+
   const byIdAsc = (x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0);
   widthRequirements.sort(byIdAsc);
   heightRequirements.sort(byIdAsc);
@@ -349,10 +420,12 @@ function calculatePullBox(request) {
   const gh = governing(heightRequirements);
 
   const scopeNotes = [];
-  if (deferred.length > 0) {
+  if (angleUConnIds.length > 0) {
+    // The A(2) DIMENSION is calculated above; what remains deferred is only
+    // the separate entry-to-entry spacing requirement (PBV2-4).
     scopeNotes.push({
-      code: 'ANGLE_U_NOT_CALCULATED',
-      connectionIds: deferred.slice().sort(),
+      code: 'A2_SPACING_NOT_CALCULATED',
+      connectionIds: angleUConnIds.slice().sort(),
     });
   }
   if (widthRequirements.length === 0) scopeNotes.push({ code: 'NO_WIDTH_CANDIDATES' });
@@ -368,8 +441,11 @@ function calculatePullBox(request) {
     heightRequirements,
     governingWidthRequirementId: gw ? gw.id : null,
     governingHeightRequirementId: gh ? gh.id : null,
-    spacingRequirements: [],
-    completeForRequest: deferred.length === 0,
+    spacingRequirements: [],   // PBV2-4
+    // Straight-only requests are fully evaluated. Any angle/U request stays
+    // incomplete in PBV2-3: its dimensional rule IS calculated, but the A(2)
+    // spacing requirement is not — PBV2-4 is expected to flip this.
+    completeForRequest: angleUConnIds.length === 0,
     warnings: validation.warnings,
     scopeNotes,
   };

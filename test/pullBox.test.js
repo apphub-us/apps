@@ -552,7 +552,9 @@ describe('PBV2-2 — straight-pull calculation', () => {
     assert.strictEqual(r.widthRequirements.length, 1);
   });
 
-  test('ANGLE/U connections are deferred, machine-readably, not silently', () => {
+  test('ANGLE/U spacing (only) is deferred, machine-readably — dimensions ARE calculated', () => {
+    // Since PBV2-3 the A(2) dimensional row rule computes; the remaining
+    // deferral is the separate entry-to-entry spacing requirement (PBV2-4).
     const r = calculatePullBox({
       rows: [row('rL', 'left', 0), row('rR', 'right', 0), row('rT', 'top', 0)],
       entries: [entry('a', 'rL', '4'), entry('b', 'rR', '4'),
@@ -561,12 +563,16 @@ describe('PBV2-2 — straight-pull calculation', () => {
         conn('cU', 'a3', 'a')],
     });
     assert.strictEqual(r.ok, true, 'angle/U presence must not reject the request');
-    assert.strictEqual(r.minimumWidthIn, 32, 'straight math still computes');
-    assert.strictEqual(r.completeForRequest, false);
+    // width candidates: straight 8x4=32 and left row (4,2,3) 6x4+2+3=29
+    assert.strictEqual(r.minimumWidthIn, 32);
+    assert.strictEqual(r.minimumHeightIn, 12, 'top row 6x2 now computes');
+    assert.strictEqual(r.completeForRequest, false, 'spacing still pending');
     assert.deepStrictEqual(
-      r.scopeNotes.find((n) => n.code === 'ANGLE_U_NOT_CALCULATED'),
-      { code: 'ANGLE_U_NOT_CALCULATED', connectionIds: ['cAngle', 'cU'] },
-      'sorted connection ids, deterministic');
+      r.scopeNotes.find((n) => n.code === 'A2_SPACING_NOT_CALCULATED'),
+      { code: 'A2_SPACING_NOT_CALCULATED', connectionIds: ['cAngle', 'cU'] },
+      'sorted angle/U connection ids only');
+    assert.ok(!r.scopeNotes.some((n) => n.code === 'ANGLE_U_NOT_CALCULATED'),
+      'the PBV2-2 deferral note is gone — dimensions are no longer deferred');
     assert.strictEqual(r.spacingRequirements.length, 0);
   });
 
@@ -677,16 +683,350 @@ describe('PBV2-2 — straight-pull calculation', () => {
     }
   });
 
-  test('NO A(2) LEAKAGE: the module still contains no 6x row arithmetic', () => {
+  test('MILESTONE BOUNDARY: A(2) row rule is implemented, spacing is not', () => {
+    // Behavioral, not token-scanning where possible: A(2) dimensional
+    // evidence must exist; spacing must not.
     const fs = require('node:fs');
     const source = fs.readFileSync(require.resolve('../src/calc/pullBox.js'), 'utf8');
-    // strip comments before scanning so milestone documentation is exempt
     const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-    for (const banned of ['6 *', '* 6', 'ANGLE_U_ROW', '314.28(A)(2)',
-      'spacing:', 'otherInRow']) {
-      assert.ok(!code.includes(banned),
-        'premature A(2) implementation detected: ' + banned);
+    assert.ok(code.includes('8 *'), 'straight multiplier present');
+    assert.ok(code.includes('6 *'), 'A(2) row multiplier present (PBV2-3)');
+    assert.ok(code.includes('ANGLE_U_ROW'), 'row requirement kind present');
+    assert.ok(code.includes('314.28(A)(2)'), 'structured A(2) codeRef present');
+    // spacing stays out until PBV2-4: no spacing requirement ids, and every
+    // successful result returns an empty spacingRequirements array
+    assert.ok(!code.includes("'spacing:"), 'no spacing requirement ids yet');
+    const api = require('../src/calc/pullBox');
+    const r = api.calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rT', 'top', 0)],
+      entries: [entry('a', 'rL', '2'), entry('t', 'rT', '2')],
+      connections: [conn('c1', 'a', 't')],
+    });
+    assert.deepStrictEqual(r.spacingRequirements, []);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-3 — Angle/U row engine (NEC 314.28(A)(2) dimensional rule)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-3 — A(2) row requirements', () => {
+  const { calculatePullBox } = require('../src/calc/pullBox');
+
+  /** Angle box: one entry on wallA, one on an adjacent wall, connected. */
+  function angleBox(wallA, sizeA, wallB, sizeB) {
+    return {
+      rows: [row('rA', wallA, 0), row('rB', wallB, 0)],
+      entries: [entry('a', 'rA', sizeA), entry('b', 'rB', sizeB)],
+      connections: [conn('c1', 'a', 'b')],
+    };
+  }
+
+  test('INDEPENDENT PINS: all twelve single-entry 6x values, hand-stated', () => {
+    // Explicit constants, never derived from the production map: 6 x size.
+    const expected = {
+      '1/2': 3, '3/4': 4.5, '1': 6, '1-1/4': 7.5, '1-1/2': 9, '2': 12,
+      '2-1/2': 15, '3': 18, '3-1/2': 21, '4': 24, '5': 30, '6': 36,
+    };
+    for (const [size, inches] of Object.entries(expected)) {
+      const r = calculatePullBox(angleBox('left', size, 'top', size));
+      const req = r.widthRequirements.find((q) => q.kind === 'ANGLE_U_ROW');
+      assert.strictEqual(req.minimumInches, inches, size);
+      assert.deepStrictEqual(req.otherTradeSizes, [], size);
+      assert.strictEqual(req.multiplier, 6, size);
     }
-    assert.ok(code.includes('8 *'), 'the straight multiplier lives in code');
+  });
+
+  test('U REGRESSION [3,3]: 6x3 + 3 = 21", never the legacy 24"', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0)],
+      entries: [entry('a', 'rL', '3'), entry('b', 'rL', '3')],
+      connections: [conn('cU', 'a', 'b')],
+    });
+    const req = r.widthRequirements[0];
+    assert.strictEqual(r.widthRequirements.length, 1, 'ONE row requirement, not two');
+    assert.strictEqual(req.minimumInches, 21, 'legacy double-count produced 24');
+    assert.strictEqual(req.largestTradeSize, '3');
+    assert.deepStrictEqual(req.otherTradeSizes, ['3'], 'the tied size stays in the sum ONCE');
+    assert.deepStrictEqual(req.entryIds, ['a', 'b']);
+    assert.strictEqual(req.dimension, 'width');
+    assert.deepStrictEqual(req.codeRef, { code: 'NEC', section: '314.28(A)(2)' });
+  });
+
+  test('U REGRESSION [4,2]: 6x4 + 2 = 26"', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0)],
+      entries: [entry('a', 'rL', '4'), entry('b', 'rL', '2')],
+      connections: [conn('cU', 'a', 'b')],
+    });
+    assert.strictEqual(r.widthRequirements[0].minimumInches, 26);
+    assert.strictEqual(r.widthRequirements[0].largestTradeSize, '4');
+    assert.deepStrictEqual(r.widthRequirements[0].otherTradeSizes, ['2']);
+  });
+
+  test('U REGRESSION [4,3,2]: two form the U, the third still sums — 29"', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0)],
+      entries: [entry('a', 'rL', '4'), entry('b', 'rL', '3'), entry('c', 'rL', '2')],
+      connections: [conn('cU', 'b', 'c')],   // U between 3" and 2"
+    });
+    const req = r.widthRequirements[0];
+    assert.strictEqual(req.minimumInches, 29, '6x4 + 3 + 2');
+    assert.strictEqual(req.largestTradeSize, '4',
+      'the largest governs the 6x term even though it is not in the U itself');
+    assert.deepStrictEqual(req.otherTradeSizes, ['3', '2']);
+    assert.deepStrictEqual(req.entryIds, ['a', 'b', 'c']);
+    assert.deepStrictEqual(req.triggerConnectionIds, ['cU']);
+  });
+
+  test('LEGACY ANGLE REGRESSION (PB-2): opposite-wall sizes NEVER join a row formula', () => {
+    // LEFT Row 1: 4" + 2"; RIGHT Row 1: 3". Angle from the LEFT 2" to TOP.
+    // Legacy produced 29" by adding the right-side 3" into the left formula.
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0), row('rT', 'top', 0)],
+      entries: [entry('L4', 'rL', '4'), entry('L2', 'rL', '2'),
+        entry('R3', 'rR', '3'), entry('T2', 'rT', '2')],
+      connections: [conn('cA', 'L2', 'T2')],
+    });
+    const left = r.widthRequirements.find((q) => q.rowId === 'rL');
+    assert.strictEqual(left.minimumInches, 26, '6x4 + 2 — the legacy 29 is dead');
+    assert.deepStrictEqual(left.entryIds, ['L2', 'L4'],
+      'only left-wall entries participate');
+    assert.strictEqual(r.widthRequirements.find((q) => q.rowId === 'rR'), undefined,
+      'the untriggered right row generates nothing');
+  });
+
+  test('TRIGGER vs SUM: a straight-connected entry joins a triggered row sum', () => {
+    // LEFT Row 1: 4" (straight to RIGHT) + 2" (angle to TOP).
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0), row('rT', 'top', 0)],
+      entries: [entry('L4', 'rL', '4'), entry('L2', 'rL', '2'),
+        entry('R4', 'rR', '4'), entry('T2', 'rT', '2')],
+      connections: [conn('cS', 'L4', 'R4'), conn('cA', 'L2', 'T2')],
+    });
+    const left = r.widthRequirements.find((q) => q.kind === 'ANGLE_U_ROW');
+    assert.strictEqual(left.minimumInches, 26, '6x4 + 2: the straight 4" sums');
+    assert.deepStrictEqual(left.triggerConnectionIds, ['cA'],
+      'the straight connection triggers nothing and is not a trigger id');
+  });
+
+  test('TRIGGER vs SUM: an unconnected entry joins a triggered row sum', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rT', 'top', 0)],
+      entries: [entry('L4', 'rL', '4'), entry('L2', 'rL', '2'), entry('T2', 'rT', '2')],
+      connections: [conn('cA', 'L2', 'T2')],   // only the 2" is connected
+    });
+    const left = r.widthRequirements[0];
+    assert.strictEqual(left.minimumInches, 26, '6x4 + 2: unconnected 4" governs the 6x');
+    assert.deepStrictEqual(r.warnings, [{ code: 'UNCONNECTED_ENTRY', entryIds: ['L4'] }],
+      'still warned as unconnected, still in the arithmetic');
+  });
+
+  test('CONTRAST: an unconnected entry in a DIFFERENT row triggers nothing', () => {
+    const r = calculatePullBox({
+      rows: [row('rL1', 'left', 0), row('rL2', 'left', 1), row('rT', 'top', 0)],
+      entries: [entry('L2', 'rL1', '2'), entry('big', 'rL2', '6'), entry('T2', 'rT', '2')],
+      connections: [conn('cA', 'L2', 'T2')],
+    });
+    assert.strictEqual(r.widthRequirements.length, 1, 'only Row 1 computes');
+    assert.strictEqual(r.widthRequirements[0].rowId, 'rL1');
+    assert.strictEqual(r.widthRequirements[0].minimumInches, 12, '6x2');
+    assert.strictEqual(r.minimumWidthIn, 12,
+      'the 6" in the untriggered row must NOT create a 36" requirement');
+  });
+
+  test('EQUAL LARGEST [4,4,2]: exclude exactly one — 6x4 + 4 + 2 = 30"', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0)],
+      entries: [entry('a', 'rL', '4'), entry('b', 'rL', '4'), entry('c', 'rL', '2')],
+      connections: [conn('cU', 'a', 'b')],
+    });
+    const req = r.widthRequirements[0];
+    assert.strictEqual(req.minimumInches, 30, 'not 26 (dropping both 4s) and not 34');
+    assert.strictEqual(req.largestTradeSize, '4');
+    assert.deepStrictEqual(req.otherTradeSizes, ['4', '2'],
+      'duplicates preserved, size-descending order');
+  });
+
+  test('MULTIPLE ROWS, ONE WALL: separate requirements, never merged', () => {
+    const r = calculatePullBox({
+      rows: [row('rowA', 'left', 0), row('rowB', 'left', 1), row('rT', 'top', 0)],
+      entries: [entry('A4', 'rowA', '4'), entry('A2', 'rowA', '2'),
+        entry('B3', 'rowB', '3'), entry('T1', 'rT', '2'), entry('T2b', 'rT', '1')],
+      connections: [conn('cA', 'A2', 'T1'), conn('cB', 'B3', 'T2b')],
+    });
+    const a = r.widthRequirements.find((q) => q.rowId === 'rowA');
+    const b = r.widthRequirements.find((q) => q.rowId === 'rowB');
+    assert.strictEqual(a.minimumInches, 26);
+    assert.strictEqual(b.minimumInches, 18);
+    assert.strictEqual(r.minimumWidthIn, 26);
+    assert.strictEqual(r.governingWidthRequirementId, 'angle-u-row:rowA');
+  });
+
+  test('ALL FOUR WALLS: calculated requirement dimension follows the wall', () => {
+    for (const [wall, adjacent, dim] of [
+      ['left', 'top', 'width'], ['right', 'bottom', 'width'],
+      ['top', 'right', 'height'], ['bottom', 'left', 'height'],
+    ]) {
+      const r = calculatePullBox(angleBox(wall, '3', adjacent, '1/2'));
+      const reqs = dim === 'width' ? r.widthRequirements : r.heightRequirements;
+      const req = reqs.find((q) => q.wall === wall);
+      assert.ok(req, wall);
+      assert.strictEqual(req.dimension, dim, wall);
+      assert.strictEqual(req.minimumInches, 18, wall);
+    }
+  });
+
+  test('ONE ANGLE TRIGGERS BOTH WALL ROWS: per-wall requirements, no anonymous result', () => {
+    const r = calculatePullBox(angleBox('left', '2', 'top', '2'));
+    assert.strictEqual(r.widthRequirements.length, 1);
+    assert.strictEqual(r.heightRequirements.length, 1);
+    assert.strictEqual(r.widthRequirements[0].minimumInches, 12);
+    assert.strictEqual(r.widthRequirements[0].wall, 'left');
+    assert.strictEqual(r.heightRequirements[0].minimumInches, 12);
+    assert.strictEqual(r.heightRequirements[0].wall, 'top');
+    assert.strictEqual(r.minimumWidthIn, 12);
+    assert.strictEqual(r.minimumHeightIn, 12);
+  });
+
+  test('MULTIPLE ANGLE/U ON ONE ROW: exactly one requirement, all triggers listed', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rT', 'top', 0)],
+      entries: [entry('L3', 'rL', '3'), entry('L2', 'rL', '2'), entry('L1', 'rL', '1'),
+        entry('T2', 'rT', '2')],
+      connections: [conn('cU', 'L3', 'L2'), conn('cA', 'L1', 'T2')],
+    });
+    const left = r.widthRequirements.filter((q) => q.rowId === 'rL');
+    assert.strictEqual(left.length, 1, 'one row = one requirement');
+    assert.strictEqual(left[0].minimumInches, 21, '6x3 + 2 + 1');
+    assert.deepStrictEqual(left[0].triggerConnectionIds, ['cA', 'cU'], 'sorted');
+  });
+
+  test('MANDATORY DESIGN EXAMPLE: mixed straight + angle, independent governors', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0), row('rT', 'top', 0)],
+      entries: [entry('L4', 'rL', '4'), entry('L2', 'rL', '2'),
+        entry('R4', 'rR', '4'), entry('T2', 'rT', '2')],
+      connections: [conn('cS', 'L4', 'R4'), conn('cA', 'L2', 'T2')],
+    });
+    assert.strictEqual(r.minimumWidthIn, 32, 'straight 8x4 outgoverns row 26');
+    assert.strictEqual(r.minimumHeightIn, 12, 'top row 6x2');
+    assert.strictEqual(r.governingWidthRequirementId, 'straight:cS');
+    assert.strictEqual(r.governingHeightRequirementId, 'angle-u-row:rT');
+    assert.deepStrictEqual(
+      r.widthRequirements.map((q) => [q.id, q.minimumInches]),
+      [['angle-u-row:rL', 26], ['straight:cS', 32]],
+      'both candidates present, id-sorted');
+    assert.strictEqual(r.completeForRequest, false);
+  });
+
+  test('CROSS-KIND TIE-BREAK: equal 24" straight and row pick the first id', () => {
+    // straight 8x3 = 24 (id straight:cS) vs left row 6x4 = 24
+    // (id angle-u-row:rL). 'angle-u-row:rL' < 'straight:cS' lexicographically.
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rL2', 'left', 1), row('rR', 'right', 0),
+        row('rT', 'top', 0)],
+      entries: [entry('S3', 'rL2', '3'), entry('R3', 'rR', '3'),
+        entry('L4', 'rL', '4'), entry('T1', 'rT', '1/2')],
+      connections: [conn('cS', 'S3', 'R3'), conn('cA', 'L4', 'T1')],
+    });
+    const mins = r.widthRequirements.map((q) => q.minimumInches);
+    assert.deepStrictEqual(mins, [24, 24], 'genuine cross-kind tie');
+    assert.strictEqual(r.minimumWidthIn, 24);
+    assert.strictEqual(r.governingWidthRequirementId, 'angle-u-row:rL',
+      'lexicographically first requirement id, never insertion order');
+  });
+
+  test('EMPTY ROWS: valid, trigger nothing, produce nothing', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rEmpty', 'left', 1),
+        row('rEmptyTop', 'top', 3), row('rT', 'top', 0)],
+      entries: [entry('a', 'rL', '2'), entry('t', 'rT', '2')],
+      connections: [conn('cA', 'a', 't')],
+    });
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(r.widthRequirements.length, 1);
+    assert.strictEqual(r.heightRequirements.length, 1);
+    assert.ok(!JSON.stringify(r).includes('rEmpty'));
+  });
+
+  test('rowOrder is echoed for labeling but never part of identity', () => {
+    const r = calculatePullBox({
+      rows: [row('myRow', 'bottom', 7), row('rL', 'left', 0)],
+      entries: [entry('b3', 'myRow', '3'), entry('L2', 'rL', '2')],
+      connections: [conn('cA', 'b3', 'L2')],
+    });
+    const req = r.heightRequirements[0];
+    assert.strictEqual(req.id, 'angle-u-row:myRow', 'id from rowId, not order');
+    assert.strictEqual(req.rowOrder, 7);
+    assert.strictEqual(req.wall, 'bottom');
+  });
+
+  test('IMMUTABILITY: deep-frozen mixed request calculates without mutation', () => {
+    const q = {
+      rows: [row('rL', 'left', 0), row('rL2', 'left', 1), row('rR', 'right', 0),
+        row('rT', 'top', 0)],
+      entries: [entry('L4', 'rL', '4'), entry('L2', 'rL', '2'),
+        entry('X3', 'rL2', '3'), entry('R4', 'rR', '4'), entry('T2', 'rT', '2'),
+        entry('U1', 'rL', '1')],
+      connections: [conn('cS', 'L4', 'R4'), conn('cA', 'L2', 'T2'),
+        conn('cU', 'L2', 'U1')],
+    };
+    Object.freeze(q); Object.freeze(q.rows); Object.freeze(q.entries);
+    Object.freeze(q.connections);
+    q.rows.forEach(Object.freeze); q.entries.forEach(Object.freeze);
+    q.connections.forEach((c) => { Object.freeze(c); Object.freeze(c.entryIds); });
+    const snapshot = JSON.stringify(q);
+    const r = calculatePullBox(q);
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(JSON.stringify(q), snapshot);
+  });
+
+  test('DETERMINISM: seeded shuffles keep the whole mixed result deep-equal', () => {
+    let seed = 0xA23;
+    const rnd = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 0x100000000;
+    };
+    const shuffle = (arr) => {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rnd() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+    const base = {
+      rows: [row('rL', 'left', 0), row('rL2', 'left', 1), row('rR', 'right', 0),
+        row('rT', 'top', 0), row('rB', 'bottom', 0)],
+      entries: [entry('L4', 'rL', '4'), entry('L2', 'rL', '2'),
+        entry('L1', 'rL', '1'), entry('X3', 'rL2', '3'),
+        entry('R4', 'rR', '4'), entry('T2', 'rT', '2'), entry('B5', 'rB', '5'),
+        entry('loose', 'rB', '6')],
+      connections: [conn('cS', 'L4', 'R4'), conn('cA', 'L2', 'T2'),
+        conn('cU', 'L1', 'L2'), conn('cA2', 'B5', 'L1')],
+    };
+    const ref = calculatePullBox(base);
+    for (let i = 0; i < 20; i++) {
+      const r = calculatePullBox({
+        rows: shuffle(base.rows),
+        entries: shuffle(base.entries),
+        connections: shuffle(base.connections),
+      });
+      assert.deepStrictEqual(r, ref, 'shuffle #' + i);
+    }
+  });
+
+  test('FINITENESS: fractional 6x values are exact numbers, nothing NaN/Infinity', () => {
+    const r = calculatePullBox(angleBox('left', '3/4', 'top', '1-1/4'));
+    assert.strictEqual(r.widthRequirements[0].minimumInches, 4.5);
+    assert.strictEqual(r.heightRequirements[0].minimumInches, 7.5);
+    const walk = (o) => {
+      for (const v of Object.values(o)) {
+        if (typeof v === 'number') assert.ok(Number.isFinite(v));
+        else if (v && typeof v === 'object') walk(v);
+      }
+    };
+    walk(r);
   });
 });
