@@ -257,15 +257,12 @@ describe('PBV2-6 — milestone scope guards', () => {
     assert.ok(/#pbv2-overlay\{[^}]*display:none/.test(html));
   });
 
-  test('no result rendering, no adapter call (PBV2-8 scope stays out)', () => {
-    // Connections and Quick Straight are in scope since PBV2-7; results are
-    // not: no dimensions, no spacing cards, no governing, no engine
-    // calculation call anywhere in the V2 editor.
-    for (const banned of ['minimumWidthIn', 'minimumHeightIn',
-      'spacingRequirements', 'calculatePullBox(', 'governing']) {
-      assert.ok(!v2.includes(banned),
-        'PBV2-8 functionality leaked early: ' + banned);
-    }
+  test('result adapter is in scope (8A); production exposure is not', () => {
+    // Results/adapter opened in PBV2-8A. What must STILL not exist: any
+    // production navigation route or applicability gate (PBV2-8B+).
+    assert.ok(v2.includes('calculatePullBox('), '8A adapter present');
+    assert.ok(!html.includes("openTool('pullbox-v2'"), 'no production route');
+    assert.ok(!/NOT SURE|applicability/i.test(v2), '8B gate not started');
   });
 
   test('no visible code references in the V2 panel (global clickable rule)', () => {
@@ -385,11 +382,9 @@ describe('PBV2-6b — many-rows portrait layout fix', () => {
       'the note must follow the editor content in document flow');
   });
 
-  test('layout fix survives PBV2-7: gate intact, result scope still out', () => {
+  test('layout fix survives PBV2-7/8A: gate intact, no production exposure', () => {
     assert.ok(v2.includes('pbv2ShouldOpen'), 'dev gate intact');
-    for (const banned of ['minimumWidthIn', 'calculatePullBox(']) {
-      assert.ok(!v2.includes(banned), 'scope creep: ' + banned);
-    }
+    assert.ok(!html2.includes("openTool('pullbox-v2'"), 'still dev-only');
   });
 });
 
@@ -638,13 +633,16 @@ describe('PBV2-7 — connection render architecture + scope', () => {
     assert.ok(!/ondrag|dragstart/.test(v2), 'no drag requirement');
   });
 
-  test('inspector and lines show type words but never code references or results', () => {
+  test('GLOBAL CLICKABLE RULE: every visible NEC reference is an ec-coderef button', () => {
     assert.ok(v2.includes('PBV2_TYPE_LABEL'), 'display labels for derived types');
+    // Static markup carries no code references; the renderer emits them
+    // ONLY through ecRenderCodeRef, which always produces a button.
     const markup = v2.replace(/<script>[\s\S]*?<\/script>/g, '');
-    assert.ok(!/314\.28|NEC|NYCEC/.test(markup), 'no visible code references');
-    assert.ok(!v2.includes('minimumWidthIn') && !v2.includes('calculatePullBox('),
-      'no result adapter yet');
-    assert.ok(!v2.includes('r.connection.id + \'</'), 'connection id not rendered to user');
+    assert.ok(!/314\.28|NEC|NYCEC/.test(markup), 'no inert static code refs');
+    const renderer = v2.slice(v2.indexOf('function ecRenderCodeRef'));
+    assert.ok(renderer.indexOf('<button class="ec-coderef"') !== -1);
+    // behavioral proof that rendered NEC text only exists inside coderef
+    // buttons lives in the PBV2-8A battery (strip-buttons check)
   });
 
   test('many-rows layout fix intact with the connection layer added', () => {
@@ -763,7 +761,312 @@ describe('PBV2-7b — connection redraw timing fix', () => {
       html7b.indexOf('END PULL BOX V2'));
     assert.ok(!v2.includes("addEventListener('scroll'"),
       'still no scroll listener: shared scrolling coordinate space');
-    assert.ok(!v2.includes('setInterval') && !v2.includes('setTimeout('),
-      'no timers, no polling');
+    assert.ok(!v2.includes('setInterval'), 'no polling');
+    // exactly ONE setTimeout: the app's established AI-chat handoff
+    assert.strictEqual((v2.match(/setTimeout\(/g) || []).length, 1);
+    assert.ok(/setTimeout\(function \(\) \{ sendMessage\(\); \}, 100\)/.test(v2),
+      'the single timer is the existing chat handoff pattern, not a redraw hack');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-8A — result adapter + structured result UI + Code→AI
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-8A — shipped calculate/render path', () => {
+  const html8 = fs.readFileSync(path.join(__dirname, '..', 'mobile.html'), 'utf8');
+  function fn8(name) {
+    const i = html8.indexOf('function ' + name + '(');
+    assert.ok(i !== -1, 'missing: ' + name);
+    let d = 0; let started = false;
+    for (let j = i; j < html8.length; j++) {
+      if (html8[j] === '{') { d++; started = true; } else if (html8[j] === '}') {
+        d--; if (started && d === 0) return html8.slice(i, j + 1);
+      }
+    }
+    throw new Error('unterminated ' + name);
+  }
+
+  /** Full harness: shipped state helpers + adapter + renderer against a stub
+   *  DOM, with a real or poisoned engine injected as EC.pullBox. */
+  function harness(engineOverride) {
+    const engine = engineOverride || require('../src/calc/pullBox');
+    let calcCalls = 0;
+    const counted = Object.create(engine);
+    counted.calculatePullBox = function (req) {
+      calcCalls++;
+      return engine.calculatePullBox(req);
+    };
+    const els = {};
+    const el = (id) => {
+      if (!els[id]) {
+        els[id] = { innerHTML: '', value: '', style: {}, textContent: '',
+          classList: { contains: () => false, add: () => {}, remove: () => {} } };
+      }
+      return els[id];
+    };
+    const names = ['pbv2InitialState', 'pbv2RowById', 'pbv2AddRow', 'pbv2AddEntry',
+      'pbv2ChangeSize', 'pbv2ChangeRow', 'pbv2DeleteEntry', 'pbv2DeleteRow',
+      'pbv2RowLabel', 'pbv2Esc', 'pbv2AddConnection', 'pbv2DeleteConnection',
+      'pbv2EntryDesc', 'pbv2QuickStraight', 'ecRenderCodeRef', 'ecOpenCodeRef',
+      'pbv2InvalidateResult', 'pbv2In', 'pbv2Equation', 'pbv2ReqTitle',
+      'pbv2ReqAiPrompt', 'pbv2SpacingAiPrompt', 'pbv2ReqCard', 'pbv2Calculate',
+      'pbv2FindReq', 'pbv2RenderResults'];
+    const src = names.map(fn8).join('\n');
+    const api = {};
+    const handoff = { prompts: [], switched: 0 };
+    // eslint-disable-next-line no-new-func
+    new Function('EC', 'document', 'window', 'switchTab', 'sendMessage',
+      'setTimeout', 'exports',
+      `var EC_CODE_CONTEXTS = [];
+       var PBV2_ERROR_TEXT = { NO_ENTRIES: 'Add at least one raceway before calculating.' };
+       var PBV2_NOTE_TEXT = {
+         SPACING_VERIFY_IN_LAYOUT: 'Actual raceway-entry spacing must still be verified in the physical box layout.',
+         NO_WIDTH_CANDIDATES: 'No current pull produces a width requirement.',
+         NO_HEIGHT_CANDIDATES: 'No current pull produces a height requirement.',
+         DEPTH_NOT_CALCULATED: 'Depth is not calculated by this tool.',
+         A3_NOT_EVALUATED: 'listed smaller-dimension products or exceptions are not evaluated by this tool.',
+       };
+       var PBV2 = null; var pbv2LastResult = null;
+       var pbv2Seq = 0;
+       function pbv2NextId(p) { pbv2Seq++; return 'pbv2-' + p + '-' + pbv2Seq; }
+       ${src}
+       exports.setState = (s) => { PBV2 = s; };
+       exports.getState = () => PBV2;
+       exports.initial = () => pbv2InitialState(pbv2NextId);
+       exports.nextId = pbv2NextId;
+       exports.helpers = { addEntry: pbv2AddEntry, addConn: pbv2AddConnection,
+         addRow: pbv2AddRow, quick: pbv2QuickStraight };
+       exports.calculate = pbv2Calculate;
+       exports.invalidate = pbv2InvalidateResult;
+       exports.lastResult = () => pbv2LastResult;
+       exports.openCodeRef = ecOpenCodeRef;
+       exports.contexts = () => EC_CODE_CONTEXTS;`)(
+      { pullBox: counted },
+      { getElementById: el },
+      {}, // window
+      () => { handoff.switched++; },
+      () => {},
+      (cb) => cb(),   // immediate setTimeout for the handoff
+      api);
+    return { api, els, el, handoff, calcCalls: () => calcCalls };
+  }
+
+  /** Build a state through the shipped helpers. */
+  function build(h, plan) {
+    const s = h.api.initial();
+    h.api.setState(s);
+    const rowOf = (wall) => s.rows.find((r) => r.wall === wall).id;
+    const made = {};
+    for (const [key, wall, size] of plan.entries || []) {
+      made[key] = h.api.helpers.addEntry(s, rowOf(wall), size, h.api.nextId('entry'));
+    }
+    for (const [a, b] of plan.connections || []) {
+      h.api.helpers.addConn(s, made[a].id, made[b].id, h.api.nextId('connection'));
+    }
+    return { s, made };
+  }
+
+  test('A/B: straight-only — width 32, honest null height; both axes — 32/24', () => {
+    const h = harness();
+    build(h, { entries: [['a', 'left', '4'], ['b', 'right', '4']], connections: [['a', 'b']] });
+    h.api.calculate();
+    let out = h.el('pbv2-results').innerHTML;
+    assert.ok(out.includes('MINIMUM INSIDE DIMENSIONS'));
+    assert.ok(out.includes('32\u2033'), 'width 32');
+    assert.ok(out.includes('Not determined from current pulls'), 'null height wording');
+    assert.ok(!out.includes('0\u2033'), 'never a fake zero');
+    const h2 = harness();
+    build(h2, { entries: [['a', 'left', '4'], ['b', 'right', '4'],
+      ['t', 'top', '3'], ['bt', 'bottom', '3']],
+      connections: [['a', 'b'], ['t', 'bt']] });
+    h2.api.calculate();
+    out = h2.el('pbv2-results').innerHTML;
+    assert.ok(out.includes('32\u2033') && out.includes('24\u2033'), 'both axes');
+  });
+
+  test('C/D: angle renders separate axes; U renders dimension + separate spacing', () => {
+    const h = harness();
+    build(h, { entries: [['a', 'left', '2'], ['t', 'top', '2']], connections: [['a', 't']] });
+    h.api.calculate();
+    let out = h.el('pbv2-results').innerHTML;
+    assert.ok(out.includes('WIDTH GOVERNED BY') && out.includes('HEIGHT GOVERNED BY'));
+    assert.ok(out.includes('ENTRY SPACING'));
+    const hU = harness();
+    build(hU, { entries: [['a', 'left', '3'], ['b', 'left', '3']], connections: [['a', 'b']] });
+    hU.api.calculate();
+    out = hU.el('pbv2-results').innerHTML;
+    assert.ok(out.includes('21\u2033'), 'U dimension 6x3+3');
+    assert.ok(out.includes('18\u2033'), 'U spacing 6x3 rendered separately');
+    assert.ok(out.indexOf('ENTRY SPACING') > out.indexOf('MINIMUM INSIDE DIMENSIONS'),
+      'spacing never presented as a box dimension');
+  });
+
+  test('E: frozen mixed design fixture — 32 width, 12 height, one 12 spacing', () => {
+    const h = harness();
+    build(h, { entries: [['L4', 'left', '4'], ['L2', 'left', '2'],
+      ['R4', 'right', '4'], ['T2', 'top', '2']],
+      connections: [['L4', 'R4'], ['L2', 'T2']] });
+    h.api.calculate();
+    const out = h.el('pbv2-results').innerHTML;
+    assert.ok(out.includes('32\u2033') && out.includes('12\u2033'));
+    assert.ok(out.includes('8 \u00D7 4\u2033 = 32\u2033'), 'straight equation from fields');
+    assert.strictEqual((out.match(/ENTRY SPACING/g) || []).length, 1);
+  });
+
+  test('F: no connections — nulls, warning, candidate notes, no fake result', () => {
+    const h = harness();
+    build(h, { entries: [['a', 'left', '3'], ['t', 'top', '2']] });
+    h.api.calculate();
+    const out = h.el('pbv2-results').innerHTML;
+    assert.strictEqual((out.match(/Not determined from current pulls/g) || []).length, 2);
+    assert.ok(out.includes('Unconnected raceways'));
+    assert.ok(out.includes('still counted in same-row sizing'));
+    assert.ok(out.includes('No current pull produces a width requirement.'));
+    assert.ok(out.includes('Depth is not calculated'));
+    assert.ok(!/Compliant|Pass|Approved/i.test(out), 'never claims compliance');
+  });
+
+  test('EXACTLY ONE ENGINE CALL per calculate action', () => {
+    const h = harness();
+    build(h, { entries: [['a', 'left', '4'], ['b', 'right', '4']], connections: [['a', 'b']] });
+    h.api.calculate();
+    assert.strictEqual(h.calcCalls(), 1, 'one call, no validate-then-calculate');
+    h.api.calculate();
+    assert.strictEqual(h.calcCalls(), 2, 'each action is exactly one more call');
+  });
+
+  test('POISONED ENGINE: synthetic values render verbatim — UI never recalculates', () => {
+    const poisoned = {
+      calculatePullBox: () => ({
+        ok: true,
+        minimumWidthIn: 123.25,
+        minimumHeightIn: 77.5,
+        widthRequirements: [{
+          id: 'straight:cX', kind: 'STRAIGHT', dimension: 'width',
+          connectionId: 'cX', entryIds: ['zz-a', 'zz-b'],
+          largestTradeSize: '4', otherTradeSizes: [], multiplier: 8,
+          minimumInches: 123.25, codeRef: { code: 'NEC', section: '314.28(A)(1)' },
+        }],
+        heightRequirements: [{
+          id: 'angle-u-row:rQ', kind: 'ANGLE_U_ROW', dimension: 'height',
+          wall: 'top', rowId: 'rQ', rowOrder: 0, entryIds: ['zz-c'],
+          largestTradeSize: '2', otherTradeSizes: ['1'], multiplier: 6,
+          minimumInches: 77.5, triggerConnectionIds: ['cQ'],
+          codeRef: { code: 'NEC', section: '314.28(A)(2)' },
+        }],
+        governingWidthRequirementId: 'straight:cX',
+        governingHeightRequirementId: 'angle-u-row:rQ',
+        spacingRequirements: [{
+          id: 'spacing:cX', kind: 'ENTRY_SPACING', connectionType: 'ANGLE',
+          connectionId: 'cX', entryIds: ['zz-a', 'zz-c'],
+          largerTradeSize: '3', multiplier: 6, minimumInches: 19.75,
+          codeRef: { code: 'NEC', section: '314.28(A)(2)' },
+        }],
+        completeForRequest: true,
+        warnings: [],
+        scopeNotes: [{ code: 'DEPTH_NOT_CALCULATED' }],
+      }),
+      TRADE_SIZE_KEYS: require('../src/calc/pullBox').TRADE_SIZE_KEYS,
+    };
+    const h = harness(poisoned);
+    h.api.setState(h.api.initial());
+    h.api.calculate();
+    const out = h.el('pbv2-results').innerHTML;
+    assert.ok(out.includes('123.25\u2033'), 'poisoned width rendered exactly');
+    assert.ok(out.includes('77.5\u2033'), 'poisoned height rendered exactly');
+    assert.ok(out.includes('19.75\u2033'), 'poisoned spacing rendered exactly');
+    assert.ok(out.includes('8 \u00D7 4\u2033 = 123.25\u2033'),
+      'equation formatted from fields, result NOT recomputed to 32');
+    assert.ok(out.includes('6 \u00D7 2\u2033 + 1\u2033 = 77.5\u2033'),
+      'row equation from fields, not 13');
+    // GOVERNING TRUST: cards exist because the UI resolved the poisoned
+    // governing ids, not because it re-derived a maximum
+    assert.ok(out.includes('WIDTH GOVERNED BY') && out.includes('HEIGHT GOVERNED BY'));
+  });
+
+  test('CLICKABLE RULE: stripping ec-coderef buttons leaves zero NEC text', () => {
+    const h = harness();
+    build(h, { entries: [['L4', 'left', '4'], ['L2', 'left', '2'],
+      ['R4', 'right', '4'], ['T2', 'top', '2']],
+      connections: [['L4', 'R4'], ['L2', 'T2']] });
+    h.api.calculate();
+    const out = h.el('pbv2-results').innerHTML;
+    assert.ok(out.includes('NEC 314.28(A)(1)') && out.includes('NEC 314.28(A)(2)'));
+    const stripped = out.replace(/<button class="ec-coderef"[\s\S]*?<\/button>/g, '');
+    assert.ok(!/NEC|314\.28/.test(stripped),
+      'every visible code reference is an interactive coderef button');
+    assert.ok(out.includes('aria-label="Explain NEC'), 'accessible labels');
+  });
+
+  test('CODE→AI CONTEXT: straight, row and spacing prompts carry the exact calculation', () => {
+    const h = harness();
+    build(h, { entries: [['L4', 'left', '4'], ['L2', 'left', '2'],
+      ['R4', 'right', '4'], ['T2', 'top', '2']],
+      connections: [['L4', 'R4'], ['L2', 'T2']] });
+    h.api.calculate();
+    const ctx = h.api.contexts();
+    const prompts = ctx.map((c) => c.prompt);
+    const straight = prompts.find((p) => p.includes('Straight pull'));
+    assert.ok(straight.includes('314.28(A)(1)'));
+    assert.ok(straight.includes('LEFT \u00B7 Row 1 \u00B7 4\u2033')
+      && straight.includes('RIGHT \u00B7 Row 1 \u00B7 4\u2033'), 'endpoints resolved');
+    assert.ok(straight.includes('8 \u00D7 4 inch = 32 inches'), 'engine numbers, engine result');
+    const rowPrompt = prompts.find((p) => p.includes('Angle/U pull row requirement')
+      && p.includes('left wall'));
+    assert.ok(rowPrompt, 'left-wall row prompt exists');
+    assert.ok(rowPrompt.includes('Row 1') && rowPrompt.includes('314.28(A)(2)'));
+    assert.ok(rowPrompt.includes('raceways: 4 inch, 2 inch'), 'row raceways in context');
+    const spacing = prompts.find((p) => p.includes('ENTRY SPACING'));
+    assert.ok(spacing.includes('not the box dimension'),
+      'AI is told this is spacing, not the dimensional rule');
+    assert.ok(spacing.includes('ANGLE') && spacing.includes('= 12 inches'));
+    // tapping a ref uses the existing chat handoff and preserves state
+    const before = JSON.stringify(h.api.getState());
+    h.api.openCodeRef(0);
+    assert.strictEqual(h.el('userInput').value, ctx[0].prompt, 'prefilled');
+    assert.strictEqual(h.handoff.switched, 1, 'existing switchTab handoff');
+    assert.strictEqual(JSON.stringify(h.api.getState()), before,
+      'PBV2 session state untouched by AI navigation');
+  });
+
+  test('INVALIDATION: every mutation hides the stale result until recalculated', () => {
+    const h = harness();
+    const { s, made } = build(h, {
+      entries: [['a', 'left', '4'], ['b', 'right', '4'], ['t', 'top', '2']],
+      connections: [['a', 'b']] });
+    h.api.calculate();
+    assert.ok(h.el('pbv2-results').innerHTML.includes('32\u2033'));
+    h.api.invalidate();
+    assert.ok(h.el('pbv2-results').innerHTML.includes('Box changed'),
+      'stale message replaces the old result');
+    assert.ok(!h.el('pbv2-results').innerHTML.includes('32\u2033'),
+      'no old electrical value remains visible');
+    assert.strictEqual(h.api.lastResult(), null);
+    // recalculate restores
+    h.api.calculate();
+    assert.ok(h.el('pbv2-results').innerHTML.includes('32\u2033'));
+  });
+
+  test('INVALIDATION WIRING: every shipped mutation handler invalidates', () => {
+    for (const fname of ['pbv2UiAddRow', 'pbv2UiAddEntryPick', 'pbv2UiChangeSizePick',
+      'pbv2UiChangeRowPick', 'pbv2UiDeleteConnection', 'pbv2UiQuickPick',
+      'pbv2UiDeleteEntry', 'pbv2UiDeleteRow', 'pbv2ResetConfirm']) {
+      assert.ok(fn8(fname).includes('pbv2InvalidateResult'),
+        fname + ' must invalidate the displayed result');
+    }
+    // connection creation invalidates on success
+    assert.ok(fn8('pbv2UiEntryTap').includes('pbv2InvalidateResult'));
+    // Quick Straight never auto-calculates
+    assert.ok(!fn8('pbv2UiQuickPick').includes('pbv2Calculate'),
+      'template only — user must tap CALCULATE');
+  });
+
+  test('VALIDATION FAILURE: structured reason maps to concise UI text', () => {
+    const h = harness();
+    h.api.setState({ rows: [{ id: 'r', wall: 'left', order: 0 }], entries: [], connections: [] });
+    h.api.calculate();
+    assert.ok(h.el('pbv2-results').innerHTML.includes('Add at least one raceway'));
+    assert.ok(!h.el('pbv2-results').innerHTML.includes('stack'), 'no dev traces');
   });
 });

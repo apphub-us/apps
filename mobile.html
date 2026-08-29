@@ -8279,6 +8279,18 @@ function initOutletsIfNeeded() {
 .pbv2-entry.pbv2-selected{background:var(--accent,#ffc700);color:#111;border-color:#fff}
 .pbv2-connitem{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:#101010;border:1px solid #222;border-radius:8px;color:var(--text,#eee);font-size:12px;padding:10px;margin-top:6px;min-height:44px;cursor:pointer}
 .pbv2-conntype{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent,#ffc700);min-width:58px}
+.pbv2-card{background:#101010;border:1px solid #222;border-radius:10px;padding:12px;margin-top:8px}
+.pbv2-dim{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.pbv2-dimlabel{font-size:11px;letter-spacing:1px;color:#888;min-width:52px}
+.pbv2-dimvalue{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600}
+.pbv2-eq{font-family:'IBM Plex Mono',monospace;font-size:13px;color:#bbb;margin:6px 0}
+.pbv2-h{font-size:11px;letter-spacing:1px;color:#888;margin:14px 0 2px}
+.ec-coderef{display:inline-block;min-height:32px;padding:6px 12px;margin-top:6px;background:#181405;border:1px solid var(--accent,#ffc700);border-radius:999px;color:var(--accent,#ffc700);font-size:12px;cursor:pointer}
+.ec-coderef:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.pbv2-stale{color:#888;font-size:13px;padding:10px 0}
+#pbv2-return{position:fixed;right:14px;bottom:76px;z-index:9600;display:none;background:var(--accent,#ffc700);color:#111;border:none;border-radius:999px;padding:12px 16px;font-weight:600;font-size:13px;cursor:pointer}
+details.pbv2-all{margin-top:8px}
+details.pbv2-all summary{cursor:pointer;font-size:12px;color:#aaa;min-height:32px;padding:6px 0}
 .pbv2-modal-list{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
 .pbv2-note{font-size:12px;color:#888;margin:8px 0}
 </style>
@@ -8299,8 +8311,13 @@ function initOutletsIfNeeded() {
     <svg id="pbv2-connlayer" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></svg>
   </div>
   <div id="pbv2-connlist" style="padding:0 14px"></div>
+  <div style="padding:10px 14px">
+    <button class="pbv2-btn" type="button" id="pbv2-calc-btn" style="width:100%;font-weight:600;border-color:var(--accent,#ffc700)" onclick="pbv2Calculate()">CALCULATE</button>
+  </div>
+  <div id="pbv2-results" style="padding:0 14px" aria-live="polite"></div>
   <div class="pbv2-note" style="padding:0 14px 90px">Tap a wall's + to add a raceway. Tap a raceway to edit it, or to connect it to another raceway. Connection lines are schematic only — they do not show real conductor routing.</div>
 </div>
+<button id="pbv2-return" type="button" onclick="pbv2ReturnFromAi()">← Back to Pull Box</button>
 <div class="modal-overlay" id="pbv2-modal" style="display:none;z-index:9500">
   <div class="modal" id="pbv2-modal-box" role="dialog" aria-modal="true" aria-labelledby="pbv2-modal-title">
     <div id="pbv2-modal-title" style="font-weight:600;margin-bottom:4px"></div>
@@ -8479,6 +8496,7 @@ function pbv2SizeButtons(handlerName, arg) {
 // ── UI actions ──
 function pbv2UiAddRow(wall) {
   pbv2AddRow(PBV2, wall, pbv2NextId('row'));
+  pbv2InvalidateResult();
   pbv2Render();
 }
 function pbv2UiAddEntry(rowId) {
@@ -8486,6 +8504,7 @@ function pbv2UiAddEntry(rowId) {
 }
 function pbv2UiAddEntryPick(rowId, size) {
   pbv2AddEntry(PBV2, rowId, size, pbv2NextId('entry'));
+  pbv2InvalidateResult();
   pbv2CloseModal();
   pbv2Render();
 }
@@ -8512,6 +8531,7 @@ function pbv2UiChangeSize(entryId) {
 }
 function pbv2UiChangeSizePick(entryId, size) {
   pbv2ChangeSize(PBV2, entryId, size);
+  pbv2InvalidateResult();
   pbv2CloseModal();
   pbv2Render();
 }
@@ -8533,6 +8553,7 @@ function pbv2UiChangeRow(entryId) {
 }
 function pbv2UiChangeRowPick(entryId, rowId) {
   pbv2ChangeRow(PBV2, entryId, rowId);
+  pbv2InvalidateResult();
   pbv2CloseModal();
   pbv2Render();
 }
@@ -8543,6 +8564,7 @@ function pbv2UiDeleteEntry(entryId) {
   }
   if (n > 0 && !window.confirm('Delete this raceway and ' + n
     + (n === 1 ? ' connection?' : ' connections?'))) return;
+  pbv2InvalidateResult();
   pbv2DeleteEntry(PBV2, entryId);
   pbv2CloseModal();
   pbv2Render();
@@ -8597,6 +8619,7 @@ function pbv2UiEntryTap(entryId) {
     return;   // stay in Connect mode
   }
   var r = pbv2AddConnection(PBV2, pbv2ConnectFrom, entryId, pbv2NextId('connection'));
+  if (r.ok) pbv2InvalidateResult();
   if (!r.ok && r.reason === 'DUPLICATE') {
     document.getElementById('pbv2-connect-text').textContent =
       'Already connected \u2014 choose another raceway.';
@@ -8634,6 +8657,7 @@ function pbv2UiInspectConnection(connId) {
 }
 function pbv2UiDeleteConnection(connId) {
   pbv2DeleteConnection(PBV2, connId);
+  pbv2InvalidateResult();
   pbv2CloseModal();
   pbv2Render();
 }
@@ -8714,6 +8738,225 @@ function pbv2HookResize() {
   window.addEventListener('orientationchange', pbv2ScheduleConnectionRedraw);
 }
 
+// ── REUSABLE CODE→AI (Empire Code global pattern, first consumer: PBV2) ──
+// Every visible code reference is a real button; tapping it hands the exact
+// structured codeRef + calculation context to the existing AI Chat via the
+// established prefill/switchTab/sendMessage architecture. Contexts live in a
+// UI-side registry so no JSON has to be escaped into attributes.
+var EC_CODE_CONTEXTS = [];
+function ecRenderCodeRef(codeRef, contextPrompt) {
+  var idx = EC_CODE_CONTEXTS.length;
+  EC_CODE_CONTEXTS.push({ codeRef: codeRef, prompt: contextPrompt });
+  var label = codeRef.code + ' ' + codeRef.section;
+  return '<button class="ec-coderef" type="button" aria-label="Explain '
+    + label + ' in AI Chat" onclick="ecOpenCodeRef(' + idx + ')">'
+    + label + '</button>';
+}
+function ecOpenCodeRef(idx) {
+  var item = EC_CODE_CONTEXTS[idx];
+  if (!item) return;
+  // Preserve the PBV2 session: hide the overlay (state stays in memory) and
+  // offer a floating return chip; reuse the app's normal chat handoff.
+  var overlay = document.getElementById('pbv2-overlay');
+  if (overlay && overlay.classList.contains('show')) {
+    overlay.classList.remove('show');
+    document.getElementById('pbv2-return').style.display = 'block';
+  }
+  document.getElementById('userInput').value = item.prompt;
+  switchTab('chat', document.getElementById('mnav-chat'));
+  setTimeout(function () { sendMessage(); }, 100);
+}
+function pbv2ReturnFromAi() {
+  document.getElementById('pbv2-return').style.display = 'none';
+  document.getElementById('pbv2-overlay').classList.add('show');
+  pbv2ScheduleConnectionRedraw();
+}
+
+// ── PBV2 calculation adapter (thin): state → ONE engine call → renderer ──
+var pbv2LastResult = null;   // UI-only; never electrical state
+function pbv2InvalidateResult() {
+  if (pbv2LastResult === null) return;
+  pbv2LastResult = null;
+  var host = document.getElementById('pbv2-results');
+  if (host) host.innerHTML = '<div class="pbv2-stale">Box changed \u2014 calculate again.</div>';
+}
+var PBV2_ERROR_TEXT = {
+  NO_ENTRIES: 'Add at least one raceway before calculating.',
+};
+function pbv2In(n) {
+  return String(n) + '\u2033';
+}
+/** Explanatory equation from STRUCTURED FIELDS ONLY — never recomputed. */
+function pbv2Equation(req) {
+  var s = req.multiplier + ' \u00D7 ' + pbv2In(req.largestTradeSize);
+  for (var i = 0; i < req.otherTradeSizes.length; i++) {
+    s += ' + ' + pbv2In(req.otherTradeSizes[i]);
+  }
+  return s + ' = ' + pbv2In(req.minimumInches);
+}
+function pbv2ReqTitle(req) {
+  if (req.kind === 'STRAIGHT') {
+    return 'Straight pull \u2014 ' + pbv2EntryDesc(PBV2, req.entryIds[0])
+      + ' \u2194 ' + pbv2EntryDesc(PBV2, req.entryIds[1]);
+  }
+  return req.wall.toUpperCase() + ' \u00B7 Row '
+    + pbv2RowLabel(PBV2, req.rowId).replace('Row ', '');
+}
+function pbv2ReqAiPrompt(req, dimension) {
+  var raceways = [req.largestTradeSize].concat(req.otherTradeSizes)
+    .map(function (t) { return t + ' inch'; }).join(', ');
+  if (req.kind === 'STRAIGHT') {
+    return 'Explain NEC ' + req.codeRef.section + ' in the context of this '
+      + 'Pull / Junction Box Sizing calculation. Straight pull between '
+      + pbv2EntryDesc(PBV2, req.entryIds[0]) + ' and '
+      + pbv2EntryDesc(PBV2, req.entryIds[1]) + '. The engine calculated the '
+      + 'minimum ' + dimension + ' as ' + req.multiplier + ' \u00D7 '
+      + req.largestTradeSize + ' inch = ' + req.minimumInches + ' inches. '
+      + 'Explain what the rule means, why it applies here, and what I still '
+      + 'need to verify in the field.';
+  }
+  return 'Explain NEC ' + req.codeRef.section + ' in the context of this '
+    + 'Pull / Junction Box Sizing calculation. Angle/U pull row requirement '
+    + 'on the ' + req.wall + ' wall, ' + pbv2RowLabel(PBV2, req.rowId)
+    + ', raceways: ' + raceways + '. The engine calculated the minimum '
+    + dimension + ' as ' + req.multiplier + ' \u00D7 ' + req.largestTradeSize
+    + ' inch' + (req.otherTradeSizes.length
+      ? ' plus the other raceways in the same row (' + req.otherTradeSizes.join('\u2033, ') + '\u2033)'
+      : '')
+    + ' = ' + req.minimumInches + ' inches. Explain what the rule means, why '
+    + 'this wall requires ' + req.minimumInches + ' inches, and what I still '
+    + 'need to verify.';
+}
+function pbv2SpacingAiPrompt(sp) {
+  return 'Explain NEC ' + sp.codeRef.section + ' in the context of this '
+    + 'Pull / Junction Box Sizing calculation. This is the raceway ENTRY '
+    + 'SPACING requirement (not the box dimension): a ' + sp.connectionType
+    + ' pull between ' + pbv2EntryDesc(PBV2, sp.entryIds[0]) + ' and '
+    + pbv2EntryDesc(PBV2, sp.entryIds[1]) + '. The engine calculated the '
+    + 'minimum spacing between these two raceway entries as '
+    + sp.multiplier + ' \u00D7 ' + sp.largerTradeSize + ' inch = '
+    + sp.minimumInches + ' inches. Explain what this spacing means and how '
+    + 'to verify it in the physical box layout.';
+}
+function pbv2ReqCard(req, dimension, governed) {
+  return '<div class="pbv2-card">'
+    + (governed ? '<div class="pbv2-h" style="margin-top:0">'
+      + dimension.toUpperCase() + ' GOVERNED BY</div>' : '')
+    + '<div>' + pbv2Esc(pbv2ReqTitle(req)) + '</div>'
+    + '<div class="pbv2-eq">' + pbv2Equation(req) + '</div>'
+    + ecRenderCodeRef(req.codeRef, pbv2ReqAiPrompt(req, dimension))
+    + '</div>';
+}
+var PBV2_NOTE_TEXT = {
+  SPACING_VERIFY_IN_LAYOUT: 'Actual raceway-entry spacing must still be verified in the physical box layout.',
+  NO_WIDTH_CANDIDATES: 'No current pull produces a width requirement.',
+  NO_HEIGHT_CANDIDATES: 'No current pull produces a height requirement.',
+  DEPTH_NOT_CALCULATED: 'Depth is not calculated by this tool.',
+  A3_NOT_EVALUATED: 'This calculator applies the general sizing rules used by this tool and does not evaluate listed smaller-dimension products or exceptions.',
+};
+function pbv2Calculate() {
+  EC_CODE_CONTEXTS = [];   // fresh context registry per calculation
+  var result = EC.pullBox.calculatePullBox({
+    rows: PBV2.rows,
+    entries: PBV2.entries,
+    connections: PBV2.connections,
+  });
+  pbv2LastResult = result;
+  pbv2RenderResults(result);
+}
+function pbv2FindReq(reqs, id) {
+  for (var i = 0; i < reqs.length; i++) if (reqs[i].id === id) return reqs[i];
+  return null;
+}
+function pbv2RenderResults(result) {
+  var host = document.getElementById('pbv2-results');
+  if (!host) return;
+  if (!result.ok) {
+    host.innerHTML = '<div class="pbv2-card">'
+      + pbv2Esc(PBV2_ERROR_TEXT[result.reason]
+        || 'The current box configuration cannot be calculated (' + result.reason + ').')
+      + '</div>';
+    return;
+  }
+  var out = '<div class="pbv2-h">MINIMUM INSIDE DIMENSIONS</div><div class="pbv2-card">'
+    + '<div class="pbv2-dim"><span class="pbv2-dimlabel">WIDTH</span>'
+    + (result.minimumWidthIn === null
+      ? '<span class="pbv2-stale">Not determined from current pulls</span>'
+      : '<span class="pbv2-dimvalue">' + pbv2In(result.minimumWidthIn) + '</span>')
+    + '</div>'
+    + '<div class="pbv2-dim"><span class="pbv2-dimlabel">HEIGHT</span>'
+    + (result.minimumHeightIn === null
+      ? '<span class="pbv2-stale">Not determined from current pulls</span>'
+      : '<span class="pbv2-dimvalue">' + pbv2In(result.minimumHeightIn) + '</span>')
+    + '</div></div>';
+
+  // Governing cards: the UI TRUSTS the engine's governing ids and only looks
+  // the matching requirement up for presentation.
+  var gw = pbv2FindReq(result.widthRequirements, result.governingWidthRequirementId);
+  var gh = pbv2FindReq(result.heightRequirements, result.governingHeightRequirementId);
+  if (gw) out += pbv2ReqCard(gw, 'width', true);
+  if (gh) out += pbv2ReqCard(gh, 'height', true);
+
+  var all = '';
+  if (result.widthRequirements.length > 0) {
+    all += '<div class="pbv2-h">WIDTH</div>';
+    for (var i = 0; i < result.widthRequirements.length; i++) {
+      all += pbv2ReqCard(result.widthRequirements[i], 'width', false);
+    }
+  }
+  if (result.heightRequirements.length > 0) {
+    all += '<div class="pbv2-h">HEIGHT</div>';
+    for (var j = 0; j < result.heightRequirements.length; j++) {
+      all += pbv2ReqCard(result.heightRequirements[j], 'height', false);
+    }
+  }
+  if (all) {
+    out += '<details class="pbv2-all"><summary>All dimensional requirements</summary>'
+      + all + '</details>';
+  }
+
+  if (result.spacingRequirements.length > 0) {
+    out += '<div class="pbv2-h">ENTRY SPACING</div>';
+    for (var k = 0; k < result.spacingRequirements.length; k++) {
+      var sp = result.spacingRequirements[k];
+      out += '<div class="pbv2-card"><div>'
+        + pbv2Esc(pbv2EntryDesc(PBV2, sp.entryIds[0])) + ' \u2194 '
+        + pbv2Esc(pbv2EntryDesc(PBV2, sp.entryIds[1])) + '</div>'
+        + '<div class="pbv2-dim"><span class="pbv2-dimlabel">MIN</span>'
+        + '<span class="pbv2-dimvalue">' + pbv2In(sp.minimumInches) + '</span></div>'
+        + '<div class="pbv2-eq">' + sp.multiplier + ' \u00D7 '
+        + pbv2In(sp.largerTradeSize) + ' = ' + pbv2In(sp.minimumInches) + '</div>'
+        + ecRenderCodeRef(sp.codeRef, pbv2SpacingAiPrompt(sp))
+        + '</div>';
+    }
+  }
+
+  if (result.warnings.length > 0) {
+    out += '<div class="pbv2-h">WARNINGS</div>';
+    for (var w = 0; w < result.warnings.length; w++) {
+      var warning = result.warnings[w];
+      if (warning.code === 'UNCONNECTED_ENTRY') {
+        out += '<div class="pbv2-card">Unconnected raceways (still counted in '
+          + 'same-row sizing):<br>'
+          + warning.entryIds.map(function (id) {
+            return pbv2Esc(pbv2EntryDesc(PBV2, id));
+          }).join('<br>') + '</div>';
+      }
+    }
+  }
+
+  if (result.scopeNotes.length > 0) {
+    out += '<div class="pbv2-h">IMPORTANT LIMITATIONS</div><div class="pbv2-card">';
+    for (var n = 0; n < result.scopeNotes.length; n++) {
+      out += '<div class="pbv2-note">\u2022 '
+        + pbv2Esc(PBV2_NOTE_TEXT[result.scopeNotes[n].code] || result.scopeNotes[n].code)
+        + '</div>';
+    }
+    out += '</div>';
+  }
+  host.innerHTML = out;
+}
+
 // ── Quick Straight: a TEMPLATE that adds normal rows/entries/connection ──
 function pbv2QuickStraight(state, orientation, tradeSize, nextId) {
   var walls = orientation === 'vertical' ? ['top', 'bottom'] : ['left', 'right'];
@@ -8744,12 +8987,14 @@ function pbv2UiQuickOrient(orientation) {
 }
 function pbv2UiQuickPick(orientation, size) {
   pbv2QuickStraight(PBV2, orientation, size, pbv2NextId);
+  pbv2InvalidateResult();
   pbv2CloseModal();
   pbv2Render();
 }
 function pbv2UiDeleteRow(rowId) {
   var hasEntries = PBV2.entries.some(function (e) { return e.rowId === rowId; });
   if (hasEntries && !window.confirm('Delete this row and its raceways?')) return;
+  pbv2InvalidateResult();
   pbv2DeleteRow(PBV2, rowId);
   pbv2Render();
 }
@@ -8759,7 +9004,10 @@ function pbv2ResetConfirm() {
   pbv2ConnectFrom = null;
   document.getElementById('pbv2-connect-bar').style.display = 'none';
   pbv2Seq = 0;
+  pbv2InvalidateResult();
   PBV2 = pbv2InitialState(pbv2NextId);
+  var host = document.getElementById('pbv2-results');
+  if (host) host.innerHTML = '';
   pbv2Render();
 }
 // ── Dev-only activation ──
