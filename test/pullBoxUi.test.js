@@ -359,8 +359,8 @@ describe('PBV2-6b — many-rows portrait layout fix', () => {
     };
     // eslint-disable-next-line no-new-func
     new Function('document', 'PBV2', 'pbv2ConnectFrom', 'pbv2RenderConnList',
-      'pbv2DrawConnections',
-      src + ';pbv2Render();')(doc, state, null, () => {}, () => {});
+      'pbv2DrawConnections', 'pbv2ScheduleConnectionRedraw',
+      src + ';pbv2Render();')(doc, state, null, () => {}, () => {}, () => {});
     const out = grid.innerHTML;
     for (const label of ['Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6']) {
       const lane = out.slice(out.indexOf('pbv2-lane-left'), out.indexOf('pbv2-lane-right'));
@@ -619,7 +619,11 @@ describe('PBV2-7 — connection render architecture + scope', () => {
       'draw runs after every render');
     assert.ok(v2.includes('pbv2ResizeHooked'), 'idempotent listener guard');
     assert.strictEqual((v2.match(/addEventListener\('resize'/g) || []).length, 1);
-    assert.ok(!v2.includes('requestAnimationFrame'), 'no continuous polling');
+    // bounded double-rAF scheduler only: exactly two rAF calls, both inside
+    // the coalesced one-shot scheduler — never a loop, never an interval
+    assert.strictEqual((v2.match(/window\.requestAnimationFrame\(/g) || []).length, 2,
+      'exactly the two bounded scheduler frames');
+    assert.ok(!v2.includes('setInterval'), 'no polling');
     assert.ok(!v2.includes("addEventListener('scroll'"),
       'shared scroll coordinate space: SVG lives inside the scrolled stage');
   });
@@ -655,5 +659,111 @@ describe('PBV2-7 — connection render architecture + scope', () => {
     assert.ok(!/openTool\('pullbox/.test(html7));
     assert.ok(html7.includes('id="sub-pullbox"') && /function pbUpdate/.test(html7));
     assert.ok(v2.includes('pbv2ShouldOpen'));
+  });
+});
+
+describe('PBV2-7b — connection redraw timing fix', () => {
+  const html7b = fs.readFileSync(path.join(__dirname, '..', 'mobile.html'), 'utf8');
+  function fn7b(name) {
+    const i = html7b.indexOf('function ' + name);
+    assert.ok(i !== -1, 'missing: ' + name);
+    let d = 0; let started = false;
+    for (let j = i; j < html7b.length; j++) {
+      if (html7b[j] === '{') { d++; started = true; } else if (html7b[j] === '}') {
+        d--; if (started && d === 0) return html7b.slice(i, j + 1);
+      }
+    }
+    throw new Error('unterminated ' + name);
+  }
+
+  /** Harness: shipped scheduler + modal functions with a fake rAF queue. */
+  function harness() {
+    const frames = [];
+    const win = { requestAnimationFrame: (cb) => { frames.push(cb); return frames.length; } };
+    let draws = 0;
+    const els = {
+      'pbv2-modal-title': { textContent: '' },
+      'pbv2-modal-body': { innerHTML: '' },
+      'pbv2-modal': { style: {} },
+    };
+    const doc = { getElementById: (id) => els[id] || null };
+    const src = [fn7b('pbv2ScheduleConnectionRedraw'), fn7b('pbv2OpenModal'),
+      fn7b('pbv2CloseModal'), fn7b('pbv2HookResize')].join('\n')
+      + '\nvar pbv2RedrawPending = false; var pbv2ResizeHooked = false;';
+    const api = {};
+    // eslint-disable-next-line no-new-func
+    new Function('window', 'document', 'pbv2DrawConnections', 'exports',
+      // module-scope vars must be shared with the functions: re-declare them
+      // ahead so the shipped closures see the same bindings
+      'var pbv2RedrawPending = false; var pbv2ResizeHooked = false;\n'
+      + [fn7b('pbv2ScheduleConnectionRedraw'), fn7b('pbv2OpenModal'),
+        fn7b('pbv2CloseModal'), fn7b('pbv2HookResize')].join('\n')
+      + `;exports.schedule = pbv2ScheduleConnectionRedraw;
+         exports.open = pbv2OpenModal; exports.close = pbv2CloseModal;
+         exports.hook = pbv2HookResize;`)(
+      win, doc, () => { draws++; }, api);
+    const runFrames = () => {
+      // drain the rAF queue to a fixed point (bounded chain, so this ends)
+      let guard = 0;
+      while (frames.length > 0 && guard++ < 10) frames.shift()();
+      assert.ok(guard < 10, 'unbounded rAF chain detected');
+    };
+    return { api, win, frames, runFrames, draws: () => draws };
+  }
+
+  test('scheduler: one-shot bounded double-rAF, coalesced', () => {
+    const h = harness();
+    h.api.schedule();
+    h.api.schedule();
+    h.api.schedule();
+    assert.strictEqual(h.frames.length, 1, 'repeated requests coalesce to one chain');
+    h.runFrames();
+    assert.strictEqual(h.draws(), 1, 'exactly one redraw after the frames settle');
+    // and it re-arms: a later transition schedules again
+    h.api.schedule();
+    h.runFrames();
+    assert.strictEqual(h.draws(), 2);
+  });
+
+  test('SHIPPED PATH: inspector/modal open and close both schedule a settle redraw', () => {
+    const h = harness();
+    h.api.open('Connection', '<div></div>');
+    h.runFrames();
+    assert.strictEqual(h.draws(), 1, 'open schedules');
+    h.api.close();
+    h.runFrames();
+    assert.strictEqual(h.draws(), 2, 'close schedules — the failing physical case');
+  });
+
+  test('resize/orientation route through the scheduler, never measure mid-transition', () => {
+    const hook = fn7b('pbv2HookResize');
+    assert.ok(hook.includes("addEventListener('resize', pbv2ScheduleConnectionRedraw)"));
+    assert.ok(hook.includes("addEventListener('orientationchange', pbv2ScheduleConnectionRedraw)"));
+    assert.ok(!hook.includes('pbv2DrawConnections'),
+      'no direct draw from transition events');
+  });
+
+  test('render performs the immediate draw AND one settle pass', () => {
+    const render = fn7b('pbv2Render');
+    assert.ok(render.includes('pbv2DrawConnections();'));
+    assert.ok(render.includes('pbv2ScheduleConnectionRedraw();'));
+  });
+
+  test('every geometry-changing UI action funnels into render or the scheduler', () => {
+    // Change Size / Change Row / connect / delete / Quick Straight all end in
+    // pbv2Render (immediate + settle); modal transitions schedule directly.
+    for (const fname of ['pbv2UiChangeSizePick', 'pbv2UiChangeRowPick',
+      'pbv2UiDeleteConnection', 'pbv2UiQuickPick', 'pbv2UiAddEntryPick',
+      'pbv2UiDeleteEntry']) {
+      assert.ok(fn7b(fname).includes('pbv2Render()'), fname + ' rerenders');
+    }
+    // bound the slice to the V2 block itself — unrelated legacy tail code
+    // follows it in the file
+    const v2 = html7b.slice(html7b.indexOf('PULL BOX V2'),
+      html7b.indexOf('END PULL BOX V2'));
+    assert.ok(!v2.includes("addEventListener('scroll'"),
+      'still no scroll listener: shared scrolling coordinate space');
+    assert.ok(!v2.includes('setInterval') && !v2.includes('setTimeout('),
+      'no timers, no polling');
   });
 });

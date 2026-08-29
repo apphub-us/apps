@@ -8452,6 +8452,7 @@ function pbv2Render() {
   grid.innerHTML = htmlOut;
   pbv2RenderConnList();
   pbv2DrawConnections();
+  pbv2ScheduleConnectionRedraw();   // settle pass after browser layout
 }
 
 // ── Modal helpers (reuse the app modal pattern) ──
@@ -8459,8 +8460,12 @@ function pbv2OpenModal(title, bodyHtml) {
   document.getElementById('pbv2-modal-title').textContent = title;
   document.getElementById('pbv2-modal-body').innerHTML = bodyHtml;
   document.getElementById('pbv2-modal').style.display = 'flex';
+  pbv2ScheduleConnectionRedraw();
 }
-function pbv2CloseModal() { document.getElementById('pbv2-modal').style.display = 'none'; }
+function pbv2CloseModal() {
+  document.getElementById('pbv2-modal').style.display = 'none';
+  pbv2ScheduleConnectionRedraw();
+}
 function pbv2SizeButtons(handlerName, arg) {
   var keys = EC.pullBox.TRADE_SIZE_KEYS;   // engine is the ONLY size source
   var out = '<div class="pbv2-modal-list">';
@@ -8684,12 +8689,29 @@ function pbv2DrawConnections() {
   }
   svg.innerHTML = out;
 }
+/** One-shot, coalesced post-layout connection redraw.
+ *  Bounded DOUBLE requestAnimationFrame: on iOS Safari the toolbar/modal
+ *  layout settles on the frame after next, so a single rAF can still
+ *  measure mid-transition. Two frames, then done — never a loop, never
+ *  polling, and repeated calls while pending collapse into one redraw. */
+var pbv2RedrawPending = false;
+function pbv2ScheduleConnectionRedraw() {
+  if (pbv2RedrawPending) return;
+  pbv2RedrawPending = true;
+  window.requestAnimationFrame(function () {
+    window.requestAnimationFrame(function () {
+      pbv2RedrawPending = false;
+      pbv2DrawConnections();
+    });
+  });
+}
 var pbv2ResizeHooked = false;
 function pbv2HookResize() {
   if (pbv2ResizeHooked) return;   // exactly one listener for the session
   pbv2ResizeHooked = true;
-  window.addEventListener('resize', pbv2DrawConnections);
-  window.addEventListener('orientationchange', pbv2DrawConnections);
+  // route through the scheduler: never measure during the transition
+  window.addEventListener('resize', pbv2ScheduleConnectionRedraw);
+  window.addEventListener('orientationchange', pbv2ScheduleConnectionRedraw);
 }
 
 // ── Quick Straight: a TEMPLATE that adds normal rows/entries/connection ──
@@ -8750,6 +8772,7 @@ function pbv2ResetConfirm() {
   }
 })();
 </script>
+<!-- ══════════════════ END PULL BOX V2 ══════════════════ -->
 
 </body>
 
