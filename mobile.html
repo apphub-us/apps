@@ -9365,15 +9365,22 @@ function pbv2ResetConfirm() {
 .p3d-val{font-family:'IBM Plex Mono',monospace;font-size:18px}
 .p3d-val.p3d-undet{font-size:12px;color:#9a9a9a;letter-spacing:0.5px}
 .p3d-note{font-size:11px;color:#7a7a7a;margin-top:8px;line-height:1.5}
-#pbv2-3d-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9200;display:none;background:#101010;border-top:1px solid #2a2a2a;border-radius:14px 14px 0 0;padding:14px 14px calc(20px + env(safe-area-inset-bottom));max-height:72vh;overflow-y:auto}
+#pbv2-3d-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9200;display:none;background:#101010;border-top:1px solid #2a2a2a;border-radius:14px 14px 0 0;padding:10px 12px calc(12px + env(safe-area-inset-bottom));max-height:40vh;overflow-y:auto}
+/* while editing: give the box the screen. Fixture switch and the results
+   block step aside so the enclosure stays fully visible above the sheet. */
+#pbv2-3d-prototype.p3d-editing .p3d-fixtures,
+#pbv2-3d-prototype.p3d-editing .p3d-res{display:none}
+#pbv2-3d-prototype.p3d-editing{padding-bottom:42vh}
+.p3d-strip{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;margin-bottom:8px}
+.p3d-strip .p3d-opt{flex:0 0 auto}
 #pbv2-3d-sheet.show{display:block}
 .p3d-sheet-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .p3d-sheet-t{flex:1;font-size:13px;font-weight:600}
 .p3d-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .p3d-opt{min-width:52px;min-height:44px;background:#181818;border:1px solid #2c2c2c;border-radius:8px;color:#ddd;font-size:12px;font-family:'IBM Plex Mono',monospace;cursor:pointer}
 .p3d-opt[aria-pressed="true"]{border-color:#ffc700;color:#ffc700;background:#1d1a0d}
-.p3d-flab{font-size:10px;letter-spacing:1px;color:#7a7a7a;margin-bottom:6px}
-#pbv2-3d-pos{width:100%;height:44px;accent-color:#ffc700}
+.p3d-flab{font-size:10px;letter-spacing:1px;color:#7a7a7a;margin-bottom:4px}
+#pbv2-3d-pos{width:100%;height:36px;accent-color:#ffc700;margin-bottom:2px}
 </style>
 <div id="pbv2-3d-prototype" role="region" aria-label="Pull box 3D editor prototype">
   <div class="p3d-head">
@@ -9426,6 +9433,50 @@ var PBV23D_GEO = {
 /* Local size list: the prototype never touches the engine. */
 var PBV23D_SIZES = ['1/2', '3/4', '1', '1-1/4', '1-1/2', '2', '2-1/2', '3', '3-1/2', '4', '5', '6'];
 var PBV23D_WALLS = ['top', 'right', 'bottom', 'left'];
+/* Muted dark-mode palette. A colour identifies ONE pull relationship — it
+   never encodes STRAIGHT/ANGLE/U, and never means compliance. Assigned by
+   the connection's position in state.connections, so both hubs and the
+   route of the same pull always share it. */
+var PBV23D_CONN_COLORS = ['#6f9fd8', '#7cc0a0', '#c9a25e', '#b48ad6', '#d08a8a', '#7fb9b9'];
+var PBV23D_NEUTRAL = '#c9c9c9';
+function pbv23dConnColor(state, connId) {
+  for (var i = 0; i < state.connections.length; i++) {
+    if (state.connections[i].id === connId) {
+      return PBV23D_CONN_COLORS[i % PBV23D_CONN_COLORS.length];
+    }
+  }
+  return PBV23D_NEUTRAL;
+}
+function pbv23dEntryConns(state, entryId) {
+  return state.connections.filter(function (c) {
+    return c.a === entryId || c.b === entryId;
+  });
+}
+/** A raceway in exactly one pull wears that pull's colour; unconnected stays
+ *  neutral; in several pulls it stays neutral (the routes carry the colours)
+ *  and gets a dashed ring cue instead of a misleading single colour. */
+function pbv23dEntryColor(state, entryId) {
+  var cs = pbv23dEntryConns(state, entryId);
+  if (cs.length !== 1) return PBV23D_NEUTRAL;
+  return pbv23dConnColor(state, cs[0].id);
+}
+/** Deterministic tap resolution: a hub's touch radius never overlaps its
+ *  nearest neighbour, so taps always resolve to the closest opening rather
+ *  than to whichever rect happens to be painted last. */
+function pbv23dHitRadius(hubs, id) {
+  var me = hubs[id];
+  var nearest = Infinity;
+  for (var k in hubs) {
+    if (k === id || !Object.prototype.hasOwnProperty.call(hubs, k)) continue;
+    var dx = hubs[k].x - me.x; var dy = hubs[k].y - me.y;
+    var d = Math.sqrt(dx * dx + dy * dy);
+    if (d < nearest) nearest = d;
+  }
+  if (nearest === Infinity) return 22;
+  // never wider than half the gap to the closest neighbour, so two touch
+  // circles can never overlap and a tap always lands on the nearest opening
+  return Math.min(22, nearest / 2);
+}
 
 function pbv23dHub(wall, v, t) {
   var F = PBV23D_GEO.front; var B = PBV23D_GEO.back; var f; var b;
@@ -9681,64 +9732,103 @@ function pbv23dRenderSvg(state, ui) {
     var en = state.entries[i];
     hubs[en.id] = pbv23dHub(en.wall, en.v, G.hubDepth);
   }
-  s += '<g class="p3d-routes" fill="none" stroke="#9a9a9a" stroke-width="2.5" '
+  s += '<g class="p3d-routes" fill="none" stroke-width="2.5" '
     + 'stroke-linecap="round" stroke-linejoin="round">';
   for (i = 0; i < state.connections.length; i++) {
     var c = state.connections[i];
     var ea = pbv23dFindEntry(state, c.a); var eb = pbv23dFindEntry(state, c.b);
     if (!ea || !eb) continue;
     var type = pbv23dClassify(ea.wall, eb.wall);
-    s += '<path class="p3d-route" data-conn="' + c.id + '" data-type="' + type + '" d="'
+    s += '<path class="p3d-route" data-conn="' + c.id + '" data-type="' + type
+      + '" stroke="' + pbv23dConnColor(state, c.id) + '" d="'
       + pbv23dRoutePath(type, ea.wall, hubs[ea.id], eb.wall, hubs[eb.id]) + '"/>';
   }
   s += '</g>';
 
   // raceways: exterior stub, through-wall run, opening, invisible 44px target
-  s += '<g class="p3d-raceways">';
+  s += '<g class="p3d-raceways" style="pointer-events:none">';
+  var hitLayer = '';
   for (i = 0; i < state.entries.length; i++) {
     var e = state.entries[i];
     var h = hubs[e.id];
     var sel = (ui.selected === e.id);
     var src = (ui.connectFrom === e.id);
-    var ink = src ? '#ffc700' : (sel ? '#ffffff' : '#c9c9c9');
+    var conns = pbv23dEntryConns(state, e.id);
+    var relColor = pbv23dEntryColor(state, e.id);
+    // selection/connect state always wins over relationship colour
+    var ink = src ? '#ffc700' : (sel ? '#ffffff' : relColor);
+    var stubW = (sel || src) ? 6 : 5;
     var ex; var ey; var lx; var ly; var anchor; var rx; var ry;
     if (e.wall === 'left') {
       ex = R.x1; ey = h.y; lx = 14; ly = h.y + 3; anchor = 'end'; rx = 4.5; ry = 6.5;
-      s += '<line x1="' + (ex - 26) + '" y1="' + ey + '" x2="' + ex + '" y2="' + ey
-        + '" stroke="' + (sel || src ? ink : '#6f6f6f') + '" stroke-width="5"/>';
+      s += '<line class="p3d-stub" x1="' + (ex - 26) + '" y1="' + ey + '" x2="' + ex
+        + '" y2="' + ey + '" stroke="' + ((sel || src) ? ink : '#6f6f6f')
+        + '" stroke-width="' + stubW + '"/>';
+      hitLayer += '<line class="p3d-stubhit" data-entry="' + e.id + '" x1="' + (ex - 28)
+        + '" y1="' + ey + '" x2="' + ex + '" y2="' + ey
+        + '" stroke="#000" stroke-opacity="0" stroke-width="22"'
+        + ' style="pointer-events:stroke;cursor:pointer"'
+        + ' onclick="pbv23dTapEntry(\'' + e.id + '\')"></line>';
     } else if (e.wall === 'right') {
       ex = R.x2; ey = h.y; lx = 282; ly = h.y + 3; anchor = 'start'; rx = 4.5; ry = 6.5;
-      s += '<line x1="' + ex + '" y1="' + ey + '" x2="' + (ex + 26) + '" y2="' + ey
-        + '" stroke="' + (sel || src ? ink : '#6f6f6f') + '" stroke-width="5"/>';
+      s += '<line class="p3d-stub" x1="' + ex + '" y1="' + ey + '" x2="' + (ex + 26)
+        + '" y2="' + ey + '" stroke="' + ((sel || src) ? ink : '#6f6f6f')
+        + '" stroke-width="' + stubW + '"/>';
+      hitLayer += '<line class="p3d-stubhit" data-entry="' + e.id + '" x1="' + ex
+        + '" y1="' + ey + '" x2="' + (ex + 28) + '" y2="' + ey
+        + '" stroke="#000" stroke-opacity="0" stroke-width="22"'
+        + ' style="pointer-events:stroke;cursor:pointer"'
+        + ' onclick="pbv23dTapEntry(\'' + e.id + '\')"></line>';
     } else if (e.wall === 'top') {
       ex = h.x; ey = R.y1; lx = h.x; ly = 9; anchor = 'middle'; rx = 6.5; ry = 4.5;
-      s += '<line x1="' + ex + '" y1="' + (ey - 14) + '" x2="' + ex + '" y2="' + ey
-        + '" stroke="' + (sel || src ? ink : '#6f6f6f') + '" stroke-width="5"/>';
+      s += '<line class="p3d-stub" x1="' + ex + '" y1="' + (ey - 14) + '" x2="' + ex
+        + '" y2="' + ey + '" stroke="' + ((sel || src) ? ink : '#6f6f6f')
+        + '" stroke-width="' + stubW + '"/>';
+      hitLayer += '<line class="p3d-stubhit" data-entry="' + e.id + '" x1="' + ex
+        + '" y1="' + (ey - 16) + '" x2="' + ex + '" y2="' + ey
+        + '" stroke="#000" stroke-opacity="0" stroke-width="18"'
+        + ' style="pointer-events:stroke;cursor:pointer"'
+        + ' onclick="pbv23dTapEntry(\'' + e.id + '\')"></line>';
     } else {
       ex = h.x; ey = R.y2; lx = h.x; ly = 220; anchor = 'middle'; rx = 6.5; ry = 4.5;
-      s += '<line x1="' + ex + '" y1="' + ey + '" x2="' + ex + '" y2="' + (ey + 16)
-        + '" stroke="' + (sel || src ? ink : '#6f6f6f') + '" stroke-width="5"/>';
+      s += '<line class="p3d-stub" x1="' + ex + '" y1="' + ey + '" x2="' + ex
+        + '" y2="' + (ey + 16) + '" stroke="' + ((sel || src) ? ink : '#6f6f6f')
+        + '" stroke-width="' + stubW + '"/>';
+      hitLayer += '<line class="p3d-stubhit" data-entry="' + e.id + '" x1="' + ex
+        + '" y1="' + ey + '" x2="' + ex + '" y2="' + (ey + 18)
+        + '" stroke="#000" stroke-opacity="0" stroke-width="18"'
+        + ' style="pointer-events:stroke;cursor:pointer"'
+        + ' onclick="pbv23dTapEntry(\'' + e.id + '\')"></line>';
     }
     s += '<line class="p3d-through" x1="' + ex + '" y1="' + ey + '" x2="' + h.x
       + '" y2="' + h.y + '" stroke="#3f3f3f" stroke-width="2"/>';
     if (sel || src) {
       s += '<circle class="p3d-selring" cx="' + h.x + '" cy="' + h.y + '" r="13" fill="none" '
-        + 'stroke="' + ink + '" stroke-width="1" opacity="0.8"/>';
+        + 'stroke="' + ink + '" stroke-width="1.5" opacity="0.9"/>';
+    } else if (conns.length > 1) {
+      // in several pulls: no single colour could be truthful, so a dashed
+      // ring flags the shared raceway and the routes carry the identities
+      s += '<circle class="p3d-multiring" cx="' + h.x + '" cy="' + h.y + '" r="11" '
+        + 'fill="none" stroke="#8a8a8a" stroke-width="1" stroke-dasharray="2 2"/>';
     }
     s += '<ellipse class="p3d-hub" data-entry="' + e.id + '" cx="' + h.x + '" cy="' + h.y
       + '" rx="' + rx + '" ry="' + ry + '" fill="#0a0a0a" stroke="' + ink
       + '" stroke-width="' + (sel || src ? 2.5 : 2) + '"/>';
     if (showLabels || sel || src) {
-      s += '<text x="' + lx + '" y="' + ly + '" fill="' + (sel || src ? ink : '#c9c9c9')
-        + '" font-size="10" font-family="monospace" text-anchor="' + anchor
-        + '" style="pointer-events:none">' + e.size + '&#8243;</text>';
+      s += '<text x="' + lx + '" y="' + ly + '" fill="' + ((sel || src) ? ink : '#c9c9c9')
+        + '" font-size="10" font-family="monospace" text-anchor="' + anchor + '">'
+        + e.size + '&#8243;</text>';
     }
-    // invisible touch target, independent of the drawn opening size
-    s += '<rect class="p3d-hit" data-entry="' + e.id + '" x="' + (h.x - 22) + '" y="'
-      + (h.y - 22) + '" width="44" height="44" fill="#000" fill-opacity="0" '
-      + 'style="cursor:pointer" onclick="pbv23dTapEntry(\'' + e.id + '\')"></rect>';
+    // primary target: the wall opening. Radius shrinks before it would ever
+    // overlap a neighbour, so a tap always resolves to the nearest hub.
+    hitLayer += '<circle class="p3d-hit" data-entry="' + e.id + '" cx="' + h.x + '" cy="'
+      + h.y + '" r="' + pbv23dHitRadius(hubs, e.id) + '" fill="#000" fill-opacity="0"'
+      + ' style="cursor:pointer" onclick="pbv23dTapEntry(\'' + e.id + '\')"></circle>';
   }
   s += '</g>';
+  // every touch target lives above the artwork, stubs first so the opening
+  // wins wherever the two would overlap
+  s += '<g class="p3d-hits">' + hitLayer + '</g>';
 
   // dimension layer: static fixture values only, and only until the user edits
   if (state.showDims) {
@@ -9873,13 +9963,13 @@ function pbv23dDeleteSelected() {
 function pbv23dSheetBody() {
   var e = pbv23dFindEntry(PBV23D, pbv23dSelected);
   if (!e) return '';
-  var out = '<div class="p3d-flab">TRADE SIZE</div><div class="p3d-grid">';
+  var out = '<div class="p3d-flab">TRADE SIZE</div><div class="p3d-strip">';
   for (var i = 0; i < PBV23D_SIZES.length; i++) {
     out += '<button class="p3d-opt" type="button" aria-pressed="'
       + (PBV23D_SIZES[i] === e.size) + '" onclick="pbv23dPickSize(\'' + PBV23D_SIZES[i]
       + '\')">' + PBV23D_SIZES[i] + '\u2033</button>';
   }
-  out += '</div><div class="p3d-flab">WALL</div><div class="p3d-grid">';
+  out += '</div><div class="p3d-flab">WALL</div><div class="p3d-strip">';
   for (var w = 0; w < PBV23D_WALLS.length; w++) {
     out += '<button class="p3d-opt" type="button" style="min-width:66px" aria-pressed="'
       + (PBV23D_WALLS[w] === e.wall) + '" onclick="pbv23dPickWall(\'' + PBV23D_WALLS[w]
@@ -9888,11 +9978,11 @@ function pbv23dSheetBody() {
   out += '</div><div class="p3d-flab">POSITION ALONG WALL</div>'
     + '<input id="pbv2-3d-pos" type="range" min="6" max="94" value="' + Math.round(e.v * 100)
     + '" oninput="pbv23dPickPosition(this.value)" aria-label="Position along wall">'
-    + '<div class="p3d-grid" style="margin-top:12px">'
-    + '<button class="p3d-opt p3d-btn" type="button" style="min-width:120px" '
+    + '<div class="p3d-strip" style="margin:6px 0 0">'
+    + '<button class="p3d-opt p3d-btn" type="button" style="min-width:104px" '
     + 'onclick="pbv23dStartConnect();pbv23dCloseSheet()">CONNECT\u2026</button>'
-    + '<button class="p3d-opt p3d-btn p3d-danger" type="button" style="min-width:120px" '
-    + 'onclick="pbv23dDeleteSelected()">DELETE RACEWAY</button></div>';
+    + '<button class="p3d-opt p3d-btn p3d-danger" type="button" style="min-width:104px" '
+    + 'onclick="pbv23dDeleteSelected()">DELETE</button></div>';
   return out;
 }
 function pbv23dOpenSheet() {
@@ -9902,9 +9992,15 @@ function pbv23dOpenSheet() {
     e.size + '\u2033 raceway \u00B7 ' + e.wall.toUpperCase();
   document.getElementById('pbv2-3d-sheet-body').innerHTML = pbv23dSheetBody();
   document.getElementById('pbv2-3d-sheet').classList.add('show');
+  // give the enclosure the screen while editing, then scroll it into view so
+  // the selected raceway stays visible above the sheet
+  document.getElementById('pbv2-3d-prototype').classList.add('p3d-editing');
+  var stage = document.getElementById('pbv2-3d-stage');
+  if (stage && stage.scrollIntoView) stage.scrollIntoView({ block: 'start' });
 }
 function pbv23dCloseSheet() {
   document.getElementById('pbv2-3d-sheet').classList.remove('show');
+  document.getElementById('pbv2-3d-prototype').classList.remove('p3d-editing');
 }
 function pbv23dRefreshSheet() {
   var e = pbv23dFindEntry(PBV23D, pbv23dSelected);
