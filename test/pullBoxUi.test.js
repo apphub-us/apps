@@ -339,7 +339,8 @@ describe('PBV2-6b — many-rows portrait layout fix', () => {
   test('SHIPPED RENDER with the physical failure fixture: 6 LEFT rows all represented', () => {
     // Execute the real pbv2Render against a stub DOM using the exact state
     // that failed the physical gate, extended to six rows.
-    const names = ['pbv2RowById', 'pbv2RowLabel', 'pbv2Esc', 'pbv2Render'];
+    const names = ['pbv2RowById', 'pbv2RowLabel', 'pbv2Esc', 'pbv2DimKeySvg',
+      'pbv2Render'];
     const src = names.map(fnBody).join('\n');
     const grid = { innerHTML: '' };
     const doc = { getElementById: (id) => (id === 'pbv2-grid' ? grid : null) };
@@ -365,7 +366,10 @@ describe('PBV2-6b — many-rows portrait layout fix', () => {
     // eslint-disable-next-line no-new-func
     new Function('document', 'PBV2', 'pbv2ConnectFrom', 'pbv2RenderConnList',
       'pbv2DrawConnections', 'pbv2ScheduleConnectionRedraw', 'pbv2Highlight',
-      src + ';pbv2Render();')(doc, state, null, () => {}, () => {}, () => {}, null);
+      'EC', 'PBV2_COLOR',
+      src + ';pbv2Render();')(doc, state, null, () => {}, () => {}, () => {}, null,
+      { pullBox: require('../src/calc/pullBox') },
+      { width: '#4a90d9', height: '#52c07a', spacing: '#b06ae8' });
     const out = grid.innerHTML;
     for (const label of ['Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6']) {
       const lane = out.slice(out.indexOf('pbv2-lane-left'), out.indexOf('pbv2-lane-right'));
@@ -1118,15 +1122,17 @@ describe('PBV2-8V — typed connection paths + measurement overlays', () => {
     const doc = { getElementById: (id) =>
       (id === 'pbv2-connlayer' ? svg : id === 'pbv2-stage' ? stage : null) };
     const src = [fnV('pbv2RowById'), fnV('pbv2RowLabel'), fnV('pbv2ConnType'),
-      fnV('pbv2WallOfEntry'), fnV('pbv2ConnPathD'), fnV('pbv2In'),
-      fnV('pbv2DrawConnections')].join('\n');
+      fnV('pbv2WallOfEntry'), fnV('pbv2InwardNormal'), fnV('pbv2ConnPathD'),
+      fnV('pbv2In'), fnV('pbv2DrawConnections')].join('\n');
     // eslint-disable-next-line no-new-func
     new Function('EC', 'document', 'PBV2', 'pbv2LastResult', 'pbv2Highlight',
-      'PBV2_TYPE_LABEL', 'PBV2_COLOR',
+      'PBV2_TYPE_LABEL', 'PBV2_COLOR', 'PBV2_VIZ',
       src + ';pbv2DrawConnections();')(
       { pullBox: engine }, doc, state, opts.result || null, opts.highlight || null,
       { STRAIGHT: 'Straight', ANGLE: 'Angle', U: 'U' },
-      { width: '#4a90d9', height: '#52c07a', spacing: '#b06ae8' });
+      { width: '#4a90d9', height: '#52c07a', spacing: '#b06ae8' },
+      { entryLeg: 26, elbowRadius: 22, uDepth: 34, uBulge: 30, portRadius: 2.5,
+        measureOffset: 18, measureTick: 5 });
     return svg.innerHTML;
   }
 
@@ -1151,18 +1157,24 @@ describe('PBV2-8V — typed connection paths + measurement overlays', () => {
     // straight: rendered as <line> pair (hit + visible)
     assert.ok(/<line[^>]*x1="22"[^>]*stroke="rgba\(0,0,0,0\)"/.test(out),
       'straight hit line');
-    // angle: <path> whose d has exactly one corner (two L commands)
+    // angle: interior legs + ONE rounded quadratic turn inside the box
     const paths = out.match(/<path d="[^"]+"/g);
     assert.ok(paths && paths.length >= 4, 'angle+U each draw hit+visible paths');
-    const angleD = paths.find((p) => (p.match(/L/g) || []).length === 2);
-    assert.ok(angleD, 'elbow path with exactly one 90-degree turn exists');
-    // its corner shares x with the top entry and y with the left entry
-    assert.ok(angleD.includes('L 172 182') || angleD.includes('L 22 22'),
-      'orthogonal corner, not a diagonal');
-    // U: <path> with three L commands (into the box, across, back)
-    const uD = paths.find((p) => (p.match(/L/g) || []).length === 3);
-    assert.ok(uD, 'U return-loop path exists');
-    assert.ok(uD.includes('L 58'), 'loop runs 36px into the interior from the left wall');
+    const angleD = paths.find((p) => p.includes(' Q '));
+    assert.ok(angleD, 'rounded interior turn exists');
+    assert.strictEqual((angleD.match(/ Q /g) || []).length, 1, 'exactly one turn');
+    // eL2 sits on the LEFT wall at x=22: the route must first run INWARD
+    assert.ok(/M 22 182 L 48 182/.test(angleD),
+      'angle leaves the raceway perpendicular, into the box interior');
+    // U: inward leg, cubic return deeper inside, leg back out to the wall
+    const uD = paths.find((p) => p.includes(' C '));
+    assert.ok(uD, 'U return path exists');
+    assert.ok(/M 22 182 L 82 182/.test(uD),
+      'U enters the interior perpendicular to its wall (entryLeg + uDepth)');
+    assert.ok(uD.includes(' C 112 182'),
+      'the turnaround bulges deeper INSIDE the box, not along the wall');
+    assert.ok(/L 22 242"?$/.test(uD.replace('"', '')),
+      'and returns to the second same-wall raceway');
     // type words still label each connection
     for (const word of ['Straight', 'Angle', '>U<']) {
       assert.ok(out.includes(word), word + ' label');
@@ -1181,11 +1193,21 @@ describe('PBV2-8V — typed connection paths + measurement overlays', () => {
     out = drawHarness(state, { coords, result });
     const measures = out.match(/class="pbv2-measure"/g) || [];
     assert.strictEqual(measures.length, 2, 'one overlay per engine spacing requirement');
-    assert.ok(out.includes('stroke-dasharray="4 3"'), 'dashed = measurement, not route');
+    assert.ok(out.includes('stroke-dasharray="5 4"'), 'dashed = measurement, not route');
+    assert.ok(/<g class="pbv2-measure"/.test(out), 'overlay is a grouped dimension marker');
     assert.ok(out.includes('data-spacing-id="spacing:cA"'));
     assert.ok(out.includes('data-spacing-id="spacing:cU"'));
     // labels carry the ENGINE minimums (6x2=12 for both here)
     assert.ok(out.includes('12\u2033 min'), 'engine value labeled, never derived in UI');
+    // EDGE ANCHORING: A(2) spacing measures nearest-edge to nearest-edge.
+    // U pair eL2 (center 22,182, r 22) / eL3 (center 22,242, r 22): vertical
+    // chord, so the dimension must anchor at y 204 and y 220 — offset -18 in
+    // x — never at the centers (182/242).
+    const uGroup = out.slice(out.indexOf('data-spacing-id="spacing:cU"'));
+    assert.ok(uGroup.includes('x1="4" y1="204" x2="4" y2="220"'),
+      'dimension line terminates at the raceway-entry edges');
+    assert.ok(!/y1="182"/.test(uGroup.slice(0, uGroup.indexOf('</g>'))),
+      'no center-anchored measurement remains');
     // overlays use the spacing color and never repaint the connection path
     assert.ok(out.includes('stroke="#b06ae8"'));
   });
@@ -1235,5 +1257,203 @@ describe('PBV2-8V — typed connection paths + measurement overlays', () => {
     assert.ok(v2.includes('pbv2ShouldOpen'), 'dev gate intact');
     assert.ok(!v2.includes('<canvas'), 'SVG only, no canvas');
     assert.ok(!/animation|@keyframes|glow/.test(v2), 'restrained: no animation');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-8W — second visual-clarity pass: rounded families, dimension
+// markers, schematic width/height cues, centralized viz constants
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-8W — visual clarity pass', () => {
+  const htmlW = fs.readFileSync(path.join(__dirname, '..', 'mobile.html'), 'utf8');
+  const v2 = htmlW.slice(htmlW.indexOf('PULL BOX V2'), htmlW.indexOf('END PULL BOX V2'));
+  function fnW(name) {
+    const i = htmlW.indexOf('function ' + name + '(');
+    assert.ok(i !== -1, 'missing: ' + name);
+    let d = 0; let started = false;
+    for (let j = i; j < htmlW.length; j++) {
+      if (htmlW[j] === '{') { d++; started = true; } else if (htmlW[j] === '}') {
+        d--; if (started && d === 0) return htmlW.slice(i, j + 1);
+      }
+    }
+    throw new Error('unterminated ' + name);
+  }
+
+  test('CENTRALIZED VIZ CONSTANTS: radii/depth/offsets live in one map', () => {
+    const viz = v2.match(/var PBV2_VIZ = \{[\s\S]*?\};/)[0];
+    for (const key of ['elbowRadius', 'uDepth', 'measureOffset', 'measureTick']) {
+      assert.ok(viz.includes(key), key + ' centralized');
+    }
+    const pathFn = fnW('pbv2ConnPathD');
+    assert.ok(pathFn.includes('PBV2_VIZ.elbowRadius') && pathFn.includes('PBV2_VIZ.uDepth'),
+      'paths read the constants, no scattered magic numbers');
+  });
+
+  test('ROUTED GRAMMAR: both families leave their wall perpendicular, turn inside', () => {
+    const pathFn = fnW('pbv2ConnPathD');
+    // interior legs come from the inward wall normal, never from guesswork
+    assert.ok(pathFn.includes('pbv2InwardNormal(wallA)')
+      && pathFn.includes('pbv2InwardNormal(wallB)'),
+      'both endpoints route perpendicular to their own wall');
+    assert.ok(pathFn.includes('PBV2_VIZ.entryLeg'), 'entry leg centralized');
+    assert.ok(pathFn.includes("' Q '"), 'angle turns with a rounded quadratic corner');
+    assert.ok(pathFn.includes('Math.min(PBV2_VIZ.elbowRadius, len1, len2)'),
+      'corner radius bounded by the interior runs (dense layouts stay clean)');
+    // U: depth is leg + uDepth (inside the box), with a cubic turnaround
+    assert.ok(pathFn.includes('leg + PBV2_VIZ.uDepth'),
+      'the U return leg lives INSIDE the box, past the entry leg');
+    assert.ok(pathFn.includes('PBV2_VIZ.uBulge') && pathFn.includes("' C '"),
+      'rounded interior turnaround, not an arc hugging the wall');
+  });
+
+  test('DIMENSION MARKERS: grouped overlay with end ticks, engine-sourced only', () => {
+    const draw = fnW('pbv2DrawConnections');
+    assert.ok(draw.includes('<g class="pbv2-measure"'), 'grouped marker element');
+    assert.ok(draw.includes('PBV2_VIZ.measureTick'), 'end ticks from the constant');
+    assert.ok(draw.includes('pbv2LastResult.spacingRequirements'),
+      'overlays sourced from the engine result object only');
+    assert.ok(!/6 \*|\* 6(?!\d)/.test(draw.replace(/\/\/[^\n]*/g, '')),
+      'no spacing arithmetic anywhere in the drawer');
+    // route stroke is solid; measurement stroke is dashed + thinner default
+    assert.ok(draw.includes("shl ? '3' : '1.5'"),
+      'measurement visibly secondary to routes (1.5px vs 2px)');
+  });
+
+  test('SCHEMATIC WIDTH/HEIGHT CUES: wall names + legend use engine mapping', () => {
+    const render = fnW('pbv2Render');
+    assert.ok(render.includes('EC.pullBox.WALL_DIMENSION[wall]'),
+      'the ENGINE says which wall drives which dimension');
+    assert.ok(render.includes('PBV2_COLOR[laneDim]'), 'wall names wear their dimension color');
+    // in-box dimension key: horizontal width guide + vertical height guide
+    const key = fnW('pbv2DimKeySvg');
+    assert.ok(key.includes('>WIDTH<') && key.includes('>HEIGHT<'));
+    assert.ok(key.includes('PBV2_COLOR.width') || key.includes('var w = PBV2_COLOR'),
+      'guides use the shared color map');
+    assert.ok(/x1="14" y1="20" x2="126" y2="20"/.test(key), 'horizontal = width');
+    assert.ok(/x1="70" y1="36" x2="70" y2="70"/.test(key), 'vertical = height');
+    assert.ok(render.includes('pbv2DimKeySvg()'), 'key rendered inside the box');
+    // color discipline: the three hexes still appear exactly once (in the map)
+    const dupes = (v2.match(/#4a90d9|#52c07a|#b06ae8/g) || []).length;
+    assert.strictEqual(dupes, 3, 'no duplicated hex literals crept in');
+  });
+
+  test('DEPTH CUES stay CSS-light: recessed interior, no 3D machinery', () => {
+    const centerCss = v2.match(/\.pbv2-center\{[^}]*\}/)[0];
+    assert.ok(centerCss.includes('inset'), 'recessed interior volume');
+    assert.ok(!/transform|perspective|rotate/.test(centerCss), 'not 3D');
+    const laneCss = v2.match(/\.pbv2-lane\{[^}]*\}/)[0];
+    assert.ok(laneCss.includes('inset 0 1px 0'), 'subtle rim light on walls');
+    assert.ok(!v2.includes('<canvas'), 'still SVG/DOM only');
+  });
+
+  test('BEHAVIOR HOLDS: highlight, codeRef isolation, invalidation, one call, gate', () => {
+    // highlight wiring unchanged
+    assert.ok(fnW('pbv2ReqCard').includes('pbv2UiHighlight'));
+    assert.ok(fnW('pbv2UiHighlight').includes('pbv2Highlight = null'));
+    // codeRef still stops propagation so it never collides with card highlight
+    assert.ok(fnW('ecRenderCodeRef').includes('event.stopPropagation();ecOpenCodeRef'));
+    // overlays die with invalidation because they read pbv2LastResult
+    assert.ok(fnW('pbv2InvalidateResult').includes('pbv2LastResult = null'));
+    // one engine call site, dev gate, grid regressions
+    assert.strictEqual((v2.match(/calculatePullBox\(/g) || []).length, 1);
+    assert.ok(v2.includes('pbv2ShouldOpen'));
+    assert.ok(v2.match(/\.pbv2-grid\{[^}]*\}/)[0].includes('grid-template-rows:auto auto auto'));
+  });
+});
+
+describe('PBV2-8Y — interior routing + in-box dimension cues', () => {
+  const htmlY = fs.readFileSync(path.join(__dirname, '..', 'mobile.html'), 'utf8');
+  const v2 = htmlY.slice(htmlY.indexOf('PULL BOX V2'), htmlY.indexOf('END PULL BOX V2'));
+  function fnY(name) {
+    const i = htmlY.indexOf('function ' + name + '(');
+    assert.ok(i !== -1, 'missing: ' + name);
+    let d = 0; let started = false;
+    for (let j = i; j < htmlY.length; j++) {
+      if (htmlY[j] === '{') { d++; started = true; } else if (htmlY[j] === '}') {
+        d--; if (started && d === 0) return htmlY.slice(i, j + 1);
+      }
+    }
+    throw new Error('unterminated ' + name);
+  }
+
+  /** Run the shipped path builder directly for each wall orientation. */
+  function pathFor(type, wallA, wallB, a, b) {
+    const out = {};
+    // eslint-disable-next-line no-new-func
+    new Function('PBV2_VIZ', 'exports',
+      fnY('pbv2InwardNormal') + fnY('pbv2ConnPathD')
+      + ';exports.d = pbv2ConnPathD;')(
+      { entryLeg: 26, elbowRadius: 22, uDepth: 34, uBulge: 30, portRadius: 2.5,
+        measureOffset: 18, measureTick: 5 }, out);
+    return out.d(type, wallA, wallB, a[0], a[1], b[0], b[1]);
+  }
+
+  test('U ENTERS the box on every wall, turns around inside, and returns', () => {
+    // left wall: interior is +x, so both legs must run right and the
+    // turnaround control points must sit deeper still
+    const left = pathFor('U', 'left', 'left', [20, 100], [20, 200]);
+    assert.ok(left.startsWith('M 20 100 L 80 100'), 'leg 26+34 into the interior');
+    assert.ok(left.includes('C 110 100') && left.includes('110 200'),
+      'turnaround bulges another 30px INSIDE, never along the wall');
+    assert.ok(left.endsWith('L 20 200'), 'returns to the same-wall raceway');
+    // opposite wall mirrors inward (negative x), never off-box
+    const right = pathFor('U', 'right', 'right', [300, 100], [300, 200]);
+    assert.ok(right.startsWith('M 300 100 L 240 100') && right.includes('C 210 100'));
+    // top wall runs downward into the box; bottom runs upward
+    const top = pathFor('U', 'top', 'top', [100, 20], [200, 20]);
+    assert.ok(top.startsWith('M 100 20 L 100 80') && top.includes('C 100 110'));
+    const bottom = pathFor('U', 'bottom', 'bottom', [100, 300], [200, 300]);
+    assert.ok(bottom.startsWith('M 100 300 L 100 240') && bottom.includes('C 100 210'));
+  });
+
+  test('ANGLE routes through the interior: perpendicular legs, one rounded turn', () => {
+    const d = pathFor('ANGLE', 'left', 'top', [20, 200], [150, 20]);
+    // leaves the left wall horizontally, arrives at the top wall vertically
+    assert.ok(d.startsWith('M 20 200 L 46 200'), 'perpendicular entry leg');
+    assert.ok(d.endsWith('L 150 46 L 150 20'), 'perpendicular exit leg');
+    assert.strictEqual((d.match(/ Q /g) || []).length, 1, 'exactly one interior turn');
+    assert.ok(!/L 150 200/.test(d), 'no hard square corner on the wall axes');
+    // both legs are axis-aligned (orthogonal routing, not a diagonal)
+    assert.ok(!/L \d+\.\d+ \d+\.\d+/.test(d.slice(0, d.indexOf(' Q '))),
+      'interior runs stay orthogonal');
+  });
+
+  test('routes read as conductors: port dots, round caps, subordinate opacity', () => {
+    const draw = fnY('pbv2DrawConnections');
+    assert.ok(draw.includes('PBV2_VIZ.portRadius') && draw.includes('<circle'),
+      'port dot where each route meets its raceway');
+    assert.ok(draw.includes('stroke-linecap="round"'), 'rounded conductor ends');
+    assert.ok(draw.includes('opacity="0.85"'),
+      'routes sit visually below the measurement layer');
+  });
+
+  test('measurement stays a dimension: edge anchors, ticks, backing plate', () => {
+    const draw = fnY('pbv2DrawConnections');
+    assert.ok(draw.includes('len > ma.r + mb.r'), 'edge-to-edge anchoring preserved');
+    assert.ok(draw.includes('PBV2_VIZ.measureTick'), 'end ticks');
+    assert.ok(draw.includes('<rect') && draw.includes('fill="#0b0b0b"'),
+      'label plate prevents the value merging with a route');
+    assert.ok(draw.indexOf('pbv2LastResult.spacingRequirements')
+      > draw.indexOf('PBV2_TYPE_LABEL[rawType]'),
+      'measurement layer draws after (on top of) the route layer');
+  });
+
+  test('in-box dimension key is decorative only and reuses the shared colors', () => {
+    const key = fnY('pbv2DimKeySvg');
+    assert.ok(key.includes('aria-hidden="true"'), 'decorative, not announced');
+    assert.ok(!/minimumInches|pbv2LastResult|calculate/i.test(key),
+      'the key carries no calculated values');
+    const dupes = (v2.match(/#4a90d9|#52c07a|#b06ae8/g) || []).length;
+    assert.strictEqual(dupes, 3, 'colors still come only from PBV2_COLOR');
+  });
+
+  test('no regressions: one engine call, gate, grid, scheduler, codeRef isolation', () => {
+    assert.strictEqual((v2.match(/calculatePullBox\(/g) || []).length, 1);
+    assert.ok(v2.includes('pbv2ShouldOpen'));
+    assert.ok(v2.match(/\.pbv2-grid\{[^}]*\}/)[0].includes('grid-template-rows:auto auto auto'));
+    assert.ok(v2.includes('pbv2ScheduleConnectionRedraw'));
+    assert.ok(fnY('ecRenderCodeRef').includes('event.stopPropagation()'));
+    assert.ok(!v2.includes('<canvas'));
   });
 });
