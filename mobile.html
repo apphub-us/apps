@@ -9329,6 +9329,430 @@ function pbv2ResetConfirm() {
 </script>
 <!-- ══════════════════ END PULL BOX V2 ══════════════════ -->
 
+
+
+
+<!-- ══════════════ PULL BOX V2 — LIGHT 3D PROTOTYPE (PBV2-10A3D) ══════════════
+     DEV-ONLY, DISPOSABLE visual prototype of the 2.5D box concept.
+     Opens ONLY on a local/private host with 'pbv2=3d'. The existing PBV2
+     editor (?pbv2=1) is untouched and remains the working reference.
+     No engine calls, no editing, no WebGL/canvas — static SVG fixtures whose
+     only job is to answer: does this read as one physical box on an iPhone? -->
+<style>
+#pbv2-3d-prototype{position:fixed;inset:0;z-index:9100;display:none;flex-direction:column;background:#0a0a0a;color:#eee;overflow-y:auto;-webkit-overflow-scrolling:touch;font-family:Inter,sans-serif}
+#pbv2-3d-prototype.show{display:flex}
+.p3d-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #1e1e1e}
+.p3d-title{font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;flex:1}
+.p3d-dev{font-size:10px;letter-spacing:1px;color:#ffc700;border:1px solid #ffc700;border-radius:3px;padding:2px 6px}
+.p3d-fixtures{display:flex;gap:6px;padding:10px 14px}
+.p3d-fx{flex:1;min-height:44px;background:#141414;border:1px solid #2a2a2a;border-radius:8px;color:#bbb;font-size:11px;letter-spacing:1px;cursor:pointer}
+.p3d-fx[aria-pressed="true"]{border-color:#ffc700;color:#ffc700}
+.p3d-fx:focus-visible{outline:2px solid #ffc700;outline-offset:2px}
+#pbv2-3d-stage{padding:0 8px}
+#pbv2-3d-stage svg{width:100%;height:auto;display:block;max-width:430px;margin:0 auto}
+.p3d-chips{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8a8a8a;text-align:center;padding:2px 14px 10px}
+.p3d-res{margin:0 14px 100px;border-top:1px solid #1e1e1e;padding-top:12px}
+.p3d-h{font-size:10px;letter-spacing:1px;color:#7a7a7a;margin-bottom:8px}
+.p3d-row{display:flex;align-items:baseline;gap:12px;padding:6px 0}
+.p3d-lab{font-size:10px;letter-spacing:1px;color:#8a8a8a;min-width:56px}
+.p3d-val{font-family:'IBM Plex Mono',monospace;font-size:18px}
+.p3d-val.p3d-undet{font-size:12px;color:#9a9a9a;letter-spacing:0.5px}
+.p3d-note{font-size:11px;color:#7a7a7a;margin-top:8px;line-height:1.5}
+</style>
+<div id="pbv2-3d-prototype" role="region" aria-label="Pull box 3D visual prototype">
+  <div class="p3d-head">
+    <div class="p3d-title">Pull / Junction Box — 3D preview</div>
+    <span class="p3d-dev">DEV</span>
+    <button class="p3d-fx" style="flex:0 0 44px" type="button" aria-label="Close prototype"
+      onclick="document.getElementById('pbv2-3d-prototype').classList.remove('show')">&#10005;</button>
+  </div>
+  <div class="p3d-fixtures" id="pbv2-3d-fixtures"></div>
+  <div id="pbv2-3d-stage"></div>
+  <div class="p3d-chips" id="pbv2-3d-chips"></div>
+  <div class="p3d-res" id="pbv2-3d-result"></div>
+</div>
+<script>
+'use strict';
+/* ── Dev gate (self-contained so the whole block stays deletable) ────── */
+function pbv23dDevHost(hostname) {
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]') return true;
+  if (/^10\.\d+\.\d+\.\d+$/.test(hostname)) return true;
+  if (/^192\.168\.\d+\.\d+$/.test(hostname)) return true;
+  var m = hostname.match(/^172\.(\d+)\.\d+\.\d+$/);
+  if (m) { var o = parseInt(m[1], 10); return o >= 16 && o <= 31; }
+  return false;
+}
+function pbv23dShouldOpen(loc) {
+  if (!pbv23dDevHost(loc.hostname)) return false;
+  return ((loc.search || '') + (loc.hash || '')).indexOf('pbv2=3d') !== -1;
+}
+
+/* ── Fixed pseudo-perspective geometry ───────────────────────────────────
+   One open enclosure seen slightly from the front and above:
+     rim   = outer edge of the box material (gives visible wall thickness)
+     front = the opening we look through
+     back  = the interior back plane, inset and lifted slightly
+   The four wall surfaces are the trapezoids between front and back.
+   Perspective is FIXED: no rotation, no camera, no 3D engine.        */
+var PBV23D_GEO = {
+  rim: { x1: 44, y1: 26, x2: 252, y2: 190 },
+  front: { x1: 52, y1: 34, x2: 244, y2: 182 },
+  back: { x1: 96, y1: 60, x2: 200, y2: 148 },
+  hubDepth: 0.45,
+  dimSpacingY: 238,
+  dimWidthY: 272,
+  dimHeightX: 312,
+};
+/** Point on a wall surface: v = position along the wall (0..1),
+ *  t = depth from the front opening (0) to the back plane (1). */
+function pbv23dHub(wall, v, t) {
+  var F = PBV23D_GEO.front; var B = PBV23D_GEO.back; var f; var b;
+  if (wall === 'left') {
+    f = { x: F.x1, y: F.y1 + (F.y2 - F.y1) * v };
+    b = { x: B.x1, y: B.y1 + (B.y2 - B.y1) * v };
+  } else if (wall === 'right') {
+    f = { x: F.x2, y: F.y1 + (F.y2 - F.y1) * v };
+    b = { x: B.x2, y: B.y1 + (B.y2 - B.y1) * v };
+  } else if (wall === 'top') {
+    f = { x: F.x1 + (F.x2 - F.x1) * v, y: F.y1 };
+    b = { x: B.x1 + (B.x2 - B.x1) * v, y: B.y1 };
+  } else {
+    f = { x: F.x1 + (F.x2 - F.x1) * v, y: F.y2 };
+    b = { x: B.x1 + (B.x2 - B.x1) * v, y: B.y2 };
+  }
+  return { x: f.x + (b.x - f.x) * t, y: f.y + (b.y - f.y) * t };
+}
+function pbv23dInward(wall) {
+  if (wall === 'left') return { x: 1, y: 0 };
+  if (wall === 'right') return { x: -1, y: 0 };
+  if (wall === 'top') return { x: 0, y: 1 };
+  return { x: 0, y: -1 };
+}
+/** Route paths. All three families travel through the box INTERIOR: the
+ *  legs leave each hub perpendicular to its own wall, over the back plane. */
+function pbv23dRoutePath(type, wallA, a, wallB, b) {
+  if (type === 'U') {
+    var horizontal = (wallA === 'top' || wallA === 'bottom');
+    var p = a; var q = b;
+    if ((horizontal && b.x < a.x) || (!horizontal && b.y < a.y)) { p = b; q = a; }
+    var n = pbv23dInward(wallA);
+    var leg = 48;
+    var r = horizontal ? (q.x - p.x) / 2 : (q.y - p.y) / 2;
+    var p2 = { x: p.x + n.x * leg, y: p.y + n.y * leg };
+    var q2 = { x: q.x + n.x * leg, y: q.y + n.y * leg };
+    // 180-degree return INSIDE the enclosure: sweep bulges further inward
+    var sweep = (wallA === 'bottom' || wallA === 'left') ? 1 : 0;
+    return 'M ' + p.x + ' ' + p.y + ' L ' + p2.x + ' ' + p2.y
+      + ' A ' + r + ' ' + r + ' 0 0 ' + sweep + ' ' + q2.x + ' ' + q2.y
+      + ' L ' + q.x + ' ' + q.y;
+  }
+  if (type === 'ANGLE') {
+    var sideFirst = (wallA === 'left' || wallA === 'right');
+    var corner = sideFirst ? { x: b.x, y: a.y } : { x: a.x, y: b.y };
+    var d1 = Math.abs(sideFirst ? corner.x - a.x : corner.y - a.y);
+    var d2 = Math.abs(sideFirst ? corner.y - b.y : corner.x - b.x);
+    var rad = Math.min(20, d1 * 0.6, d2 * 0.6);
+    var s1 = sideFirst
+      ? { x: corner.x - Math.sign(corner.x - a.x) * rad, y: corner.y }
+      : { x: corner.x, y: corner.y - Math.sign(corner.y - a.y) * rad };
+    var s2 = sideFirst
+      ? { x: corner.x, y: corner.y - Math.sign(corner.y - b.y) * rad }
+      : { x: corner.x - Math.sign(corner.x - b.x) * rad, y: corner.y };
+    return 'M ' + a.x + ' ' + a.y + ' L ' + s1.x + ' ' + s1.y
+      + ' Q ' + corner.x + ' ' + corner.y + ' ' + s2.x + ' ' + s2.y
+      + ' L ' + b.x + ' ' + b.y;
+  }
+  // STRAIGHT: through the volume wall-to-wall. Offset entries stay straight
+  // pulls — the gentle transition never reads as a turn.
+  var na = pbv23dInward(wallA); var nb = pbv23dInward(wallB);
+  var la = { x: a.x + na.x * 34, y: a.y + na.y * 34 };
+  var lb = { x: b.x + nb.x * 34, y: b.y + nb.y * 34 };
+  return 'M ' + a.x + ' ' + a.y + ' L ' + la.x + ' ' + la.y
+    + ' C ' + (la.x + na.x * 30) + ' ' + (la.y + na.y * 30) + ', '
+    + (lb.x + nb.x * 30) + ' ' + (lb.y + nb.y * 30) + ', ' + lb.x + ' ' + lb.y
+    + ' L ' + b.x + ' ' + b.y;
+}
+
+/* ── Static fixtures (no engine call; representative values only) ─────── */
+var PBV23D_FIXTURES = {
+  standard: {
+    label: 'STANDARD',
+    entries: [
+      { key: 'L2', wall: 'left', v: 0.5, size: '2' },
+      { key: 'T2', wall: 'top', v: 0.5, size: '2' },
+      { key: 'B3a', wall: 'bottom', v: 0.3, size: '3' },
+      { key: 'B3b', wall: 'bottom', v: 0.7, size: '3' },
+    ],
+    routes: [
+      { type: 'ANGLE', a: 'L2', b: 'T2' },
+      { type: 'U', a: 'B3a', b: 'B3b' },
+    ],
+    spacing: [{ a: 'B3a', b: 'B3b', label: '18" MIN' }],
+    width: { status: 'LAYOUT_DEPENDENT' },
+    height: { status: 'RESOLVED', value: '21"' },
+    chips: 'pull rule \u2265 12"  \u00B7  U spacing \u2265 18"  \u00B7  + fittings',
+  },
+  straight: {
+    label: 'STRAIGHT',
+    entries: [
+      { key: 'L4', wall: 'left', v: 0.35, size: '4' },
+      { key: 'R4', wall: 'right', v: 0.68, size: '4' },
+    ],
+    routes: [{ type: 'STRAIGHT', a: 'L4', b: 'R4' }],
+    spacing: [],
+    width: { status: 'RESOLVED', value: '32"' },
+    height: { status: 'NONE' },
+    chips: 'offset entries on opposite walls \u2014 still a straight pull',
+  },
+  dense: {
+    label: 'DENSE',
+    entries: [
+      { key: 'L1', wall: 'left', v: 0.08, size: '2', t: 0.3 },
+      { key: 'L2', wall: 'left', v: 0.24, size: '3', t: 0.6 },
+      { key: 'L3', wall: 'left', v: 0.4, size: '2', t: 0.3 },
+      { key: 'L4', wall: 'left', v: 0.56, size: '4', t: 0.6 },
+      { key: 'L5', wall: 'left', v: 0.72, size: '2', t: 0.3 },
+      { key: 'L6', wall: 'left', v: 0.88, size: '3', t: 0.6 },
+      { key: 'R1', wall: 'right', v: 0.2, size: '4', t: 0.35 },
+      { key: 'R2', wall: 'right', v: 0.5, size: '2', t: 0.55 },
+      { key: 'R3', wall: 'right', v: 0.8, size: '2', t: 0.35 },
+      { key: 'T1', wall: 'top', v: 0.25, size: '2', t: 0.4 },
+      { key: 'T2', wall: 'top', v: 0.5, size: '3', t: 0.4 },
+      { key: 'T3', wall: 'top', v: 0.75, size: '2', t: 0.4 },
+      { key: 'B1', wall: 'bottom', v: 0.18, size: '3', t: 0.4 },
+      { key: 'B2', wall: 'bottom', v: 0.4, size: '2', t: 0.4 },
+      { key: 'B3', wall: 'bottom', v: 0.62, size: '2', t: 0.4 },
+      { key: 'B4', wall: 'bottom', v: 0.84, size: '3', t: 0.4 },
+    ],
+    routes: [
+      { type: 'ANGLE', a: 'L4', b: 'T2' },
+      { type: 'U', a: 'B1', b: 'B2' },
+      { type: 'STRAIGHT', a: 'L1', b: 'R1' },
+    ],
+    spacing: [{ a: 'B1', b: 'B2', label: '12" MIN' }],
+    width: { status: 'LAYOUT_DEPENDENT' },
+    height: { status: 'RESOLVED', value: '30"' },
+    chips: '16 raceways \u00B7 density check',
+  },
+};
+
+/* ── SVG builder (pure: fixture key in, markup string out) ────────────── */
+function pbv23dRenderSvg(key) {
+  var fx = PBV23D_FIXTURES[key];
+  var G = PBV23D_GEO; var F = G.front; var B = G.back; var R = G.rim;
+  var pt = function (p) { return p.x + ',' + p.y; };
+  var fc = { tl: { x: F.x1, y: F.y1 }, tr: { x: F.x2, y: F.y1 },
+    br: { x: F.x2, y: F.y2 }, bl: { x: F.x1, y: F.y2 } };
+  var bc = { tl: { x: B.x1, y: B.y1 }, tr: { x: B.x2, y: B.y1 },
+    br: { x: B.x2, y: B.y2 }, bl: { x: B.x1, y: B.y2 } };
+
+  var s = '<svg viewBox="0 0 340 300" xmlns="http://www.w3.org/2000/svg" '
+    + 'role="img" aria-label="Pull box enclosure diagram">';
+
+  // ── enclosure ──
+  s += '<g class="p3d-box">';
+  // box material seen at the opening = visible wall thickness
+  s += '<rect x="' + R.x1 + '" y="' + R.y1 + '" width="' + (R.x2 - R.x1)
+    + '" height="' + (R.y2 - R.y1) + '" rx="3" fill="#1e1e1e" stroke="#3a3a3a"/>';
+  // four wall surfaces receding to the back plane
+  s += '<polygon class="p3d-wall" data-wall="top" points="' + pt(fc.tl) + ' ' + pt(fc.tr)
+    + ' ' + pt(bc.tr) + ' ' + pt(bc.tl) + '" fill="#131313" stroke="#2c2c2c"/>';
+  s += '<polygon class="p3d-wall" data-wall="left" points="' + pt(fc.tl) + ' ' + pt(bc.tl)
+    + ' ' + pt(bc.bl) + ' ' + pt(fc.bl) + '" fill="#161616" stroke="#2c2c2c"/>';
+  s += '<polygon class="p3d-wall" data-wall="right" points="' + pt(fc.tr) + ' ' + pt(bc.tr)
+    + ' ' + pt(bc.br) + ' ' + pt(fc.br) + '" fill="#191919" stroke="#2c2c2c"/>';
+  s += '<polygon class="p3d-wall" data-wall="bottom" points="' + pt(fc.bl) + ' ' + pt(bc.bl)
+    + ' ' + pt(bc.br) + ' ' + pt(fc.br) + '" fill="#1d1d1d" stroke="#2c2c2c"/>';
+  // interior back plane (darkest = depth)
+  s += '<rect class="p3d-back" x="' + B.x1 + '" y="' + B.y1 + '" width="' + (B.x2 - B.x1)
+    + '" height="' + (B.y2 - B.y1) + '" fill="#0c0c0c" stroke="#242424"/>';
+  s += '</g>';
+
+  // wall identity labels, attached to the surfaces themselves
+  s += '<g fill="#6d6d6d" font-size="8" letter-spacing="1.4" text-anchor="middle">'
+    + '<text x="70" y="42">TOP</text>'
+    + '<text x="70" y="177">BOTTOM</text>'
+    + '<text x="74" y="160">LEFT</text>'
+    + '<text x="222" y="160">RIGHT</text></g>';
+
+  // ── raceways: exterior stub -> through-wall -> hub opening on the wall ──
+  var hubs = {};
+  var i;
+  for (i = 0; i < fx.entries.length; i++) {
+    var e = fx.entries[i];
+    hubs[e.key] = pbv23dHub(e.wall, e.v, e.t === undefined ? G.hubDepth : e.t);
+  }
+  s += '<g class="p3d-raceways">';
+  for (i = 0; i < fx.entries.length; i++) {
+    var en = fx.entries[i];
+    var h = hubs[en.key];
+    var ex; var ey; var lx; var ly; var anchor; var rx; var ry;
+    if (en.wall === 'left') {
+      ex = R.x1; ey = h.y; lx = 14; ly = h.y + 3; anchor = 'end'; rx = 4.5; ry = 6.5;
+      s += '<line x1="' + (ex - 26) + '" y1="' + ey + '" x2="' + ex + '" y2="' + ey
+        + '" stroke="#6f6f6f" stroke-width="5"/>'
+        + '<line x1="' + (ex - 26) + '" y1="' + (ey - 5) + '" x2="' + (ex - 26)
+        + '" y2="' + (ey + 5) + '" stroke="#8a8a8a" stroke-width="2"/>';
+    } else if (en.wall === 'right') {
+      ex = R.x2; ey = h.y; lx = 282; ly = h.y + 3; anchor = 'start'; rx = 4.5; ry = 6.5;
+      s += '<line x1="' + ex + '" y1="' + ey + '" x2="' + (ex + 26) + '" y2="' + ey
+        + '" stroke="#6f6f6f" stroke-width="5"/>'
+        + '<line x1="' + (ex + 26) + '" y1="' + (ey - 5) + '" x2="' + (ex + 26)
+        + '" y2="' + (ey + 5) + '" stroke="#8a8a8a" stroke-width="2"/>';
+    } else if (en.wall === 'top') {
+      ex = h.x; ey = R.y1; lx = h.x; ly = 9; anchor = 'middle'; rx = 6.5; ry = 4.5;
+      s += '<line x1="' + ex + '" y1="' + (ey - 14) + '" x2="' + ex + '" y2="' + ey
+        + '" stroke="#6f6f6f" stroke-width="5"/>'
+        + '<line x1="' + (ex - 5) + '" y1="' + (ey - 14) + '" x2="' + (ex + 5)
+        + '" y2="' + (ey - 14) + '" stroke="#8a8a8a" stroke-width="2"/>';
+    } else {
+      ex = h.x; ey = R.y2; lx = h.x; ly = 220; anchor = 'middle'; rx = 6.5; ry = 4.5;
+      s += '<line x1="' + ex + '" y1="' + ey + '" x2="' + ex + '" y2="' + (ey + 16)
+        + '" stroke="#6f6f6f" stroke-width="5"/>'
+        + '<line x1="' + (ex - 5) + '" y1="' + (ey + 16) + '" x2="' + (ex + 5)
+        + '" y2="' + (ey + 16) + '" stroke="#8a8a8a" stroke-width="2"/>';
+    }
+    // through-wall portion, dimmer: the conduit passing through the material
+    s += '<line class="p3d-through" x1="' + ex + '" y1="' + ey + '" x2="' + h.x
+      + '" y2="' + h.y + '" stroke="#3f3f3f" stroke-width="2"/>';
+    // the opening itself, foreshortened on its wall
+    s += '<ellipse class="p3d-hub" data-entry="' + en.key + '" cx="' + h.x + '" cy="' + h.y
+      + '" rx="' + rx + '" ry="' + ry + '" fill="#0a0a0a" stroke="#c9c9c9" stroke-width="2"/>';
+    // future 44px touch target, structurally present and inert for now
+    s += '<rect class="p3d-hit" data-entry="' + en.key + '" x="' + (h.x - 22) + '" y="'
+      + (h.y - 22) + '" width="44" height="44" fill="none" pointer-events="none"/>';
+    s += '<text x="' + lx + '" y="' + ly + '" fill="#c9c9c9" font-size="10" '
+      + 'font-family="monospace" text-anchor="' + anchor + '">' + en.size + '&#8243;</text>';
+  }
+  s += '</g>';
+
+  // ── pull routes, inside the volume ──
+  s += '<g class="p3d-routes" fill="none" stroke="#9a9a9a" stroke-width="2.5" '
+    + 'stroke-linecap="round" stroke-linejoin="round">';
+  for (i = 0; i < fx.routes.length; i++) {
+    var rt = fx.routes[i];
+    var ea = null; var eb = null; var j;
+    for (j = 0; j < fx.entries.length; j++) {
+      if (fx.entries[j].key === rt.a) ea = fx.entries[j];
+      if (fx.entries[j].key === rt.b) eb = fx.entries[j];
+    }
+    s += '<path class="p3d-route" data-type="' + rt.type + '" d="'
+      + pbv23dRoutePath(rt.type, ea.wall, hubs[rt.a], eb.wall, hubs[rt.b]) + '"/>';
+  }
+  s += '</g>';
+
+  // ── dimension layer: SCREEN-SPACE drafting annotations, never projected ──
+  s += '<g class="p3d-dims" stroke-linecap="butt">';
+  // entry spacing: measurement, not a route (thin, ticks, extension lines)
+  for (i = 0; i < fx.spacing.length; i++) {
+    var sp = fx.spacing[i];
+    var ha = hubs[sp.a]; var hb = hubs[sp.b];
+    var sy = G.dimSpacingY;
+    s += '<g class="p3d-measure">'
+      + '<line x1="' + ha.x + '" y1="' + (ha.y + 10) + '" x2="' + ha.x + '" y2="' + (sy - 4)
+      + '" stroke="#5a4a68" stroke-width="0.75" stroke-dasharray="3 3"/>'
+      + '<line x1="' + hb.x + '" y1="' + (hb.y + 10) + '" x2="' + hb.x + '" y2="' + (sy - 4)
+      + '" stroke="#5a4a68" stroke-width="0.75" stroke-dasharray="3 3"/>'
+      + '<line x1="' + ha.x + '" y1="' + sy + '" x2="' + hb.x + '" y2="' + sy
+      + '" stroke="#b06ae8" stroke-width="1"/>'
+      + '<line x1="' + ha.x + '" y1="' + (sy - 4) + '" x2="' + ha.x + '" y2="' + (sy + 4)
+      + '" stroke="#b06ae8" stroke-width="1.5"/>'
+      + '<line x1="' + hb.x + '" y1="' + (sy - 4) + '" x2="' + hb.x + '" y2="' + (sy + 4)
+      + '" stroke="#b06ae8" stroke-width="1.5"/>'
+      + '<text x="' + ((ha.x + hb.x) / 2) + '" y="' + (sy - 6) + '" fill="#b06ae8" '
+      + 'font-size="9" font-family="monospace" text-anchor="middle">' + sp.label + '</text>'
+      + '</g>';
+  }
+  // WIDTH along the bottom, HEIGHT up the right side — always axis-aligned
+  var wy = G.dimWidthY;
+  s += '<line x1="' + R.x1 + '" y1="' + (R.y2 + 4) + '" x2="' + R.x1 + '" y2="' + (wy - 4)
+    + '" stroke="#3a3a3a" stroke-width="0.75"/>'
+    + '<line x1="' + R.x2 + '" y1="' + (R.y2 + 4) + '" x2="' + R.x2 + '" y2="' + (wy - 4)
+    + '" stroke="#3a3a3a" stroke-width="0.75"/>';
+  if (fx.width.status === 'LAYOUT_DEPENDENT') {
+    // reference dimension: dashed line, OPEN arrowheads, no value in the gap
+    s += '<line class="p3d-dim-width p3d-dim-ref" x1="' + R.x1 + '" y1="' + wy + '" x2="'
+      + R.x2 + '" y2="' + wy + '" stroke="#4a90d9" stroke-width="1" stroke-dasharray="5 4"/>'
+      + '<path d="M ' + (R.x1 + 9) + ' ' + (wy - 4) + ' L ' + R.x1 + ' ' + wy + ' L '
+      + (R.x1 + 9) + ' ' + (wy + 4) + '" fill="none" stroke="#4a90d9" stroke-width="1"/>'
+      + '<path d="M ' + (R.x2 - 9) + ' ' + (wy - 4) + ' L ' + R.x2 + ' ' + wy + ' L '
+      + (R.x2 - 9) + ' ' + (wy + 4) + '" fill="none" stroke="#4a90d9" stroke-width="1"/>'
+      + '<rect x="66" y="' + (wy - 9) + '" width="164" height="12" fill="#0a0a0a"/>'
+      + '<text x="148" y="' + (wy + 1) + '" fill="#4a90d9" font-size="8.5" '
+      + 'letter-spacing="0.6" text-anchor="middle">WIDTH \u2014 NOT FULLY DETERMINED</text>';
+  } else if (fx.width.status === 'RESOLVED') {
+    s += '<line class="p3d-dim-width" x1="' + R.x1 + '" y1="' + wy + '" x2="' + R.x2
+      + '" y2="' + wy + '" stroke="#4a90d9" stroke-width="1"/>'
+      + '<path d="M ' + R.x1 + ' ' + wy + ' l 9 -4 v 8 z" fill="#4a90d9"/>'
+      + '<path d="M ' + R.x2 + ' ' + wy + ' l -9 -4 v 8 z" fill="#4a90d9"/>'
+      + '<rect x="118" y="' + (wy - 9) + '" width="60" height="13" fill="#0a0a0a"/>'
+      + '<text x="148" y="' + (wy + 2) + '" fill="#4a90d9" font-size="11" '
+      + 'font-family="monospace" text-anchor="middle">' + fx.width.value + '</text>'
+      + '<text x="148" y="' + (wy + 15) + '" fill="#5e7c9c" font-size="7.5" '
+      + 'letter-spacing="1" text-anchor="middle">WIDTH</text>';
+  }
+  var hx = G.dimHeightX;
+  s += '<line x1="' + (R.x2 + 4) + '" y1="' + R.y1 + '" x2="' + (hx - 4) + '" y2="' + R.y1
+    + '" stroke="#3a3a3a" stroke-width="0.75"/>'
+    + '<line x1="' + (R.x2 + 4) + '" y1="' + R.y2 + '" x2="' + (hx - 4) + '" y2="' + R.y2
+    + '" stroke="#3a3a3a" stroke-width="0.75"/>';
+  if (fx.height.status === 'RESOLVED') {
+    s += '<line class="p3d-dim-height" x1="' + hx + '" y1="' + R.y1 + '" x2="' + hx
+      + '" y2="' + R.y2 + '" stroke="#52c07a" stroke-width="1"/>'
+      + '<path d="M ' + hx + ' ' + R.y1 + ' l -4 9 h 8 z" fill="#52c07a"/>'
+      + '<path d="M ' + hx + ' ' + R.y2 + ' l -4 -9 h 8 z" fill="#52c07a"/>'
+      + '<rect x="' + (hx - 9) + '" y="94" width="18" height="30" fill="#0a0a0a"/>'
+      + '<text x="' + hx + '" y="106" fill="#52c07a" font-size="11" '
+      + 'font-family="monospace" text-anchor="middle">' + fx.height.value + '</text>'
+      + '<text x="' + hx + '" y="118" fill="#4c8a63" font-size="7" letter-spacing="0.8" '
+      + 'text-anchor="middle">HEIGHT</text>';
+  }
+  s += '</g>';
+  s += '<text x="148" y="292" fill="#4a4a4a" font-size="7.5" letter-spacing="1" '
+    + 'text-anchor="middle">SCHEMATIC \u2014 NOT TO SCALE</text>';
+  s += '</svg>';
+  return s;
+}
+function pbv23dResultHtml(key) {
+  var fx = PBV23D_FIXTURES[key];
+  var widthCell = fx.width.status === 'RESOLVED'
+    ? '<span class="p3d-val" style="color:#4a90d9">' + fx.width.value + '</span>'
+    : '<span class="p3d-val p3d-undet">NOT FULLY DETERMINED</span>';
+  var heightCell = fx.height.status === 'RESOLVED'
+    ? '<span class="p3d-val" style="color:#52c07a">' + fx.height.value + '</span>'
+    : '<span class="p3d-val p3d-undet">No height requirement from these pulls</span>';
+  return '<div class="p3d-h">PULL-RULE MINIMUM DIMENSIONS</div>'
+    + '<div class="p3d-row"><span class="p3d-lab">WIDTH</span>' + widthCell + '</div>'
+    + '<div class="p3d-row"><span class="p3d-lab">HEIGHT</span>' + heightCell + '</div>'
+    + '<div class="p3d-note">Visual prototype only \u2014 static fixture, no calculation. '
+    + 'The current Pull Box editor and its results remain available at ?pbv2=1.</div>';
+}
+function pbv23dShow(key) {
+  document.getElementById('pbv2-3d-stage').innerHTML = pbv23dRenderSvg(key);
+  document.getElementById('pbv2-3d-chips').textContent = PBV23D_FIXTURES[key].chips;
+  document.getElementById('pbv2-3d-result').innerHTML = pbv23dResultHtml(key);
+  var btns = document.querySelectorAll('#pbv2-3d-fixtures .p3d-fx');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].setAttribute('aria-pressed', btns[i].getAttribute('data-fx') === key ? 'true' : 'false');
+  }
+}
+(function () {
+  if (!pbv23dShouldOpen(window.location)) return;
+  var bar = document.getElementById('pbv2-3d-fixtures');
+  var keys = ['standard', 'straight', 'dense'];
+  var html = '';
+  for (var i = 0; i < keys.length; i++) {
+    html += '<button class="p3d-fx" type="button" data-fx="' + keys[i]
+      + '" onclick="pbv23dShow(\'' + keys[i] + '\')">'
+      + PBV23D_FIXTURES[keys[i]].label + '</button>';
+  }
+  bar.innerHTML = html;
+  document.getElementById('pbv2-3d-prototype').classList.add('show');
+  pbv23dShow('standard');
+})();
+</script>
+<!-- ══════════════ END PULL BOX V2 3D PROTOTYPE ══════════════ -->
+
 </body>
 
 <script>
