@@ -9332,44 +9332,68 @@ function pbv2ResetConfirm() {
 
 
 
-<!-- ══════════════ PULL BOX V2 — LIGHT 3D PROTOTYPE (PBV2-10A3D) ══════════════
-     DEV-ONLY, DISPOSABLE visual prototype of the 2.5D box concept.
-     Opens ONLY on a local/private host with 'pbv2=3d'. The existing PBV2
-     editor (?pbv2=1) is untouched and remains the working reference.
-     No engine calls, no editing, no WebGL/canvas — static SVG fixtures whose
-     only job is to answer: does this read as one physical box on an iPhone? -->
+
+
+<!-- ══════════ PULL BOX V2 — INTERACTIVE 3D PROTOTYPE (PBV2-10B) ══════════
+     DEV-ONLY, DISPOSABLE. Interaction prototype for editing raceways
+     directly on the approved 3D enclosure. Opens ONLY on a local/private
+     host with 'pbv2=3d'. The working PBV2 editor (?pbv2=1) is untouched.
+     NO engine calls, NO NEC calculation, NO persistence. Pull-type naming
+     here is throwaway UI logic used only to test the interaction. -->
 <style>
-#pbv2-3d-prototype{position:fixed;inset:0;z-index:9100;display:none;flex-direction:column;background:#0a0a0a;color:#eee;overflow-y:auto;-webkit-overflow-scrolling:touch;font-family:Inter,sans-serif}
+#pbv2-3d-prototype{position:fixed;inset:0;z-index:9100;display:none;flex-direction:column;background:#0a0a0a;color:#eee;overflow-y:auto;-webkit-overflow-scrolling:touch;font-family:Inter,sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #pbv2-3d-prototype.show{display:flex}
 .p3d-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #1e1e1e}
 .p3d-title{font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;flex:1}
 .p3d-dev{font-size:10px;letter-spacing:1px;color:#ffc700;border:1px solid #ffc700;border-radius:3px;padding:2px 6px}
-.p3d-fixtures{display:flex;gap:6px;padding:10px 14px}
+.p3d-fixtures{display:flex;gap:6px;padding:10px 14px 4px}
 .p3d-fx{flex:1;min-height:44px;background:#141414;border:1px solid #2a2a2a;border-radius:8px;color:#bbb;font-size:11px;letter-spacing:1px;cursor:pointer}
 .p3d-fx[aria-pressed="true"]{border-color:#ffc700;color:#ffc700}
-.p3d-fx:focus-visible{outline:2px solid #ffc700;outline-offset:2px}
-#pbv2-3d-stage{padding:0 8px}
+.p3d-fx:focus-visible,.p3d-btn:focus-visible{outline:2px solid #ffc700;outline-offset:2px}
+#pbv2-3d-stage{padding:0 6px;touch-action:manipulation}
 #pbv2-3d-stage svg{width:100%;height:auto;display:block;max-width:430px;margin:0 auto}
-.p3d-chips{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8a8a8a;text-align:center;padding:2px 14px 10px}
-.p3d-res{margin:0 14px 100px;border-top:1px solid #1e1e1e;padding-top:12px}
-.p3d-h{font-size:10px;letter-spacing:1px;color:#7a7a7a;margin-bottom:8px}
-.p3d-row{display:flex;align-items:baseline;gap:12px;padding:6px 0}
+.p3d-bar{margin:0 14px;padding:10px;background:#111;border:1px solid #222;border-radius:10px;font-size:12px;min-height:44px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.p3d-bar.p3d-connecting{border-color:#ffc700}
+.p3d-barlabel{flex:1;min-width:110px;color:#bbb;font-family:'IBM Plex Mono',monospace}
+.p3d-btn{min-height:44px;padding:8px 12px;background:#181818;border:1px solid #2c2c2c;border-radius:8px;color:#ddd;font-size:12px;cursor:pointer}
+.p3d-btn.p3d-danger{color:#c0392b}
+.p3d-hint{padding:8px 14px 0;font-size:11px;color:#7a7a7a;line-height:1.5}
+.p3d-res{margin:12px 14px 120px;border-top:1px solid #1e1e1e;padding-top:10px}
+.p3d-h{font-size:10px;letter-spacing:1px;color:#7a7a7a;margin-bottom:6px}
+.p3d-row{display:flex;align-items:baseline;gap:12px;padding:4px 0}
 .p3d-lab{font-size:10px;letter-spacing:1px;color:#8a8a8a;min-width:56px}
 .p3d-val{font-family:'IBM Plex Mono',monospace;font-size:18px}
 .p3d-val.p3d-undet{font-size:12px;color:#9a9a9a;letter-spacing:0.5px}
 .p3d-note{font-size:11px;color:#7a7a7a;margin-top:8px;line-height:1.5}
+#pbv2-3d-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9200;display:none;background:#101010;border-top:1px solid #2a2a2a;border-radius:14px 14px 0 0;padding:14px 14px calc(20px + env(safe-area-inset-bottom));max-height:72vh;overflow-y:auto}
+#pbv2-3d-sheet.show{display:block}
+.p3d-sheet-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.p3d-sheet-t{flex:1;font-size:13px;font-weight:600}
+.p3d-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.p3d-opt{min-width:52px;min-height:44px;background:#181818;border:1px solid #2c2c2c;border-radius:8px;color:#ddd;font-size:12px;font-family:'IBM Plex Mono',monospace;cursor:pointer}
+.p3d-opt[aria-pressed="true"]{border-color:#ffc700;color:#ffc700;background:#1d1a0d}
+.p3d-flab{font-size:10px;letter-spacing:1px;color:#7a7a7a;margin-bottom:6px}
+#pbv2-3d-pos{width:100%;height:44px;accent-color:#ffc700}
 </style>
-<div id="pbv2-3d-prototype" role="region" aria-label="Pull box 3D visual prototype">
+<div id="pbv2-3d-prototype" role="region" aria-label="Pull box 3D editor prototype">
   <div class="p3d-head">
-    <div class="p3d-title">Pull / Junction Box — 3D preview</div>
+    <div class="p3d-title">Pull / Junction Box — 3D editor</div>
     <span class="p3d-dev">DEV</span>
     <button class="p3d-fx" style="flex:0 0 44px" type="button" aria-label="Close prototype"
       onclick="document.getElementById('pbv2-3d-prototype').classList.remove('show')">&#10005;</button>
   </div>
   <div class="p3d-fixtures" id="pbv2-3d-fixtures"></div>
+  <div class="p3d-hint" id="pbv2-3d-hint"></div>
   <div id="pbv2-3d-stage"></div>
-  <div class="p3d-chips" id="pbv2-3d-chips"></div>
+  <div class="p3d-bar" id="pbv2-3d-bar"></div>
   <div class="p3d-res" id="pbv2-3d-result"></div>
+</div>
+<div id="pbv2-3d-sheet" role="dialog" aria-modal="true" aria-label="Raceway editor">
+  <div class="p3d-sheet-h">
+    <div class="p3d-sheet-t" id="pbv2-3d-sheet-title">Raceway</div>
+    <button class="p3d-btn" type="button" onclick="pbv23dCloseSheet()">DONE</button>
+  </div>
+  <div id="pbv2-3d-sheet-body"></div>
 </div>
 <script>
 'use strict';
@@ -9387,13 +9411,9 @@ function pbv23dShouldOpen(loc) {
   return ((loc.search || '') + (loc.hash || '')).indexOf('pbv2=3d') !== -1;
 }
 
-/* ── Fixed pseudo-perspective geometry ───────────────────────────────────
-   One open enclosure seen slightly from the front and above:
-     rim   = outer edge of the box material (gives visible wall thickness)
-     front = the opening we look through
-     back  = the interior back plane, inset and lifted slightly
-   The four wall surfaces are the trapezoids between front and back.
-   Perspective is FIXED: no rotation, no camera, no 3D engine.        */
+/* ── Fixed pseudo-perspective geometry (unchanged from the approved 10A3D
+   concept: rim = wall thickness, front = opening, back = interior plane,
+   four wall surfaces are the trapezoids between them). ───────────────── */
 var PBV23D_GEO = {
   rim: { x1: 44, y1: 26, x2: 252, y2: 190 },
   front: { x1: 52, y1: 34, x2: 244, y2: 182 },
@@ -9403,8 +9423,10 @@ var PBV23D_GEO = {
   dimWidthY: 272,
   dimHeightX: 312,
 };
-/** Point on a wall surface: v = position along the wall (0..1),
- *  t = depth from the front opening (0) to the back plane (1). */
+/* Local size list: the prototype never touches the engine. */
+var PBV23D_SIZES = ['1/2', '3/4', '1', '1-1/4', '1-1/2', '2', '2-1/2', '3', '3-1/2', '4', '5', '6'];
+var PBV23D_WALLS = ['top', 'right', 'bottom', 'left'];
+
 function pbv23dHub(wall, v, t) {
   var F = PBV23D_GEO.front; var B = PBV23D_GEO.back; var f; var b;
   if (wall === 'left') {
@@ -9428,19 +9450,109 @@ function pbv23dInward(wall) {
   if (wall === 'top') return { x: 0, y: 1 };
   return { x: 0, y: -1 };
 }
-/** Route paths. All three families travel through the box INTERIOR: the
- *  legs leave each hub perpendicular to its own wall, over the back plane. */
+
+/* ── Prototype state + pure mutations ─────────────────────────────────── */
+var PBV23D = null;
+var pbv23dSeq = 0;
+var pbv23dSelected = null;
+var pbv23dConnectFrom = null;
+var pbv23dFixtureKey = 'standard';
+function pbv23dNextId(prefix) { pbv23dSeq++; return 'p3d-' + prefix + '-' + pbv23dSeq; }
+
+function pbv23dEmptyState() { return { entries: [], connections: [], showDims: false }; }
+function pbv23dFindEntry(state, id) {
+  for (var i = 0; i < state.entries.length; i++) {
+    if (state.entries[i].id === id) return state.entries[i];
+  }
+  return null;
+}
+/** Next free position along a wall: midpoint of the largest gap. */
+function pbv23dNextPosition(state, wall) {
+  var used = state.entries.filter(function (e) { return e.wall === wall; })
+    .map(function (e) { return e.v; }).sort(function (a, b) { return a - b; });
+  if (used.length === 0) return 0.5;
+  var bounds = [0.06].concat(used, [0.94]);
+  var bestGap = -1; var bestV = 0.5;
+  for (var i = 0; i < bounds.length - 1; i++) {
+    var gap = bounds[i + 1] - bounds[i];
+    if (gap > bestGap) { bestGap = gap; bestV = (bounds[i] + bounds[i + 1]) / 2; }
+  }
+  return Math.min(0.94, Math.max(0.06, bestV));
+}
+function pbv23dAddEntry(state, wall, size, id) {
+  var entry = { id: id, wall: wall, v: pbv23dNextPosition(state, wall), size: size };
+  state.entries.push(entry);
+  state.showDims = false;
+  return entry;
+}
+function pbv23dDeleteEntry(state, id) {
+  state.entries = state.entries.filter(function (e) { return e.id !== id; });
+  state.connections = state.connections.filter(function (c) {
+    return c.a !== id && c.b !== id;
+  });
+  state.showDims = false;
+}
+function pbv23dSetSize(state, id, size) {
+  var e = pbv23dFindEntry(state, id);
+  if (e) { e.size = size; state.showDims = false; }
+  return !!e;
+}
+function pbv23dSetPosition(state, id, v) {
+  var e = pbv23dFindEntry(state, id);
+  if (!e) return false;
+  e.v = Math.min(0.94, Math.max(0.06, v));
+  state.showDims = false;
+  return true;
+}
+/** Change wall: the raceway keeps its identity and its connections. */
+function pbv23dSetWall(state, id, wall) {
+  var e = pbv23dFindEntry(state, id);
+  if (!e || PBV23D_WALLS.indexOf(wall) === -1) return false;
+  e.wall = wall;
+  e.v = pbv23dNextPosition(state, wall);
+  state.showDims = false;
+  return true;
+}
+/** PROTOTYPE-ONLY relationship naming. Not the engine, not NEC logic — it
+ *  exists purely so the interaction can be judged on screen. */
+function pbv23dClassify(wallA, wallB) {
+  if (wallA === wallB) return 'U';
+  var opposite = (wallA === 'left' && wallB === 'right')
+    || (wallA === 'right' && wallB === 'left')
+    || (wallA === 'top' && wallB === 'bottom')
+    || (wallA === 'bottom' && wallB === 'top');
+  return opposite ? 'STRAIGHT' : 'ANGLE';
+}
+function pbv23dAddConnection(state, aId, bId, id) {
+  if (aId === bId) return { ok: false, reason: 'SELF' };
+  if (!pbv23dFindEntry(state, aId) || !pbv23dFindEntry(state, bId)) {
+    return { ok: false, reason: 'UNKNOWN' };
+  }
+  for (var i = 0; i < state.connections.length; i++) {
+    var c = state.connections[i];
+    if ((c.a === aId && c.b === bId) || (c.a === bId && c.b === aId)) {
+      return { ok: false, reason: 'DUPLICATE' };
+    }
+  }
+  state.connections.push({ id: id, a: aId, b: bId });
+  state.showDims = false;
+  return { ok: true };
+}
+function pbv23dDeleteConnection(state, id) {
+  state.connections = state.connections.filter(function (c) { return c.id !== id; });
+}
+
+/* ── Route paths ──────────────────────────────────────────────────────── */
 function pbv23dRoutePath(type, wallA, a, wallB, b) {
   if (type === 'U') {
     var horizontal = (wallA === 'top' || wallA === 'bottom');
     var p = a; var q = b;
     if ((horizontal && b.x < a.x) || (!horizontal && b.y < a.y)) { p = b; q = a; }
     var n = pbv23dInward(wallA);
-    var leg = 48;
+    var leg = 44;
     var r = horizontal ? (q.x - p.x) / 2 : (q.y - p.y) / 2;
     var p2 = { x: p.x + n.x * leg, y: p.y + n.y * leg };
     var q2 = { x: q.x + n.x * leg, y: q.y + n.y * leg };
-    // 180-degree return INSIDE the enclosure: sweep bulges further inward
     var sweep = (wallA === 'bottom' || wallA === 'left') ? 1 : 0;
     return 'M ' + p.x + ' ' + p.y + ' L ' + p2.x + ' ' + p2.y
       + ' A ' + r + ' ' + r + ' 0 0 ' + sweep + ' ' + q2.x + ' ' + q2.y
@@ -9462,216 +9574,181 @@ function pbv23dRoutePath(type, wallA, a, wallB, b) {
       + ' Q ' + corner.x + ' ' + corner.y + ' ' + s2.x + ' ' + s2.y
       + ' L ' + b.x + ' ' + b.y;
   }
-  // STRAIGHT: through the volume wall-to-wall. Offset entries stay straight
-  // pulls — the gentle transition never reads as a turn.
-  var na = pbv23dInward(wallA); var nb = pbv23dInward(wallB);
-  var la = { x: a.x + na.x * 34, y: a.y + na.y * 34 };
-  var lb = { x: b.x + nb.x * 34, y: b.y + nb.y * 34 };
-  return 'M ' + a.x + ' ' + a.y + ' L ' + la.x + ' ' + la.y
-    + ' C ' + (la.x + na.x * 30) + ' ' + (la.y + na.y * 30) + ', '
-    + (lb.x + nb.x * 30) + ' ' + (lb.y + nb.y * 30) + ', ' + lb.x + ' ' + lb.y
-    + ' L ' + b.x + ' ' + b.y;
+  // STRAIGHT: a through-pull. Aligned entries give one straight segment.
+  // Offset entries keep two long collinear runs with a SHORT step near the
+  // middle, so the pull still reads as passing through the box rather than
+  // bending around it (the old long curve read like an angle).
+  var horizontalRun = (wallA === 'left' || wallA === 'right');
+  var drift = horizontalRun ? Math.abs(b.y - a.y) : Math.abs(b.x - a.x);
+  if (drift < 3) return 'M ' + a.x + ' ' + a.y + ' L ' + b.x + ' ' + b.y;
+  var step = 12;
+  if (horizontalRun) {
+    var mx = (a.x + b.x) / 2;
+    return 'M ' + a.x + ' ' + a.y + ' L ' + (mx - step) + ' ' + a.y
+      + ' L ' + (mx + step) + ' ' + b.y + ' L ' + b.x + ' ' + b.y;
+  }
+  var my = (a.y + b.y) / 2;
+  return 'M ' + a.x + ' ' + a.y + ' L ' + a.x + ' ' + (my - step)
+    + ' L ' + b.x + ' ' + (my + step) + ' L ' + b.x + ' ' + b.y;
 }
 
-/* ── Static fixtures (no engine call; representative values only) ─────── */
-var PBV23D_FIXTURES = {
-  standard: {
-    label: 'STANDARD',
-    entries: [
-      { key: 'L2', wall: 'left', v: 0.5, size: '2' },
-      { key: 'T2', wall: 'top', v: 0.5, size: '2' },
-      { key: 'B3a', wall: 'bottom', v: 0.3, size: '3' },
-      { key: 'B3b', wall: 'bottom', v: 0.7, size: '3' },
-    ],
-    routes: [
-      { type: 'ANGLE', a: 'L2', b: 'T2' },
-      { type: 'U', a: 'B3a', b: 'B3b' },
-    ],
-    spacing: [{ a: 'B3a', b: 'B3b', label: '18" MIN' }],
-    width: { status: 'LAYOUT_DEPENDENT' },
-    height: { status: 'RESOLVED', value: '21"' },
-    chips: 'pull rule \u2265 12"  \u00B7  U spacing \u2265 18"  \u00B7  + fittings',
-  },
-  straight: {
-    label: 'STRAIGHT',
-    entries: [
-      { key: 'L4', wall: 'left', v: 0.35, size: '4' },
-      { key: 'R4', wall: 'right', v: 0.68, size: '4' },
-    ],
-    routes: [{ type: 'STRAIGHT', a: 'L4', b: 'R4' }],
-    spacing: [],
-    width: { status: 'RESOLVED', value: '32"' },
-    height: { status: 'NONE' },
-    chips: 'offset entries on opposite walls \u2014 still a straight pull',
-  },
-  dense: {
-    label: 'DENSE',
-    entries: [
-      { key: 'L1', wall: 'left', v: 0.08, size: '2', t: 0.3 },
-      { key: 'L2', wall: 'left', v: 0.24, size: '3', t: 0.6 },
-      { key: 'L3', wall: 'left', v: 0.4, size: '2', t: 0.3 },
-      { key: 'L4', wall: 'left', v: 0.56, size: '4', t: 0.6 },
-      { key: 'L5', wall: 'left', v: 0.72, size: '2', t: 0.3 },
-      { key: 'L6', wall: 'left', v: 0.88, size: '3', t: 0.6 },
-      { key: 'R1', wall: 'right', v: 0.2, size: '4', t: 0.35 },
-      { key: 'R2', wall: 'right', v: 0.5, size: '2', t: 0.55 },
-      { key: 'R3', wall: 'right', v: 0.8, size: '2', t: 0.35 },
-      { key: 'T1', wall: 'top', v: 0.25, size: '2', t: 0.4 },
-      { key: 'T2', wall: 'top', v: 0.5, size: '3', t: 0.4 },
-      { key: 'T3', wall: 'top', v: 0.75, size: '2', t: 0.4 },
-      { key: 'B1', wall: 'bottom', v: 0.18, size: '3', t: 0.4 },
-      { key: 'B2', wall: 'bottom', v: 0.4, size: '2', t: 0.4 },
-      { key: 'B3', wall: 'bottom', v: 0.62, size: '2', t: 0.4 },
-      { key: 'B4', wall: 'bottom', v: 0.84, size: '3', t: 0.4 },
-    ],
-    routes: [
-      { type: 'ANGLE', a: 'L4', b: 'T2' },
-      { type: 'U', a: 'B1', b: 'B2' },
-      { type: 'STRAIGHT', a: 'L1', b: 'R1' },
-    ],
-    spacing: [{ a: 'B1', b: 'B2', label: '12" MIN' }],
-    width: { status: 'LAYOUT_DEPENDENT' },
-    height: { status: 'RESOLVED', value: '30"' },
-    chips: '16 raceways \u00B7 density check',
-  },
-};
+/* ── Fixtures (starting points, all fully editable afterwards) ────────── */
+function pbv23dBuildFixture(key) {
+  var s = pbv23dEmptyState();
+  pbv23dSeq = 0;
+  if (key === 'empty') return s;
+  if (key === 'standard') {
+    var l2 = pbv23dAddEntry(s, 'left', '2', pbv23dNextId('e'));
+    var t2 = pbv23dAddEntry(s, 'top', '2', pbv23dNextId('e'));
+    var b1 = pbv23dAddEntry(s, 'bottom', '3', pbv23dNextId('e'));
+    var b2 = pbv23dAddEntry(s, 'bottom', '3', pbv23dNextId('e'));
+    pbv23dSetPosition(s, b1.id, 0.3);
+    pbv23dSetPosition(s, b2.id, 0.7);
+    pbv23dAddConnection(s, l2.id, t2.id, pbv23dNextId('c'));
+    pbv23dAddConnection(s, b1.id, b2.id, pbv23dNextId('c'));
+    s.showDims = true;   // static fixture values only; cleared on any edit
+    return s;
+  }
+  // dense: ~16 raceways across all four walls
+  var plan = [
+    ['left', '2', 0.08], ['left', '3', 0.24], ['left', '2', 0.4],
+    ['left', '4', 0.56], ['left', '2', 0.72], ['left', '3', 0.88],
+    ['right', '4', 0.2], ['right', '2', 0.5], ['right', '2', 0.8],
+    ['top', '2', 0.25], ['top', '3', 0.5], ['top', '2', 0.75],
+    ['bottom', '3', 0.18], ['bottom', '2', 0.4], ['bottom', '2', 0.62],
+    ['bottom', '3', 0.84],
+  ];
+  var made = [];
+  for (var i = 0; i < plan.length; i++) {
+    var e = pbv23dAddEntry(s, plan[i][0], plan[i][1], pbv23dNextId('e'));
+    pbv23dSetPosition(s, e.id, plan[i][2]);
+    made.push(e);
+  }
+  pbv23dAddConnection(s, made[3].id, made[10].id, pbv23dNextId('c'));  // angle
+  pbv23dAddConnection(s, made[12].id, made[13].id, pbv23dNextId('c')); // U
+  pbv23dAddConnection(s, made[0].id, made[6].id, pbv23dNextId('c'));   // straight
+  return s;
+}
 
-/* ── SVG builder (pure: fixture key in, markup string out) ────────────── */
-function pbv23dRenderSvg(key) {
-  var fx = PBV23D_FIXTURES[key];
+/* ── SVG (pure: state + ui in, markup out) ───────────────────────────── */
+function pbv23dRenderSvg(state, ui) {
+  ui = ui || {};
   var G = PBV23D_GEO; var F = G.front; var B = G.back; var R = G.rim;
   var pt = function (p) { return p.x + ',' + p.y; };
   var fc = { tl: { x: F.x1, y: F.y1 }, tr: { x: F.x2, y: F.y1 },
     br: { x: F.x2, y: F.y2 }, bl: { x: F.x1, y: F.y2 } };
   var bc = { tl: { x: B.x1, y: B.y1 }, tr: { x: B.x2, y: B.y1 },
     br: { x: B.x2, y: B.y2 }, bl: { x: B.x1, y: B.y2 } };
-
+  var showLabels = state.entries.length <= 8;
   var s = '<svg viewBox="0 0 340 300" xmlns="http://www.w3.org/2000/svg" '
-    + 'role="img" aria-label="Pull box enclosure diagram">';
+    + 'role="img" aria-label="Pull box enclosure editor">';
 
-  // ── enclosure ──
-  s += '<g class="p3d-box">';
-  // box material seen at the opening = visible wall thickness
+  // enclosure: rim (wall thickness), four tappable wall surfaces, back plane
   s += '<rect x="' + R.x1 + '" y="' + R.y1 + '" width="' + (R.x2 - R.x1)
     + '" height="' + (R.y2 - R.y1) + '" rx="3" fill="#1e1e1e" stroke="#3a3a3a"/>';
-  // four wall surfaces receding to the back plane
-  s += '<polygon class="p3d-wall" data-wall="top" points="' + pt(fc.tl) + ' ' + pt(fc.tr)
-    + ' ' + pt(bc.tr) + ' ' + pt(bc.tl) + '" fill="#131313" stroke="#2c2c2c"/>';
-  s += '<polygon class="p3d-wall" data-wall="left" points="' + pt(fc.tl) + ' ' + pt(bc.tl)
-    + ' ' + pt(bc.bl) + ' ' + pt(fc.bl) + '" fill="#161616" stroke="#2c2c2c"/>';
-  s += '<polygon class="p3d-wall" data-wall="right" points="' + pt(fc.tr) + ' ' + pt(bc.tr)
-    + ' ' + pt(bc.br) + ' ' + pt(fc.br) + '" fill="#191919" stroke="#2c2c2c"/>';
-  s += '<polygon class="p3d-wall" data-wall="bottom" points="' + pt(fc.bl) + ' ' + pt(bc.bl)
-    + ' ' + pt(bc.br) + ' ' + pt(fc.br) + '" fill="#1d1d1d" stroke="#2c2c2c"/>';
-  // interior back plane (darkest = depth)
+  var walls = [
+    ['top', pt(fc.tl) + ' ' + pt(fc.tr) + ' ' + pt(bc.tr) + ' ' + pt(bc.tl), '#131313'],
+    ['left', pt(fc.tl) + ' ' + pt(bc.tl) + ' ' + pt(bc.bl) + ' ' + pt(fc.bl), '#161616'],
+    ['right', pt(fc.tr) + ' ' + pt(bc.tr) + ' ' + pt(bc.br) + ' ' + pt(fc.br), '#191919'],
+    ['bottom', pt(fc.bl) + ' ' + pt(bc.bl) + ' ' + pt(bc.br) + ' ' + pt(fc.br), '#1d1d1d'],
+  ];
+  for (var w = 0; w < walls.length; w++) {
+    s += '<polygon class="p3d-wall" data-wall="' + walls[w][0] + '" points="' + walls[w][1]
+      + '" fill="' + walls[w][2] + '" stroke="#2c2c2c" style="cursor:pointer"'
+      + ' onclick="pbv23dTapWall(\'' + walls[w][0] + '\')"></polygon>';
+  }
   s += '<rect class="p3d-back" x="' + B.x1 + '" y="' + B.y1 + '" width="' + (B.x2 - B.x1)
     + '" height="' + (B.y2 - B.y1) + '" fill="#0c0c0c" stroke="#242424"/>';
-  s += '</g>';
+  // subtle add affordance on each wall surface
+  var plusAt = { top: [70, 45], bottom: [70, 174], left: [74, 157], right: [222, 157] };
+  for (var pw = 0; pw < PBV23D_WALLS.length; pw++) {
+    var pos = plusAt[PBV23D_WALLS[pw]];
+    var empty = state.entries.filter(function (e) { return e.wall === PBV23D_WALLS[pw]; }).length === 0;
+    s += '<text class="p3d-add" data-wall="' + PBV23D_WALLS[pw] + '" x="' + pos[0]
+      + '" y="' + pos[1] + '" fill="' + (empty ? '#6a6a6a' : '#3d3d3d')
+      + '" font-size="' + (empty ? 13 : 10) + '" text-anchor="middle"'
+      + ' style="pointer-events:none">+</text>';
+  }
+  s += '<g fill="#6d6d6d" font-size="8" letter-spacing="1.4" text-anchor="middle" '
+    + 'style="pointer-events:none">'
+    + '<text x="106" y="45">TOP</text><text x="106" y="174">BOTTOM</text>'
+    + '<text x="74" y="140">LEFT</text><text x="222" y="140">RIGHT</text></g>';
 
-  // wall identity labels, attached to the surfaces themselves
-  s += '<g fill="#6d6d6d" font-size="8" letter-spacing="1.4" text-anchor="middle">'
-    + '<text x="70" y="42">TOP</text>'
-    + '<text x="70" y="177">BOTTOM</text>'
-    + '<text x="74" y="160">LEFT</text>'
-    + '<text x="222" y="160">RIGHT</text></g>';
-
-  // ── raceways: exterior stub -> through-wall -> hub opening on the wall ──
+  // routes (schematic, one neutral stroke for every pull type)
   var hubs = {};
   var i;
-  for (i = 0; i < fx.entries.length; i++) {
-    var e = fx.entries[i];
-    hubs[e.key] = pbv23dHub(e.wall, e.v, e.t === undefined ? G.hubDepth : e.t);
+  for (i = 0; i < state.entries.length; i++) {
+    var en = state.entries[i];
+    hubs[en.id] = pbv23dHub(en.wall, en.v, G.hubDepth);
   }
+  s += '<g class="p3d-routes" fill="none" stroke="#9a9a9a" stroke-width="2.5" '
+    + 'stroke-linecap="round" stroke-linejoin="round">';
+  for (i = 0; i < state.connections.length; i++) {
+    var c = state.connections[i];
+    var ea = pbv23dFindEntry(state, c.a); var eb = pbv23dFindEntry(state, c.b);
+    if (!ea || !eb) continue;
+    var type = pbv23dClassify(ea.wall, eb.wall);
+    s += '<path class="p3d-route" data-conn="' + c.id + '" data-type="' + type + '" d="'
+      + pbv23dRoutePath(type, ea.wall, hubs[ea.id], eb.wall, hubs[eb.id]) + '"/>';
+  }
+  s += '</g>';
+
+  // raceways: exterior stub, through-wall run, opening, invisible 44px target
   s += '<g class="p3d-raceways">';
-  for (i = 0; i < fx.entries.length; i++) {
-    var en = fx.entries[i];
-    var h = hubs[en.key];
+  for (i = 0; i < state.entries.length; i++) {
+    var e = state.entries[i];
+    var h = hubs[e.id];
+    var sel = (ui.selected === e.id);
+    var src = (ui.connectFrom === e.id);
+    var ink = src ? '#ffc700' : (sel ? '#ffffff' : '#c9c9c9');
     var ex; var ey; var lx; var ly; var anchor; var rx; var ry;
-    if (en.wall === 'left') {
+    if (e.wall === 'left') {
       ex = R.x1; ey = h.y; lx = 14; ly = h.y + 3; anchor = 'end'; rx = 4.5; ry = 6.5;
       s += '<line x1="' + (ex - 26) + '" y1="' + ey + '" x2="' + ex + '" y2="' + ey
-        + '" stroke="#6f6f6f" stroke-width="5"/>'
-        + '<line x1="' + (ex - 26) + '" y1="' + (ey - 5) + '" x2="' + (ex - 26)
-        + '" y2="' + (ey + 5) + '" stroke="#8a8a8a" stroke-width="2"/>';
-    } else if (en.wall === 'right') {
+        + '" stroke="' + (sel || src ? ink : '#6f6f6f') + '" stroke-width="5"/>';
+    } else if (e.wall === 'right') {
       ex = R.x2; ey = h.y; lx = 282; ly = h.y + 3; anchor = 'start'; rx = 4.5; ry = 6.5;
       s += '<line x1="' + ex + '" y1="' + ey + '" x2="' + (ex + 26) + '" y2="' + ey
-        + '" stroke="#6f6f6f" stroke-width="5"/>'
-        + '<line x1="' + (ex + 26) + '" y1="' + (ey - 5) + '" x2="' + (ex + 26)
-        + '" y2="' + (ey + 5) + '" stroke="#8a8a8a" stroke-width="2"/>';
-    } else if (en.wall === 'top') {
+        + '" stroke="' + (sel || src ? ink : '#6f6f6f') + '" stroke-width="5"/>';
+    } else if (e.wall === 'top') {
       ex = h.x; ey = R.y1; lx = h.x; ly = 9; anchor = 'middle'; rx = 6.5; ry = 4.5;
       s += '<line x1="' + ex + '" y1="' + (ey - 14) + '" x2="' + ex + '" y2="' + ey
-        + '" stroke="#6f6f6f" stroke-width="5"/>'
-        + '<line x1="' + (ex - 5) + '" y1="' + (ey - 14) + '" x2="' + (ex + 5)
-        + '" y2="' + (ey - 14) + '" stroke="#8a8a8a" stroke-width="2"/>';
+        + '" stroke="' + (sel || src ? ink : '#6f6f6f') + '" stroke-width="5"/>';
     } else {
       ex = h.x; ey = R.y2; lx = h.x; ly = 220; anchor = 'middle'; rx = 6.5; ry = 4.5;
       s += '<line x1="' + ex + '" y1="' + ey + '" x2="' + ex + '" y2="' + (ey + 16)
-        + '" stroke="#6f6f6f" stroke-width="5"/>'
-        + '<line x1="' + (ex - 5) + '" y1="' + (ey + 16) + '" x2="' + (ex + 5)
-        + '" y2="' + (ey + 16) + '" stroke="#8a8a8a" stroke-width="2"/>';
+        + '" stroke="' + (sel || src ? ink : '#6f6f6f') + '" stroke-width="5"/>';
     }
-    // through-wall portion, dimmer: the conduit passing through the material
     s += '<line class="p3d-through" x1="' + ex + '" y1="' + ey + '" x2="' + h.x
       + '" y2="' + h.y + '" stroke="#3f3f3f" stroke-width="2"/>';
-    // the opening itself, foreshortened on its wall
-    s += '<ellipse class="p3d-hub" data-entry="' + en.key + '" cx="' + h.x + '" cy="' + h.y
-      + '" rx="' + rx + '" ry="' + ry + '" fill="#0a0a0a" stroke="#c9c9c9" stroke-width="2"/>';
-    // future 44px touch target, structurally present and inert for now
-    s += '<rect class="p3d-hit" data-entry="' + en.key + '" x="' + (h.x - 22) + '" y="'
-      + (h.y - 22) + '" width="44" height="44" fill="none" pointer-events="none"/>';
-    s += '<text x="' + lx + '" y="' + ly + '" fill="#c9c9c9" font-size="10" '
-      + 'font-family="monospace" text-anchor="' + anchor + '">' + en.size + '&#8243;</text>';
-  }
-  s += '</g>';
-
-  // ── pull routes, inside the volume ──
-  s += '<g class="p3d-routes" fill="none" stroke="#9a9a9a" stroke-width="2.5" '
-    + 'stroke-linecap="round" stroke-linejoin="round">';
-  for (i = 0; i < fx.routes.length; i++) {
-    var rt = fx.routes[i];
-    var ea = null; var eb = null; var j;
-    for (j = 0; j < fx.entries.length; j++) {
-      if (fx.entries[j].key === rt.a) ea = fx.entries[j];
-      if (fx.entries[j].key === rt.b) eb = fx.entries[j];
+    if (sel || src) {
+      s += '<circle class="p3d-selring" cx="' + h.x + '" cy="' + h.y + '" r="13" fill="none" '
+        + 'stroke="' + ink + '" stroke-width="1" opacity="0.8"/>';
     }
-    s += '<path class="p3d-route" data-type="' + rt.type + '" d="'
-      + pbv23dRoutePath(rt.type, ea.wall, hubs[rt.a], eb.wall, hubs[rt.b]) + '"/>';
+    s += '<ellipse class="p3d-hub" data-entry="' + e.id + '" cx="' + h.x + '" cy="' + h.y
+      + '" rx="' + rx + '" ry="' + ry + '" fill="#0a0a0a" stroke="' + ink
+      + '" stroke-width="' + (sel || src ? 2.5 : 2) + '"/>';
+    if (showLabels || sel || src) {
+      s += '<text x="' + lx + '" y="' + ly + '" fill="' + (sel || src ? ink : '#c9c9c9')
+        + '" font-size="10" font-family="monospace" text-anchor="' + anchor
+        + '" style="pointer-events:none">' + e.size + '&#8243;</text>';
+    }
+    // invisible touch target, independent of the drawn opening size
+    s += '<rect class="p3d-hit" data-entry="' + e.id + '" x="' + (h.x - 22) + '" y="'
+      + (h.y - 22) + '" width="44" height="44" fill="#000" fill-opacity="0" '
+      + 'style="cursor:pointer" onclick="pbv23dTapEntry(\'' + e.id + '\')"></rect>';
   }
   s += '</g>';
 
-  // ── dimension layer: SCREEN-SPACE drafting annotations, never projected ──
-  s += '<g class="p3d-dims" stroke-linecap="butt">';
-  // entry spacing: measurement, not a route (thin, ticks, extension lines)
-  for (i = 0; i < fx.spacing.length; i++) {
-    var sp = fx.spacing[i];
-    var ha = hubs[sp.a]; var hb = hubs[sp.b];
-    var sy = G.dimSpacingY;
-    s += '<g class="p3d-measure">'
-      + '<line x1="' + ha.x + '" y1="' + (ha.y + 10) + '" x2="' + ha.x + '" y2="' + (sy - 4)
-      + '" stroke="#5a4a68" stroke-width="0.75" stroke-dasharray="3 3"/>'
-      + '<line x1="' + hb.x + '" y1="' + (hb.y + 10) + '" x2="' + hb.x + '" y2="' + (sy - 4)
-      + '" stroke="#5a4a68" stroke-width="0.75" stroke-dasharray="3 3"/>'
-      + '<line x1="' + ha.x + '" y1="' + sy + '" x2="' + hb.x + '" y2="' + sy
-      + '" stroke="#b06ae8" stroke-width="1"/>'
-      + '<line x1="' + ha.x + '" y1="' + (sy - 4) + '" x2="' + ha.x + '" y2="' + (sy + 4)
-      + '" stroke="#b06ae8" stroke-width="1.5"/>'
-      + '<line x1="' + hb.x + '" y1="' + (sy - 4) + '" x2="' + hb.x + '" y2="' + (sy + 4)
-      + '" stroke="#b06ae8" stroke-width="1.5"/>'
-      + '<text x="' + ((ha.x + hb.x) / 2) + '" y="' + (sy - 6) + '" fill="#b06ae8" '
-      + 'font-size="9" font-family="monospace" text-anchor="middle">' + sp.label + '</text>'
-      + '</g>';
-  }
-  // WIDTH along the bottom, HEIGHT up the right side — always axis-aligned
-  var wy = G.dimWidthY;
-  s += '<line x1="' + R.x1 + '" y1="' + (R.y2 + 4) + '" x2="' + R.x1 + '" y2="' + (wy - 4)
-    + '" stroke="#3a3a3a" stroke-width="0.75"/>'
-    + '<line x1="' + R.x2 + '" y1="' + (R.y2 + 4) + '" x2="' + R.x2 + '" y2="' + (wy - 4)
-    + '" stroke="#3a3a3a" stroke-width="0.75"/>';
-  if (fx.width.status === 'LAYOUT_DEPENDENT') {
-    // reference dimension: dashed line, OPEN arrowheads, no value in the gap
-    s += '<line class="p3d-dim-width p3d-dim-ref" x1="' + R.x1 + '" y1="' + wy + '" x2="'
+  // dimension layer: static fixture values only, and only until the user edits
+  if (state.showDims) {
+    var wy = G.dimWidthY; var hx = G.dimHeightX;
+    s += '<g class="p3d-dims" style="pointer-events:none">'
+      + '<line x1="' + R.x1 + '" y1="' + (R.y2 + 4) + '" x2="' + R.x1 + '" y2="' + (wy - 4)
+      + '" stroke="#3a3a3a" stroke-width="0.75"/>'
+      + '<line x1="' + R.x2 + '" y1="' + (R.y2 + 4) + '" x2="' + R.x2 + '" y2="' + (wy - 4)
+      + '" stroke="#3a3a3a" stroke-width="0.75"/>'
+      + '<line class="p3d-dim-width p3d-dim-ref" x1="' + R.x1 + '" y1="' + wy + '" x2="'
       + R.x2 + '" y2="' + wy + '" stroke="#4a90d9" stroke-width="1" stroke-dasharray="5 4"/>'
       + '<path d="M ' + (R.x1 + 9) + ' ' + (wy - 4) + ' L ' + R.x1 + ' ' + wy + ' L '
       + (R.x1 + 9) + ' ' + (wy + 4) + '" fill="none" stroke="#4a90d9" stroke-width="1"/>'
@@ -9679,76 +9756,198 @@ function pbv23dRenderSvg(key) {
       + (R.x2 - 9) + ' ' + (wy + 4) + '" fill="none" stroke="#4a90d9" stroke-width="1"/>'
       + '<rect x="66" y="' + (wy - 9) + '" width="164" height="12" fill="#0a0a0a"/>'
       + '<text x="148" y="' + (wy + 1) + '" fill="#4a90d9" font-size="8.5" '
-      + 'letter-spacing="0.6" text-anchor="middle">WIDTH \u2014 NOT FULLY DETERMINED</text>';
-  } else if (fx.width.status === 'RESOLVED') {
-    s += '<line class="p3d-dim-width" x1="' + R.x1 + '" y1="' + wy + '" x2="' + R.x2
-      + '" y2="' + wy + '" stroke="#4a90d9" stroke-width="1"/>'
-      + '<path d="M ' + R.x1 + ' ' + wy + ' l 9 -4 v 8 z" fill="#4a90d9"/>'
-      + '<path d="M ' + R.x2 + ' ' + wy + ' l -9 -4 v 8 z" fill="#4a90d9"/>'
-      + '<rect x="118" y="' + (wy - 9) + '" width="60" height="13" fill="#0a0a0a"/>'
-      + '<text x="148" y="' + (wy + 2) + '" fill="#4a90d9" font-size="11" '
-      + 'font-family="monospace" text-anchor="middle">' + fx.width.value + '</text>'
-      + '<text x="148" y="' + (wy + 15) + '" fill="#5e7c9c" font-size="7.5" '
-      + 'letter-spacing="1" text-anchor="middle">WIDTH</text>';
-  }
-  var hx = G.dimHeightX;
-  s += '<line x1="' + (R.x2 + 4) + '" y1="' + R.y1 + '" x2="' + (hx - 4) + '" y2="' + R.y1
-    + '" stroke="#3a3a3a" stroke-width="0.75"/>'
-    + '<line x1="' + (R.x2 + 4) + '" y1="' + R.y2 + '" x2="' + (hx - 4) + '" y2="' + R.y2
-    + '" stroke="#3a3a3a" stroke-width="0.75"/>';
-  if (fx.height.status === 'RESOLVED') {
-    s += '<line class="p3d-dim-height" x1="' + hx + '" y1="' + R.y1 + '" x2="' + hx
+      + 'letter-spacing="0.6" text-anchor="middle">WIDTH \u2014 NOT FULLY DETERMINED</text>'
+      + '<line x1="' + (R.x2 + 4) + '" y1="' + R.y1 + '" x2="' + (hx - 4) + '" y2="' + R.y1
+      + '" stroke="#3a3a3a" stroke-width="0.75"/>'
+      + '<line x1="' + (R.x2 + 4) + '" y1="' + R.y2 + '" x2="' + (hx - 4) + '" y2="' + R.y2
+      + '" stroke="#3a3a3a" stroke-width="0.75"/>'
+      + '<line class="p3d-dim-height" x1="' + hx + '" y1="' + R.y1 + '" x2="' + hx
       + '" y2="' + R.y2 + '" stroke="#52c07a" stroke-width="1"/>'
       + '<path d="M ' + hx + ' ' + R.y1 + ' l -4 9 h 8 z" fill="#52c07a"/>'
       + '<path d="M ' + hx + ' ' + R.y2 + ' l -4 -9 h 8 z" fill="#52c07a"/>'
       + '<rect x="' + (hx - 9) + '" y="94" width="18" height="30" fill="#0a0a0a"/>'
       + '<text x="' + hx + '" y="106" fill="#52c07a" font-size="11" '
-      + 'font-family="monospace" text-anchor="middle">' + fx.height.value + '</text>'
+      + 'font-family="monospace" text-anchor="middle">21&#8243;</text>'
       + '<text x="' + hx + '" y="118" fill="#4c8a63" font-size="7" letter-spacing="0.8" '
-      + 'text-anchor="middle">HEIGHT</text>';
+      + 'text-anchor="middle">HEIGHT</text></g>';
   }
-  s += '</g>';
   s += '<text x="148" y="292" fill="#4a4a4a" font-size="7.5" letter-spacing="1" '
-    + 'text-anchor="middle">SCHEMATIC \u2014 NOT TO SCALE</text>';
+    + 'text-anchor="middle" style="pointer-events:none">SCHEMATIC \u2014 NOT TO SCALE</text>';
   s += '</svg>';
   return s;
 }
-function pbv23dResultHtml(key) {
-  var fx = PBV23D_FIXTURES[key];
-  var widthCell = fx.width.status === 'RESOLVED'
-    ? '<span class="p3d-val" style="color:#4a90d9">' + fx.width.value + '</span>'
-    : '<span class="p3d-val p3d-undet">NOT FULLY DETERMINED</span>';
-  var heightCell = fx.height.status === 'RESOLVED'
-    ? '<span class="p3d-val" style="color:#52c07a">' + fx.height.value + '</span>'
-    : '<span class="p3d-val p3d-undet">No height requirement from these pulls</span>';
-  return '<div class="p3d-h">PULL-RULE MINIMUM DIMENSIONS</div>'
-    + '<div class="p3d-row"><span class="p3d-lab">WIDTH</span>' + widthCell + '</div>'
-    + '<div class="p3d-row"><span class="p3d-lab">HEIGHT</span>' + heightCell + '</div>'
-    + '<div class="p3d-note">Visual prototype only \u2014 static fixture, no calculation. '
-    + 'The current Pull Box editor and its results remain available at ?pbv2=1.</div>';
+
+/* ── UI wiring ────────────────────────────────────────────────────────── */
+function pbv23dConnTypeOf(state, id) {
+  for (var i = 0; i < state.connections.length; i++) {
+    if (state.connections[i].id === id) {
+      var a = pbv23dFindEntry(state, state.connections[i].a);
+      var b = pbv23dFindEntry(state, state.connections[i].b);
+      if (a && b) return pbv23dClassify(a.wall, b.wall);
+    }
+  }
+  return '';
 }
-function pbv23dShow(key) {
-  document.getElementById('pbv2-3d-stage').innerHTML = pbv23dRenderSvg(key);
-  document.getElementById('pbv2-3d-chips').textContent = PBV23D_FIXTURES[key].chips;
-  document.getElementById('pbv2-3d-result').innerHTML = pbv23dResultHtml(key);
-  var btns = document.querySelectorAll('#pbv2-3d-fixtures .p3d-fx');
+function pbv23dBarHtml(state) {
+  if (pbv23dConnectFrom) {
+    var src = pbv23dFindEntry(state, pbv23dConnectFrom);
+    return '<span class="p3d-barlabel">Connect ' + (src ? src.size + '\u2033 ' + src.wall : '')
+      + ' \u2192 tap another raceway</span>'
+      + '<button class="p3d-btn" type="button" onclick="pbv23dCancelConnect()">CANCEL</button>';
+  }
+  if (!pbv23dSelected) {
+    var n = state.entries.length; var k = state.connections.length;
+    return '<span class="p3d-barlabel">' + n + ' raceway' + (n === 1 ? '' : 's')
+      + ' \u00B7 ' + k + ' pull' + (k === 1 ? '' : 's') + '</span>'
+      + '<span style="font-size:11px;color:#7a7a7a">Tap a wall to add</span>';
+  }
+  var e = pbv23dFindEntry(state, pbv23dSelected);
+  if (!e) return '';
+  var conns = state.connections.filter(function (c) {
+    return c.a === e.id || c.b === e.id;
+  });
+  var types = conns.map(function (c) { return pbv23dConnTypeOf(state, c.id); }).join(', ');
+  return '<span class="p3d-barlabel">' + e.size + '\u2033 \u00B7 ' + e.wall.toUpperCase()
+    + (types ? ' \u00B7 ' + types : '') + '</span>'
+    + '<button class="p3d-btn" type="button" onclick="pbv23dOpenSheet()">EDIT</button>'
+    + '<button class="p3d-btn" type="button" onclick="pbv23dStartConnect()">CONNECT</button>'
+    + '<button class="p3d-btn p3d-danger" type="button" onclick="pbv23dDeleteSelected()">DELETE</button>';
+}
+function pbv23dResultHtml(state) {
+  if (!state.showDims) {
+    return '<div class="p3d-h">DIMENSIONS</div>'
+      + '<div class="p3d-note">Not calculated in this prototype. This milestone tests the '
+      + 'editing interaction only \u2014 the real engine and results stay at ?pbv2=1.</div>';
+  }
+  return '<div class="p3d-h">PULL-RULE MINIMUM DIMENSIONS \u2014 FIXTURE VALUES, NOT CALCULATED</div>'
+    + '<div class="p3d-row"><span class="p3d-lab">WIDTH</span>'
+    + '<span class="p3d-val p3d-undet">NOT FULLY DETERMINED</span></div>'
+    + '<div class="p3d-row"><span class="p3d-lab">HEIGHT</span>'
+    + '<span class="p3d-val" style="color:#52c07a">21\u2033</span></div>'
+    + '<div class="p3d-note">Static preset values shown for visual reference only. '
+    + 'They disappear as soon as you edit the box.</div>';
+}
+function pbv23dRender() {
+  document.getElementById('pbv2-3d-stage').innerHTML =
+    pbv23dRenderSvg(PBV23D, { selected: pbv23dSelected, connectFrom: pbv23dConnectFrom });
+  var bar = document.getElementById('pbv2-3d-bar');
+  bar.innerHTML = pbv23dBarHtml(PBV23D);
+  bar.className = 'p3d-bar' + (pbv23dConnectFrom ? ' p3d-connecting' : '');
+  document.getElementById('pbv2-3d-result').innerHTML = pbv23dResultHtml(PBV23D);
+  document.getElementById('pbv2-3d-hint').textContent = pbv23dConnectFrom
+    ? 'Connect mode: tap the second raceway.'
+    : 'Tap a wall to add a raceway. Tap a raceway to select it.';
+}
+function pbv23dTapWall(wall) {
+  if (pbv23dConnectFrom) return;
+  var e = pbv23dAddEntry(PBV23D, wall, '2', pbv23dNextId('e'));
+  pbv23dSelected = e.id;
+  pbv23dRender();
+  pbv23dOpenSheet();
+}
+function pbv23dTapEntry(id) {
+  if (pbv23dConnectFrom) {
+    if (id === pbv23dConnectFrom) return;
+    pbv23dAddConnection(PBV23D, pbv23dConnectFrom, id, pbv23dNextId('c'));
+    pbv23dConnectFrom = null;
+    pbv23dSelected = id;
+    pbv23dRender();
+    return;
+  }
+  if (pbv23dSelected === id) { pbv23dOpenSheet(); return; }
+  pbv23dSelected = id;
+  pbv23dRender();
+}
+function pbv23dStartConnect() {
+  pbv23dConnectFrom = pbv23dSelected;
+  pbv23dRender();
+}
+function pbv23dCancelConnect() { pbv23dConnectFrom = null; pbv23dRender(); }
+function pbv23dDeleteSelected() {
+  if (!pbv23dSelected) return;
+  pbv23dDeleteEntry(PBV23D, pbv23dSelected);
+  pbv23dSelected = null;
+  pbv23dCloseSheet();
+  pbv23dRender();
+}
+function pbv23dSheetBody() {
+  var e = pbv23dFindEntry(PBV23D, pbv23dSelected);
+  if (!e) return '';
+  var out = '<div class="p3d-flab">TRADE SIZE</div><div class="p3d-grid">';
+  for (var i = 0; i < PBV23D_SIZES.length; i++) {
+    out += '<button class="p3d-opt" type="button" aria-pressed="'
+      + (PBV23D_SIZES[i] === e.size) + '" onclick="pbv23dPickSize(\'' + PBV23D_SIZES[i]
+      + '\')">' + PBV23D_SIZES[i] + '\u2033</button>';
+  }
+  out += '</div><div class="p3d-flab">WALL</div><div class="p3d-grid">';
+  for (var w = 0; w < PBV23D_WALLS.length; w++) {
+    out += '<button class="p3d-opt" type="button" style="min-width:66px" aria-pressed="'
+      + (PBV23D_WALLS[w] === e.wall) + '" onclick="pbv23dPickWall(\'' + PBV23D_WALLS[w]
+      + '\')">' + PBV23D_WALLS[w].toUpperCase() + '</button>';
+  }
+  out += '</div><div class="p3d-flab">POSITION ALONG WALL</div>'
+    + '<input id="pbv2-3d-pos" type="range" min="6" max="94" value="' + Math.round(e.v * 100)
+    + '" oninput="pbv23dPickPosition(this.value)" aria-label="Position along wall">'
+    + '<div class="p3d-grid" style="margin-top:12px">'
+    + '<button class="p3d-opt p3d-btn" type="button" style="min-width:120px" '
+    + 'onclick="pbv23dStartConnect();pbv23dCloseSheet()">CONNECT\u2026</button>'
+    + '<button class="p3d-opt p3d-btn p3d-danger" type="button" style="min-width:120px" '
+    + 'onclick="pbv23dDeleteSelected()">DELETE RACEWAY</button></div>';
+  return out;
+}
+function pbv23dOpenSheet() {
+  var e = pbv23dFindEntry(PBV23D, pbv23dSelected);
+  if (!e) return;
+  document.getElementById('pbv2-3d-sheet-title').textContent =
+    e.size + '\u2033 raceway \u00B7 ' + e.wall.toUpperCase();
+  document.getElementById('pbv2-3d-sheet-body').innerHTML = pbv23dSheetBody();
+  document.getElementById('pbv2-3d-sheet').classList.add('show');
+}
+function pbv23dCloseSheet() {
+  document.getElementById('pbv2-3d-sheet').classList.remove('show');
+}
+function pbv23dRefreshSheet() {
+  var e = pbv23dFindEntry(PBV23D, pbv23dSelected);
+  if (!e) return;
+  document.getElementById('pbv2-3d-sheet-title').textContent =
+    e.size + '\u2033 raceway \u00B7 ' + e.wall.toUpperCase();
+  document.getElementById('pbv2-3d-sheet-body').innerHTML = pbv23dSheetBody();
+}
+function pbv23dPickSize(size) {
+  pbv23dSetSize(PBV23D, pbv23dSelected, size);
+  pbv23dRender(); pbv23dRefreshSheet();
+}
+function pbv23dPickWall(wall) {
+  pbv23dSetWall(PBV23D, pbv23dSelected, wall);
+  pbv23dRender(); pbv23dRefreshSheet();
+}
+function pbv23dPickPosition(pct) {
+  pbv23dSetPosition(PBV23D, pbv23dSelected, Number(pct) / 100);
+  pbv23dRender();
+}
+function pbv23dSetFixture(key) {
+  pbv23dFixtureKey = key;
+  PBV23D = pbv23dBuildFixture(key);
+  pbv23dSelected = null;
+  pbv23dConnectFrom = null;
+  pbv23dCloseSheet();
+  var btns = document.querySelectorAll('#pbv2-3d-fixtures .p3d-fx[data-fx]');
   for (var i = 0; i < btns.length; i++) {
     btns[i].setAttribute('aria-pressed', btns[i].getAttribute('data-fx') === key ? 'true' : 'false');
   }
+  pbv23dRender();
 }
 (function () {
   if (!pbv23dShouldOpen(window.location)) return;
-  var bar = document.getElementById('pbv2-3d-fixtures');
-  var keys = ['standard', 'straight', 'dense'];
+  var keys = [['empty', 'EMPTY'], ['standard', 'STANDARD'], ['dense', 'DENSE']];
   var html = '';
   for (var i = 0; i < keys.length; i++) {
-    html += '<button class="p3d-fx" type="button" data-fx="' + keys[i]
-      + '" onclick="pbv23dShow(\'' + keys[i] + '\')">'
-      + PBV23D_FIXTURES[keys[i]].label + '</button>';
+    html += '<button class="p3d-fx" type="button" data-fx="' + keys[i][0]
+      + '" onclick="pbv23dSetFixture(\'' + keys[i][0] + '\')">' + keys[i][1] + '</button>';
   }
-  bar.innerHTML = html;
+  document.getElementById('pbv2-3d-fixtures').innerHTML = html;
   document.getElementById('pbv2-3d-prototype').classList.add('show');
-  pbv23dShow('standard');
+  pbv23dSetFixture('standard');
 })();
 </script>
 <!-- ══════════════ END PULL BOX V2 3D PROTOTYPE ══════════════ -->

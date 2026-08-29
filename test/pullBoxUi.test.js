@@ -249,7 +249,9 @@ describe('PBV2-6 — editor state helpers (shipped code)', () => {
 
 describe('PBV2-6 — milestone scope guards', () => {
   const v2Start = html.indexOf('PULL BOX V2 (PBV2-6)');
-  const v2 = html.slice(v2Start);
+  // bound to the editor block: an unbounded slice swept in unrelated later
+  // blocks (same defect fixed for the legacy tail in PBV2-7b)
+  const v2 = html.slice(v2Start, html.indexOf('END PULL BOX V2 ══'));
 
   test('V2 panel exists and is display:none by default', () => {
     assert.ok(v2Start !== -1);
@@ -498,7 +500,8 @@ describe('PBV2-7 — connection state helpers (shipped code)', () => {
     assert.ok(body.includes('EC.pullBox.classifyConnection'));
     assert.ok(!/opposite|adjacent|===\s*'left'|===\s*'right'/i.test(body),
       'no reimplemented wall-relationship logic');
-    const v2 = html7.slice(html7.indexOf('PULL BOX V2'));
+    const v2 = html7.slice(html7.indexOf('PULL BOX V2'),
+    html7.indexOf('END PULL BOX V2 ══'));
     assert.strictEqual((v2.match(/classifyConnection/g) || []).length, 1,
       'exactly one classification call site in the editor');
   });
@@ -600,7 +603,8 @@ describe('PBV2-7 — connection state helpers (shipped code)', () => {
 
 describe('PBV2-7 — connection render architecture + scope', () => {
   const html7 = fs.readFileSync(path.join(__dirname, '..', 'mobile.html'), 'utf8');
-  const v2 = html7.slice(html7.indexOf('PULL BOX V2'));
+  const v2 = html7.slice(html7.indexOf('PULL BOX V2'),
+    html7.indexOf('END PULL BOX V2 ══'));
 
   test('connection layer, stage and accessible list exist; entries expose identity', () => {
     assert.ok(v2.includes('id="pbv2-connlayer"'), 'SVG layer');
