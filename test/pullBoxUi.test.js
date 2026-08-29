@@ -257,12 +257,14 @@ describe('PBV2-6 — milestone scope guards', () => {
     assert.ok(/#pbv2-overlay\{[^}]*display:none/.test(html));
   });
 
-  test('no connection UI, no Quick Straight, no result rendering yet', () => {
-    for (const banned of ['pbv2Connect', 'Quick Straight', 'connection line',
-      'minimumWidthIn', 'minimumHeightIn', 'spacingRequirements',
-      'calculatePullBox(', 'STRAIGHT', 'ANGLE', 'governing']) {
+  test('no result rendering, no adapter call (PBV2-8 scope stays out)', () => {
+    // Connections and Quick Straight are in scope since PBV2-7; results are
+    // not: no dimensions, no spacing cards, no governing, no engine
+    // calculation call anywhere in the V2 editor.
+    for (const banned of ['minimumWidthIn', 'minimumHeightIn',
+      'spacingRequirements', 'calculatePullBox(', 'governing']) {
       assert.ok(!v2.includes(banned),
-        'PBV2-7/8 functionality leaked into PBV2-6: ' + banned);
+        'PBV2-8 functionality leaked early: ' + banned);
     }
   });
 
@@ -356,7 +358,9 @@ describe('PBV2-6b — many-rows portrait layout fix', () => {
       connections: [],
     };
     // eslint-disable-next-line no-new-func
-    new Function('document', 'PBV2', src + ';pbv2Render();')(doc, state);
+    new Function('document', 'PBV2', 'pbv2ConnectFrom', 'pbv2RenderConnList',
+      'pbv2DrawConnections',
+      src + ';pbv2Render();')(doc, state, null, () => {}, () => {});
     const out = grid.innerHTML;
     for (const label of ['Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6']) {
       const lane = out.slice(out.indexOf('pbv2-lane-left'), out.indexOf('pbv2-lane-right'));
@@ -370,8 +374,8 @@ describe('PBV2-6b — many-rows portrait layout fix', () => {
     assert.ok(topLane.includes('Row 1') && topLane.includes('Row 2'));
     const bottomLane = out.slice(out.indexOf('pbv2-lane-bottom'));
     assert.ok(bottomLane.includes('Row 1') && bottomLane.includes('Row 2'));
-    // every entry stays a tappable inspector button
-    assert.strictEqual((out.match(/pbv2UiInspect/g) || []).length, 8);
+    // every entry stays a tappable button (tap routing: inspect or connect)
+    assert.strictEqual((out.match(/pbv2UiEntryTap/g) || []).length, 8);
   });
 
   test('instruction text sits structurally after the schematic grid', () => {
@@ -381,11 +385,275 @@ describe('PBV2-6b — many-rows portrait layout fix', () => {
       'the note must follow the editor content in document flow');
   });
 
-  test('layout fix changed nothing else: gate, scope and engine boundaries hold', () => {
+  test('layout fix survives PBV2-7: gate intact, result scope still out', () => {
     assert.ok(v2.includes('pbv2ShouldOpen'), 'dev gate intact');
-    for (const banned of ['pbv2Connect', 'Quick Straight', 'minimumWidthIn',
-      'calculatePullBox(']) {
+    for (const banned of ['minimumWidthIn', 'calculatePullBox(']) {
       assert.ok(!v2.includes(banned), 'scope creep: ' + banned);
     }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-7 — connection workflow + Quick Straight template
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-7 — connection state helpers (shipped code)', () => {
+  const html7 = fs.readFileSync(path.join(__dirname, '..', 'mobile.html'), 'utf8');
+  function fn7(name) {
+    const i = html7.indexOf('function ' + name);
+    assert.ok(i !== -1, 'missing: ' + name);
+    let d = 0; let started = false;
+    for (let j = i; j < html7.length; j++) {
+      if (html7[j] === '{') { d++; started = true; } else if (html7[j] === '}') {
+        d--; if (started && d === 0) return html7.slice(i, j + 1);
+      }
+    }
+    throw new Error('unterminated ' + name);
+  }
+  function api7() {
+    const engine = require('../src/calc/pullBox');
+    const src = ['pbv2InitialState', 'pbv2RowById', 'pbv2AddRow', 'pbv2AddEntry',
+      'pbv2ChangeSize', 'pbv2ChangeRow', 'pbv2DeleteEntry', 'pbv2DeleteRow',
+      'pbv2RowLabel', 'pbv2AddConnection', 'pbv2DeleteConnection',
+      'pbv2EntryDesc', 'pbv2ConnType', 'pbv2QuickStraight']
+      .map(fn7).join('\n');
+    const out = {};
+    // eslint-disable-next-line no-new-func
+    new Function('EC', 'exports', src + `
+      exports.initial = pbv2InitialState; exports.addEntry = pbv2AddEntry;
+      exports.addRow = pbv2AddRow; exports.changeSize = pbv2ChangeSize;
+      exports.changeRow = pbv2ChangeRow; exports.deleteEntry = pbv2DeleteEntry;
+      exports.deleteRow = pbv2DeleteRow; exports.addConn = pbv2AddConnection;
+      exports.delConn = pbv2DeleteConnection; exports.desc = pbv2EntryDesc;
+      exports.connType = pbv2ConnType; exports.quick = pbv2QuickStraight;`)(
+      { pullBox: engine }, out);
+    return out;
+  }
+  const seq7 = () => { let n = 0; return (p) => { n++; return 'pbv2-' + p + '-' + n; }; };
+
+  function boxWith(api, next) {
+    const s = api.initial(next);
+    const rowOf = (wall) => s.rows.find((r) => r.wall === wall).id;
+    const eL = api.addEntry(s, rowOf('left'), '4', next('entry'));
+    const eR = api.addEntry(s, rowOf('right'), '4', next('entry'));
+    const eT = api.addEntry(s, rowOf('top'), '2', next('entry'));
+    const eL2 = api.addEntry(s, rowOf('left'), '2', next('entry'));
+    return { s, eL, eR, eT, eL2 };
+  }
+
+  test('create connection: normal id, two endpoints, valid state', () => {
+    const api = api7(); const next = seq7();
+    const { s, eL, eR } = boxWith(api, next);
+    const r = api.addConn(s, eL.id, eR.id, next('connection'));
+    assert.strictEqual(r.ok, true);
+    assert.deepStrictEqual(Object.keys(r.connection).sort(), ['entryIds', 'id']);
+    assert.ok(/^pbv2-connection-\d+$/.test(r.connection.id));
+    const { validatePullBoxRequest } = require('../src/calc/pullBox');
+    assert.strictEqual(validatePullBoxRequest(s).ok, true);
+  });
+
+  test('self tap and duplicate (both orders) create nothing', () => {
+    const api = api7(); const next = seq7();
+    const { s, eL, eR } = boxWith(api, next);
+    assert.strictEqual(api.addConn(s, eL.id, eL.id, next('connection')).reason, 'SELF');
+    api.addConn(s, eL.id, eR.id, next('connection'));
+    assert.strictEqual(api.addConn(s, eL.id, eR.id, next('connection')).reason, 'DUPLICATE');
+    assert.strictEqual(api.addConn(s, eR.id, eL.id, next('connection')).reason, 'DUPLICATE',
+      'undirected: reversed order is the same pair');
+    assert.strictEqual(s.connections.length, 1);
+  });
+
+  test('shared endpoint with a different partner is allowed', () => {
+    const api = api7(); const next = seq7();
+    const { s, eL, eR, eT } = boxWith(api, next);
+    assert.strictEqual(api.addConn(s, eL.id, eR.id, next('connection')).ok, true);
+    assert.strictEqual(api.addConn(s, eL.id, eT.id, next('connection')).ok, true);
+    assert.strictEqual(s.connections.length, 2);
+  });
+
+  test('type comes from the ENGINE: all four classifications through the UI helper', () => {
+    const api = api7(); const next = seq7();
+    const { s, eL, eR, eT, eL2 } = boxWith(api, next);
+    const bRow = s.rows.find((r) => r.wall === 'bottom').id;
+    const eB = api.addEntry(s, bRow, '3', next('entry'));
+    const c1 = api.addConn(s, eL.id, eR.id, next('connection')).connection;
+    const c2 = api.addConn(s, eT.id, eB.id, next('connection')).connection;
+    const c3 = api.addConn(s, eL.id, eT.id, next('connection')).connection;
+    const c4 = api.addConn(s, eL.id, eL2.id, next('connection')).connection;
+    assert.strictEqual(api.connType(s, c1), 'STRAIGHT');
+    assert.strictEqual(api.connType(s, c2), 'STRAIGHT');
+    assert.strictEqual(api.connType(s, c3), 'ANGLE');
+    assert.strictEqual(api.connType(s, c4), 'U');
+  });
+
+  test('SOURCE OF TRUTH: the UI classifier is one engine call, no local wall logic', () => {
+    const body = fn7('pbv2ConnType');
+    assert.ok(body.includes('EC.pullBox.classifyConnection'));
+    assert.ok(!/opposite|adjacent|===\s*'left'|===\s*'right'/i.test(body),
+      'no reimplemented wall-relationship logic');
+    const v2 = html7.slice(html7.indexOf('PULL BOX V2'));
+    assert.strictEqual((v2.match(/classifyConnection/g) || []).length, 1,
+      'exactly one classification call site in the editor');
+  });
+
+  test('delete connection removes only the connection', () => {
+    const api = api7(); const next = seq7();
+    const { s, eL, eR } = boxWith(api, next);
+    const c = api.addConn(s, eL.id, eR.id, next('connection')).connection;
+    api.delConn(s, c.id);
+    assert.deepStrictEqual(s.connections, []);
+    assert.strictEqual(s.entries.length, 4, 'raceways untouched');
+  });
+
+  test('CASCADES with real connections: entry delete, row delete, unrelated preserved', () => {
+    const api = api7(); const next = seq7();
+    const { s, eL, eR, eT, eL2 } = boxWith(api, next);
+    api.addConn(s, eL.id, eR.id, next('connection'));
+    api.addConn(s, eL.id, eT.id, next('connection'));
+    const keep = api.addConn(s, eL2.id, eT.id, next('connection')).connection;
+    api.deleteEntry(s, eL.id);
+    assert.strictEqual(s.connections.length, 1, 'both eL connections cascaded');
+    assert.strictEqual(s.connections[0].id, keep.id, 'unrelated connection preserved');
+    // row cascade
+    const left2 = api.addRow(s, 'left', next('row'));
+    const eNew = api.addEntry(s, left2.id, '3', next('entry'));
+    api.addConn(s, eNew.id, eT.id, next('connection'));
+    assert.strictEqual(api.deleteRow(s, left2.id), true);
+    assert.strictEqual(s.connections.length, 1, 'row-entry connection cascaded');
+    assert.strictEqual(s.connections[0].id, keep.id);
+  });
+
+  test('EDIT PRESERVATION: change size and same-wall change row keep the connection', () => {
+    const api = api7(); const next = seq7();
+    const { s, eL, eR } = boxWith(api, next);
+    const c = api.addConn(s, eL.id, eR.id, next('connection')).connection;
+    api.changeSize(s, eL.id, '6');
+    assert.strictEqual(s.connections[0].id, c.id);
+    assert.strictEqual(api.connType(s, c), 'STRAIGHT');
+    const left2 = api.addRow(s, 'left', next('row'));
+    assert.strictEqual(api.changeRow(s, eL.id, left2.id), true);
+    assert.strictEqual(s.connections[0].id, c.id, 'same connection object/id');
+    assert.strictEqual(api.connType(s, c), 'STRAIGHT',
+      'wall unchanged, so derived type unchanged');
+  });
+
+  test('QUICK STRAIGHT horizontal: normal LEFT/RIGHT pair, engine-classified width', () => {
+    const api = api7(); const next = seq7();
+    const s = api.initial(next);
+    const r = api.quick(s, 'horizontal', '4', next);
+    assert.strictEqual(r.ok, true);
+    assert.strictEqual(s.entries.length, 2);
+    const engine = require('../src/calc/pullBox');
+    assert.strictEqual(engine.validatePullBoxRequest(s).ok, true);
+    const cls = engine.classifyConnection(r.connection, s.entries, s.rows);
+    assert.strictEqual(cls.type, 'STRAIGHT');
+    assert.strictEqual(cls.dimension, 'width');
+    for (const e of s.entries) assert.strictEqual(e.tradeSize, '4');
+    assert.ok(/^pbv2-entry-\d+$/.test(s.entries[0].id), 'normal ids, no special template ids');
+  });
+
+  test('QUICK STRAIGHT vertical: TOP/BOTTOM pair, height', () => {
+    const api = api7(); const next = seq7();
+    const s = api.initial(next);
+    const r = api.quick(s, 'vertical', '3', next);
+    const engine = require('../src/calc/pullBox');
+    const cls = engine.classifyConnection(r.connection, s.entries, s.rows);
+    assert.strictEqual(cls.type, 'STRAIGHT');
+    assert.strictEqual(cls.dimension, 'height');
+    const walls = s.entries.map((e) => s.rows.find((x) => x.id === e.rowId).wall).sort();
+    assert.deepStrictEqual(walls, ['bottom', 'top']);
+  });
+
+  test('QUICK STRAIGHT adds to existing state without touching it', () => {
+    const api = api7(); const next = seq7();
+    const { s, eL, eT } = boxWith(api, next);
+    const before = api.addConn(s, eL.id, eT.id, next('connection')).connection;
+    const snapshotIds = s.entries.map((e) => e.id);
+    api.quick(s, 'horizontal', '2', next);
+    assert.strictEqual(s.entries.length, 6, 'four existing + two new');
+    for (const id of snapshotIds) assert.ok(s.entries.some((e) => e.id === id));
+    assert.strictEqual(s.connections.length, 2);
+    assert.ok(s.connections.some((c) => c.id === before.id), 'existing connection intact');
+  });
+
+  test('QUICK STRAIGHT recreates a missing order-0 row rather than failing', () => {
+    const api = api7(); const next = seq7();
+    const s = api.initial(next);
+    // user replaced the primary left row: add row order 1, delete order 0
+    const left2 = api.addRow(s, 'left', next('row'));
+    const left0 = s.rows.find((r) => r.wall === 'left' && r.order === 0);
+    assert.strictEqual(api.deleteRow(s, left0.id), true);
+    const r = api.quick(s, 'horizontal', '2', next);
+    assert.strictEqual(r.ok, true);
+    assert.ok(s.rows.some((x) => x.wall === 'left' && x.order === 0),
+      'primary row recreated with order 0');
+    assert.ok(s.rows.some((x) => x.id === left2.id), 'user row untouched');
+  });
+});
+
+describe('PBV2-7 — connection render architecture + scope', () => {
+  const html7 = fs.readFileSync(path.join(__dirname, '..', 'mobile.html'), 'utf8');
+  const v2 = html7.slice(html7.indexOf('PULL BOX V2'));
+
+  test('connection layer, stage and accessible list exist; entries expose identity', () => {
+    assert.ok(v2.includes('id="pbv2-connlayer"'), 'SVG layer');
+    assert.ok(v2.includes('id="pbv2-stage"'), 'relative stage');
+    assert.ok(v2.includes('id="pbv2-connlist"'), 'accessible connection list');
+    assert.ok(v2.includes('data-entry-id='), 'entry buttons expose stable identity');
+    assert.ok(v2.includes('pbv2-connitem'), 'list items are buttons');
+  });
+
+  test('coordinates come from live DOM geometry, never per-wall constants', () => {
+    const draw = v2.slice(v2.indexOf('function pbv2DrawConnections'),
+      v2.indexOf('var pbv2ResizeHooked'));
+    assert.ok(draw.includes('getBoundingClientRect'), 'measures rendered buttons');
+    assert.ok(draw.includes('data-entry-id'), 'endpoint resolution by entry id');
+    assert.ok(!/case 'left'|wall === 'left'.*[0-9]+/.test(draw),
+      'no hardcoded wall coordinates');
+    assert.ok(draw.includes('stroke-width="22"'), 'wide invisible hit target');
+    assert.ok(draw.includes('stroke-width="2"'), 'restrained visible line');
+  });
+
+  test('redraw strategy: render-driven + exactly one resize/orientation hook, no polling', () => {
+    assert.ok(/pbv2RenderConnList\(\);\s*pbv2DrawConnections\(\);/.test(v2),
+      'draw runs after every render');
+    assert.ok(v2.includes('pbv2ResizeHooked'), 'idempotent listener guard');
+    assert.strictEqual((v2.match(/addEventListener\('resize'/g) || []).length, 1);
+    assert.ok(!v2.includes('requestAnimationFrame'), 'no continuous polling');
+    assert.ok(!v2.includes("addEventListener('scroll'"),
+      'shared scroll coordinate space: SVG lives inside the scrolled stage');
+  });
+
+  test('Connect workflow wiring is present and tap-first', () => {
+    assert.ok(v2.includes('pbv2UiStartConnect'), 'inspector CONNECT action');
+    assert.ok(v2.includes('pbv2ConnectFrom'), 'source entry recorded');
+    assert.ok(v2.includes('Connecting from:'), 'mode feedback');
+    assert.ok(v2.includes('pbv2CancelConnect'), 'cancel action');
+    assert.ok(v2.includes('Choose another raceway'), 'self-tap message');
+    assert.ok(v2.includes('Already connected'), 'duplicate message');
+    assert.ok(!/ondrag|dragstart/.test(v2), 'no drag requirement');
+  });
+
+  test('inspector and lines show type words but never code references or results', () => {
+    assert.ok(v2.includes('PBV2_TYPE_LABEL'), 'display labels for derived types');
+    const markup = v2.replace(/<script>[\s\S]*?<\/script>/g, '');
+    assert.ok(!/314\.28|NEC|NYCEC/.test(markup), 'no visible code references');
+    assert.ok(!v2.includes('minimumWidthIn') && !v2.includes('calculatePullBox('),
+      'no result adapter yet');
+    assert.ok(!v2.includes('r.connection.id + \'</'), 'connection id not rendered to user');
+  });
+
+  test('many-rows layout fix intact with the connection layer added', () => {
+    const gridCss = v2.match(/\.pbv2-grid\{[^}]*\}/)[0];
+    assert.ok(gridCss.includes('grid-template-rows:auto auto auto'));
+    assert.ok(!gridCss.includes('min-height') && !gridCss.includes('flex:1'));
+    const stage = v2.match(/id="pbv2-stage" style="([^"]*)"/)[1];
+    assert.ok(!/height\s*:\s*\d/.test(stage), 'stage has no fixed height');
+  });
+
+  test('dev gate and legacy panel remain exactly as before', () => {
+    assert.ok(!/openTool\('pullbox/.test(html7));
+    assert.ok(html7.includes('id="sub-pullbox"') && /function pbUpdate/.test(html7));
+    assert.ok(v2.includes('pbv2ShouldOpen'));
   });
 });
