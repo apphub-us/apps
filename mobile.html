@@ -8441,7 +8441,11 @@ function pbv2Render() {
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i];
       var multi = rows.length > 1;
-      lane += '<div class="pbv2-row">';
+      var rowHl = (pbv2Highlight && pbv2Highlight.type === 'row'
+        && pbv2Highlight.id === row.id)
+        ? ' style="outline:2px solid ' + pbv2Highlight.color + ';border-radius:6px"'
+        : '';
+      lane += '<div class="pbv2-row" data-row-id="' + row.id + '"' + rowHl + '>';
       if (multi) {
         lane += '<div class="pbv2-rowlabel"><span>' + pbv2RowLabel(PBV2, row.id) + '</span>'
           + '<button class="pbv2-rowdel" type="button" aria-label="Delete '
@@ -8610,6 +8614,52 @@ function pbv2ConnType(state, connection) {
   return cls.ok ? cls.type : '';
 }
 var PBV2_TYPE_LABEL = { STRAIGHT: 'Straight', ANGLE: 'Angle', U: 'U' };
+// Consistent visual mapping, used by BOTH the schematic SVG and the result
+// cards: width = blue, height = green, entry spacing = purple (all from the
+// app's existing restrained palette; yellow stays reserved for selection).
+var PBV2_COLOR = { width: '#4a90d9', height: '#52c07a', spacing: '#b06ae8' };
+// Result→schematic highlight: {type:'conn'|'row'|'spacing', id, color}|null
+var pbv2Highlight = null;
+function pbv2UiHighlight(type, id, color) {
+  if (pbv2Highlight && pbv2Highlight.type === type && pbv2Highlight.id === id) {
+    pbv2Highlight = null;   // second tap toggles off
+  } else {
+    pbv2Highlight = { type: type, id: id, color: color };
+  }
+  pbv2Render();
+}
+function pbv2WallOfEntry(entryId) {
+  for (var i = 0; i < PBV2.entries.length; i++) {
+    if (PBV2.entries[i].id === entryId) {
+      var row = pbv2RowById(PBV2, PBV2.entries[i].rowId);
+      return row ? row.wall : null;
+    }
+  }
+  return null;
+}
+/** Typed schematic path: straight stays a chord; angle is an orthogonal
+ *  elbow (one 90-degree turn toward the interior); U is a return loop that
+ *  runs into the box and back. Purely visual — geometry semantics only. */
+function pbv2ConnPathD(type, wallA, x1, y1, x2, y2) {
+  if (type === 'ANGLE') {
+    // run from the side-wall entry horizontally (or vertically from a
+    // top/bottom entry), turn once, finish at the other entry
+    var cx; var cy;
+    if (wallA === 'left' || wallA === 'right') { cx = x2; cy = y1; }
+    else { cx = x1; cy = y2; }
+    return 'M ' + x1 + ' ' + y1 + ' L ' + cx + ' ' + cy + ' L ' + x2 + ' ' + y2;
+  }
+  // U: into the interior, across, and back to the same wall
+  var dx = 0; var dy = 0; var depth = 36;
+  if (wallA === 'left') dx = depth;
+  else if (wallA === 'right') dx = -depth;
+  else if (wallA === 'top') dy = depth;
+  else dy = -depth;
+  return 'M ' + x1 + ' ' + y1
+    + ' L ' + (x1 + dx) + ' ' + (y1 + dy)
+    + ' L ' + (x2 + dx) + ' ' + (y2 + dy)
+    + ' L ' + x2 + ' ' + y2;
+}
 
 function pbv2UiEntryTap(entryId) {
   if (pbv2ConnectFrom === null) { pbv2UiInspect(entryId); return; }
@@ -8689,27 +8739,74 @@ function pbv2DrawConnections() {
   if (!svg || !stage || !PBV2) return;
   var stageRect = stage.getBoundingClientRect();
   var out = '';
+  var centers = {};
+  function centerOf(entryId) {
+    if (centers[entryId]) return centers[entryId];
+    var el = stage.querySelector('[data-entry-id="' + entryId + '"]');
+    if (!el) return null;
+    var r = el.getBoundingClientRect();
+    centers[entryId] = {
+      x: r.left - stageRect.left + r.width / 2,
+      y: r.top - stageRect.top + r.height / 2,
+    };
+    return centers[entryId];
+  }
   for (var i = 0; i < PBV2.connections.length; i++) {
     var c = PBV2.connections[i];
-    var elA = stage.querySelector('[data-entry-id="' + c.entryIds[0] + '"]');
-    var elB = stage.querySelector('[data-entry-id="' + c.entryIds[1] + '"]');
-    if (!elA || !elB) continue;
-    var ra = elA.getBoundingClientRect();
-    var rb = elB.getBoundingClientRect();
-    var x1 = ra.left - stageRect.left + ra.width / 2;
-    var y1 = ra.top - stageRect.top + ra.height / 2;
-    var x2 = rb.left - stageRect.left + rb.width / 2;
-    var y2 = rb.top - stageRect.top + rb.height / 2;
-    var type = PBV2_TYPE_LABEL[pbv2ConnType(PBV2, c)];
-    // wide transparent hit path first, then the restrained visible line
-    out += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2
-      + '" stroke="rgba(0,0,0,0)" stroke-width="22" style="pointer-events:stroke;cursor:pointer"'
-      + ' onclick="pbv2UiInspectConnection(\'' + c.id + '\')"></line>'
-      + '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2
-      + '" stroke="#9a9a9a" stroke-width="2" style="pointer-events:none"></line>'
-      + '<text x="' + ((x1 + x2) / 2) + '" y="' + ((y1 + y2) / 2 - 6)
+    var pa = centerOf(c.entryIds[0]);
+    var pb = centerOf(c.entryIds[1]);
+    if (!pa || !pb) continue;
+    var x1 = pa.x; var y1 = pa.y; var x2 = pb.x; var y2 = pb.y;
+    var rawType = pbv2ConnType(PBV2, c);
+    var type = PBV2_TYPE_LABEL[rawType];
+    var hl = pbv2Highlight && pbv2Highlight.type === 'conn' && pbv2Highlight.id === c.id;
+    var stroke = hl ? pbv2Highlight.color : '#9a9a9a';
+    var strokeW = hl ? '3' : '2';
+    if (rawType === 'STRAIGHT') {
+      // straight pull = straight path
+      out += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2
+        + '" stroke="rgba(0,0,0,0)" stroke-width="22" style="pointer-events:stroke;cursor:pointer"'
+        + ' onclick="pbv2UiInspectConnection(\'' + c.id + '\')"></line>'
+        + '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2
+        + '" stroke="' + stroke + '" stroke-width="' + strokeW + '" style="pointer-events:none"></line>';
+    } else {
+      // angle pull = turned (elbow) path; U pull = return loop
+      var d = pbv2ConnPathD(rawType, pbv2WallOfEntry(c.entryIds[0]), x1, y1, x2, y2);
+      out += '<path d="' + d + '" fill="none" stroke="rgba(0,0,0,0)" stroke-width="22"'
+        + ' style="pointer-events:stroke;cursor:pointer"'
+        + ' onclick="pbv2UiInspectConnection(\'' + c.id + '\')"></path>'
+        + '<path d="' + d + '" fill="none" stroke="' + stroke + '" stroke-width="' + strokeW
+        + '" stroke-linejoin="round" style="pointer-events:none"></path>';
+    }
+    out += '<text x="' + ((x1 + x2) / 2) + '" y="' + ((y1 + y2) / 2 - 6)
       + '" fill="#aaa" font-size="10" text-anchor="middle" style="pointer-events:none">'
       + type + '</text>';
+  }
+  // ── Measurement overlays: ONLY from the calculated engine result — the
+  // UI draws sp.minimumInches, it never derives spacing itself. Overlays
+  // are separate elements from the connection paths (route vs measurement).
+  if (pbv2LastResult && pbv2LastResult.ok) {
+    var sps = pbv2LastResult.spacingRequirements;
+    for (var m = 0; m < sps.length; m++) {
+      var sp = sps[m];
+      var ma = centerOf(sp.entryIds[0]);
+      var mb = centerOf(sp.entryIds[1]);
+      if (!ma || !mb) continue;
+      var dxm = mb.x - ma.x; var dym = mb.y - ma.y;
+      var len = Math.sqrt(dxm * dxm + dym * dym) || 1;
+      var nx = -dym / len * 16; var ny = dxm / len * 16;
+      var shl = pbv2Highlight && pbv2Highlight.type === 'spacing'
+        && pbv2Highlight.id === sp.id;
+      out += '<line class="pbv2-measure" data-spacing-id="' + sp.id + '" x1="'
+        + (ma.x + nx) + '" y1="' + (ma.y + ny) + '" x2="' + (mb.x + nx)
+        + '" y2="' + (mb.y + ny) + '" stroke="' + PBV2_COLOR.spacing
+        + '" stroke-width="' + (shl ? '3' : '2')
+        + '" stroke-dasharray="4 3" style="pointer-events:none"></line>'
+        + '<text x="' + ((ma.x + mb.x) / 2 + nx * 1.6) + '" y="'
+        + ((ma.y + mb.y) / 2 + ny * 1.6) + '" fill="' + PBV2_COLOR.spacing
+        + '" font-size="10" text-anchor="middle" style="pointer-events:none">'
+        + pbv2In(sp.minimumInches) + ' min</text>';
+    }
   }
   svg.innerHTML = out;
 }
@@ -8749,7 +8846,7 @@ function ecRenderCodeRef(codeRef, contextPrompt) {
   EC_CODE_CONTEXTS.push({ codeRef: codeRef, prompt: contextPrompt });
   var label = codeRef.code + ' ' + codeRef.section;
   return '<button class="ec-coderef" type="button" aria-label="Explain '
-    + label + ' in AI Chat" onclick="ecOpenCodeRef(' + idx + ')">'
+    + label + ' in AI Chat" onclick="event.stopPropagation();ecOpenCodeRef(' + idx + ')">'
     + label + '</button>';
 }
 function ecOpenCodeRef(idx) {
@@ -8839,8 +8936,14 @@ function pbv2SpacingAiPrompt(sp) {
     + 'to verify it in the physical box layout.';
 }
 function pbv2ReqCard(req, dimension, governed) {
-  return '<div class="pbv2-card">'
-    + (governed ? '<div class="pbv2-h" style="margin-top:0">'
+  var color = PBV2_COLOR[dimension];
+  var target = req.kind === 'STRAIGHT'
+    ? "pbv2UiHighlight('conn','" + req.connectionId + "','" + color + "')"
+    : "pbv2UiHighlight('row','" + req.rowId + "','" + color + "')";
+  return '<div class="pbv2-card" style="border-left:3px solid ' + color
+    + ';cursor:pointer" role="button" tabindex="0" aria-label="Highlight this '
+    + dimension + ' requirement on the schematic" onclick="' + target + '">'
+    + (governed ? '<div class="pbv2-h" style="margin-top:0;color:' + color + '">'
       + dimension.toUpperCase() + ' GOVERNED BY</div>' : '')
     + '<div>' + pbv2Esc(pbv2ReqTitle(req)) + '</div>'
     + '<div class="pbv2-eq">' + pbv2Equation(req) + '</div>'
@@ -8882,12 +8985,14 @@ function pbv2RenderResults(result) {
     + '<div class="pbv2-dim"><span class="pbv2-dimlabel">WIDTH</span>'
     + (result.minimumWidthIn === null
       ? '<span class="pbv2-stale">Not determined from current pulls</span>'
-      : '<span class="pbv2-dimvalue">' + pbv2In(result.minimumWidthIn) + '</span>')
+      : '<span class="pbv2-dimvalue" style="color:' + PBV2_COLOR.width + '">'
+        + pbv2In(result.minimumWidthIn) + '</span>')
     + '</div>'
     + '<div class="pbv2-dim"><span class="pbv2-dimlabel">HEIGHT</span>'
     + (result.minimumHeightIn === null
       ? '<span class="pbv2-stale">Not determined from current pulls</span>'
-      : '<span class="pbv2-dimvalue">' + pbv2In(result.minimumHeightIn) + '</span>')
+      : '<span class="pbv2-dimvalue" style="color:' + PBV2_COLOR.height + '">'
+        + pbv2In(result.minimumHeightIn) + '</span>')
     + '</div></div>';
 
   // Governing cards: the UI TRUSTS the engine's governing ids and only looks
@@ -8919,11 +9024,16 @@ function pbv2RenderResults(result) {
     out += '<div class="pbv2-h">ENTRY SPACING</div>';
     for (var k = 0; k < result.spacingRequirements.length; k++) {
       var sp = result.spacingRequirements[k];
-      out += '<div class="pbv2-card"><div>'
+      out += '<div class="pbv2-card" style="border-left:3px solid '
+        + PBV2_COLOR.spacing + ';cursor:pointer" role="button" tabindex="0" '
+        + 'aria-label="Highlight this entry-spacing measurement on the schematic" '
+        + 'onclick="pbv2UiHighlight(\'spacing\',\'' + sp.id + '\',\''
+        + PBV2_COLOR.spacing + '\')"><div>'
         + pbv2Esc(pbv2EntryDesc(PBV2, sp.entryIds[0])) + ' \u2194 '
         + pbv2Esc(pbv2EntryDesc(PBV2, sp.entryIds[1])) + '</div>'
         + '<div class="pbv2-dim"><span class="pbv2-dimlabel">MIN</span>'
-        + '<span class="pbv2-dimvalue">' + pbv2In(sp.minimumInches) + '</span></div>'
+        + '<span class="pbv2-dimvalue" style="color:' + PBV2_COLOR.spacing + '">'
+        + pbv2In(sp.minimumInches) + '</span></div>'
         + '<div class="pbv2-eq">' + sp.multiplier + ' \u00D7 '
         + pbv2In(sp.largerTradeSize) + ' = ' + pbv2In(sp.minimumInches) + '</div>'
         + ecRenderCodeRef(sp.codeRef, pbv2SpacingAiPrompt(sp))

@@ -288,8 +288,16 @@ describe('PBV2-6 — milestone scope guards', () => {
     assert.strictEqual(ids.length, new Set(ids).size, 'duplicate pbv2 ids');
   });
 
-  test('interactive V2 controls are real buttons with labels', () => {
-    assert.ok(!/<div[^>]*onclick/.test(v2), 'clickable divs are not controls');
+  test('interactive V2 controls are real buttons or accessible role=button cards', () => {
+    // Plain clickable divs are banned. The one sanctioned exception: result
+    // cards, which must be divs because they CONTAIN a codeRef <button>
+    // (nested <button> is invalid HTML) — those must carry role="button"
+    // and tabindex to stay accessible.
+    const clickableDivs = v2.match(/<div[^>]*onclick/g) || [];
+    for (const m of clickableDivs) {
+      assert.ok(m.includes('role="button"') && m.includes('tabindex'),
+        'clickable div must be an accessible role=button card: ' + m.slice(0, 80));
+    }
     assert.ok(v2.includes('aria-label'));
     assert.ok(v2.includes('type="button"'));
   });
@@ -356,8 +364,8 @@ describe('PBV2-6b — many-rows portrait layout fix', () => {
     };
     // eslint-disable-next-line no-new-func
     new Function('document', 'PBV2', 'pbv2ConnectFrom', 'pbv2RenderConnList',
-      'pbv2DrawConnections', 'pbv2ScheduleConnectionRedraw',
-      src + ';pbv2Render();')(doc, state, null, () => {}, () => {}, () => {});
+      'pbv2DrawConnections', 'pbv2ScheduleConnectionRedraw', 'pbv2Highlight',
+      src + ';pbv2Render();')(doc, state, null, () => {}, () => {}, () => {}, null);
     const out = grid.innerHTML;
     for (const label of ['Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6']) {
       const lane = out.slice(out.indexOf('pbv2-lane-left'), out.indexOf('pbv2-lane-right'));
@@ -606,7 +614,8 @@ describe('PBV2-7 — connection render architecture + scope', () => {
     assert.ok(!/case 'left'|wall === 'left'.*[0-9]+/.test(draw),
       'no hardcoded wall coordinates');
     assert.ok(draw.includes('stroke-width="22"'), 'wide invisible hit target');
-    assert.ok(draw.includes('stroke-width="2"'), 'restrained visible line');
+    assert.ok(draw.includes("hl ? '3' : '2'"),
+      'restrained 2px visible line, 3px only when highlighted');
   });
 
   test('redraw strategy: render-driven + exactly one resize/orientation hook, no polling', () => {
@@ -819,6 +828,8 @@ describe('PBV2-8A — shipped calculate/render path', () => {
     new Function('EC', 'document', 'window', 'switchTab', 'sendMessage',
       'setTimeout', 'exports',
       `var EC_CODE_CONTEXTS = [];
+       var PBV2_COLOR = { width: '#4a90d9', height: '#52c07a', spacing: '#b06ae8' };
+       var pbv2Highlight = null;
        var PBV2_ERROR_TEXT = { NO_ENTRIES: 'Add at least one raceway before calculating.' };
        var PBV2_NOTE_TEXT = {
          SPACING_VERIFY_IN_LAYOUT: 'Actual raceway-entry spacing must still be verified in the physical box layout.',
@@ -1068,5 +1079,161 @@ describe('PBV2-8A — shipped calculate/render path', () => {
     h.api.calculate();
     assert.ok(h.el('pbv2-results').innerHTML.includes('Add at least one raceway'));
     assert.ok(!h.el('pbv2-results').innerHTML.includes('stack'), 'no dev traces');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-8V — visual refinement: typed paths, measurement overlays, colors
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-8V — typed connection paths + measurement overlays', () => {
+  const htmlV = fs.readFileSync(path.join(__dirname, '..', 'mobile.html'), 'utf8');
+  function fnV(name) {
+    const i = htmlV.indexOf('function ' + name + '(');
+    assert.ok(i !== -1, 'missing: ' + name);
+    let d = 0; let started = false;
+    for (let j = i; j < htmlV.length; j++) {
+      if (htmlV[j] === '{') { d++; started = true; } else if (htmlV[j] === '}') {
+        d--; if (started && d === 0) return htmlV.slice(i, j + 1);
+      }
+    }
+    throw new Error('unterminated ' + name);
+  }
+
+  /** Draw harness: shipped pbv2DrawConnections against a stub stage whose
+   *  entry buttons sit at fixed coordinates. */
+  function drawHarness(state, opts) {
+    const engine = require('../src/calc/pullBox');
+    const svg = { innerHTML: '' };
+    const coords = opts.coords;
+    const stage = {
+      getBoundingClientRect: () => ({ left: 0, top: 0 }),
+      querySelector: (sel) => {
+        const id = sel.match(/data-entry-id="([^"]+)"/)[1];
+        if (!coords[id]) return null;
+        return { getBoundingClientRect: () => ({
+          left: coords[id][0], top: coords[id][1], width: 44, height: 44 }) };
+      },
+    };
+    const doc = { getElementById: (id) =>
+      (id === 'pbv2-connlayer' ? svg : id === 'pbv2-stage' ? stage : null) };
+    const src = [fnV('pbv2RowById'), fnV('pbv2RowLabel'), fnV('pbv2ConnType'),
+      fnV('pbv2WallOfEntry'), fnV('pbv2ConnPathD'), fnV('pbv2In'),
+      fnV('pbv2DrawConnections')].join('\n');
+    // eslint-disable-next-line no-new-func
+    new Function('EC', 'document', 'PBV2', 'pbv2LastResult', 'pbv2Highlight',
+      'PBV2_TYPE_LABEL', 'PBV2_COLOR',
+      src + ';pbv2DrawConnections();')(
+      { pullBox: engine }, doc, state, opts.result || null, opts.highlight || null,
+      { STRAIGHT: 'Straight', ANGLE: 'Angle', U: 'U' },
+      { width: '#4a90d9', height: '#52c07a', spacing: '#b06ae8' });
+    return svg.innerHTML;
+  }
+
+  function vizState() {
+    return {
+      rows: [{ id: 'rL', wall: 'left', order: 0 }, { id: 'rR', wall: 'right', order: 0 },
+        { id: 'rT', wall: 'top', order: 0 }],
+      entries: [{ id: 'eL', rowId: 'rL', tradeSize: '4' },
+        { id: 'eR', rowId: 'rR', tradeSize: '4' },
+        { id: 'eT', rowId: 'rT', tradeSize: '2' },
+        { id: 'eL2', rowId: 'rL', tradeSize: '2' },
+        { id: 'eL3', rowId: 'rL', tradeSize: '1' }],
+      connections: [{ id: 'cS', entryIds: ['eL', 'eR'] },
+        { id: 'cA', entryIds: ['eL2', 'eT'] },
+        { id: 'cU', entryIds: ['eL2', 'eL3'] }],
+    };
+  }
+  const coords = { eL: [0, 100], eR: [300, 100], eT: [150, 0], eL2: [0, 160], eL3: [0, 220] };
+
+  test('DISTINCT PATH FAMILIES: straight=line, angle=one elbow, U=return loop', () => {
+    const out = drawHarness(vizState(), { coords });
+    // straight: rendered as <line> pair (hit + visible)
+    assert.ok(/<line[^>]*x1="22"[^>]*stroke="rgba\(0,0,0,0\)"/.test(out),
+      'straight hit line');
+    // angle: <path> whose d has exactly one corner (two L commands)
+    const paths = out.match(/<path d="[^"]+"/g);
+    assert.ok(paths && paths.length >= 4, 'angle+U each draw hit+visible paths');
+    const angleD = paths.find((p) => (p.match(/L/g) || []).length === 2);
+    assert.ok(angleD, 'elbow path with exactly one 90-degree turn exists');
+    // its corner shares x with the top entry and y with the left entry
+    assert.ok(angleD.includes('L 172 182') || angleD.includes('L 22 22'),
+      'orthogonal corner, not a diagonal');
+    // U: <path> with three L commands (into the box, across, back)
+    const uD = paths.find((p) => (p.match(/L/g) || []).length === 3);
+    assert.ok(uD, 'U return-loop path exists');
+    assert.ok(uD.includes('L 58'), 'loop runs 36px into the interior from the left wall');
+    // type words still label each connection
+    for (const word of ['Straight', 'Angle', '>U<']) {
+      assert.ok(out.includes(word), word + ' label');
+    }
+  });
+
+  test('MEASUREMENT OVERLAYS: only from the engine result, separate from paths', () => {
+    const state = vizState();
+    const engine = require('../src/calc/pullBox');
+    const result = engine.calculatePullBox(state);
+    assert.strictEqual(result.spacingRequirements.length, 2, 'angle + U spacing');
+    // without a result: zero overlays
+    let out = drawHarness(state, { coords, result: null });
+    assert.ok(!out.includes('pbv2-measure'), 'no overlays before CALCULATE');
+    // with the engine result: one dashed measurement per spacing requirement
+    out = drawHarness(state, { coords, result });
+    const measures = out.match(/class="pbv2-measure"/g) || [];
+    assert.strictEqual(measures.length, 2, 'one overlay per engine spacing requirement');
+    assert.ok(out.includes('stroke-dasharray="4 3"'), 'dashed = measurement, not route');
+    assert.ok(out.includes('data-spacing-id="spacing:cA"'));
+    assert.ok(out.includes('data-spacing-id="spacing:cU"'));
+    // labels carry the ENGINE minimums (6x2=12 for both here)
+    assert.ok(out.includes('12\u2033 min'), 'engine value labeled, never derived in UI');
+    // overlays use the spacing color and never repaint the connection path
+    assert.ok(out.includes('stroke="#b06ae8"'));
+  });
+
+  test('COLOR SYSTEM: one map drives SVG and result cards consistently', () => {
+    const v2 = htmlV.slice(htmlV.indexOf('PULL BOX V2'), htmlV.indexOf('END PULL BOX V2'));
+    const map = v2.match(/var PBV2_COLOR = \{[^}]+\}/)[0];
+    assert.ok(map.includes("width: '#4a90d9'") && map.includes("height: '#52c07a'")
+      && map.includes("spacing: '#b06ae8'"), 'three dedicated colors');
+    assert.strictEqual(new Set(['#4a90d9', '#52c07a', '#b06ae8']).size, 3, 'distinct');
+    // every schematic/card usage goes through the map — no duplicated hex
+    const dupes = (v2.match(/#4a90d9|#52c07a|#b06ae8/g) || []).length;
+    assert.strictEqual(dupes, 3, 'each hex appears once: in PBV2_COLOR only');
+    assert.ok(v2.includes('PBV2_COLOR[dimension]'), 'cards use the map by dimension');
+    assert.ok(v2.includes('PBV2_COLOR.spacing'), 'overlays use the map');
+  });
+
+  test('RESULT→SCHEMATIC LINKING: cards highlight conn / row / spacing targets', () => {
+    // requirement cards carry tap-to-highlight wiring by kind
+    const card = fnV('pbv2ReqCard');
+    assert.ok(card.includes("pbv2UiHighlight('conn','\" + req.connectionId"),
+      'straight card targets its connection');
+    assert.ok(card.includes("pbv2UiHighlight('row','\" + req.rowId"),
+      'row card targets its row');
+    const results = fnV('pbv2RenderResults');
+    assert.ok(results.includes("pbv2UiHighlight(\\'spacing\\'"),
+      'spacing card targets its measurement');
+    // highlight toggles and rerenders through the one render path
+    const hl = fnV('pbv2UiHighlight');
+    assert.ok(hl.includes('pbv2Render()'));
+    assert.ok(hl.includes('pbv2Highlight = null'), 'second tap toggles off');
+    // draw honors a conn highlight with the dimension color + heavier stroke
+    const out = drawHarness(vizState(), { coords,
+      highlight: { type: 'conn', id: 'cS', color: '#4a90d9' } });
+    assert.ok(/<line[^>]*stroke="#4a90d9" stroke-width="3"/.test(out),
+      'highlighted straight path uses the width color at 3px');
+    // rows expose identity for row highlighting
+    assert.ok(fnV('pbv2Render').includes('data-row-id'), 'row containers identifiable');
+  });
+
+  test('REGRESSIONS: many-rows grid, engine-call contract, dev gate all hold', () => {
+    const v2 = htmlV.slice(htmlV.indexOf('PULL BOX V2'), htmlV.indexOf('END PULL BOX V2'));
+    const gridCss = v2.match(/\.pbv2-grid\{[^}]*\}/)[0];
+    assert.ok(gridCss.includes('grid-template-rows:auto auto auto'));
+    assert.strictEqual((v2.match(/calculatePullBox\(/g) || []).length, 1,
+      'still exactly one engine call site');
+    assert.ok(v2.includes('pbv2ShouldOpen'), 'dev gate intact');
+    assert.ok(!v2.includes('<canvas'), 'SVG only, no canvas');
+    assert.ok(!/animation|@keyframes|glow/.test(v2), 'restrained: no animation');
   });
 });
