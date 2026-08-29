@@ -295,3 +295,97 @@ describe('PBV2-6 — milestone scope guards', () => {
     assert.ok(v2.includes('type="button"'));
   });
 });
+
+describe('PBV2-6b — many-rows portrait layout fix', () => {
+  const html2 = fs.readFileSync(path.join(__dirname, '..', 'mobile.html'), 'utf8');
+  const v2 = html2.slice(html2.indexOf('PULL BOX V2 (PBV2-6)'));
+
+  test('ROOT-CAUSE GUARD: the schematic grid is content-driven, not height-capped', () => {
+    const gridCss = v2.match(/\.pbv2-grid\{[^}]*\}/)[0];
+    assert.ok(gridCss.includes('grid-template-rows:auto auto auto'),
+      'middle row must size to content, not 1fr of a capped container');
+    assert.ok(!gridCss.includes('min-height'), 'no fixed grid height');
+    assert.ok(!gridCss.includes('flex:1'), 'grid must not be viewport-capped');
+    const centerCss = v2.match(/\.pbv2-center\{[^}]*\}/)[0];
+    assert.ok(centerCss.includes('min-height:140px'),
+      'center keeps a compact overview height and stretches with tall walls');
+  });
+
+  test('no data-hiding escape hatch: no overflow clipping, no row/entry caps', () => {
+    const styles = v2.match(/<style>[\s\S]*?<\/style>/)[0];
+    assert.ok(!/overflow\s*:\s*hidden/.test(styles),
+      'clipping is not a containment strategy');
+    const render = (() => {
+      const i = v2.indexOf('function pbv2Render');
+      let d = 0; let started = false;
+      for (let j = i; j < v2.length; j++) {
+        if (v2[j] === '{') { d++; started = true; } else if (v2[j] === '}') {
+          d--; if (started && d === 0) return v2.slice(i, j + 1);
+        }
+      }
+    })();
+    assert.ok(/i < rows\.length/.test(render), 'renders every row');
+    assert.ok(/j < entries\.length/.test(render), 'renders every entry');
+    assert.ok(!/slice\(0\s*,|Math\.min\(/.test(render), 'no arbitrary render cap');
+  });
+
+  test('SHIPPED RENDER with the physical failure fixture: 6 LEFT rows all represented', () => {
+    // Execute the real pbv2Render against a stub DOM using the exact state
+    // that failed the physical gate, extended to six rows.
+    const names = ['pbv2RowById', 'pbv2RowLabel', 'pbv2Esc', 'pbv2Render'];
+    const src = names.map(fnBody).join('\n');
+    const grid = { innerHTML: '' };
+    const doc = { getElementById: (id) => (id === 'pbv2-grid' ? grid : null) };
+    const state = {
+      rows: [
+        { id: 'L1', wall: 'left', order: 0 }, { id: 'L2', wall: 'left', order: 1 },
+        { id: 'L3', wall: 'left', order: 2 }, { id: 'L4', wall: 'left', order: 3 },
+        { id: 'L5', wall: 'left', order: 4 }, { id: 'L6', wall: 'left', order: 5 },
+        { id: 'R1', wall: 'right', order: 0 }, { id: 'T1', wall: 'top', order: 0 },
+        { id: 'T2', wall: 'top', order: 1 }, { id: 'B1', wall: 'bottom', order: 0 },
+        { id: 'B2', wall: 'bottom', order: 1 },
+      ],
+      entries: [
+        { id: 'e1', rowId: 'L1', tradeSize: '4' },
+        { id: 'e2', rowId: 'L1', tradeSize: '2-1/2' },
+        { id: 'e3', rowId: 'L1', tradeSize: '3' },
+        { id: 'e4', rowId: 'L3', tradeSize: '6' },
+        { id: 'e5', rowId: 'T1', tradeSize: '2' }, { id: 'e6', rowId: 'T2', tradeSize: '1' },
+        { id: 'e7', rowId: 'B1', tradeSize: '5' }, { id: 'e8', rowId: 'B2', tradeSize: '1/2' },
+      ],
+      connections: [],
+    };
+    // eslint-disable-next-line no-new-func
+    new Function('document', 'PBV2', src + ';pbv2Render();')(doc, state);
+    const out = grid.innerHTML;
+    for (const label of ['Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5', 'Row 6']) {
+      const lane = out.slice(out.indexOf('pbv2-lane-left'), out.indexOf('pbv2-lane-right'));
+      assert.ok(lane.includes(label), 'LEFT ' + label + ' missing from its wall lane');
+    }
+    for (const size of ['4&Prime;', '2-1/2&Prime;', '3&Prime;', '6&Prime;']) {
+      assert.ok(out.includes(size), size + ' entry missing');
+    }
+    // TOP/BOTTOM multi-row containment: labels render inside their lanes
+    const topLane = out.slice(out.indexOf('pbv2-lane-top'), out.indexOf('pbv2-lane-left'));
+    assert.ok(topLane.includes('Row 1') && topLane.includes('Row 2'));
+    const bottomLane = out.slice(out.indexOf('pbv2-lane-bottom'));
+    assert.ok(bottomLane.includes('Row 1') && bottomLane.includes('Row 2'));
+    // every entry stays a tappable inspector button
+    assert.strictEqual((out.match(/pbv2UiInspect/g) || []).length, 8);
+  });
+
+  test('instruction text sits structurally after the schematic grid', () => {
+    const gridPos = html2.indexOf('id="pbv2-grid"');
+    const notePos = html2.indexOf('Tap a wall');
+    assert.ok(gridPos !== -1 && notePos > gridPos,
+      'the note must follow the editor content in document flow');
+  });
+
+  test('layout fix changed nothing else: gate, scope and engine boundaries hold', () => {
+    assert.ok(v2.includes('pbv2ShouldOpen'), 'dev gate intact');
+    for (const banned of ['pbv2Connect', 'Quick Straight', 'minimumWidthIn',
+      'calculatePullBox(']) {
+      assert.ok(!v2.includes(banned), 'scope creep: ' + banned);
+    }
+  });
+});
