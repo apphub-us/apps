@@ -1071,6 +1071,8 @@ describe('PBV2-4 — entry-spacing requirements', () => {
       largerTradeSize: '2',
       multiplier: 6,
       minimumInches: 12,
+      sameWall: false,   // PBV2-9A: adjacent walls, no single axis carries it
+      axis: null,
       codeRef: { code: 'NEC', section: '314.28(A)(2)' },
     });
   });

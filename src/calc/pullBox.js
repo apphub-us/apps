@@ -298,7 +298,21 @@ function classifyConnection(connection, entries, rows) {
  * minimumWidthIn/minimumHeightIn. Straight connections generate none.
  * Because entry XY positions are unmodeled, the engine states the required
  * minimum and flags SPACING_VERIFY_IN_LAYOUT: physical compliance must be
- * verified in the actual box layout. With spacing implemented, every valid
+ * verified in the actual box layout.
+ *
+ * PBV2-9A adds ADDITIVE feasibility metadata (no arithmetic changed). A U
+ * pull puts both entries on ONE wall, so its A(2) entry spacing lies ALONG
+ * that wall — i.e. along the axis PERPENDICULAR to the one the row rule
+ * governs (top/bottom U -> width, left/right U -> height). The wall must
+ * therefore be longer than that spacing PLUS physical room for both raceway
+ * entries and their fittings, and the request models neither opening sizes,
+ * fitting footprints, clearances, nor entry positions. The engine does not
+ * guess them: it reports, per axis, whether a same-wall U spacing leaves
+ * that axis LAYOUT_DEPENDENT, and leaves the final number underived.
+ * Angle spacing is deliberately NOT mapped to an axis: its two entries sit
+ * on perpendicular walls, so the requirement is a planar (diagonal)
+ * placement constraint satisfiable by entry positions the model does not
+ * carry. With spacing implemented, every valid
  * request within the modeled geometry is fully evaluated and
  * completeForRequest is true.
  *
@@ -348,6 +362,14 @@ function calculatePullBox(request) {
       const [pA, pB] = conn.entryIds.map((id) => byId.get(id));
       const larger = TRADE_SIZE_IN[pA.tradeSize] >= TRADE_SIZE_IN[pB.tradeSize]
         ? pA.tradeSize : pB.tradeSize;
+      // PBV2-9A (additive): a U pull has both entries on ONE wall, so its
+      // spacing runs along that wall — the axis perpendicular to the one
+      // WALL_DIMENSION assigns to the row rule. Angle entries sit on
+      // perpendicular walls, so no single axis carries the requirement.
+      const sameWall = cls.type === 'U';
+      const spacingAxis = sameWall
+        ? (WALL_DIMENSION[cls.wallA] === 'width' ? 'height' : 'width')
+        : null;
       spacingRequirements.push({
         id: 'spacing:' + conn.id,
         kind: 'ENTRY_SPACING',
@@ -357,6 +379,8 @@ function calculatePullBox(request) {
         largerTradeSize: larger,
         multiplier: 6,
         minimumInches: 6 * TRADE_SIZE_IN[larger],
+        sameWall,
+        axis: spacingAxis,
         codeRef: { code: 'NEC', section: '314.28(A)(2)' },
       });
       continue;
@@ -447,6 +471,40 @@ function calculatePullBox(request) {
 
   spacingRequirements.sort(byIdAsc);
 
+  /**
+   * PBV2-9A dimension feasibility (additive; changes no arithmetic).
+   *
+   * RESOLVED  — no same-wall U spacing requirement lies along this axis.
+   *             It does NOT mean installation compliance, fitting placement,
+   *             depth, A(3), or actual entry positions were verified.
+   * LAYOUT_DEPENDENT — at least one same-wall U spacing lies along this
+   *             axis, so the true final wall dimension cannot be derived
+   *             from this model: it needs the entry openings, fitting
+   *             footprints and clearances the request does not carry.
+   *
+   * minimumEntrySpacingIn is the LARGEST relevant entry-spacing minimum on
+   * that axis — a known constraint, NOT a box dimension, and never fed into
+   * minimumWidthIn/minimumHeightIn. This question is independent of whether
+   * a pull-rule candidate exists (see NO_WIDTH/HEIGHT_CANDIDATES).
+   */
+  const axisStatus = (axis) => {
+    const relevant = spacingRequirements.filter(
+      (s) => s.sameWall === true && s.axis === axis);
+    if (relevant.length === 0) {
+      return {
+        status: 'RESOLVED',
+        constrainedBySpacingIds: [],
+        minimumEntrySpacingIn: null,
+      };
+    }
+    return {
+      status: 'LAYOUT_DEPENDENT',
+      constrainedBySpacingIds: relevant.map((s) => s.id).sort(),
+      minimumEntrySpacingIn: Math.max(...relevant.map((s) => s.minimumInches)),
+    };
+  };
+  const dimensionStatus = { width: axisStatus('width'), height: axisStatus('height') };
+
   const scopeNotes = [];
   if (spacingRequirements.length > 0) {
     // The required minimums are calculated; entry positions are unmodeled,
@@ -467,6 +525,7 @@ function calculatePullBox(request) {
     governingWidthRequirementId: gw ? gw.id : null,
     governingHeightRequirementId: gh ? gh.id : null,
     spacingRequirements,
+    dimensionStatus,
     // FROZEN SEMANTICS: completeForRequest means exactly "all electrical
     // calculations supported by the PBV2 MVP model have been evaluated for
     // the supplied valid request" — nothing more. It does NOT mean code

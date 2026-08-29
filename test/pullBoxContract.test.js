@@ -115,21 +115,32 @@ const GOLDEN_EXPECTED = {
       id: 'spacing:cA1', kind: 'ENTRY_SPACING', connectionType: 'ANGLE',
       connectionId: 'cA1', entryIds: ['eL2', 'eT2'],
       largerTradeSize: '2', multiplier: 6, minimumInches: 12,
+      sameWall: false, axis: null,
       codeRef: { code: 'NEC', section: '314.28(A)(2)' },
     },
     {
       id: 'spacing:cA2', kind: 'ENTRY_SPACING', connectionType: 'ANGLE',
       connectionId: 'cA2', entryIds: ['eB5', 'eL3'],
       largerTradeSize: '5', multiplier: 6, minimumInches: 30,
+      sameWall: false, axis: null,
       codeRef: { code: 'NEC', section: '314.28(A)(2)' },
     },
     {
       id: 'spacing:cU', kind: 'ENTRY_SPACING', connectionType: 'U',
       connectionId: 'cU', entryIds: ['eL2', 'eLu'],
       largerTradeSize: '2', multiplier: 6, minimumInches: 12,
+      sameWall: true, axis: 'height',   // left-wall U runs along the height axis
       codeRef: { code: 'NEC', section: '314.28(A)(2)' },
     },
   ],
+  dimensionStatus: {
+    width: { status: 'RESOLVED', constrainedBySpacingIds: [], minimumEntrySpacingIn: null },
+    height: {
+      status: 'LAYOUT_DEPENDENT',
+      constrainedBySpacingIds: ['spacing:cU'],
+      minimumEntrySpacingIn: 12,
+    },
+  },
   completeForRequest: true,
   warnings: [{ code: 'UNCONNECTED_ENTRY', entryIds: ['eLx'] }],
   scopeNotes: [
@@ -228,7 +239,7 @@ describe('PBV2-5 — frozen result-shape and invariants', () => {
   test('success result: exact field set, always-present arrays', () => {
     const r = calculatePullBox(goldenFixture());
     assert.deepStrictEqual(Object.keys(r).sort(), [
-      'completeForRequest', 'governingHeightRequirementId',
+      'completeForRequest', 'dimensionStatus', 'governingHeightRequirementId',
       'governingWidthRequirementId', 'heightRequirements', 'minimumHeightIn',
       'minimumWidthIn', 'ok', 'scopeNotes', 'spacingRequirements', 'warnings',
       'widthRequirements',
@@ -259,6 +270,10 @@ describe('PBV2-5 — frozen result-shape and invariants', () => {
       governingWidthRequirementId: null,
       governingHeightRequirementId: null,
       spacingRequirements: [],
+      dimensionStatus: {
+        width: { status: 'RESOLVED', constrainedBySpacingIds: [], minimumEntrySpacingIn: null },
+        height: { status: 'RESOLVED', constrainedBySpacingIds: [], minimumEntrySpacingIn: null },
+      },
       completeForRequest: true,
       warnings: [{ code: 'UNCONNECTED_ENTRY', entryIds: ['a', 't'] }],
       scopeNotes: [
@@ -489,5 +504,256 @@ describe('PBV2-5 — frozen validation, trade-size and API contracts', () => {
     assert.strictEqual(pb3.minimumHeightIn, 12);
     assert.notStrictEqual(pb3.minimumWidthIn, pb3.minimumHeightIn,
       'two dimensions, two answers — the anonymous "Use largest" is dead');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-9A — same-wall U spacing feasibility metadata (ADDITIVE ONLY)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-9A — dimension feasibility metadata', () => {
+  /** Strip every PBV2-9A addition, leaving the pre-9A contract shape. */
+  function stripAdditions(result) {
+    const out = JSON.parse(JSON.stringify(result));
+    delete out.dimensionStatus;
+    for (const s of out.spacingRequirements || []) {
+      delete s.sameWall;
+      delete s.axis;
+    }
+    return out;
+  }
+  function uOn(wall, size) {
+    const other = wall === 'left' ? 'right' : wall === 'right' ? 'left'
+      : wall === 'top' ? 'bottom' : 'top';
+    return {
+      rows: [row('rU', wall, 0), row('rX', other, 0)],
+      entries: [entry('u1', 'rU', size), entry('u2', 'rU', size)],
+      connections: [conn('cU', 'u1', 'u2')],
+    };
+  }
+
+  test('AUDIT FIXTURE: 12/21/18 unchanged, width flagged LAYOUT_DEPENDENT', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rT', 'top', 0), row('rB', 'bottom', 0)],
+      entries: [entry('L2', 'rL', '2'), entry('T2', 'rT', '2'),
+        entry('B3a', 'rB', '3'), entry('B3b', 'rB', '3')],
+      connections: [conn('cA', 'L2', 'T2'), conn('cU', 'B3a', 'B3b')],
+    });
+    // every pre-existing value is exactly as before
+    assert.strictEqual(r.minimumWidthIn, 12);
+    assert.strictEqual(r.minimumHeightIn, 21);
+    assert.strictEqual(r.governingWidthRequirementId, 'angle-u-row:rL');
+    assert.strictEqual(r.governingHeightRequirementId, 'angle-u-row:rB');
+    assert.deepStrictEqual(r.spacingRequirements.map((s) => s.minimumInches), [12, 18]);
+    assert.strictEqual(r.completeForRequest, true);
+    // new metadata
+    const angle = r.spacingRequirements.find((s) => s.id === 'spacing:cA');
+    assert.strictEqual(angle.sameWall, false);
+    assert.strictEqual(angle.axis, null);
+    const u = r.spacingRequirements.find((s) => s.id === 'spacing:cU');
+    assert.strictEqual(u.sameWall, true);
+    assert.strictEqual(u.axis, 'width', 'bottom-wall U spacing runs along the width');
+    assert.deepStrictEqual(r.dimensionStatus, {
+      width: {
+        status: 'LAYOUT_DEPENDENT',
+        constrainedBySpacingIds: ['spacing:cU'],
+        minimumEntrySpacingIn: 18,
+      },
+      height: { status: 'RESOLVED', constrainedBySpacingIds: [], minimumEntrySpacingIn: null },
+    });
+  });
+
+  test('ALL FOUR U ORIENTATIONS map to the perpendicular axis', () => {
+    for (const [wall, axis, other] of [['bottom', 'width', 'height'],
+      ['top', 'width', 'height'], ['left', 'height', 'width'],
+      ['right', 'height', 'width']]) {
+      const r = calculatePullBox(uOn(wall, '3'));
+      assert.strictEqual(r.spacingRequirements[0].axis, axis, wall);
+      assert.strictEqual(r.spacingRequirements[0].sameWall, true, wall);
+      assert.strictEqual(r.dimensionStatus[axis].status, 'LAYOUT_DEPENDENT', wall);
+      assert.strictEqual(r.dimensionStatus[axis].minimumEntrySpacingIn, 18, wall);
+      assert.strictEqual(r.dimensionStatus[other].status, 'RESOLVED', wall);
+      // endpoint order must not affect the metadata
+      const q = uOn(wall, '3');
+      q.connections = [conn('cU', 'u2', 'u1')];
+      assert.deepStrictEqual(calculatePullBox(q).dimensionStatus, r.dimensionStatus, wall);
+    }
+  });
+
+  test('BOTH AXES dependent: each axis cites only its own spacing ids', () => {
+    const r = calculatePullBox({
+      rows: [row('rB', 'bottom', 0), row('rL', 'left', 0)],
+      entries: [entry('b1', 'rB', '2'), entry('b2', 'rB', '2'),
+        entry('l1', 'rL', '3'), entry('l2', 'rL', '3')],
+      connections: [conn('cUb', 'b1', 'b2'), conn('cUl', 'l1', 'l2')],
+    });
+    assert.strictEqual(r.dimensionStatus.width.status, 'LAYOUT_DEPENDENT');
+    assert.deepStrictEqual(r.dimensionStatus.width.constrainedBySpacingIds, ['spacing:cUb']);
+    assert.strictEqual(r.dimensionStatus.width.minimumEntrySpacingIn, 12);
+    assert.strictEqual(r.dimensionStatus.height.status, 'LAYOUT_DEPENDENT');
+    assert.deepStrictEqual(r.dimensionStatus.height.constrainedBySpacingIds, ['spacing:cUl']);
+    assert.strictEqual(r.dimensionStatus.height.minimumEntrySpacingIn, 18);
+  });
+
+  test('MULTIPLE U on one axis: all ids listed, MAX taken, never summed', () => {
+    const r = calculatePullBox({
+      rows: [row('rB', 'bottom', 0), row('rT', 'top', 0)],
+      entries: [entry('b1', 'rB', '2'), entry('b2', 'rB', '2'),
+        entry('t1', 'rT', '4'), entry('t2', 'rT', '4')],
+      connections: [conn('zUb', 'b1', 'b2'), conn('aUt', 't1', 't2')],
+    });
+    const w = r.dimensionStatus.width;
+    assert.strictEqual(w.status, 'LAYOUT_DEPENDENT');
+    assert.deepStrictEqual(w.constrainedBySpacingIds, ['spacing:aUt', 'spacing:zUb'],
+      'deterministically sorted, input order irrelevant');
+    assert.strictEqual(w.minimumEntrySpacingIn, 24, 'max(12, 24) — never the sum 36');
+  });
+
+  test('ANGLE-ONLY: both axes RESOLVED even with the layout-verify note', () => {
+    const r = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rT', 'top', 0)],
+      entries: [entry('a', 'rL', '4'), entry('t', 'rT', '2')],
+      connections: [conn('cA', 'a', 't')],
+    });
+    assert.strictEqual(r.dimensionStatus.width.status, 'RESOLVED');
+    assert.strictEqual(r.dimensionStatus.height.status, 'RESOLVED');
+    assert.ok(r.scopeNotes.some((n) => n.code === 'SPACING_VERIFY_IN_LAYOUT'),
+      'angle spacing still needs layout verification — a different question');
+    assert.strictEqual(r.spacingRequirements[0].axis, null,
+      'no diagonal feasibility algorithm in PBV2-9A');
+  });
+
+  test('STRAIGHT-ONLY and NO-CONNECTION: RESOLVED, independent of null dimensions', () => {
+    const straight = calculatePullBox({
+      rows: [row('rL', 'left', 0), row('rR', 'right', 0)],
+      entries: [entry('a', 'rL', '4'), entry('b', 'rR', '4')],
+      connections: [conn('cS', 'a', 'b')],
+    });
+    assert.deepStrictEqual(straight.spacingRequirements, []);
+    assert.strictEqual(straight.dimensionStatus.width.status, 'RESOLVED');
+    assert.strictEqual(straight.dimensionStatus.height.status, 'RESOLVED');
+    assert.strictEqual(straight.minimumHeightIn, null,
+      'RESOLVED answers a different question than "a candidate exists"');
+    assert.ok(straight.scopeNotes.some((n) => n.code === 'NO_HEIGHT_CANDIDATES'),
+      'the candidate note still carries that meaning, unchanged');
+    const none = calculatePullBox({
+      rows: [row('rL', 'left', 0)],
+      entries: [entry('a', 'rL', '3')],
+      connections: [],
+    });
+    assert.strictEqual(none.minimumWidthIn, null);
+    assert.strictEqual(none.dimensionStatus.width.status, 'RESOLVED');
+  });
+
+  test('completeForRequest stays TRUE alongside LAYOUT_DEPENDENT (intentional)', () => {
+    const r = calculatePullBox(uOn('bottom', '3'));
+    assert.strictEqual(r.completeForRequest, true);
+    assert.strictEqual(r.dimensionStatus.width.status, 'LAYOUT_DEPENDENT');
+    // data-sufficiency boundary, not an unfinished calculation
+    assert.ok(!r.scopeNotes.some((n) => /NOT_CALCULATED$/.test(n.code)
+      && n.code !== 'DEPTH_NOT_CALCULATED'));
+  });
+
+  test('SPACING STILL NEVER GOVERNS: 36" U spacing leaves a 12" width untouched', () => {
+    // bottom row [6,6]: row rule 6x6 + 6 = 42 (height); spacing 6x6 = 36
+    // (width axis). Width comes only from the left-wall angle row: 6x2 = 12.
+    const r = calculatePullBox({
+      rows: [row('rB', 'bottom', 0), row('rL', 'left', 0), row('rT', 'top', 0)],
+      entries: [entry('b1', 'rB', '6'), entry('b2', 'rB', '6'),
+        entry('l2', 'rL', '2'), entry('t2', 'rT', '2')],
+      connections: [conn('cU', 'b1', 'b2'), conn('cA', 'l2', 't2')],
+    });
+    assert.strictEqual(r.spacingRequirements.find((s) => s.id === 'spacing:cU')
+      .minimumInches, 36);
+    assert.strictEqual(r.minimumWidthIn, 12, 'no max(width, spacing) anywhere');
+    assert.strictEqual(r.governingWidthRequirementId, 'angle-u-row:rL');
+    assert.strictEqual(r.minimumHeightIn, 42);
+    assert.strictEqual(r.dimensionStatus.width.minimumEntrySpacingIn, 36,
+      'the constraint is reported as metadata, never folded into the dimension');
+  });
+
+  test('ADDITIVE PROOF: stripping the new fields restores the pre-9A contract', () => {
+    // Representative fixtures across every family. Stripped results must be
+    // structurally identical to the frozen pre-9A shape: same keys, same
+    // values, nothing renamed, nothing reordered, nothing removed.
+    const fixtures = [
+      goldenFixture(),
+      uOn('bottom', '3'),
+      {
+        rows: [row('rL', 'left', 0), row('rR', 'right', 0)],
+        entries: [entry('a', 'rL', '4'), entry('b', 'rR', '4')],
+        connections: [conn('cS', 'a', 'b')],
+      },
+      {
+        rows: [row('rL', 'left', 0), row('rT', 'top', 0)],
+        entries: [entry('a', 'rL', '4'), entry('t', 'rT', '2')],
+        connections: [conn('cA', 'a', 't')],
+      },
+    ];
+    const PRE_9A_KEYS = ['ok', 'minimumWidthIn', 'minimumHeightIn',
+      'widthRequirements', 'heightRequirements', 'governingWidthRequirementId',
+      'governingHeightRequirementId', 'spacingRequirements',
+      'completeForRequest', 'warnings', 'scopeNotes'];
+    const PRE_9A_SPACING_KEYS = ['id', 'kind', 'connectionType', 'connectionId',
+      'entryIds', 'largerTradeSize', 'multiplier', 'minimumInches', 'codeRef'];
+    for (const q of fixtures) {
+      const stripped = stripAdditions(calculatePullBox(q));
+      assert.deepStrictEqual(Object.keys(stripped).sort(), PRE_9A_KEYS.slice().sort(),
+        'no field added or lost outside the sanctioned additions');
+      for (const s of stripped.spacingRequirements) {
+        assert.deepStrictEqual(Object.keys(s).sort(), PRE_9A_SPACING_KEYS.slice().sort());
+      }
+    }
+    // and the golden fixture's stripped result equals the frozen expectation
+    const strippedGolden = stripAdditions(calculatePullBox(goldenFixture()));
+    const frozenGolden = stripAdditions(GOLDEN_EXPECTED);
+    assert.deepStrictEqual(strippedGolden, frozenGolden,
+      'every pre-9A value byte-identical');
+  });
+
+  test('metadata is deterministic, immutable and finite like the rest', () => {
+    const q = {
+      rows: [row('rB', 'bottom', 0), row('rL', 'left', 0), row('rT', 'top', 0)],
+      entries: [entry('b1', 'rB', '3'), entry('b2', 'rB', '3'),
+        entry('l1', 'rL', '2'), entry('l2', 'rL', '2'), entry('t1', 'rT', '4')],
+      connections: [conn('cUb', 'b1', 'b2'), conn('cUl', 'l1', 'l2'),
+        conn('cA', 'l1', 't1')],
+    };
+    const ref = calculatePullBox(q);
+    let seed = 0x9A11;
+    const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 0x100000000; };
+    const shuffle = (arr) => {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rnd() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+    for (let i = 0; i < 15; i++) {
+      assert.deepStrictEqual(calculatePullBox({
+        rows: shuffle(q.rows), entries: shuffle(q.entries),
+        connections: shuffle(q.connections),
+      }), ref, 'shuffle #' + i);
+    }
+    Object.freeze(q); Object.freeze(q.rows); Object.freeze(q.entries);
+    Object.freeze(q.connections);
+    q.rows.forEach(Object.freeze); q.entries.forEach(Object.freeze);
+    q.connections.forEach((c) => { Object.freeze(c); Object.freeze(c.entryIds); });
+    const snapshot = JSON.stringify(q);
+    assert.deepStrictEqual(calculatePullBox(q), ref);
+    assert.strictEqual(JSON.stringify(q), snapshot);
+    for (const axis of ['width', 'height']) {
+      const v = ref.dimensionStatus[axis].minimumEntrySpacingIn;
+      if (v !== null) assert.ok(Number.isFinite(v) && v > 0);
+    }
+  });
+
+  test('PUBLIC API unchanged: no new exports for this milestone', () => {
+    assert.deepStrictEqual(Object.keys(api).sort(), [
+      'TRADE_SIZE_IN', 'TRADE_SIZE_KEYS', 'WALL_DIMENSION', 'WALL_ORDER',
+      'calculatePullBox', 'classifyConnection', 'rowForEntry', 'sortEntries',
+      'sortRows', 'validatePullBoxRequest',
+    ]);
   });
 });
