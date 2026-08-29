@@ -824,7 +824,8 @@ describe('PBV2-8A — shipped calculate/render path', () => {
       'pbv2EntryDesc', 'pbv2QuickStraight', 'ecRenderCodeRef', 'ecOpenCodeRef',
       'pbv2InvalidateResult', 'pbv2In', 'pbv2Equation', 'pbv2ReqTitle',
       'pbv2ReqAiPrompt', 'pbv2SpacingAiPrompt', 'pbv2ReqCard', 'pbv2Calculate',
-      'pbv2FindReq', 'pbv2RenderResults'];
+      'pbv2FindReq', 'pbv2AxisBlock', 'pbv2LayoutRequirementsSection',
+      'pbv2RenderResults'];
     const src = names.map(fn8).join('\n');
     const api = {};
     const handoff = { prompts: [], switched: 0 };
@@ -887,7 +888,7 @@ describe('PBV2-8A — shipped calculate/render path', () => {
     build(h, { entries: [['a', 'left', '4'], ['b', 'right', '4']], connections: [['a', 'b']] });
     h.api.calculate();
     let out = h.el('pbv2-results').innerHTML;
-    assert.ok(out.includes('MINIMUM INSIDE DIMENSIONS'));
+    assert.ok(out.includes('PULL-RULE MINIMUM DIMENSIONS'));
     assert.ok(out.includes('32\u2033'), 'width 32');
     assert.ok(out.includes('Not determined from current pulls'), 'null height wording');
     assert.ok(!out.includes('0\u2033'), 'never a fake zero');
@@ -978,6 +979,14 @@ describe('PBV2-8A — shipped calculate/render path', () => {
           largerTradeSize: '3', multiplier: 6, minimumInches: 19.75,
           codeRef: { code: 'NEC', section: '314.28(A)(2)' },
         }],
+        dimensionStatus: {
+          width: {
+            status: 'LAYOUT_DEPENDENT',
+            constrainedBySpacingIds: ['spacing:synthetic'],
+            minimumEntrySpacingIn: 19.75,
+          },
+          height: { status: 'RESOLVED', constrainedBySpacingIds: [], minimumEntrySpacingIn: null },
+        },
         completeForRequest: true,
         warnings: [],
         scopeNotes: [{ code: 'DEPTH_NOT_CALCULATED' }],
@@ -1455,5 +1464,313 @@ describe('PBV2-8Y — interior routing + in-box dimension cues', () => {
     assert.ok(v2.includes('pbv2ScheduleConnectionRedraw'));
     assert.ok(fnY('ecRenderCodeRef').includes('event.stopPropagation()'));
     assert.ok(!v2.includes('<canvas'));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-9B — honest presentation for layout-dependent dimensions
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-9B — dimensionStatus-driven result presentation', () => {
+  const html9b = fs.readFileSync(path.join(__dirname, '..', 'mobile.html'), 'utf8');
+  function fn9b(name) {
+    const i = html9b.indexOf('function ' + name + '(');
+    assert.ok(i !== -1, 'missing: ' + name);
+    let d = 0; let started = false;
+    for (let j = i; j < html9b.length; j++) {
+      if (html9b[j] === '{') { d++; started = true; } else if (html9b[j] === '}') {
+        d--; if (started && d === 0) return html9b.slice(i, j + 1);
+      }
+    }
+    throw new Error('unterminated ' + name);
+  }
+
+  function harness9b(engineOverride) {
+    const engine = engineOverride || require('../src/calc/pullBox');
+    let calcCalls = 0;
+    const counted = Object.create(engine);
+    counted.calculatePullBox = function (req) { calcCalls++; return engine.calculatePullBox(req); };
+    const els = {};
+    const el = (id) => {
+      if (!els[id]) {
+        els[id] = { innerHTML: '', value: '', style: {}, textContent: '',
+          classList: { contains: () => false, add: () => {}, remove: () => {} } };
+      }
+      return els[id];
+    };
+    const names = ['pbv2InitialState', 'pbv2RowById', 'pbv2AddRow', 'pbv2AddEntry',
+      'pbv2ChangeSize', 'pbv2ChangeRow', 'pbv2DeleteEntry', 'pbv2DeleteRow',
+      'pbv2RowLabel', 'pbv2Esc', 'pbv2AddConnection', 'pbv2DeleteConnection',
+      'pbv2EntryDesc', 'pbv2QuickStraight', 'ecRenderCodeRef', 'ecOpenCodeRef',
+      'pbv2InvalidateResult', 'pbv2In', 'pbv2Equation', 'pbv2ReqTitle',
+      'pbv2ReqAiPrompt', 'pbv2SpacingAiPrompt', 'pbv2ReqCard', 'pbv2Calculate',
+      'pbv2FindReq', 'pbv2AxisBlock', 'pbv2LayoutRequirementsSection',
+      'pbv2RenderResults'];
+    const src = names.map(fn9b).join('\n');
+    const api = {};
+    // eslint-disable-next-line no-new-func
+    new Function('EC', 'document', 'window', 'switchTab', 'sendMessage', 'setTimeout', 'exports',
+      `var EC_CODE_CONTEXTS = [];
+       var PBV2_COLOR = { width: '#4a90d9', height: '#52c07a', spacing: '#b06ae8' };
+       var pbv2Highlight = null;
+       var PBV2_ERROR_TEXT = { NO_ENTRIES: 'Add at least one raceway before calculating.' };
+       var PBV2_NOTE_TEXT = {
+         SPACING_VERIFY_IN_LAYOUT: 'Actual raceway-entry spacing must still be verified in the physical box layout.',
+         NO_WIDTH_CANDIDATES: 'No current pull produces a width requirement.',
+         NO_HEIGHT_CANDIDATES: 'No current pull produces a height requirement.',
+         DEPTH_NOT_CALCULATED: 'Depth is not calculated by this tool.',
+         A3_NOT_EVALUATED: 'listed smaller-dimension products or exceptions are not evaluated by this tool.',
+       };
+       var PBV2 = null; var pbv2LastResult = null; var pbv2Seq = 0;
+       function pbv2NextId(p) { pbv2Seq++; return 'pbv2-' + p + '-' + pbv2Seq; }
+       ${src}
+       exports.setState = (s) => { PBV2 = s; };
+       exports.getState = () => PBV2;
+       exports.initial = () => pbv2InitialState(pbv2NextId);
+       exports.nextId = pbv2NextId;
+       exports.helpers = { addEntry: pbv2AddEntry, addConn: pbv2AddConnection, addRow: pbv2AddRow };
+       exports.calculate = pbv2Calculate;
+       exports.invalidate = pbv2InvalidateResult;
+       exports.lastResult = () => pbv2LastResult;
+       exports.openCodeRef = ecOpenCodeRef;
+       exports.contexts = () => EC_CODE_CONTEXTS;`)(
+      { pullBox: counted }, { getElementById: el }, {}, () => {}, () => {}, (cb) => cb(), api);
+    return { api, el, calcCalls: () => calcCalls };
+  }
+
+  function build9b(h, plan) {
+    const s = h.api.initial();
+    h.api.setState(s);
+    const rowOf = (wall) => s.rows.find((r) => r.wall === wall).id;
+    const made = {};
+    for (const [key, wall, size] of plan.entries || []) {
+      made[key] = h.api.helpers.addEntry(s, rowOf(wall), size, h.api.nextId('entry'));
+    }
+    for (const [a, b] of plan.connections || []) {
+      h.api.helpers.addConn(s, made[a].id, made[b].id, h.api.nextId('connection'));
+    }
+    return s;
+  }
+  function uFixture(h, wall, size) {
+    const other = wall === 'left' ? 'right' : wall === 'right' ? 'left'
+      : wall === 'top' ? 'bottom' : 'top';
+    return build9b(h, { entries: [['a', wall, size], ['b', wall, size], ['x', other, size]],
+      connections: [['a', 'b']] });
+  }
+
+  test('A. AUDIT FIXTURE: the exact permanent regression for the physical bug', () => {
+    const h = harness9b();
+    build9b(h, { entries: [['L2', 'left', '2'], ['T2', 'top', '2'],
+      ['B3a', 'bottom', '3'], ['B3b', 'bottom', '3']],
+      connections: [['L2', 'T2'], ['B3a', 'B3b']] });
+    h.api.calculate();
+    const out = h.el('pbv2-results').innerHTML;
+    assert.ok(out.includes('PULL-RULE MINIMUM DIMENSIONS'));
+    assert.ok(out.includes('NOT FULLY DETERMINED'), 'Width must never show a bare 12\u2033');
+    const headline = out.slice(out.indexOf('PULL-RULE MINIMUM DIMENSIONS'),
+      out.indexOf('LAYOUT REQUIREMENTS'));
+    assert.ok(!/dimvalue[^>]*>12\u2033/.test(headline),
+      'no headline 12\u2033 value in the dimensions card');
+    assert.ok(out.includes('Pull-rule minimum: 12\u2033'));
+    assert.ok(out.includes('Known entry-spacing requirement: 18\u2033 minimum'));
+    assert.ok(out.includes('21\u2033'), 'Height renders normally, resolved');
+    assert.ok(out.includes('LAYOUT REQUIREMENTS'));
+    assert.ok(out.includes('WIDTH \u2014 LAYOUT DEPENDENT'));
+    assert.ok(!out.includes('HEIGHT \u2014 LAYOUT DEPENDENT'), 'height stays resolved');
+    assert.ok(out.includes('room for the raceway entries and fittings'));
+    // the correct pull-rule governing card is preserved, not deleted
+    assert.ok(out.includes('6 \u00D7 2\u2033 = 12\u2033'), 'governing calculation still shown');
+  });
+
+  test('B-E. all four U orientations mark the correct axis dependent', () => {
+    for (const [wall, axisLabel] of [['bottom', 'WIDTH'], ['top', 'WIDTH'],
+      ['left', 'HEIGHT'], ['right', 'HEIGHT']]) {
+      const h = harness9b();
+      uFixture(h, wall, '3');
+      h.api.calculate();
+      const out = h.el('pbv2-results').innerHTML;
+      assert.ok(out.includes(axisLabel + ' \u2014 LAYOUT DEPENDENT'), wall);
+      assert.strictEqual((out.match(/NOT FULLY DETERMINED/g) || []).length, 1, wall);
+    }
+  });
+
+  test('F. both axes dependent: neither looks final, each cites its own context', () => {
+    const h = harness9b();
+    build9b(h, { entries: [['b1', 'bottom', '2'], ['b2', 'bottom', '2'],
+      ['l1', 'left', '3'], ['l2', 'left', '3']],
+      connections: [['b1', 'b2'], ['l1', 'l2']] });
+    h.api.calculate();
+    const out = h.el('pbv2-results').innerHTML;
+    assert.strictEqual((out.match(/NOT FULLY DETERMINED/g) || []).length, 2);
+    assert.ok(out.includes('WIDTH \u2014 LAYOUT DEPENDENT') && out.includes('HEIGHT \u2014 LAYOUT DEPENDENT'));
+  });
+
+  test('G. multiple same-axis U: summary uses the engine max, never a sum', () => {
+    const h = harness9b();
+    build9b(h, { entries: [['b1', 'bottom', '2'], ['b2', 'bottom', '2'],
+      ['t1', 'top', '4'], ['t2', 'top', '4']],
+      connections: [['b1', 'b2'], ['t1', 't2']] });
+    h.api.calculate();
+    const out = h.el('pbv2-results').innerHTML;
+    assert.ok(out.includes('Known entry-spacing requirement: 24\u2033 minimum'),
+      'max(12,24), never 36');
+    assert.ok(!out.includes('36\u2033'));
+    // both relevant requirements listed in the LAYOUT REQUIREMENTS section
+    const layout = out.slice(out.indexOf('LAYOUT REQUIREMENTS'));
+    assert.ok(layout.includes('12\u2033 minimum entry spacing')
+      && layout.includes('24\u2033 minimum entry spacing'));
+  });
+
+  test('H. angle-only never marks an axis dependent', () => {
+    const h = harness9b();
+    build9b(h, { entries: [['a', 'left', '4'], ['t', 'top', '2']], connections: [['a', 't']] });
+    h.api.calculate();
+    const out = h.el('pbv2-results').innerHTML;
+    assert.ok(!out.includes('NOT FULLY DETERMINED'));
+    assert.ok(!out.includes('LAYOUT REQUIREMENTS'));
+    assert.ok(out.includes('Actual raceway-entry spacing must still be verified'),
+      'SPACING_VERIFY_IN_LAYOUT note still present — a different question');
+  });
+
+  test('I. straight-only unchanged: resolved numeric presentation', () => {
+    const h = harness9b();
+    build9b(h, { entries: [['a', 'left', '4'], ['b', 'right', '4']], connections: [['a', 'b']] });
+    h.api.calculate();
+    const out = h.el('pbv2-results').innerHTML;
+    assert.ok(out.includes('32\u2033'));
+    assert.ok(!out.includes('NOT FULLY DETERMINED') && !out.includes('LAYOUT REQUIREMENTS'));
+  });
+
+  test('J. null+RESOLVED vs null+LAYOUT_DEPENDENT stay visually distinct', () => {
+    const resolved = harness9b();
+    build9b(resolved, { entries: [['a', 'left', '3']] });
+    resolved.api.calculate();
+    assert.ok(resolved.el('pbv2-results').innerHTML.includes('Not determined from current pulls'));
+    assert.ok(!resolved.el('pbv2-results').innerHTML.includes('NOT FULLY DETERMINED'));
+
+    // width null but layout-dependent: a bottom U with no other width candidate
+    const dependent = harness9b();
+    build9b(dependent, { entries: [['b1', 'bottom', '2'], ['b2', 'bottom', '2']],
+      connections: [['b1', 'b2']] });
+    dependent.api.calculate();
+    const out = dependent.el('pbv2-results').innerHTML;
+    assert.ok(out.includes('NOT FULLY DETERMINED'));
+    assert.ok(out.includes('No pull-rule width candidate from the current pulls.'));
+    assert.ok(!out.includes('Not determined from current pulls'),
+      'the two null presentations never collide');
+    assert.ok(!/Pull-rule minimum: 0/.test(out), 'no invented pull-rule value');
+  });
+
+  test('K. POISONED STATUS: UI trusts dimensionStatus verbatim, never recomputes', () => {
+    const poisoned = {
+      calculatePullBox: () => ({
+        ok: true,
+        minimumWidthIn: 123.25,
+        minimumHeightIn: 77.5,
+        widthRequirements: [{
+          id: 'straight:cX', kind: 'STRAIGHT', dimension: 'width', connectionId: 'cX',
+          entryIds: ['zz-a', 'zz-b'], largestTradeSize: '4', otherTradeSizes: [],
+          multiplier: 8, minimumInches: 123.25, codeRef: { code: 'NEC', section: '314.28(A)(1)' },
+        }],
+        heightRequirements: [{
+          id: 'angle-u-row:rQ', kind: 'ANGLE_U_ROW', dimension: 'height', wall: 'top',
+          rowId: 'rQ', rowOrder: 0, entryIds: ['zz-c'], largestTradeSize: '2',
+          otherTradeSizes: ['1'], multiplier: 6, minimumInches: 77.5,
+          triggerConnectionIds: ['cQ'], codeRef: { code: 'NEC', section: '314.28(A)(2)' },
+        }],
+        governingWidthRequirementId: 'straight:cX',
+        governingHeightRequirementId: 'angle-u-row:rQ',
+        spacingRequirements: [{
+          id: 'spacing:synthetic', kind: 'ENTRY_SPACING', connectionType: 'U',
+          connectionId: 'cX', entryIds: ['zz-a', 'zz-c'], largerTradeSize: '3',
+          multiplier: 6, minimumInches: 19.75, sameWall: true, axis: 'width',
+          codeRef: { code: 'NEC', section: '314.28(A)(2)' },
+        }],
+        dimensionStatus: {
+          width: { status: 'LAYOUT_DEPENDENT', constrainedBySpacingIds: ['spacing:synthetic'],
+            minimumEntrySpacingIn: 19.75 },
+          height: { status: 'RESOLVED', constrainedBySpacingIds: [], minimumEntrySpacingIn: null },
+        },
+        completeForRequest: true,
+        warnings: [],
+        scopeNotes: [{ code: 'DEPTH_NOT_CALCULATED' }],
+      }),
+      TRADE_SIZE_KEYS: require('../src/calc/pullBox').TRADE_SIZE_KEYS,
+    };
+    const h = harness9b(poisoned);
+    h.api.setState(h.api.initial());
+    h.api.calculate();
+    const out = h.el('pbv2-results').innerHTML;
+    assert.ok(out.includes('NOT FULLY DETERMINED'), 'width follows the poisoned status, not its own geometry check');
+    assert.ok(out.includes('Pull-rule minimum: 123.25\u2033'));
+    assert.ok(out.includes('Known entry-spacing requirement: 19.75\u2033 minimum'));
+    assert.ok(out.includes('77.5\u2033'), 'height renders normally per its RESOLVED status');
+    assert.ok(!/dimvalue[^>]*>123\.25\u2033/.test(out),
+      'the pull-rule number never appears as the primary headline value');
+  });
+
+  test('L. invalidation clears LAYOUT REQUIREMENTS and NOT FULLY DETERMINED', () => {
+    const h = harness9b();
+    uFixture(h, 'bottom', '3');
+    h.api.calculate();
+    assert.ok(h.el('pbv2-results').innerHTML.includes('NOT FULLY DETERMINED'));
+    h.api.invalidate();
+    const stale = h.el('pbv2-results').innerHTML;
+    assert.ok(stale.includes('Box changed'));
+    assert.ok(!stale.includes('NOT FULLY DETERMINED') && !stale.includes('LAYOUT REQUIREMENTS'),
+      'no stale layout-dependent framing survives invalidation');
+  });
+
+  test('M. Code→AI stays intact: spacing codeRef still fires with ENTRY_SPACING context', () => {
+    const h = harness9b();
+    build9b(h, { entries: [['L2', 'left', '2'], ['T2', 'top', '2'],
+      ['B3a', 'bottom', '3'], ['B3b', 'bottom', '3']],
+      connections: [['L2', 'T2'], ['B3a', 'B3b']] });
+    h.api.calculate();
+    const spacingPrompt = h.api.contexts().map((c) => c.prompt)
+      .find((p) => p.includes('ENTRY SPACING'));
+    assert.ok(spacingPrompt, 'spacing codeRef context still generated');
+    assert.ok(!/final width|final height/i.test(spacingPrompt),
+      'never invents a final-dimension claim in the AI context');
+    const out = h.el('pbv2-results').innerHTML;
+    // this fixture is angle+U only (no straight), so both codeRefs are A(2)
+    assert.strictEqual((out.match(/aria-label="Explain NEC 314\.28\(A\)\(2\)/g) || []).length > 1,
+      true, 'row and spacing codeRefs both present');
+    const stripped = out.replace(/<button class="ec-coderef"[\s\S]*?<\/button>/g, '');
+    assert.ok(!/NEC|314\.28/.test(stripped), 'every visible reference stays clickable');
+  });
+
+  test('N. exactly one engine call for the audit fixture', () => {
+    const h = harness9b();
+    build9b(h, { entries: [['L2', 'left', '2'], ['T2', 'top', '2'],
+      ['B3a', 'bottom', '3'], ['B3b', 'bottom', '3']],
+      connections: [['L2', 'T2'], ['B3a', 'B3b']] });
+    h.api.calculate();
+    assert.strictEqual(h.calcCalls(), 1);
+  });
+
+  test('O. NO LOCAL FEASIBILITY LOGIC: renderer never inspects walls/connections/classifyConnection', () => {
+    const axisBlock = fn9b('pbv2AxisBlock');
+    const layoutSection = fn9b('pbv2LayoutRequirementsSection');
+    const renderResults = fn9b('pbv2RenderResults');
+    for (const fnSrc of [axisBlock, layoutSection, renderResults]) {
+      assert.ok(!/classifyConnection|\.wall\b|sameWall\s*=|axis\s*=\s*['"]/.test(fnSrc),
+        'presentation code must not re-derive feasibility from geometry');
+    }
+    assert.ok(axisBlock.includes('status.status') && axisBlock.includes('status.minimumEntrySpacingIn'),
+      'reads only the engine-provided status object');
+    assert.ok(layoutSection.includes('result.dimensionStatus[dimension]')
+      && layoutSection.includes('status.constrainedBySpacingIds'),
+      'looks requirements up by id, derives nothing');
+  });
+
+  test('no false-compliance language anywhere in a rendered result', () => {
+    const h = harness9b();
+    build9b(h, { entries: [['L2', 'left', '2'], ['T2', 'top', '2'],
+      ['B3a', 'bottom', '3'], ['B3b', 'bottom', '3']],
+      connections: [['L2', 'T2'], ['B3a', 'B3b']] });
+    h.api.calculate();
+    const out = h.el('pbv2-results').innerHTML;
+    assert.ok(!/\bCompliant\b|\bPass\b|\bApproved\b|final minimum box size|code-compliant/i.test(out));
   });
 });

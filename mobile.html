@@ -9109,6 +9109,56 @@ var PBV2_NOTE_TEXT = {
   DEPTH_NOT_CALCULATED: 'Depth is not calculated by this tool.',
   A3_NOT_EVALUATED: 'This calculator applies the general sizing rules used by this tool and does not evaluate listed smaller-dimension products or exceptions.',
 };
+/**
+ * Primary axis presentation. Trusts result.dimensionStatus EXACTLY as the
+ * engine returns it — no wall/connection/geometry inspection here. RESOLVED
+ * shows the pull-rule number (or the existing honest null wording, unrelated
+ * to layout dependency). LAYOUT_DEPENDENT NEVER shows a bare numeric
+ * headline: the pull-rule value and the engine's own largest same-wall
+ * entry-spacing minimum appear only as labeled secondary context.
+ */
+function pbv2AxisBlock(label, dimension, minimumIn, status) {
+  var color = PBV2_COLOR[dimension];
+  if (status.status === 'LAYOUT_DEPENDENT') {
+    var pullRuleLine = minimumIn === null
+      ? 'No pull-rule ' + dimension + ' candidate from the current pulls.'
+      : 'Pull-rule minimum: ' + pbv2In(minimumIn);
+    return '<div class="pbv2-dim"><span class="pbv2-dimlabel">' + label + '</span>'
+      + '<span class="pbv2-dimvalue" style="color:' + color + '">NOT FULLY DETERMINED</span></div>'
+      + '<div class="pbv2-note" style="margin-left:0">' + pbv2Esc(pullRuleLine) + '<br>'
+      + 'Known entry-spacing requirement: ' + pbv2In(status.minimumEntrySpacingIn) + ' minimum<br>'
+      + 'Final ' + dimension + ' also depends on physical room for the raceway entries and fittings.</div>';
+  }
+  return '<div class="pbv2-dim"><span class="pbv2-dimlabel">' + label + '</span>'
+    + (minimumIn === null
+      ? '<span class="pbv2-stale">Not determined from current pulls</span>'
+      : '<span class="pbv2-dimvalue" style="color:' + color + '">' + pbv2In(minimumIn) + '</span>')
+    + '</div>';
+}
+/** LAYOUT REQUIREMENTS: only the axes the ENGINE marked layout-dependent,
+ *  listing only the spacing requirements the engine named as relevant
+ *  (constrainedBySpacingIds) — a lookup, never a new calculation. */
+function pbv2LayoutRequirementsSection(result) {
+  var out = '<div class="pbv2-h">LAYOUT REQUIREMENTS</div>';
+  for (var i = 0; i < 2; i++) {
+    var dimension = i === 0 ? 'width' : 'height';
+    var status = result.dimensionStatus[dimension];
+    if (status.status !== 'LAYOUT_DEPENDENT') continue;
+    out += '<div class="pbv2-card" style="border-left:3px solid ' + PBV2_COLOR[dimension] + '">'
+      + '<div class="pbv2-h" style="margin-top:0;color:' + PBV2_COLOR[dimension] + '">'
+      + dimension.toUpperCase() + ' \u2014 LAYOUT DEPENDENT</div>';
+    for (var j = 0; j < status.constrainedBySpacingIds.length; j++) {
+      var sp = pbv2FindReq(result.spacingRequirements, status.constrainedBySpacingIds[j]);
+      if (!sp) continue;
+      out += '<div>' + pbv2Esc(pbv2EntryDesc(PBV2, sp.entryIds[0])) + ' \u2194 '
+        + pbv2Esc(pbv2EntryDesc(PBV2, sp.entryIds[1])) + ': '
+        + pbv2In(sp.minimumInches) + ' minimum entry spacing</div>';
+    }
+    out += '<div class="pbv2-note">Final ' + dimension + ' also requires physical room for '
+      + 'the raceway entries and fittings.</div></div>';
+  }
+  return out;
+}
 function pbv2Calculate() {
   EC_CODE_CONTEXTS = [];   // fresh context registry per calculation
   var result = EC.pullBox.calculatePullBox({
@@ -9133,19 +9183,14 @@ function pbv2RenderResults(result) {
       + '</div>';
     return;
   }
-  var out = '<div class="pbv2-h">MINIMUM INSIDE DIMENSIONS</div><div class="pbv2-card">'
-    + '<div class="pbv2-dim"><span class="pbv2-dimlabel">WIDTH</span>'
-    + (result.minimumWidthIn === null
-      ? '<span class="pbv2-stale">Not determined from current pulls</span>'
-      : '<span class="pbv2-dimvalue" style="color:' + PBV2_COLOR.width + '">'
-        + pbv2In(result.minimumWidthIn) + '</span>')
-    + '</div>'
-    + '<div class="pbv2-dim"><span class="pbv2-dimlabel">HEIGHT</span>'
-    + (result.minimumHeightIn === null
-      ? '<span class="pbv2-stale">Not determined from current pulls</span>'
-      : '<span class="pbv2-dimvalue" style="color:' + PBV2_COLOR.height + '">'
-        + pbv2In(result.minimumHeightIn) + '</span>')
-    + '</div></div>';
+  var out = '<div class="pbv2-h">PULL-RULE MINIMUM DIMENSIONS</div><div class="pbv2-card">'
+    + pbv2AxisBlock('WIDTH', 'width', result.minimumWidthIn, result.dimensionStatus.width)
+    + pbv2AxisBlock('HEIGHT', 'height', result.minimumHeightIn, result.dimensionStatus.height)
+    + '</div>';
+  if (result.dimensionStatus.width.status === 'LAYOUT_DEPENDENT'
+    || result.dimensionStatus.height.status === 'LAYOUT_DEPENDENT') {
+    out += pbv2LayoutRequirementsSection(result);
+  }
 
   // Governing cards: the UI TRUSTS the engine's governing ids and only looks
   // the matching requirement up for presentation.
