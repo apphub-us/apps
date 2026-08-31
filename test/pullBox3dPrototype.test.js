@@ -36,7 +36,7 @@ function api3d() {
     'pbv23dNextPosition', 'pbv23dAddEntry', 'pbv23dDeleteEntry', 'pbv23dSetSize',
     'pbv23dSetPosition', 'pbv23dSetWall', 'pbv23dClassify', 'pbv23dAddConnection',
     'pbv23dDeleteConnection', 'pbv23dRoutePath', 'pbv23dBuildFixture',
-    'pbv23dConnColor', 'pbv23dEntryConns', 'pbv23dEntryColor', 'pbv23dHitRadius',
+    'pbv23dConnColor', 'pbv23dConnNumber', 'pbv23dEntryConns', 'pbv23dEntryColor', 'pbv23dHitRadius',
     'pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex', 'pbv23dAddRowOnWall',
     'pbv23dEnsureRow', 'pbv23dSetEntryRow', 'pbv23dDeleteRowIfEmpty', 'pbv23dRowDepth',
     'pbv23dRowIdFor', 'pbv23dEngineRequest', 'pbv23dPresent',
@@ -65,7 +65,8 @@ function api3d() {
     exports.rowsFor = pbv23dRowsFor; exports.rowById = pbv23dRowById;
     exports.rowIndex = pbv23dRowIndex; exports.addRow = pbv23dAddRowOnWall;
     exports.ensureRow = pbv23dEnsureRow; exports.setRow = pbv23dSetEntryRow;
-    exports.dropRow = pbv23dDeleteRowIfEmpty; exports.rowDepth = pbv23dRowDepth;`)(out);
+    exports.dropRow = pbv23dDeleteRowIfEmpty; exports.rowDepth = pbv23dRowDepth;
+    exports.connNumber = pbv23dConnNumber;`)(out);
   return out;
 }
 
@@ -1225,7 +1226,7 @@ describe('PBV2-12.1 — UX polish', () => {
       'pbv23dSetEntryRow', 'pbv23dDeleteRowIfEmpty', 'pbv23dRowDepth', 'pbv23dFindEntry',
       'pbv23dNextPosition', 'pbv23dAddEntry', 'pbv23dDeleteEntry', 'pbv23dSetSize',
       'pbv23dSetPosition', 'pbv23dSetWall', 'pbv23dClassify', 'pbv23dAddConnection',
-      'pbv23dConnColor', 'pbv23dEntryConns', 'pbv23dEntryColor', 'pbv23dHitRadius',
+      'pbv23dConnColor', 'pbv23dConnNumber', 'pbv23dEntryConns', 'pbv23dEntryColor', 'pbv23dHitRadius',
       'pbv23dRoutePath', 'pbv23dBuildFixture', 'pbv23dEngineRequest', 'pbv23dPresent',
       'pbv23dTapWall', 'pbv23dStartAdd', 'pbv23dCancelAdd', 'pbv23dTapEntry',
       'pbv23dPickRow', 'pbv23dAddRowHere', 'pbv23dCalculate', 'pbv23dInvalidateResult',
@@ -1609,5 +1610,206 @@ describe('PBV2-12.2 — add action and label consistency', () => {
     const three = s.entries.find((e) => e.size === '3');
     api.setRow(s, three.id, api.rowsFor(s, 'left')[0].id);
     assert.strictEqual(engine.calculatePullBox(api.request(s)).minimumWidthIn, 29);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-12.3 — results clarity + numbered pull relationships
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-12.3 — results clarity', () => {
+  const api = api3d();
+  const engine = require('../src/calc/pullBox');
+
+  /** Renders the SHIPPED result HTML for a state, using the real engine. */
+  function resultsFor(state) {
+    const consts = ['PBV23D_GEO', 'PBV23D_SIZES', 'PBV23D_WALLS', 'PBV23D_CONN_COLORS',
+      'PBV23D_NEUTRAL', 'PBV23D_PULL_WORD']
+      .map((c) => html.match(new RegExp('var ' + c + ' = [\\s\\S]*?;\\n'))[0]).join('');
+    const names = ['pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex', 'pbv23dFindEntry',
+      'pbv23dConnColor', 'pbv23dConnNumber', 'pbv23dEngineRequest', 'pbv23dPresent',
+      'pbv23dIn', 'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dResultHtml'];
+    const out = {};
+    // eslint-disable-next-line no-new-func
+    new Function('EC', 'exports',
+      'var PBV23D = null; var pbv23dPresentation = null;\n'
+      + 'var PBV23D_ERROR_TEXT = { NO_ENTRIES: "Add at least one raceway before calculating." };\n'
+      + consts + names.map(fn3d).join('\n') + `
+      exports.render = function (state) {
+        PBV23D = state;
+        pbv23dPresentation = pbv23dPresent(
+          EC.pullBox.calculatePullBox(pbv23dEngineRequest(state)));
+        return { html: pbv23dResultHtml(), presentation: pbv23dPresentation };
+      };`)({ pullBox: engine }, out);
+    return out.render(state);
+  }
+  const text = (h) => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+  function bothResolved() {
+    const s = api.empty();
+    const a = api.add(s, 'left', '4', api.nextId('e'));
+    const b = api.add(s, 'right', '4', api.nextId('e'));
+    const t = api.add(s, 'top', '3', api.nextId('e'));
+    const bt = api.add(s, 'bottom', '3', api.nextId('e'));
+    api.connect(s, a.id, b.id, api.nextId('c'));
+    api.connect(s, t.id, bt.id, api.nextId('c'));
+    return s;
+  }
+
+  test('PRIMARY: both axes resolved lead with a required box size', () => {
+    const { html: h, presentation: p } = resultsFor(bothResolved());
+    assert.strictEqual(p.width.kind, 'RESOLVED');
+    assert.strictEqual(p.height.kind, 'RESOLVED');
+    const t = text(h);
+    assert.ok(t.startsWith('REQUIRED BOX SIZE'), 'the section answers the real question first');
+    assert.ok(h.includes('p3d-boxsize'), 'and is the strongest element on screen');
+    assert.ok(t.includes('32\u2033 W \u00D7 24\u2033 H'), 'engine values as W x H: ' + t);
+    assert.ok(!/dimensionStatus|governing|LAYOUT_DEPENDENT|minimumWidthIn/.test(t),
+      'no implementation terminology reaches the user');
+  });
+
+  test('RESOLVED values are labelled, never naked numbers', () => {
+    const t = text(resultsFor(bothResolved()).html);
+    assert.ok(/WIDTH 32\u2033 required minimum/.test(t), 'every number has a noun: ' + t);
+    assert.ok(/HEIGHT 24\u2033 required minimum/.test(t));
+    assert.ok(!/\bMIN\b/.test(t), 'no naked MIN rows remain anywhere');
+  });
+
+  test('LAYOUT_DEPENDENT is never presented as a final box width', () => {
+    const { html: h, presentation: p } = resultsFor(api.build('standard'));
+    assert.strictEqual(p.width.kind, 'LAYOUT_DEPENDENT');
+    const t = text(h);
+    assert.ok(t.includes('NOT FULLY DETERMINED'));
+    assert.ok(!h.includes('p3d-boxsize'), 'no W x H headline while an axis is unresolved');
+    assert.ok(t.includes('Known requirements:'), 'reasons grouped and secondary');
+    assert.ok(t.includes('Pull-rule minimum width: 12\u2033'), 'rule minimum named as such');
+    assert.ok(t.includes('Largest entry-spacing requirement: 18\u2033'));
+    assert.ok(t.includes('physical entry and fitting layout'));
+    assert.ok(!/WIDTH 12\u2033/.test(t), 'the rule minimum can never read as the answer');
+    assert.ok(t.includes('HEIGHT 21\u2033 required minimum'), 'the resolved axis still reads plainly');
+  });
+
+  test('SPACING results are numbered, typed and fully described', () => {
+    const { html: h, presentation: p } = resultsFor(api.build('standard'));
+    const t = text(h);
+    assert.strictEqual(p.spacing.length, 2);
+    assert.ok(t.includes('U PULL') && t.includes('ANGLE PULL'), 'pull type in words');
+    assert.ok(t.includes('3\u2033 BOTTOM \u2194 3\u2033 BOTTOM'), 'both endpoints described');
+    assert.ok(t.includes('2\u2033 LEFT \u2194 2\u2033 TOP'));
+    assert.strictEqual((t.match(/Minimum required spacing:/g) || []).length, 2,
+      'each value carries an explicit noun');
+    for (const sp of p.spacing) {
+      assert.ok(t.includes(sp.minimumInches + '\u2033'), 'engine value rendered verbatim');
+      assert.ok(sp.connectionId, 'the presentation keeps engine connection identity');
+    }
+    assert.ok(!/[*]|Math\./.test(fn3d('pbv23dResultHtml')), 'no arithmetic in the renderer');
+  });
+
+  test('IDENTITY: the same number and colour link drawing to results', () => {
+    const s = api.build('standard');
+    const { html: h, presentation: p } = resultsFor(s);
+    const svg = api.svg(s, {});
+    for (const conn of s.connections) {
+      const num = api.connNumber(s, conn.id);
+      const col = api.connColor(s, conn.id);
+      assert.ok(new RegExp('class="p3d-connnum" data-conn="' + conn.id
+        + '"[^>]*stroke="' + col + '"').test(svg), 'badge on the route for ' + conn.id);
+      assert.ok(new RegExp('data-conn="' + conn.id + '"[^>]*stroke="' + col + '"')
+        .test(svg), 'route wears the same colour');
+      const sp = p.spacing.find((x) => x.connectionId === conn.id);
+      if (!sp) continue;
+      const card = h.slice(h.indexOf('border-left:3px solid ' + col));
+      assert.ok(card.indexOf('>' + num + '</span>') !== -1,
+        'result card carries the same number ' + num);
+    }
+    // the badge text is present for every connection
+    assert.strictEqual((svg.match(/class="p3d-connnum"/g) || []).length, s.connections.length);
+  });
+
+  test('IDENTITY: numbering is deterministic and independent of pull type', () => {
+    const s = api.build('standard');
+    const before = s.connections.map((c) => api.connNumber(s, c.id));
+    const three = s.entries.find((e) => e.size === '3');
+    api.setPos(s, three.id, 0.9);
+    api.setRow(s, three.id, api.rowsFor(s, 'bottom')[0].id);
+    resultsFor(s);
+    assert.deepStrictEqual(s.connections.map((c) => api.connNumber(s, c.id)), before,
+      'selection, position, row and calculation never reshuffle numbers');
+    // two pulls of the SAME type get different numbers and colours
+    const q = api.empty();
+    const a = api.add(q, 'left', '2', api.nextId('e'));
+    const b = api.add(q, 'right', '2', api.nextId('e'));
+    const c = api.add(q, 'top', '2', api.nextId('e'));
+    const d = api.add(q, 'bottom', '2', api.nextId('e'));
+    const c1 = api.nextId('c'); const c2 = api.nextId('c');
+    api.connect(q, a.id, b.id, c1);
+    api.connect(q, c.id, d.id, c2);
+    assert.strictEqual(api.connNumber(q, c1), 1);
+    assert.strictEqual(api.connNumber(q, c2), 2);
+    assert.notStrictEqual(api.connColor(q, c1), api.connColor(q, c2));
+    assert.strictEqual(api.connColor(q, c1), api.PALETTE[0],
+      'palette position follows order, never pull type');
+  });
+
+  test('a raceway in several pulls is identified separately in each result', () => {
+    const s = api.empty();
+    const hub = api.add(s, 'left', '2', api.nextId('e'));
+    const t = api.add(s, 'top', '2', api.nextId('e'));
+    const bt = api.add(s, 'bottom', '3', api.nextId('e'));
+    api.connect(s, hub.id, t.id, api.nextId('c'));
+    api.connect(s, hub.id, bt.id, api.nextId('c'));
+    const { presentation: p } = resultsFor(s);
+    assert.strictEqual(p.spacing.length, 2, 'each pull states its own requirement');
+    assert.notStrictEqual(p.spacing[0].connectionId, p.spacing[1].connectionId);
+    assert.strictEqual(api.entryColor(s, hub.id), api.NEUTRAL,
+      'the shared hub never claims one relationship colour');
+    assert.ok(api.svg(s, {}).includes('p3d-multiring'), 'and stays flagged as shared');
+  });
+
+  test('obsolete prototype messaging and drawing row labels are gone', () => {
+    const t = text(resultsFor(api.build('rows')).html);
+    assert.ok(!/rows are not modelled/i.test(t), 'the false row disclaimer is removed');
+    assert.ok(!/rows are not modelled/i.test(P3D), 'and nowhere in the block');
+    assert.ok(!/pbv2=1|Code references are not shown/i.test(t),
+      'no dev messaging inside calculation results');
+    const s = api.build('rows');
+    const three = s.entries.find((e) => e.size === '3');
+    for (const svg of [api.svg(s, {}), api.svg(s, { selected: three.id }),
+      api.svg(s, { addMode: true })]) {
+      assert.ok(!/>R\d<\/text>/.test(svg), 'no standalone R1/R2 text in the drawing');
+    }
+    assert.ok(api.svg(s, { selected: three.id }).includes('3&#8243;'),
+      'the selected hub still identifies by trade size');
+  });
+
+  test('LAYOUT: results are clearly separated from the action controls', () => {
+    assert.ok(/\.p3d-res\{margin:22px 14px 120px;[^}]*padding-top:16px/.test(P3D),
+      'explicit separation from the context bar');
+    assert.ok(/\.p3d-bar\{margin-bottom:4px\}/.test(P3D));
+    assert.ok(!/<table/.test(P3D), 'stacked cards, not a wide table');
+    assert.ok(P3D.includes('max-width:430px'), 'phone width cap intact');
+  });
+
+  test('REGRESSION: engine boundary, add mode, rows, calculate, dense all intact', () => {
+    const code = P3D.slice(P3D.indexOf('<style>'));
+    assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
+    assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/.test(code), 'no NEC arithmetic');
+    assert.ok(!/"v":/.test(JSON.stringify(api.request(api.build('rows')))));
+    assert.ok(fn3d('pbv23dTapWall').includes('if (!pbv23dAddMode'), 'add gating intact');
+    assert.ok(fn3d('pbv23dBarHtml').includes('pbv23dStartAdd()'), 'persistent ADD intact');
+    assert.ok(fn3d('pbv23dSheetBody').includes('id="pbv2-3d-sheet-calc"'), 'sheet CALCULATE');
+    assert.ok(fn3d('pbv23dSetEntryRow').includes('pbv23dDeleteRowIfEmpty'), 'row auto-clean');
+    // the 26 -> 29 multi-row demo
+    const s = api.build('rows');
+    assert.strictEqual(engine.calculatePullBox(api.request(s)).minimumWidthIn, 26);
+    const three = s.entries.find((e) => e.size === '3');
+    api.setRow(s, three.id, api.rowsFor(s, 'left')[0].id);
+    assert.strictEqual(engine.calculatePullBox(api.request(s)).minimumWidthIn, 29);
+    // dense: all raceways plus one badge per relationship
+    const d = api.build('dense');
+    const dsvg = api.svg(d, {});
+    assert.strictEqual((dsvg.match(/class="p3d-hub"/g) || []).length, 16);
+    assert.strictEqual((dsvg.match(/class="p3d-hit"/g) || []).length, 16);
+    assert.strictEqual((dsvg.match(/class="p3d-connnum"/g) || []).length, d.connections.length);
   });
 });

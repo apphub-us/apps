@@ -9358,7 +9358,12 @@ function pbv2ResetConfirm() {
 .p3d-btn{min-height:44px;padding:8px 12px;background:#181818;border:1px solid #2c2c2c;border-radius:8px;color:#ddd;font-size:12px;cursor:pointer}
 .p3d-btn.p3d-danger{color:#c0392b}
 .p3d-hint{padding:8px 14px 0;font-size:11px;color:#7a7a7a;line-height:1.5}
-.p3d-res{margin:12px 14px 120px;border-top:1px solid #1e1e1e;padding-top:10px}
+.p3d-res{margin:22px 14px 120px;border-top:1px solid #1e1e1e;padding-top:16px}
+.p3d-bar{margin-bottom:4px}
+.p3d-boxsize{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:#eee;letter-spacing:0.5px;padding:2px 0 4px}
+.p3d-card{background:#101010;border:1px solid #222;border-radius:10px;padding:10px;margin-top:8px}
+.p3d-cardhead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.p3d-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1.5px solid;border-radius:50%;font-family:'IBM Plex Mono',monospace;font-size:11px}
 .p3d-h{font-size:10px;letter-spacing:1px;color:#7a7a7a;margin-bottom:6px}
 .p3d-row{display:flex;align-items:baseline;gap:12px;padding:4px 0}
 .p3d-lab{font-size:10px;letter-spacing:1px;color:#8a8a8a;min-width:56px}
@@ -9447,6 +9452,16 @@ function pbv23dConnColor(state, connId) {
     }
   }
   return PBV23D_NEUTRAL;
+}
+/** Display number for a pull relationship — derived from the connection's
+ *  position in state.connections, the SAME index that picks its colour, so
+ *  number and colour always name the same relationship on the drawing and
+ *  in the results. Stable while state is unchanged. */
+function pbv23dConnNumber(state, connId) {
+  for (var i = 0; i < state.connections.length; i++) {
+    if (state.connections[i].id === connId) return i + 1;
+  }
+  return 0;
 }
 function pbv23dEntryConns(state, entryId) {
   return state.connections.filter(function (c) {
@@ -9851,6 +9866,22 @@ function pbv23dRenderSvg(state, ui) {
       + pbv23dRoutePath(type, ea.wall, hubs[ea.id], eb.wall, hubs[eb.id]) + '"/>';
   }
   s += '</g>';
+  // numbered badge per relationship: identity without relying on colour alone
+  s += '<g class="p3d-connnums" style="pointer-events:none">';
+  for (i = 0; i < state.connections.length; i++) {
+    var cn = state.connections[i];
+    var na = pbv23dFindEntry(state, cn.a); var nb = pbv23dFindEntry(state, cn.b);
+    if (!na || !nb) continue;
+    var ncol = pbv23dConnColor(state, cn.id);
+    var mx = (hubs[na.id].x + hubs[nb.id].x) / 2;
+    var my = (hubs[na.id].y + hubs[nb.id].y) / 2;
+    s += '<circle class="p3d-connnum" data-conn="' + cn.id + '" cx="' + mx + '" cy="' + my
+      + '" r="7" fill="#0a0a0a" stroke="' + ncol + '" stroke-width="1.5"/>'
+      + '<text x="' + mx + '" y="' + (my + 3.2) + '" fill="' + ncol + '" font-size="9" '
+      + 'font-family="monospace" text-anchor="middle">'
+      + pbv23dConnNumber(state, cn.id) + '</text>';
+  }
+  s += '</g>';
 
   // raceways: exterior stub, through-wall run, opening, invisible 44px target
   s += '<g class="p3d-raceways" style="pointer-events:none">';
@@ -10051,8 +10082,8 @@ function pbv23dPresent(result) {
     width: axis('width'),
     height: axis('height'),
     spacing: result.spacingRequirements.map(function (s) {
-      return { id: s.id, entryIds: s.entryIds, minimumInches: s.minimumInches,
-        connectionType: s.connectionType };
+      return { id: s.id, connectionId: s.connectionId, entryIds: s.entryIds,
+        minimumInches: s.minimumInches, connectionType: s.connectionType };
     }),
     warnings: result.warnings,
     scopeNotes: result.scopeNotes,
@@ -10128,61 +10159,77 @@ function pbv23dInvalidateResult() {
 }
 function pbv23dIn(n) { return String(n) + '\u2033'; }
 function pbv23dAxisRow(label, axis) {
+  var colour = label === 'WIDTH' ? '#4a90d9' : '#52c07a';
   if (axis.kind === 'RESOLVED') {
     return '<div class="p3d-row"><span class="p3d-lab">' + label + '</span>'
-      + '<span class="p3d-val" style="color:'
-      + (label === 'WIDTH' ? '#4a90d9' : '#52c07a') + '">'
-      + pbv23dIn(axis.valueIn) + '</span></div>';
+      + '<span class="p3d-val" style="color:' + colour + '">'
+      + pbv23dIn(axis.valueIn) + '</span>'
+      + '<span style="font-size:11px;color:#8a8a8a">required minimum</span></div>';
   }
   if (axis.kind === 'LAYOUT_DEPENDENT') {
     return '<div class="p3d-row"><span class="p3d-lab">' + label + '</span>'
       + '<span class="p3d-val p3d-undet">NOT FULLY DETERMINED</span></div>'
-      + '<div class="p3d-note" style="margin-top:0">'
+      + '<div class="p3d-note" style="margin-top:0">Known requirements:<br>'
       + (axis.pullRuleIn === null
-        ? 'No pull-rule ' + label.toLowerCase() + ' candidate from the current pulls.'
-        : 'Pull-rule minimum: ' + pbv23dIn(axis.pullRuleIn))
-      + '<br>Known entry-spacing requirement: ' + pbv23dIn(axis.entrySpacingIn)
-      + ' minimum<br>Final ' + label.toLowerCase() + ' also depends on physical room for '
-      + 'the raceway entries and fittings.</div>';
+        ? '\u2022 No pull-rule ' + label.toLowerCase() + ' requirement from these pulls'
+        : '\u2022 Pull-rule minimum ' + label.toLowerCase() + ': ' + pbv23dIn(axis.pullRuleIn))
+      + '<br>\u2022 Largest entry-spacing requirement: ' + pbv23dIn(axis.entrySpacingIn)
+      + '<br>\u2022 Final ' + label.toLowerCase() + ' still depends on the physical entry '
+      + 'and fitting layout, which this tool does not model.</div>';
   }
   return '<div class="p3d-row"><span class="p3d-lab">' + label + '</span>'
-    + '<span class="p3d-val p3d-undet">Not determined from current pulls</span></div>';
+    + '<span class="p3d-val p3d-undet">No requirement from these pulls</span></div>';
+}
+var PBV23D_PULL_WORD = { STRAIGHT: 'STRAIGHT PULL', ANGLE: 'ANGLE PULL', U: 'U PULL' };
+/** Endpoint description from editor state — presentation lookup only. */
+function pbv23dEndpointText(entryId) {
+  var e = pbv23dFindEntry(PBV23D, entryId);
+  return e ? (e.size + '\u2033 ' + e.wall.toUpperCase()) : '?';
 }
 function pbv23dResultHtml() {
   var p = pbv23dPresentation;
   if (!p || p.state === 'NONE') {
-    return '<div class="p3d-h">DIMENSIONS</div>'
-      + '<div class="p3d-note">Tap CALCULATE to run the Pull Box engine on this box.</div>';
+    return '<div class="p3d-h">REQUIRED BOX SIZE</div>'
+      + '<div class="p3d-note">Tap CALCULATE to size this box.</div>';
   }
   if (p.state === 'INVALID') {
-    return '<div class="p3d-h">DIMENSIONS</div><div class="p3d-note">'
+    return '<div class="p3d-h">REQUIRED BOX SIZE</div><div class="p3d-note">'
       + (PBV23D_ERROR_TEXT[p.reason]
         || 'This configuration cannot be calculated (' + p.reason + ').') + '</div>';
   }
-  var out = '<div class="p3d-h">PULL-RULE MINIMUM DIMENSIONS</div>'
-    + pbv23dAxisRow('WIDTH', p.width) + pbv23dAxisRow('HEIGHT', p.height);
+  var out = '<div class="p3d-h">REQUIRED BOX SIZE</div>';
+  if (p.width.kind === 'RESOLVED' && p.height.kind === 'RESOLVED') {
+    // both axes resolved: lead with the answer the electrician came for
+    out += '<div class="p3d-boxsize">' + pbv23dIn(p.width.valueIn) + ' W  \u00D7  '
+      + pbv23dIn(p.height.valueIn) + ' H</div>'
+      + '<div class="p3d-note" style="margin-top:2px">Minimum inside dimensions required by '
+      + 'the pull rules for this arrangement. Depth is not calculated, and the actual entry '
+      + 'spacing must still be checked in the physical layout.</div>';
+  }
+  out += pbv23dAxisRow('WIDTH', p.width) + pbv23dAxisRow('HEIGHT', p.height);
   if (p.spacing.length > 0) {
-    out += '<div class="p3d-h" style="margin-top:12px">ENTRY SPACING</div>';
+    out += '<div class="p3d-h" style="margin-top:14px">ENTRY SPACING</div>';
     for (var i = 0; i < p.spacing.length; i++) {
       var sp = p.spacing[i];
-      var a = pbv23dFindEntry(PBV23D, sp.entryIds[0]);
-      var b = pbv23dFindEntry(PBV23D, sp.entryIds[1]);
-      out += '<div class="p3d-row"><span class="p3d-lab">MIN</span>'
-        + '<span class="p3d-val" style="font-size:14px;color:#b06ae8">'
-        + pbv23dIn(sp.minimumInches) + '</span>'
-        + '<span style="font-size:11px;color:#8a8a8a">'
-        + (a ? a.size + '\u2033 ' + a.wall : '?') + ' \u2194 '
-        + (b ? b.size + '\u2033 ' + b.wall : '?') + '</span></div>';
+      var num = pbv23dConnNumber(PBV23D, sp.connectionId);
+      var col = pbv23dConnColor(PBV23D, sp.connectionId);
+      out += '<div class="p3d-card" style="border-left:3px solid ' + col + '">'
+        + '<div class="p3d-cardhead"><span class="p3d-num" style="border-color:' + col
+        + ';color:' + col + '">' + num + '</span><span style="color:' + col
+        + ';font-size:11px;letter-spacing:1px">'
+        + (PBV23D_PULL_WORD[sp.connectionType] || 'PULL') + '</span></div>'
+        + '<div style="font-size:12px;color:#ccc">'
+        + pbv23dEndpointText(sp.entryIds[0]) + '  \u2194  '
+        + pbv23dEndpointText(sp.entryIds[1]) + '</div>'
+        + '<div style="font-size:12px;margin-top:4px">Minimum required spacing: '
+        + '<strong style="font-family:monospace">' + pbv23dIn(sp.minimumInches)
+        + '</strong></div></div>';
     }
   }
   if (p.warnings.length > 0) {
     out += '<div class="p3d-note">Unconnected raceways are still counted in same-row '
       + 'sizing.</div>';
   }
-  out += '<div class="p3d-note">Engine result. Rows are not modelled in this prototype: '
-    + 'all raceways on a wall are treated as one row, which can only ever return a '
-    + 'requirement equal to or larger than a multi-row layout. Code references are not '
-    + 'shown here yet \u2014 they stay at ?pbv2=1.</div>';
   return out;
 }
 function pbv23dRender() {
