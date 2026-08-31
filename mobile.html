@@ -9360,6 +9360,9 @@ function pbv2ResetConfirm() {
 .p3d-hint{padding:8px 14px 0;font-size:11px;color:#7a7a7a;line-height:1.5}
 .p3d-res{margin:22px 14px 120px;border-top:1px solid #1e1e1e;padding-top:16px}
 .p3d-bar{margin-bottom:4px}
+.p3d-globals{display:flex;gap:8px;flex:1 0 100%}
+.p3d-globals .p3d-btn{flex:1}
+.p3d-btn[disabled]{opacity:0.45}
 .p3d-boxsize{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:#eee;letter-spacing:0.5px;padding:2px 0 4px}
 .p3d-card{background:#101010;border:1px solid #222;border-radius:10px;padding:10px;margin-top:8px}
 .p3d-cardhead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
@@ -10102,41 +10105,48 @@ function pbv23dConnTypeOf(state, id) {
   return '';
 }
 function pbv23dBarHtml(state) {
+  // Incomplete gestures own the bar exclusively: never leave two interaction
+  // states live at once.
+  if (pbv23dAddMode) {
+    return '<span class="p3d-barlabel">Tap a wall to place raceway</span>'
+      + '<button class="p3d-btn" type="button" onclick="pbv23dCancelAdd()">CANCEL</button>';
+  }
   if (pbv23dConnectFrom) {
     var src = pbv23dFindEntry(state, pbv23dConnectFrom);
     return '<span class="p3d-barlabel">Connect ' + (src ? src.size + '\u2033 ' + src.wall : '')
       + ' \u2192 tap another raceway</span>'
       + '<button class="p3d-btn" type="button" onclick="pbv23dCancelConnect()">CANCEL</button>';
   }
-  if (pbv23dAddMode) {
-    return '<span class="p3d-barlabel">Tap a wall to place raceway</span>'
-      + '<button class="p3d-btn" type="button" onclick="pbv23dCancelAdd()">CANCEL</button>';
-  }
+  // ── GLOBAL BOX ACTIONS: always present in every normal state, because
+  //    adding a raceway and sizing the box are box-level, not selection-level
+  var n = state.entries.length;
+  var calcLabel = pbv23dPresentation ? 'RECALCULATE' : 'CALCULATE';
+  var out = '<span class="p3d-globals">'
+    + '<button class="p3d-btn" type="button" id="pbv2-3d-add" '
+    + 'onclick="pbv23dStartAdd()">+ ADD RACEWAY</button>'
+    + '<button class="p3d-btn" type="button" id="pbv2-3d-calc" '
+    + 'style="border-color:#ffc700;color:#ffc700"' + (n === 0 ? ' disabled' : '')
+    + ' onclick="pbv23dCalculate()">' + calcLabel + '</button></span>';
+  // ── SELECTION TIER: summary and the actions that act on one raceway
   if (!pbv23dSelected) {
-    var n = state.entries.length; var k = state.connections.length;
-    return '<span class="p3d-barlabel">' + n + ' raceway' + (n === 1 ? '' : 's')
-      + ' \u00B7 ' + k + ' pull' + (k === 1 ? '' : 's') + '</span>'
-      + '<button class="p3d-btn" type="button" id="pbv2-3d-add" '
-      + 'onclick="pbv23dStartAdd()">+ ADD RACEWAY</button>'
-      + '<button class="p3d-btn" type="button" id="pbv2-3d-calc" style="border-color:#ffc700;'
-      + 'color:#ffc700"' + (n === 0 ? ' disabled' : '')
-      + ' onclick="pbv23dCalculate()">CALCULATE</button>';
+    var k = state.connections.length;
+    return out + '<span class="p3d-barlabel" style="flex:1 0 100%;font-size:11px">'
+      + n + ' raceway' + (n === 1 ? '' : 's') + ' \u00B7 ' + k + ' pull'
+      + (k === 1 ? '' : 's') + '</span>';
   }
   var e = pbv23dFindEntry(state, pbv23dSelected);
-  if (!e) return '';
+  if (!e) return out;
   var conns = state.connections.filter(function (c) {
     return c.a === e.id || c.b === e.id;
   });
   var types = conns.map(function (c) { return pbv23dConnTypeOf(state, c.id); }).join(', ');
-  // summary hierarchy: trade size, wall, then row identity as context
-  return '<span class="p3d-barlabel" style="flex:1 0 100%">' + e.size + '\u2033 \u00B7 '
+  return out + '<span class="p3d-barlabel" style="flex:1 0 100%">' + e.size + '\u2033 \u00B7 '
     + e.wall.toUpperCase() + ' \u00B7 R' + (pbv23dRowIndex(state, e.rowId) + 1)
     + (types ? ' \u00B7 ' + types : '') + '</span>'
-    + '<button class="p3d-btn" type="button" id="pbv2-3d-add-sel" '
-    + 'onclick="pbv23dStartAdd()">+ ADD</button>'
     + '<button class="p3d-btn" type="button" onclick="pbv23dOpenSheet()">EDIT</button>'
     + '<button class="p3d-btn" type="button" onclick="pbv23dStartConnect()">CONNECT</button>'
-    + '<button class="p3d-btn p3d-danger" type="button" onclick="pbv23dDeleteSelected()">DELETE</button>';
+    + '<button class="p3d-btn p3d-danger" type="button" '
+    + 'onclick="pbv23dDeleteSelected()">DELETE</button>';
 }
 var pbv23dLastResult = null;      // engine result object, or null
 var pbv23dPresentation = null;    // adapter presentation model, or null

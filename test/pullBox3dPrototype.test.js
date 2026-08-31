@@ -1472,9 +1472,11 @@ describe('PBV2-12.2 — add action and label consistency', () => {
       fn3d('pbv23dBarHtml')].join('\n');
     const out = {};
     // eslint-disable-next-line no-new-func
-    new Function('pbv23dSelected', 'pbv23dConnectFrom', 'pbv23dAddMode', 'exports',
+    new Function('pbv23dSelected', 'pbv23dConnectFrom', 'pbv23dAddMode',
+      'pbv23dPresentation', 'exports',
       src + ';exports.bar = pbv23dBarHtml;')(
-      opts.selected || null, opts.connectFrom || null, !!opts.addMode, out);
+      opts.selected || null, opts.connectFrom || null, !!opts.addMode,
+      opts.presentation || null, out);
     return out.bar(state);
   }
 
@@ -1486,8 +1488,10 @@ describe('PBV2-12.2 — add action and label consistency', () => {
     const selected = barFor(s, { selected: s.entries[0].id });
     assert.ok(selected.includes('pbv23dStartAdd()'),
       'selecting a raceway must never remove the ability to add another');
-    assert.ok(/id="pbv2-3d-add-sel"/.test(selected),
-      'the selected-state add button carries its own unique element id');
+    // PBV2-12.3.1: ADD moved into a single global-actions tier that renders
+    // in every normal state, so there is now one add control, not two
+    assert.ok(/id="pbv2-3d-add"/.test(selected), 'the global add control is present');
+    assert.ok(selected.includes('p3d-globals'), 'it lives in the global action tier');
     // the selection actions are still there alongside it
     for (const action of ['pbv23dOpenSheet()', 'pbv23dStartConnect()',
       'pbv23dDeleteSelected()']) {
@@ -1811,5 +1815,152 @@ describe('PBV2-12.3 — results clarity', () => {
     assert.strictEqual((dsvg.match(/class="p3d-hub"/g) || []).length, 16);
     assert.strictEqual((dsvg.match(/class="p3d-hit"/g) || []).length, 16);
     assert.strictEqual((dsvg.match(/class="p3d-connnum"/g) || []).length, d.connections.length);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-12.3.1 — persistent global CALCULATE
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-12.3.1 — global CALCULATE', () => {
+  const api = api3d();
+  const engine = require('../src/calc/pullBox');
+
+  function bar(state, opts) {
+    opts = opts || {};
+    const src = [fn3d('pbv23dFindEntry'), fn3d('pbv23dRowsFor'), fn3d('pbv23dRowById'),
+      fn3d('pbv23dRowIndex'), fn3d('pbv23dClassify'), fn3d('pbv23dConnTypeOf'),
+      fn3d('pbv23dBarHtml')].join('\n');
+    const out = {};
+    // eslint-disable-next-line no-new-func
+    new Function('pbv23dSelected', 'pbv23dConnectFrom', 'pbv23dAddMode',
+      'pbv23dPresentation', 'exports', src + ';exports.bar = pbv23dBarHtml;')(
+      opts.selected || null, opts.connectFrom || null, !!opts.addMode,
+      opts.presentation || null, out);
+    return out.bar(state);
+  }
+  const hasCalc = (h) => /id="pbv2-3d-calc"[^>]*onclick="pbv23dCalculate\(\)"/.test(h);
+  const hasAdd = (h) => /id="pbv2-3d-add"[^>]*onclick="pbv23dStartAdd\(\)"/.test(h);
+
+  test('CALCULATE and ADD are present in every normal state, in every fixture', () => {
+    for (const key of ['standard', 'rows', 'dense']) {
+      const s = api.build(key);
+      const idle = bar(s, {});
+      assert.ok(hasCalc(idle), key + ': CALCULATE with no selection');
+      assert.ok(hasAdd(idle), key + ': ADD with no selection');
+      // selecting a raceway must not remove either global action
+      for (const e of s.entries.slice(0, 4)) {
+        const sel = bar(s, { selected: e.id });
+        assert.ok(hasCalc(sel), key + ': CALCULATE survives selection of ' + e.id);
+        assert.ok(hasAdd(sel), key + ': ADD survives selection of ' + e.id);
+      }
+    }
+  });
+
+  test('global actions and selection actions form a clear two-tier hierarchy', () => {
+    const s = api.build('rows');
+    const sel = bar(s, { selected: s.entries[0].id });
+    // tier 1: box-level actions, in their own container
+    const globals = sel.slice(sel.indexOf('p3d-globals'),
+      sel.indexOf('</span>', sel.indexOf('p3d-globals')));
+    assert.ok(globals.includes('pbv23dStartAdd()') && globals.includes('pbv23dCalculate()'));
+    assert.ok(!globals.includes('pbv23dDeleteSelected()'),
+      'selection actions are not mixed into the global tier');
+    // tier 2: the summary and the per-raceway actions come after
+    assert.ok(sel.indexOf('p3d-globals') < sel.indexOf('pbv23dOpenSheet()'),
+      'global actions render above selection actions');
+    for (const action of ['pbv23dOpenSheet()', 'pbv23dStartConnect()',
+      'pbv23dDeleteSelected()']) {
+      assert.ok(sel.includes(action), 'selection action still present: ' + action);
+    }
+    assert.ok(/flex:1 0 100%/.test(sel), 'the summary takes its own line on a phone');
+  });
+
+  test('the instruction can never appear without a usable CALCULATE', () => {
+    // results say "Tap CALCULATE to size this box" exactly when no result is
+    // present — and in that same state the bar must offer CALCULATE
+    const s = api.build('standard');
+    const idle = bar(s, { presentation: null });
+    assert.ok(hasCalc(idle), 'a calculate action exists whenever the prompt shows');
+    assert.ok(idle.includes('>CALCULATE<'), 'and it is labelled CALCULATE');
+    const sel = bar(s, { selected: s.entries[0].id, presentation: null });
+    assert.ok(hasCalc(sel), 'including while a raceway is selected — the Dense defect');
+    assert.ok(fn3d('pbv23dResultHtml').includes('Tap CALCULATE to size this box'),
+      'the prompt wording is unchanged');
+  });
+
+  test('label reflects whether a result is already on screen', () => {
+    const s = api.build('standard');
+    assert.ok(bar(s, {}).includes('>CALCULATE<'), 'no result yet');
+    assert.ok(bar(s, { presentation: { state: 'OK' } }).includes('>RECALCULATE<'),
+      'a result is showing');
+    // after an edit invalidates, the label returns to CALCULATE
+    assert.ok(bar(s, { presentation: null }).includes('>CALCULATE<'));
+  });
+
+  test('incomplete gestures own the bar, and hand it straight back', () => {
+    const s = api.build('standard');
+    const adding = bar(s, { addMode: true });
+    assert.ok(!hasCalc(adding) && !hasAdd(adding), 'placement is exclusive');
+    assert.ok(adding.includes('pbv23dCancelAdd()'));
+    const connecting = bar(s, { connectFrom: s.entries[0].id });
+    assert.ok(!hasCalc(connecting), 'connecting is exclusive');
+    assert.ok(connecting.includes('pbv23dCancelConnect()'));
+    // exiting either mode restores the globals immediately (same render path)
+    assert.ok(hasCalc(bar(s, {})) && hasAdd(bar(s, {})));
+    assert.ok(fn3d('pbv23dCancelAdd').includes('pbv23dRender()'));
+    assert.ok(fn3d('pbv23dCancelConnect').includes('pbv23dRender()'));
+    assert.ok(fn3d('pbv23dTapEntry').includes('pbv23dRender()'),
+      'a completed connection re-renders, restoring the globals');
+  });
+
+  test('an empty box keeps the control, disabled and deterministic', () => {
+    const empty = api.build('empty');
+    const h = bar(empty, {});
+    assert.ok(hasAdd(h), 'ADD is the useful action on an empty box');
+    assert.ok(/id="pbv2-3d-calc"[^>]*disabled/.test(h),
+      'CALCULATE stays structurally present but disabled');
+    // and becomes enabled as soon as there is something to size
+    const s = api.empty();
+    api.add(s, 'left', '2', api.nextId('e'));
+    assert.ok(!/id="pbv2-3d-calc"[^>]*disabled/.test(bar(s, {})));
+  });
+
+  test('both CALCULATE controls share one engine path and one call site', () => {
+    assert.ok(fn3d('pbv23dBarHtml').includes('onclick="pbv23dCalculate()"'), 'global');
+    assert.ok(fn3d('pbv23dSheetBody').includes('onclick="pbv23dCalculate()"'), 'editor sheet');
+    const calc = fn3d('pbv23dCalculate');
+    assert.ok(calc.includes('pbv23dEngineRequest(PBV23D)') && calc.includes('pbv23dPresent('));
+    const code = P3D.slice(P3D.indexOf('<style>'));
+    assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1,
+      'still exactly one engine call site');
+    assert.ok(!/[*]|Math\./.test(calc), 'no arithmetic in the calculate handler');
+  });
+
+  test('REGRESSION: results, numbering and engine behaviour unchanged', () => {
+    // stale-then-recalculate flow
+    const s = api.build('rows');
+    assert.strictEqual(engine.calculatePullBox(api.request(s)).minimumWidthIn, 26);
+    const three = s.entries.find((e) => e.size === '3');
+    api.setRow(s, three.id, api.rowsFor(s, 'left')[0].id);
+    assert.strictEqual(engine.calculatePullBox(api.request(s)).minimumWidthIn, 29);
+    // numbering and colours untouched
+    for (const c of s.connections) {
+      assert.ok(api.connNumber(s, c.id) > 0);
+      assert.ok(api.PALETTE.includes(api.connColor(s, c.id)));
+    }
+    // drawing invariants
+    const d = api.build('dense');
+    const svg = api.svg(d, { selected: d.entries[0].id });
+    assert.strictEqual((svg.match(/class="p3d-hub"/g) || []).length, 16);
+    assert.strictEqual((svg.match(/class="p3d-hit"/g) || []).length, 16);
+    assert.ok(!/>R\d<\/text>/.test(svg), 'no row labels on the drawing');
+    assert.ok(svg.includes(d.entries[0].size + '&#8243;'), 'hub label is trade size');
+    // context summary keeps row identity
+    assert.ok(/R\d/.test(bar(d, { selected: d.entries[0].id })));
+    // engine boundary
+    assert.ok(!/"v":/.test(JSON.stringify(api.request(s))));
+    assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/
+      .test(P3D.slice(P3D.indexOf('<style>'))), 'no NEC arithmetic');
   });
 });
