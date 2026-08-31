@@ -9373,6 +9373,9 @@ function pbv2ResetConfirm() {
 .p3d-boxsize{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:#eee;letter-spacing:0.5px;padding:2px 0 4px}
 .p3d-card{background:#101010;border:1px solid #222;border-radius:10px;padding:10px;margin-top:8px}
 .p3d-cardhead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.p3d-reqline{font-size:12px;margin-top:5px;line-height:1.5}
+.p3d-reqline strong{font-family:'IBM Plex Mono',monospace;font-weight:600}
+.p3d-governs{display:inline-block;margin-left:6px;font-size:9px;letter-spacing:1px;color:#0a0a0a;background:#8a8a8a;border-radius:3px;padding:1px 5px;vertical-align:2px}
 .p3d-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1.5px solid;border-radius:50%;font-family:'IBM Plex Mono',monospace;font-size:11px}
 .p3d-h{font-size:10px;letter-spacing:1px;color:#7a7a7a;margin-bottom:6px}
 .p3d-row{display:flex;align-items:baseline;gap:12px;padding:4px 0}
@@ -10088,8 +10091,49 @@ function pbv23dPresent(result) {
     }
     return min === null ? { kind: 'NO_CANDIDATE' } : { kind: 'RESOLVED', valueIn: min };
   };
+  var byConnection = {};
+  var slot = function (connId) {
+    if (!byConnection[connId]) {
+      byConnection[connId] = { dimension: null, spacing: null, rows: [] };
+    }
+    return byConnection[connId];
+  };
+  var indexRequirements = function (list, dimension) {
+    for (var i = 0; i < list.length; i++) {
+      var req = list[i];
+      var governs = (dimension === 'width'
+        ? req.id === result.governingWidthRequirementId
+        : req.id === result.governingHeightRequirementId);
+      if (req.kind === 'STRAIGHT') {
+        slot(req.connectionId).dimension = {
+          id: req.id, dimension: dimension, minimumInches: req.minimumInches,
+          governs: governs,
+        };
+      } else if (req.kind === 'ANGLE_U_ROW') {
+        var trig = req.triggerConnectionIds || [];
+        for (var t = 0; t < trig.length; t++) {
+          slot(trig[t]).rows.push({
+            id: req.id, dimension: dimension, wall: req.wall,
+            minimumInches: req.minimumInches, governs: governs,
+            sharedWith: trig.slice(),
+          });
+        }
+      }
+    }
+  };
+  indexRequirements(result.widthRequirements, 'width');
+  indexRequirements(result.heightRequirements, 'height');
+  for (var si = 0; si < result.spacingRequirements.length; si++) {
+    var sr = result.spacingRequirements[si];
+    slot(sr.connectionId).spacing = {
+      id: sr.id, minimumInches: sr.minimumInches, connectionType: sr.connectionType,
+      entryIds: sr.entryIds,
+    };
+  }
+
   return {
     state: 'OK',
+    byConnection: byConnection,
     width: axis('width'),
     height: axis('height'),
     spacing: result.spacingRequirements.map(function (s) {
@@ -10203,9 +10247,64 @@ function pbv23dAxisRow(label, axis) {
 }
 var PBV23D_PULL_WORD = { STRAIGHT: 'STRAIGHT PULL', ANGLE: 'ANGLE PULL', U: 'U PULL' };
 /** Endpoint description from editor state — presentation lookup only. */
-function pbv23dEndpointText(entryId) {
+function pbv23dEndpointText(entryId, withRow) {
   var e = pbv23dFindEntry(PBV23D, entryId);
-  return e ? (e.size + '\u2033 ' + e.wall.toUpperCase()) : '?';
+  if (!e) return '?';
+  // row identity appears only when both endpoints share a wall, where it is
+  // the only thing telling the two raceways apart
+  return e.size + '\u2033 ' + e.wall.toUpperCase()
+    + (withRow ? ' R' + (pbv23dRowIndex(PBV23D, e.rowId) + 1) : '');
+}
+/** One card per numbered pull, built from engine-indexed requirements. */
+function pbv23dPullCardHtml(connection, number, slot) {
+  var col = pbv23dConnColor(PBV23D, connection.id);
+  var a = pbv23dFindEntry(PBV23D, connection.a);
+  var b = pbv23dFindEntry(PBV23D, connection.b);
+  var sameWall = a && b && a.wall === b.wall;
+  // the pull TYPE comes from engine output wherever the engine states it
+  var type = slot && slot.dimension ? 'STRAIGHT'
+    : (slot && slot.spacing ? slot.spacing.connectionType : '');
+  var out = '<div class="p3d-card" style="border-left:3px solid ' + col + '">'
+    + '<div class="p3d-cardhead"><span class="p3d-num" style="border-color:' + col
+    + ';color:' + col + '">' + number + '</span><span style="color:' + col
+    + ';font-size:11px;letter-spacing:1px">'
+    + (PBV23D_PULL_WORD[type] || 'PULL') + '</span></div>'
+    + '<div style="font-size:12px;color:#ccc">'
+    + pbv23dEndpointText(connection.a, sameWall) + '  \u2194  '
+    + pbv23dEndpointText(connection.b, sameWall) + '</div>';
+  if (!slot) {
+    out += '<div class="p3d-note" style="margin-top:4px">No requirement reported for '
+      + 'this pull.</div></div>';
+    return out;
+  }
+  // STRAIGHT: the engine's own box-dimension requirement for this pull
+  if (slot.dimension) {
+    out += '<div class="p3d-reqline">Required minimum box dimension in pull direction: '
+      + '<strong>' + pbv23dIn(slot.dimension.minimumInches) + '</strong>'
+      + (slot.dimension.governs
+        ? '<span class="p3d-governs">GOVERNS ' + slot.dimension.dimension.toUpperCase()
+          + '</span>' : '') + '</div>';
+  }
+  // ANGLE / U: the separate A(2) entry-spacing requirement
+  if (slot.spacing) {
+    out += '<div class="p3d-reqline">Minimum required entry spacing: <strong>'
+      + pbv23dIn(slot.spacing.minimumInches) + '</strong></div>';
+  }
+  // Row rules are shared by every pull that triggered them, so they are
+  // labelled as such rather than attributed to this pull alone.
+  for (var r = 0; r < slot.rows.length; r++) {
+    var row = slot.rows[r];
+    var others = row.sharedWith.length - 1;
+    out += '<div class="p3d-reqline">Triggers row requirement \u2014 ' + row.wall.toUpperCase()
+      + ' wall: <strong>' + pbv23dIn(row.minimumInches) + '</strong> minimum '
+      + row.dimension
+      + (others > 0 ? ' (shared with ' + others + ' other pull' + (others === 1 ? '' : 's')
+        + ')' : '')
+      + (row.governs
+        ? '<span class="p3d-governs">GOVERNS ' + row.dimension.toUpperCase() + '</span>'
+        : '') + '</div>';
+  }
+  return out + '</div>';
 }
 function pbv23dResultHtml() {
   var p = pbv23dPresentation;
@@ -10228,23 +10327,14 @@ function pbv23dResultHtml() {
       + 'spacing must still be checked in the physical layout.</div>';
   }
   out += pbv23dAxisRow('WIDTH', p.width) + pbv23dAxisRow('HEIGHT', p.height);
-  if (p.spacing.length > 0) {
-    out += '<div class="p3d-h" style="margin-top:14px">ENTRY SPACING</div>';
-    for (var i = 0; i < p.spacing.length; i++) {
-      var sp = p.spacing[i];
-      var num = pbv23dConnNumber(PBV23D, sp.connectionId);
-      var col = pbv23dConnColor(PBV23D, sp.connectionId);
-      out += '<div class="p3d-card" style="border-left:3px solid ' + col + '">'
-        + '<div class="p3d-cardhead"><span class="p3d-num" style="border-color:' + col
-        + ';color:' + col + '">' + num + '</span><span style="color:' + col
-        + ';font-size:11px;letter-spacing:1px">'
-        + (PBV23D_PULL_WORD[sp.connectionType] || 'PULL') + '</span></div>'
-        + '<div style="font-size:12px;color:#ccc">'
-        + pbv23dEndpointText(sp.entryIds[0]) + '  \u2194  '
-        + pbv23dEndpointText(sp.entryIds[1]) + '</div>'
-        + '<div style="font-size:12px;margin-top:4px">Minimum required spacing: '
-        + '<strong style="font-family:monospace">' + pbv23dIn(sp.minimumInches)
-        + '</strong></div></div>';
+  // one card per numbered pull on the drawing — a pull never disappears from
+  // the results just because its rule produces no entry-spacing record
+  if (PBV23D.connections.length > 0) {
+    out += '<div class="p3d-h" style="margin-top:14px">PULL REQUIREMENTS</div>';
+    for (var i = 0; i < PBV23D.connections.length; i++) {
+      var conn = PBV23D.connections[i];
+      out += pbv23dPullCardHtml(conn, pbv23dConnNumber(PBV23D, conn.id),
+        p.byConnection[conn.id]);
     }
   }
   if (p.warnings.length > 0) {

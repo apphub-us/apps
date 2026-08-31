@@ -624,8 +624,12 @@ describe('PBV2-11 — adapter contract', () => {
         name + ' must not touch the DOM');
       assert.ok(!/[*]\s*6|6\s*[*]|[*]\s*8|8\s*[*]|Math\.max\(|Math\.min\(/.test(body),
         name + ' must contain no NEC arithmetic');
-      assert.ok(!/classifyConnection|STRAIGHT|ANGLE|'U'/.test(body),
+      // PBV2-12.3.3: the adapter may READ the engine's own kind labels to
+      // index requirements; what stays banned is deriving a pull type itself
+      assert.ok(!/classifyConnection/.test(body),
         name + ' must not classify pulls');
+      assert.ok(!/\.wall\s*===|opposite|adjacent/.test(body),
+        name + ' must not infer type from geometry');
     }
   });
 
@@ -850,8 +854,12 @@ describe('PBV2-11 — live calculation and presentation', () => {
   test('no engine constants or NEC rules were copied into the prototype', () => {
     const code = P3D.slice(P3D.indexOf('<style>'))
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-    assert.ok(!/314\.28|TRADE_SIZE_IN|WALL_DIMENSION|ANGLE_U_ROW|ENTRY_SPACING/.test(code),
+    // reading the engine's public kind labels is consumption, not duplication;
+    // engine internals and code references must still stay out
+    assert.ok(!/314\.28|TRADE_SIZE_IN|WALL_DIMENSION/.test(code),
       'no engine internals or code references duplicated');
+    assert.ok(!/multiplier\s*\*|largestTradeSize\s*\*/.test(code),
+      'no requirement arithmetic reconstructed in the UI');
     assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b/.test(code), 'no NEC multipliers');
     assert.ok(fn3d('pbv23dSupportedSizes').includes('EC.pullBox.TRADE_SIZE_KEYS'),
       'trade sizes are validated against the engine, not a private copy');
@@ -1633,7 +1641,7 @@ describe('PBV2-12.3 — results clarity', () => {
       .map((c) => html.match(new RegExp('var ' + c + ' = [\\s\\S]*?;\\n'))[0]).join('');
     const names = ['pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex', 'pbv23dFindEntry',
       'pbv23dConnColor', 'pbv23dConnNumber', 'pbv23dEngineRequest', 'pbv23dPresent',
-      'pbv23dIn', 'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dResultHtml'];
+      'pbv23dIn', 'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dResultHtml'];
     const out = {};
     // eslint-disable-next-line no-new-func
     new Function('EC', 'exports',
@@ -1699,9 +1707,13 @@ describe('PBV2-12.3 — results clarity', () => {
     const t = text(h);
     assert.strictEqual(p.spacing.length, 2);
     assert.ok(t.includes('U PULL') && t.includes('ANGLE PULL'), 'pull type in words');
-    assert.ok(t.includes('3\u2033 BOTTOM \u2194 3\u2033 BOTTOM'), 'both endpoints described');
+    // since PBV2-12.3.3 same-wall endpoints also carry row identity
+    assert.ok(/3\u2033 BOTTOM R\d \u2194 3\u2033 BOTTOM R\d/.test(t),
+      'both endpoints described, disambiguated by row');
     assert.ok(t.includes('2\u2033 LEFT \u2194 2\u2033 TOP'));
-    assert.strictEqual((t.match(/Minimum required spacing:/g) || []).length, 2,
+    // wording tightened in PBV2-12.3.3: entry spacing is named explicitly so a
+    // straight pull's box-dimension requirement can never share the phrase
+    assert.strictEqual((t.match(/Minimum required entry spacing:/g) || []).length, 2,
       'each value carries an explicit noun');
     for (const sp of p.spacing) {
       assert.ok(t.includes(sp.minimumInches + '\u2033'), 'engine value rendered verbatim');
@@ -2101,7 +2113,7 @@ describe('PBV2-12.3.2 — stacked layout cannot overlap', () => {
     const names = ['pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex', 'pbv23dFindEntry',
       'pbv23dClassify', 'pbv23dConnTypeOf', 'pbv23dConnColor', 'pbv23dConnNumber',
       'pbv23dEngineRequest', 'pbv23dPresent', 'pbv23dIn', 'pbv23dAxisRow',
-      'pbv23dEndpointText', 'pbv23dResultHtml', 'pbv23dGlobalsHtml', 'pbv23dSelectionHtml'];
+      'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dResultHtml', 'pbv23dGlobalsHtml', 'pbv23dSelectionHtml'];
     const out = {};
     // eslint-disable-next-line no-new-func
     new Function('EC', 'pbv23dSelected', 'pbv23dConnectFrom', 'pbv23dAddMode', 'exports',
@@ -2127,7 +2139,8 @@ describe('PBV2-12.3.2 — stacked layout cannot overlap', () => {
     assert.ok(!r.selection.includes('pbv23dCalculate()'), 'no duplicated global action');
     // tier 3: real results, independent of the tiers above
     assert.ok(r.results.includes('REQUIRED BOX SIZE'));
-    assert.ok(r.results.includes('ENTRY SPACING'), 'dense fixture has spacing cards');
+    assert.ok(r.results.includes('PULL REQUIREMENTS'),
+      'dense fixture lists a card for every numbered pull');
     assert.ok(!r.results.includes('pbv23dOpenSheet()'), 'controls never leak into results');
   });
 
@@ -2148,5 +2161,283 @@ describe('PBV2-12.3.2 — stacked layout cannot overlap', () => {
     assert.strictEqual((svg.match(/class="p3d-connnum"/g) || []).length, d.connections.length);
     assert.ok(fn3d('pbv23dTapWall').includes('if (!pbv23dAddMode'));
     assert.ok(fn3d('pbv23dSheetBody').includes('id="pbv2-3d-sheet-calc"'));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-12.3.3 — complete pull requirements presentation
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-12.3.3 — every numbered pull has a result card', () => {
+  const api = api3d();
+  const engine = require('../src/calc/pullBox');
+
+  /** Runs the SHIPPED adapter + result renderer against the real engine. */
+  function ui() {
+    const consts = ['PBV23D_GEO', 'PBV23D_SIZES', 'PBV23D_WALLS', 'PBV23D_CONN_COLORS',
+      'PBV23D_NEUTRAL', 'PBV23D_PULL_WORD']
+      .map((c) => html.match(new RegExp('var ' + c + ' = [\\s\\S]*?;\\n'))[0]).join('');
+    const names = ['pbv23dEmptyState', 'pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex',
+      'pbv23dAddRowOnWall', 'pbv23dEnsureRow', 'pbv23dFindEntry', 'pbv23dNextPosition',
+      'pbv23dAddEntry', 'pbv23dAddConnection', 'pbv23dClassify', 'pbv23dConnColor',
+      'pbv23dConnNumber', 'pbv23dEngineRequest', 'pbv23dPresent', 'pbv23dIn',
+      'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dResultHtml'];
+    const out = {};
+    // eslint-disable-next-line no-new-func
+    new Function('EC', 'exports',
+      'var pbv23dSeq = 0;\n'
+      + 'function pbv23dNextId(p) { pbv23dSeq++; return "p3d-" + p + "-" + pbv23dSeq; }\n'
+      + 'var PBV23D = null; var pbv23dPresentation = null;\n'
+      + 'var PBV23D_ERROR_TEXT = {};\n' + consts + names.map(fn3d).join('\n') + `
+      exports.empty = pbv23dEmptyState; exports.add = pbv23dAddEntry;
+      exports.conn = pbv23dAddConnection; exports.nextId = pbv23dNextId;
+      exports.run = function (s) {
+        PBV23D = s;
+        pbv23dPresentation = pbv23dPresent(
+          EC.pullBox.calculatePullBox(pbv23dEngineRequest(s)));
+        return { html: pbv23dResultHtml(), p: pbv23dPresentation };
+      };`)({ pullBox: engine }, out);
+    return out;
+  }
+  const text = (h) => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  /** Numbers appearing in pull cards, in render order. */
+  const cardNumbers = (h) => (h.match(/class="p3d-num"[^>]*>(\d+)</g) || [])
+    .map((m) => Number(m.match(/>(\d+)<$/)[1]));
+
+  function mixedThree(u) {
+    const s = u.empty();
+    const L2 = u.add(s, 'left', '2', u.nextId('e'));
+    const La = u.add(s, 'left', '2', u.nextId('e'));
+    const R2 = u.add(s, 'right', '2', u.nextId('e'));
+    const T2 = u.add(s, 'top', '2', u.nextId('e'));
+    const B1 = u.add(s, 'bottom', '3', u.nextId('e'));
+    const B2 = u.add(s, 'bottom', '3', u.nextId('e'));
+    u.conn(s, La.id, T2.id, u.nextId('c'));   // 1 ANGLE
+    u.conn(s, B1.id, B2.id, u.nextId('c'));   // 2 U
+    u.conn(s, L2.id, R2.id, u.nextId('c'));   // 3 STRAIGHT
+    return s;
+  }
+
+  test('ENGINE AUDIT: each pull type maps back to a requirement by identity', () => {
+    const u = ui();
+    const s = mixedThree(u);
+    const result = engine.calculatePullBox(
+      (() => { const o = ui(); o.run(s); return o; }) && api.request(s));
+    // STRAIGHT: its own requirement carrying connectionId
+    const straight = result.widthRequirements.concat(result.heightRequirements)
+      .find((r) => r.kind === 'STRAIGHT');
+    assert.ok(straight.connectionId, 'straight requirement names its connection');
+    assert.ok(s.connections.some((c) => c.id === straight.connectionId));
+    // ANGLE/U: entry spacing carrying connectionId
+    for (const sp of result.spacingRequirements) {
+      assert.ok(sp.connectionId, 'spacing names its connection');
+      assert.ok(['ANGLE', 'U'].includes(sp.connectionType));
+    }
+    // ANGLE_U_ROW: shared, identified by triggerConnectionIds — never by one id
+    const row = result.widthRequirements.concat(result.heightRequirements)
+      .find((r) => r.kind === 'ANGLE_U_ROW');
+    assert.ok(Array.isArray(row.triggerConnectionIds) && row.triggerConnectionIds.length > 0);
+    assert.strictEqual(row.connectionId, undefined,
+      'a row rule belongs to a row, not to a single pull');
+  });
+
+  test('THREE-PULL FIXTURE: 3 numbered routes produce 3 numbered cards', () => {
+    const u = ui();
+    const s = mixedThree(u);
+    const { html: h } = u.run(s);
+    assert.deepStrictEqual(cardNumbers(h), [1, 2, 3],
+      'every numbered pull appears exactly once, in order');
+    const t = text(h);
+    assert.ok(t.includes('PULL REQUIREMENTS'), 'the section is no longer spacing-only');
+    assert.ok(!t.includes('ENTRY SPACING'), 'the old spacing-only heading is gone');
+    assert.ok(t.includes('ANGLE PULL') && t.includes('U PULL') && t.includes('STRAIGHT PULL'));
+    // and the drawing carries the same three badges
+    const svg = api.svg(s, {});
+    assert.strictEqual((svg.match(/class="p3d-connnum"/g) || []).length, 3);
+  });
+
+  test('STRAIGHT card uses the box-dimension noun, never entry spacing', () => {
+    const u = ui();
+    const s = mixedThree(u);
+    const { html: h, p } = u.run(s);
+    const straightConn = s.connections[2];
+    const slot = p.byConnection[straightConn.id];
+    assert.ok(slot.dimension, 'engine dimension requirement present for the straight pull');
+    assert.strictEqual(slot.spacing, null, 'a straight pull produces no entry spacing');
+    const card = h.slice(h.lastIndexOf('class="p3d-card"'));
+    const t = text(card);
+    assert.ok(t.includes('STRAIGHT PULL'));
+    assert.ok(t.includes('Required minimum box dimension in pull direction: '
+      + slot.dimension.minimumInches + '\u2033'), 'engine value with the correct noun: ' + t);
+    assert.ok(!/entry spacing/i.test(t),
+      'a straight pull is never labelled entry spacing');
+  });
+
+  test('ANGLE and U cards use entry spacing, plus shared row rules', () => {
+    const u = ui();
+    const s = mixedThree(u);
+    const { html: h, p } = u.run(s);
+    for (const conn of [s.connections[0], s.connections[1]]) {
+      const slot = p.byConnection[conn.id];
+      assert.ok(slot.spacing, 'engine spacing requirement present');
+      assert.strictEqual(slot.dimension, null, 'angle/U produce no straight requirement');
+      assert.ok(slot.rows.length > 0, 'and they trigger row rules');
+    }
+    const t = text(h);
+    assert.ok(t.includes('Minimum required entry spacing: 12\u2033'), 'angle spacing');
+    assert.ok(t.includes('Minimum required entry spacing: 18\u2033'), 'U spacing');
+    // a shared row rule is labelled as shared rather than attributed to one pull
+    assert.ok(/Triggers row requirement \u2014 [A-Z]+ wall/.test(t), 'row rule labelled: ' + t);
+  });
+
+  test('one connection groups its distinct requirements into ONE card', () => {
+    const u = ui();
+    const s = mixedThree(u);
+    const { html: h } = u.run(s);
+    const nums = cardNumbers(h);
+    assert.strictEqual(new Set(nums).size, nums.length, 'no duplicated connection number');
+    assert.strictEqual((h.match(/class="p3d-card"/g) || []).length, s.connections.length,
+      'exactly one card per connection');
+    // the angle card carries its spacing AND its two row lines together
+    const firstCard = h.indexOf('class="p3d-card"');
+    const angleCard = h.slice(firstCard, h.indexOf('class="p3d-card"', firstCard + 1));
+    assert.ok((angleCard.match(/class="p3d-reqline"/g) || []).length >= 2,
+      'grouped requirement lines rather than separate cards');
+  });
+
+  test('MULTIPLE STRAIGHT pulls each get their own card, even at equal values', () => {
+    const u = ui();
+    const s = u.empty();
+    const a = u.add(s, 'left', '2', u.nextId('e'));
+    const b = u.add(s, 'right', '2', u.nextId('e'));
+    const c = u.add(s, 'top', '2', u.nextId('e'));
+    const d = u.add(s, 'bottom', '2', u.nextId('e'));
+    u.conn(s, a.id, b.id, u.nextId('c'));
+    u.conn(s, c.id, d.id, u.nextId('c'));
+    const { html: h, p } = u.run(s);
+    assert.deepStrictEqual(cardNumbers(h), [1, 2]);
+    const v1 = p.byConnection[s.connections[0].id].dimension.minimumInches;
+    const v2 = p.byConnection[s.connections[1].id].dimension.minimumInches;
+    assert.strictEqual(v1, v2, 'both require the same inches');
+    assert.strictEqual((h.match(/class="p3d-card"/g) || []).length, 2,
+      'equal values are still two separate pulls');
+    const t = text(h);
+    assert.ok(t.includes('2\u2033 LEFT \u2194 2\u2033 RIGHT'));
+    assert.ok(t.includes('2\u2033 TOP \u2194 2\u2033 BOTTOM'));
+  });
+
+  test('single-type fixtures each report their own engine source', () => {
+    // straight only
+    let u = ui();
+    let s = u.empty();
+    let a = u.add(s, 'left', '4', u.nextId('e'));
+    let b = u.add(s, 'right', '4', u.nextId('e'));
+    u.conn(s, a.id, b.id, u.nextId('c'));
+    let r = u.run(s);
+    assert.ok(r.p.byConnection[s.connections[0].id].dimension);
+    assert.ok(text(r.html).includes('STRAIGHT PULL'));
+    // angle only
+    u = ui(); s = u.empty();
+    a = u.add(s, 'left', '2', u.nextId('e'));
+    b = u.add(s, 'top', '2', u.nextId('e'));
+    u.conn(s, a.id, b.id, u.nextId('c'));
+    r = u.run(s);
+    assert.ok(r.p.byConnection[s.connections[0].id].spacing);
+    assert.ok(text(r.html).includes('ANGLE PULL'));
+    // U only
+    u = ui(); s = u.empty();
+    a = u.add(s, 'bottom', '3', u.nextId('e'));
+    b = u.add(s, 'bottom', '3', u.nextId('e'));
+    u.conn(s, a.id, b.id, u.nextId('c'));
+    r = u.run(s);
+    assert.ok(r.p.byConnection[s.connections[0].id].spacing);
+    assert.ok(text(r.html).includes('U PULL'));
+    assert.deepStrictEqual(cardNumbers(r.html), [1]);
+  });
+
+  test('GOVERNING badges come from engine ids, not from comparing numbers', () => {
+    const u = ui();
+    const s = mixedThree(u);
+    const { html: h, p } = u.run(s);
+    const result = engine.calculatePullBox(api.request(s));
+    const straightSlot = p.byConnection[s.connections[2].id];
+    assert.strictEqual(straightSlot.dimension.governs,
+      straightSlot.dimension.id === result.governingWidthRequirementId,
+      'governs flag is an id comparison against the engine');
+    assert.ok(text(h).includes('GOVERNS WIDTH'));
+    // no arithmetic anywhere in the presentation layer
+    for (const f of ['pbv23dPresent', 'pbv23dPullCardHtml', 'pbv23dResultHtml']) {
+      assert.ok(!/[*]\s*\d|\d\s*[*]|Math\.max|Math\.min/.test(fn3d(f)),
+        f + ' must contain no arithmetic');
+    }
+  });
+
+  test('endpoint text adds row identity only when it disambiguates', () => {
+    const u = ui();
+    const s = mixedThree(u);
+    const t = text(u.run(s).html);
+    // U pull: both endpoints on the bottom wall, so the row is shown
+    assert.ok(/3\u2033 BOTTOM R\d \u2194 3\u2033 BOTTOM R\d/.test(t), 'same-wall shows rows: ' + t);
+    // angle/straight: different walls already disambiguate, so no R clutter
+    assert.ok(t.includes('2\u2033 LEFT \u2194 2\u2033 TOP'), 'cross-wall stays clean');
+    assert.ok(t.includes('2\u2033 LEFT \u2194 2\u2033 RIGHT'));
+  });
+
+  test('SAFETY: a pull minimum is never promoted to the final box size', () => {
+    const u = ui();
+    const s = mixedThree(u);
+    const { html: h, p } = u.run(s);
+    assert.strictEqual(p.width.kind, 'LAYOUT_DEPENDENT');
+    const t = text(h);
+    assert.ok(t.includes('NOT FULLY DETERMINED'), 'width stays honest');
+    assert.ok(!h.includes('p3d-boxsize'), 'no W x H headline while unresolved');
+    // the straight pull contributes 16" but that is not presented as the width
+    assert.ok(t.includes('Required minimum box dimension in pull direction: 16\u2033'));
+    assert.ok(!/WIDTH 16\u2033/.test(t), 'the pull minimum never becomes the width answer');
+    assert.ok(t.indexOf('REQUIRED BOX SIZE') < t.indexOf('PULL REQUIREMENTS'),
+      'box size stays primary, pull cards remain explanatory detail');
+  });
+
+  test('identity: number and colour still link drawing to each pull card', () => {
+    const u = ui();
+    const s = mixedThree(u);
+    const { html: h } = u.run(s);
+    const svg = api.svg(s, {});
+    for (let i = 0; i < s.connections.length; i++) {
+      const conn = s.connections[i];
+      const col = api.connColor(s, conn.id);
+      const num = api.connNumber(s, conn.id);
+      assert.strictEqual(num, i + 1);
+      assert.ok(new RegExp('class="p3d-connnum" data-conn="' + conn.id
+        + '"[^>]*stroke="' + col + '"').test(svg), 'route badge for ' + num);
+      const card = h.slice(h.indexOf('border-left:3px solid ' + col));
+      assert.ok(card.indexOf('>' + num + '</span>') !== -1, 'card ' + num + ' shares the colour');
+    }
+    // colour is not chosen by pull type: three different types here, three
+    // palette positions in order
+    assert.strictEqual(api.connColor(s, s.connections[0].id), api.PALETTE[0]);
+    assert.strictEqual(api.connColor(s, s.connections[1].id), api.PALETTE[1]);
+    assert.strictEqual(api.connColor(s, s.connections[2].id), api.PALETTE[2]);
+  });
+
+  test('REGRESSION: results hierarchy, layout and engine boundary intact', () => {
+    const u = ui();
+    const s = mixedThree(u);
+    const t = text(u.run(s).html);
+    assert.ok(t.startsWith('REQUIRED BOX SIZE'));
+    assert.ok(!/\bMIN\b/.test(t), 'no naked MIN values returned');
+    const code = P3D.slice(P3D.indexOf('<style>'));
+    assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
+    assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/.test(code), 'no NEC arithmetic');
+    assert.ok(!/"v":/.test(JSON.stringify(api.request(api.build('rows')))));
+    // layout tiers untouched
+    assert.ok(/\.p3d-tier\{[^}]*row-gap:8px/.test(P3D));
+    assert.ok(/\.p3d-res\{margin:18px 14px 140px/.test(P3D));
+    // dense still renders one card per connection
+    const d = api.build('dense');
+    const du = ui();
+    const dh = du.run(d).html;
+    assert.strictEqual((dh.match(/class="p3d-card"/g) || []).length, d.connections.length);
+    assert.deepStrictEqual(cardNumbers(dh), d.connections.map((c, i) => i + 1));
   });
 });
