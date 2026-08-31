@@ -9922,11 +9922,11 @@ function pbv23dRenderSvg(state, ui) {
       + '" rx="' + rx + '" ry="' + ry + '" fill="#0a0a0a" stroke="' + ink
       + '" stroke-width="' + (sel || src ? 2.5 : 2) + '"/>';
     if (showLabels || sel || src) {
-      var rowTag = (sel && pbv23dRowsFor(state, e.wall).length > 1)
-        ? ' R' + (pbv23dRowIndex(state, e.rowId) + 1) : '';
+      // trade size is the raceway's primary physical identifier and always
+      // wins here; row identity is contextual and lives in the context bar
       s += '<text x="' + lx + '" y="' + ly + '" fill="' + ((sel || src) ? ink : '#c9c9c9')
         + '" font-size="10" font-family="monospace" text-anchor="' + anchor + '">'
-        + e.size + '&#8243;' + rowTag + '</text>';
+        + e.size + '&#8243;</text>';
     }
     // primary target: the wall opening. Radius shrinks before it would ever
     // overlap a neighbour, so a tap always resolves to the nearest hub.
@@ -10097,8 +10097,12 @@ function pbv23dBarHtml(state) {
     return c.a === e.id || c.b === e.id;
   });
   var types = conns.map(function (c) { return pbv23dConnTypeOf(state, c.id); }).join(', ');
-  return '<span class="p3d-barlabel">' + e.size + '\u2033 \u00B7 ' + e.wall.toUpperCase()
+  // summary hierarchy: trade size, wall, then row identity as context
+  return '<span class="p3d-barlabel" style="flex:1 0 100%">' + e.size + '\u2033 \u00B7 '
+    + e.wall.toUpperCase() + ' \u00B7 R' + (pbv23dRowIndex(state, e.rowId) + 1)
     + (types ? ' \u00B7 ' + types : '') + '</span>'
+    + '<button class="p3d-btn" type="button" id="pbv2-3d-add-sel" '
+    + 'onclick="pbv23dStartAdd()">+ ADD</button>'
     + '<button class="p3d-btn" type="button" onclick="pbv23dOpenSheet()">EDIT</button>'
     + '<button class="p3d-btn" type="button" onclick="pbv23dStartConnect()">CONNECT</button>'
     + '<button class="p3d-btn p3d-danger" type="button" onclick="pbv23dDeleteSelected()">DELETE</button>';
@@ -10209,7 +10213,8 @@ function pbv23dTapWall(wall) {
   return true;
 }
 function pbv23dStartAdd() {
-  pbv23dConnectFrom = null;
+  pbv23dConnectFrom = null;   // an active CONNECT never survives into ADD mode
+  pbv23dSelected = null;      // deterministic: nothing is selected while placing
   pbv23dAddMode = true;
   pbv23dCloseSheet();
   pbv23dRender();

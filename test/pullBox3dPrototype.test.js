@@ -1141,9 +1141,12 @@ describe('PBV2-12 — rows through the adapter and the engine', () => {
     const trackLine = svg.match(/class="p3d-track"[^>]*stroke="([^"]+)"/)[1];
     assert.ok(!api.PALETTE.includes(trackLine), 'row cue never borrows a pull colour');
     assert.strictEqual(trackLine, '#3a3a3a');
-    // the row number appears contextually on the SELECTED raceway only
+    // PBV2-12.2 supersedes the hub row tag: trade size is the raceway's only
+    // hub identifier, and row identity moved to the context summary instead
     const three = s.entries.find((e) => e.size === '3');
-    assert.ok(/R2<\/text>/.test(api.svg(s, { selected: three.id })), 'contextual row tag');
+    const selected = api.svg(s, { selected: three.id });
+    assert.ok(selected.includes('3&#8243;'), 'the hub identifies by trade size');
+    assert.ok(!/R\d<\/text>/.test(selected), 'row text never appears on the drawing');
     assert.ok(!/R1<\/text>|R2<\/text>/.test(svg), 'no permanent row labels');
   });
 
@@ -1450,5 +1453,161 @@ describe('PBV2-12.1 — UX polish', () => {
     assert.strictEqual(req.rows.length, s.rows.length, 'no fabricated empty engine row');
     assert.strictEqual(engine.validatePullBoxRequest(req).ok, true);
     assert.ok(!/"v":/.test(JSON.stringify(req)), 'visualPosition still absent');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-12.2 — persistent ADD action + consistent selected-raceway label
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-12.2 — add action and label consistency', () => {
+  const api = api3d();
+
+  /** Bar markup for a given state/selection, from the shipped builder. */
+  function barFor(state, opts) {
+    opts = opts || {};
+    const src = [fn3d('pbv23dFindEntry'), fn3d('pbv23dRowsFor'), fn3d('pbv23dRowById'),
+      fn3d('pbv23dRowIndex'), fn3d('pbv23dClassify'), fn3d('pbv23dConnTypeOf'),
+      fn3d('pbv23dBarHtml')].join('\n');
+    const out = {};
+    // eslint-disable-next-line no-new-func
+    new Function('pbv23dSelected', 'pbv23dConnectFrom', 'pbv23dAddMode', 'exports',
+      src + ';exports.bar = pbv23dBarHtml;')(
+      opts.selected || null, opts.connectFrom || null, !!opts.addMode, out);
+    return out.bar(state);
+  }
+
+  test('ADD RACEWAY is present with no selection AND with a selection', () => {
+    const s = api.build('standard');
+    const idle = barFor(s, {});
+    assert.ok(idle.includes('pbv23dStartAdd()'), 'available when nothing is selected');
+    assert.ok(idle.includes('ADD'));
+    const selected = barFor(s, { selected: s.entries[0].id });
+    assert.ok(selected.includes('pbv23dStartAdd()'),
+      'selecting a raceway must never remove the ability to add another');
+    assert.ok(/id="pbv2-3d-add-sel"/.test(selected),
+      'the selected-state add button carries its own unique element id');
+    // the selection actions are still there alongside it
+    for (const action of ['pbv23dOpenSheet()', 'pbv23dStartConnect()',
+      'pbv23dDeleteSelected()']) {
+      assert.ok(selected.includes(action), 'lost selection action: ' + action);
+    }
+  });
+
+  test('context states stay unambiguous: idle / selected / adding', () => {
+    const s = api.build('standard');
+    const adding = barFor(s, { addMode: true });
+    assert.ok(adding.includes('Tap a wall to place raceway'));
+    assert.ok(adding.includes('pbv23dCancelAdd()'));
+    assert.ok(!adding.includes('pbv23dStartAdd()'), 'no double-add affordance while placing');
+    assert.ok(!adding.includes('pbv23dDeleteSelected()'), 'no selection actions while placing');
+    const connecting = barFor(s, { connectFrom: s.entries[0].id });
+    assert.ok(connecting.includes('pbv23dCancelConnect()'));
+    assert.ok(!connecting.includes('pbv23dStartAdd()'), 'connect state stays its own mode');
+  });
+
+  test('entering ADD mode from a selection is deterministic', () => {
+    const body = fn3d('pbv23dStartAdd');
+    assert.ok(body.includes('pbv23dConnectFrom = null'),
+      'an active CONNECT is cancelled, never left ambiguous');
+    assert.ok(body.includes('pbv23dSelected = null'),
+      'selection is cleared deterministically while placing');
+    assert.ok(body.includes('pbv23dAddMode = true'));
+    assert.ok(body.includes('pbv23dCloseSheet()'), 'the editor sheet closes');
+  });
+
+  test('SELECTED LABEL: the hub always shows trade size, never row-only text', () => {
+    const s = api.build('rows');   // multi-row wall: the failing case on iPhone
+    const three = s.entries.find((e) => e.size === '3');
+    const svg = api.svg(s, { selected: three.id });
+    const labels = (svg.match(/font-family="monospace"[^>]*>([^<]*)</g) || [])
+      .map((m) => m.match(/>([^<]*)<$/)[1]);
+    assert.ok(labels.includes('3&#8243;'), 'the selected raceway shows its trade size');
+    for (const l of labels) {
+      assert.ok(!/^R\d+$/.test(l), 'no hub label is row-only text: ' + l);
+      assert.ok(!/R\d/.test(l), 'row identity never rides on the hub label: ' + l);
+    }
+    // and the same holds on a single-row wall
+    const top = s.entries.find((e) => e.wall === 'top');
+    assert.ok(api.svg(s, { selected: top.id }).includes('2&#8243;'));
+  });
+
+  test('CONTEXT SUMMARY: trade size, wall and row identity together', () => {
+    const s = api.build('rows');
+    const three = s.entries.find((e) => e.size === '3');
+    const bar = barFor(s, { selected: three.id });
+    assert.ok(bar.includes('3\u2033'), 'trade size');
+    assert.ok(bar.includes('LEFT'), 'wall');
+    assert.ok(/R2/.test(bar), 'row identity, as context');
+    // row identity is shown even on a single-row wall, for consistency
+    const top = s.entries.find((e) => e.wall === 'top');
+    assert.ok(/R1/.test(barFor(s, { selected: top.id })));
+  });
+
+  test('changing row updates context but never the hub identifier', () => {
+    const s = api.build('rows');
+    const three = s.entries.find((e) => e.size === '3');
+    assert.ok(/R2/.test(barFor(s, { selected: three.id })));
+    api.setRow(s, three.id, api.rowsFor(s, 'left')[0].id);
+    const moved = barFor(s, { selected: three.id });
+    assert.ok(/R1/.test(moved), 'context row indicator follows the move');
+    assert.ok(moved.includes('3\u2033'), 'trade size still leads the summary');
+    assert.ok(api.svg(s, { selected: three.id }).includes('3&#8243;'),
+      'hub label unchanged by the row move');
+  });
+
+  test('changing trade size updates the hub label', () => {
+    const s = api.build('rows');
+    const three = s.entries.find((e) => e.size === '3');
+    api.setSize(s, three.id, '6');
+    assert.ok(api.svg(s, { selected: three.id }).includes('6&#8243;'));
+    assert.ok(barFor(s, { selected: three.id }).includes('6\u2033'));
+  });
+
+  test('DENSE: every raceway reports its own size and row, ADD stays available', () => {
+    const s = api.build('dense');
+    assert.strictEqual(s.entries.length, 16);
+    for (const e of s.entries.slice(0, 8)) {
+      const svg = api.svg(s, { selected: e.id });
+      assert.ok(svg.includes(e.size + '&#8243;'),
+        'selected raceway shows its own trade size: ' + e.id);
+      const bar = barFor(s, { selected: e.id });
+      assert.ok(bar.includes(e.size + '\u2033'));
+      assert.ok(bar.includes(e.wall.toUpperCase()));
+      assert.ok(new RegExp('R' + (api.rowIndex(s, e.rowId) + 1)).test(bar),
+        'correct row identity for ' + e.id);
+      assert.ok(bar.includes('pbv23dStartAdd()'), 'ADD remains available in dense');
+    }
+    // no permanent row labels leaked onto the drawing
+    const plain = api.svg(s, {});
+    assert.ok(!/R\d<\/text>/.test(plain), 'no permanent R labels beside raceways');
+    assert.strictEqual((plain.match(/class="p3d-track"/g) || []).length, 2,
+      'tracks remain the wall-level row cue');
+  });
+
+  test('REGRESSION: add mode, calculate and row lifecycle all still hold', () => {
+    // add mode still gates creation
+    assert.ok(fn3d('pbv23dTapWall').includes('if (!pbv23dAddMode'), 'creation still gated');
+    assert.ok(fn3d('pbv23dTapWall').includes('pbv23dAddMode = false'), 'still exits after one');
+    // calculate still reachable from the sheet, one call site
+    assert.ok(fn3d('pbv23dSheetBody').includes('id="pbv2-3d-sheet-calc"'));
+    const code = P3D.slice(P3D.indexOf('<style>'));
+    assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
+    // row lifecycle intact
+    assert.ok(!code.includes('pbv23dDropRow'), 'no manual row delete returned');
+    assert.ok(fn3d('pbv23dSetEntryRow').includes('pbv23dDeleteRowIfEmpty'),
+      'empty rows still auto-clean');
+    // engine boundary untouched
+    assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/.test(code), 'no NEC arithmetic');
+    assert.ok(!/"v":/.test(JSON.stringify(api.request(api.build('rows')))));
+  });
+
+  test('REGRESSION: the 26 to 29 real-engine row demo still passes', () => {
+    const engine = require('../src/calc/pullBox');
+    const s = api.build('rows');
+    assert.strictEqual(engine.calculatePullBox(api.request(s)).minimumWidthIn, 26);
+    const three = s.entries.find((e) => e.size === '3');
+    api.setRow(s, three.id, api.rowsFor(s, 'left')[0].id);
+    assert.strictEqual(engine.calculatePullBox(api.request(s)).minimumWidthIn, 29);
   });
 });
