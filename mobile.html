@@ -9353,14 +9353,21 @@ function pbv2ResetConfirm() {
 #pbv2-3d-stage{padding:0 6px;touch-action:manipulation}
 #pbv2-3d-stage svg{width:100%;height:auto;display:block;max-width:430px;margin:0 auto}
 .p3d-bar{margin:0 14px;padding:10px;background:#111;border:1px solid #222;border-radius:10px;font-size:12px;min-height:44px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* PBV2-12.3.2: each control tier is its own normal-flow block with an
+   intrinsic height, so the section below always starts after it ends.
+   No absolute/fixed positioning, no negative margins, no fixed heights. */
+.p3d-tier{display:flex;flex-wrap:wrap;align-items:center;column-gap:8px;row-gap:8px;margin:0 14px 10px;padding:10px;background:#111;border:1px solid #222;border-radius:10px;font-size:12px}
+.p3d-tier:empty{display:none;margin:0;padding:0;border:0}
+.p3d-sel{background:#0e0e0e}
 .p3d-bar.p3d-connecting{border-color:#ffc700}
-.p3d-barlabel{flex:1;min-width:110px;color:#bbb;font-family:'IBM Plex Mono',monospace}
+.p3d-barlabel{flex:1 1 100%;min-width:0;color:#bbb;font-family:'IBM Plex Mono',monospace;overflow-wrap:anywhere;line-height:1.5}
 .p3d-btn{min-height:44px;padding:8px 12px;background:#181818;border:1px solid #2c2c2c;border-radius:8px;color:#ddd;font-size:12px;cursor:pointer}
 .p3d-btn.p3d-danger{color:#c0392b}
 .p3d-hint{padding:8px 14px 0;font-size:11px;color:#7a7a7a;line-height:1.5}
-.p3d-res{margin:22px 14px 120px;border-top:1px solid #1e1e1e;padding-top:16px}
+.p3d-res{margin:18px 14px 140px;border-top:1px solid #1e1e1e;padding-top:18px}
 .p3d-bar{margin-bottom:4px}
-.p3d-globals{display:flex;gap:8px;flex:1 0 100%}
+.p3d-globals{display:flex;gap:8px;flex:1 0 100%;flex-wrap:wrap}
+.p3d-globals .p3d-btn{flex:1 1 130px}
 .p3d-globals .p3d-btn{flex:1}
 .p3d-btn[disabled]{opacity:0.45}
 .p3d-boxsize{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:#eee;letter-spacing:0.5px;padding:2px 0 4px}
@@ -9401,7 +9408,8 @@ function pbv2ResetConfirm() {
   <div class="p3d-fixtures" id="pbv2-3d-fixtures"></div>
   <div class="p3d-hint" id="pbv2-3d-hint"></div>
   <div id="pbv2-3d-stage"></div>
-  <div class="p3d-bar" id="pbv2-3d-bar"></div>
+  <div class="p3d-tier" id="pbv2-3d-globals"></div>
+  <div class="p3d-tier p3d-sel" id="pbv2-3d-selection"></div>
   <div class="p3d-res" id="pbv2-3d-result"></div>
 </div>
 <div id="pbv2-3d-sheet" role="dialog" aria-modal="true" aria-label="Raceway editor">
@@ -10104,9 +10112,9 @@ function pbv23dConnTypeOf(state, id) {
   }
   return '';
 }
-function pbv23dBarHtml(state) {
-  // Incomplete gestures own the bar exclusively: never leave two interaction
-  // states live at once.
+/** Tier 1 — GLOBAL BOX ACTIONS. Present in every normal state; an
+ *  incomplete gesture (placing or connecting) takes the tier exclusively. */
+function pbv23dGlobalsHtml(state) {
   if (pbv23dAddMode) {
     return '<span class="p3d-barlabel">Tap a wall to place raceway</span>'
       + '<button class="p3d-btn" type="button" onclick="pbv23dCancelAdd()">CANCEL</button>';
@@ -10117,36 +10125,39 @@ function pbv23dBarHtml(state) {
       + ' \u2192 tap another raceway</span>'
       + '<button class="p3d-btn" type="button" onclick="pbv23dCancelConnect()">CANCEL</button>';
   }
-  // ── GLOBAL BOX ACTIONS: always present in every normal state, because
-  //    adding a raceway and sizing the box are box-level, not selection-level
   var n = state.entries.length;
+  var k = state.connections.length;
   var calcLabel = pbv23dPresentation ? 'RECALCULATE' : 'CALCULATE';
-  var out = '<span class="p3d-globals">'
+  return '<span class="p3d-globals">'
     + '<button class="p3d-btn" type="button" id="pbv2-3d-add" '
     + 'onclick="pbv23dStartAdd()">+ ADD RACEWAY</button>'
     + '<button class="p3d-btn" type="button" id="pbv2-3d-calc" '
     + 'style="border-color:#ffc700;color:#ffc700"' + (n === 0 ? ' disabled' : '')
-    + ' onclick="pbv23dCalculate()">' + calcLabel + '</button></span>';
-  // ── SELECTION TIER: summary and the actions that act on one raceway
-  if (!pbv23dSelected) {
-    var k = state.connections.length;
-    return out + '<span class="p3d-barlabel" style="flex:1 0 100%;font-size:11px">'
-      + n + ' raceway' + (n === 1 ? '' : 's') + ' \u00B7 ' + k + ' pull'
-      + (k === 1 ? '' : 's') + '</span>';
-  }
+    + ' onclick="pbv23dCalculate()">' + calcLabel + '</button></span>'
+    + '<span class="p3d-barlabel" style="font-size:11px">' + n + ' raceway'
+    + (n === 1 ? '' : 's') + ' \u00B7 ' + k + ' pull' + (k === 1 ? '' : 's') + '</span>';
+}
+/** Tier 2 — SELECTED RACEWAY. Empty string when nothing is selected, so the
+ *  container collapses entirely (:empty) and results move up naturally. */
+function pbv23dSelectionHtml(state) {
+  if (pbv23dAddMode || pbv23dConnectFrom || !pbv23dSelected) return '';
   var e = pbv23dFindEntry(state, pbv23dSelected);
-  if (!e) return out;
+  if (!e) return '';
   var conns = state.connections.filter(function (c) {
     return c.a === e.id || c.b === e.id;
   });
   var types = conns.map(function (c) { return pbv23dConnTypeOf(state, c.id); }).join(', ');
-  return out + '<span class="p3d-barlabel" style="flex:1 0 100%">' + e.size + '\u2033 \u00B7 '
+  return '<span class="p3d-barlabel">' + e.size + '\u2033 \u00B7 '
     + e.wall.toUpperCase() + ' \u00B7 R' + (pbv23dRowIndex(state, e.rowId) + 1)
     + (types ? ' \u00B7 ' + types : '') + '</span>'
     + '<button class="p3d-btn" type="button" onclick="pbv23dOpenSheet()">EDIT</button>'
     + '<button class="p3d-btn" type="button" onclick="pbv23dStartConnect()">CONNECT</button>'
     + '<button class="p3d-btn p3d-danger" type="button" '
     + 'onclick="pbv23dDeleteSelected()">DELETE</button>';
+}
+/** Composition of both tiers (kept for callers/tests that want the whole bar). */
+function pbv23dBarHtml(state) {
+  return pbv23dGlobalsHtml(state) + pbv23dSelectionHtml(state);
 }
 var pbv23dLastResult = null;      // engine result object, or null
 var pbv23dPresentation = null;    // adapter presentation model, or null
@@ -10246,10 +10257,12 @@ function pbv23dRender() {
   document.getElementById('pbv2-3d-stage').innerHTML =
     pbv23dRenderSvg(PBV23D, { selected: pbv23dSelected, connectFrom: pbv23dConnectFrom,
       addMode: pbv23dAddMode, result: pbv23dPresentation });
-  var bar = document.getElementById('pbv2-3d-bar');
-  bar.innerHTML = pbv23dBarHtml(PBV23D);
-  bar.className = 'p3d-bar'
+  // each tier fills its own normal-flow container: nothing is positioned
+  var globals = document.getElementById('pbv2-3d-globals');
+  globals.innerHTML = pbv23dGlobalsHtml(PBV23D);
+  globals.className = 'p3d-tier'
     + ((pbv23dConnectFrom || pbv23dAddMode) ? ' p3d-connecting' : '');
+  document.getElementById('pbv2-3d-selection').innerHTML = pbv23dSelectionHtml(PBV23D);
   document.getElementById('pbv2-3d-result').innerHTML = pbv23dResultHtml();
   document.getElementById('pbv2-3d-hint').textContent = pbv23dConnectFrom
     ? 'Connect mode: tap the second raceway.'

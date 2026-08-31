@@ -1469,6 +1469,7 @@ describe('PBV2-12.2 — add action and label consistency', () => {
     opts = opts || {};
     const src = [fn3d('pbv23dFindEntry'), fn3d('pbv23dRowsFor'), fn3d('pbv23dRowById'),
       fn3d('pbv23dRowIndex'), fn3d('pbv23dClassify'), fn3d('pbv23dConnTypeOf'),
+      fn3d('pbv23dGlobalsHtml'), fn3d('pbv23dSelectionHtml'),
       fn3d('pbv23dBarHtml')].join('\n');
     const out = {};
     // eslint-disable-next-line no-new-func
@@ -1787,9 +1788,11 @@ describe('PBV2-12.3 — results clarity', () => {
   });
 
   test('LAYOUT: results are clearly separated from the action controls', () => {
-    assert.ok(/\.p3d-res\{margin:22px 14px 120px;[^}]*padding-top:16px/.test(P3D),
-      'explicit separation from the context bar');
-    assert.ok(/\.p3d-bar\{margin-bottom:4px\}/.test(P3D));
+    // PBV2-12.3.2: the tiers are separate normal-flow blocks, each with its
+    // own margin, and the results rule keeps its own separation + divider
+    assert.ok(/\.p3d-res\{margin:18px 14px 140px;[^}]*padding-top:18px/.test(P3D),
+      'explicit separation from the controls above');
+    assert.ok(/\.p3d-tier\{[^}]*margin:0 14px 10px/.test(P3D), 'each tier owns its spacing');
     assert.ok(!/<table/.test(P3D), 'stacked cards, not a wide table');
     assert.ok(P3D.includes('max-width:430px'), 'phone width cap intact');
   });
@@ -1800,7 +1803,7 @@ describe('PBV2-12.3 — results clarity', () => {
     assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/.test(code), 'no NEC arithmetic');
     assert.ok(!/"v":/.test(JSON.stringify(api.request(api.build('rows')))));
     assert.ok(fn3d('pbv23dTapWall').includes('if (!pbv23dAddMode'), 'add gating intact');
-    assert.ok(fn3d('pbv23dBarHtml').includes('pbv23dStartAdd()'), 'persistent ADD intact');
+    assert.ok(fn3d('pbv23dGlobalsHtml').includes('pbv23dStartAdd()'), 'persistent ADD intact');
     assert.ok(fn3d('pbv23dSheetBody').includes('id="pbv2-3d-sheet-calc"'), 'sheet CALCULATE');
     assert.ok(fn3d('pbv23dSetEntryRow').includes('pbv23dDeleteRowIfEmpty'), 'row auto-clean');
     // the 26 -> 29 multi-row demo
@@ -1830,6 +1833,7 @@ describe('PBV2-12.3.1 — global CALCULATE', () => {
     opts = opts || {};
     const src = [fn3d('pbv23dFindEntry'), fn3d('pbv23dRowsFor'), fn3d('pbv23dRowById'),
       fn3d('pbv23dRowIndex'), fn3d('pbv23dClassify'), fn3d('pbv23dConnTypeOf'),
+      fn3d('pbv23dGlobalsHtml'), fn3d('pbv23dSelectionHtml'),
       fn3d('pbv23dBarHtml')].join('\n');
     const out = {};
     // eslint-disable-next-line no-new-func
@@ -1861,11 +1865,12 @@ describe('PBV2-12.3.1 — global CALCULATE', () => {
     const s = api.build('rows');
     const sel = bar(s, { selected: s.entries[0].id });
     // tier 1: box-level actions, in their own container
-    const globals = sel.slice(sel.indexOf('p3d-globals'),
-      sel.indexOf('</span>', sel.indexOf('p3d-globals')));
-    assert.ok(globals.includes('pbv23dStartAdd()') && globals.includes('pbv23dCalculate()'));
-    assert.ok(!globals.includes('pbv23dDeleteSelected()'),
+    const globalsTier = fn3d('pbv23dGlobalsHtml');
+    assert.ok(globalsTier.includes('pbv23dStartAdd()') && globalsTier.includes('pbv23dCalculate()'));
+    assert.ok(!globalsTier.includes('pbv23dDeleteSelected()'),
       'selection actions are not mixed into the global tier');
+    assert.ok(!fn3d('pbv23dSelectionHtml').includes('pbv23dCalculate()'),
+      'and global actions are not duplicated into the selection tier');
     // tier 2: the summary and the per-raceway actions come after
     assert.ok(sel.indexOf('p3d-globals') < sel.indexOf('pbv23dOpenSheet()'),
       'global actions render above selection actions');
@@ -1873,7 +1878,10 @@ describe('PBV2-12.3.1 — global CALCULATE', () => {
       'pbv23dDeleteSelected()']) {
       assert.ok(sel.includes(action), 'selection action still present: ' + action);
     }
-    assert.ok(/flex:1 0 100%/.test(sel), 'the summary takes its own line on a phone');
+    // the summary is its own flex line inside the selection tier
+    assert.ok(fn3d('pbv23dSelectionHtml').includes('class="p3d-barlabel"'));
+    assert.ok(/\.p3d-barlabel\{[^}]*flex:1 1 100%/.test(P3D),
+      'the summary takes its own line on a phone');
   });
 
   test('the instruction can never appear without a usable CALCULATE', () => {
@@ -1927,7 +1935,7 @@ describe('PBV2-12.3.1 — global CALCULATE', () => {
   });
 
   test('both CALCULATE controls share one engine path and one call site', () => {
-    assert.ok(fn3d('pbv23dBarHtml').includes('onclick="pbv23dCalculate()"'), 'global');
+    assert.ok(fn3d('pbv23dGlobalsHtml').includes('onclick="pbv23dCalculate()"'), 'global tier');
     assert.ok(fn3d('pbv23dSheetBody').includes('onclick="pbv23dCalculate()"'), 'editor sheet');
     const calc = fn3d('pbv23dCalculate');
     assert.ok(calc.includes('pbv23dEngineRequest(PBV23D)') && calc.includes('pbv23dPresent('));
@@ -1962,5 +1970,183 @@ describe('PBV2-12.3.1 — global CALCULATE', () => {
     assert.ok(!/"v":/.test(JSON.stringify(api.request(s))));
     assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/
       .test(P3D.slice(P3D.indexOf('<style>'))), 'no NEC arithmetic');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-12.3.2 — mobile action / results layout (structural guards)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-12.3.2 — stacked layout cannot overlap', () => {
+  const api = api3d();
+  const styles = P3D.slice(P3D.indexOf('<style>'), P3D.indexOf('</style>'));
+  const markup = P3D.slice(P3D.indexOf('</style>'), P3D.indexOf('<script>'));
+  const rule = (sel) => {
+    const m = styles.match(new RegExp(sel.replace('.', '\\.') + '\\{([^}]*)\\}', 'g'));
+    return m ? m.join(' ') : '';
+  };
+
+  test('the four sections are separate containers in document order', () => {
+    const order = ['id="pbv2-3d-stage"', 'id="pbv2-3d-globals"',
+      'id="pbv2-3d-selection"', 'id="pbv2-3d-result"'];
+    let last = -1;
+    for (const id of order) {
+      const at = markup.indexOf(id);
+      assert.ok(at !== -1, 'missing container: ' + id);
+      assert.ok(at > last, 'out of document order: ' + id);
+      last = at;
+    }
+    // and they are siblings, not nested inside one another
+    assert.ok(/<div class="p3d-tier" id="pbv2-3d-globals"><\/div>/.test(markup),
+      'globals tier is its own empty container');
+    assert.ok(/<div class="p3d-tier p3d-sel" id="pbv2-3d-selection"><\/div>/.test(markup),
+      'selection tier is its own empty container');
+  });
+
+  test('no positional hacks on any stacked section', () => {
+    for (const sel of ['.p3d-tier', '.p3d-sel', '.p3d-res', '.p3d-globals',
+      '.p3d-barlabel', '.p3d-card']) {
+      const css = rule(sel);
+      assert.ok(!/position:\s*(absolute|fixed)/.test(css), sel + ' must stay in flow');
+      assert.ok(!/margin[^;]*:-|:\s*-\d/.test(css), sel + ' must not use negative margins');
+      assert.ok(!/transform|translate/.test(css), sel + ' must not be translated');
+      assert.ok(!/(^|;|\{)\s*height:\s*\d/.test(css), sel + ' must keep intrinsic height');
+      assert.ok(!/overflow:\s*hidden/.test(css), sel + ' must not clip its content');
+    }
+    // whatever absolute/fixed positioning exists in the block must not be on
+    // any of the stacked sections (checked above); the overlay itself is a
+    // fixed full-screen panel by design, which is what contains the flow
+    const positioned = styles.match(/[^{}]+\{[^}]*position:\s*(?:absolute|fixed)[^}]*\}/g) || [];
+    for (const decl of positioned) {
+      const selector = decl.slice(0, decl.indexOf('{'));
+      assert.ok(!/p3d-tier|p3d-sel|p3d-res|p3d-globals|p3d-barlabel|p3d-card/.test(selector),
+        'a stacked section must never be positioned: ' + selector.trim());
+    }
+  });
+
+  test('each tier has intrinsic height, its own spacing, and wraps safely', () => {
+    const tier = rule('.p3d-tier');
+    assert.ok(/display:flex/.test(tier) && /flex-wrap:wrap/.test(tier), 'wraps rather than overflows');
+    assert.ok(/row-gap:8px/.test(tier), 'wrapped lines get real vertical gap');
+    assert.ok(/margin:0 14px 10px/.test(tier), 'explicit bottom spacing to the next section');
+    assert.ok(!/min-height/.test(tier), 'height follows content');
+    // an empty selection tier collapses entirely rather than leaving a gap
+    assert.ok(/\.p3d-tier:empty\{[^}]*display:none/.test(styles));
+  });
+
+  test('results start after the controls, with their own divider', () => {
+    const res = rule('.p3d-res');
+    assert.ok(/margin:18px 14px 140px/.test(res), 'clear separation above, room below');
+    assert.ok(/border-top:1px solid/.test(res), 'the divider belongs to the results section');
+    assert.ok(/padding-top:18px/.test(res), 'the heading does not sit on the divider');
+    assert.ok(/140px/.test(res), 'bottom padding clears Safari chrome');
+    assert.ok(!/position|height:\s*\d/.test(res), 'results grow with content');
+  });
+
+  test('controls wrap instead of overflowing at narrow widths', () => {
+    // global tier: two buttons that can flex down and wrap
+    const globals = rule('.p3d-globals');
+    assert.ok(/flex-wrap:wrap/.test(globals), 'ADD and CALCULATE may wrap to two lines');
+    assert.ok(/flex:1 1 130px/.test(styles), 'each global button has a sane basis');
+    // summary always takes its own line and wraps long values
+    const label = rule('.p3d-barlabel');
+    assert.ok(/flex:1 1 100%/.test(label), 'summary is a full line');
+    assert.ok(/overflow-wrap:anywhere/.test(label), 'long summaries wrap, never overflow');
+    assert.ok(!/white-space:\s*nowrap/.test(label), 'summary is never forced onto one line');
+    assert.ok(!/text-overflow/.test(label), 'summary is not truncated into ambiguity');
+    // touch targets are not shrunk to force a single row
+    assert.ok(/\.p3d-btn\{[^}]*min-height:44px/.test(styles), 'buttons stay tappable');
+  });
+
+  test('long summaries stay contained at every target width', () => {
+    // the longest realistic summary: 1-1/4 inch, longest wall, row, pull type
+    const s = api.empty();
+    const e = api.add(s, 'right', '1-1/4', api.nextId('e'));
+    const l = api.add(s, 'left', '4', api.nextId('e'));
+    api.connect(s, e.id, l.id, api.nextId('c'));
+    const sel = fn3d('pbv23dSelectionHtml');
+    assert.ok(sel.includes('class="p3d-barlabel"'), 'summary uses the wrapping label');
+    // no fixed pixel width is assumed anywhere for the summary
+    assert.ok(!/width:\s*\d+px/.test(rule('.p3d-barlabel')));
+    // 320 / 375 / 390 / 430: the layout is width-agnostic by construction —
+    // percentage/flex-basis only, no media queries with fixed breakpoints
+    for (const px of [320, 375, 390, 430]) {
+      assert.ok(!new RegExp('@media[^{]*' + px).test(styles),
+        'no width-specific layout branch for ' + px + 'px');
+    }
+    // a max-width cap is fine; a fixed width on a container is not
+    assert.ok(!/(^|[;{\s])width:\s*\d{3}px/.test(styles),
+      'no fixed pixel container widths');
+    assert.ok(/max-width:430px/.test(styles), 'the stage keeps its phone-width cap');
+  });
+
+  test('the same structure serves before and after calculation', () => {
+    const render = fn3d('pbv23dRender');
+    for (const id of ['pbv2-3d-globals', 'pbv2-3d-selection', 'pbv2-3d-result']) {
+      assert.ok(render.includes(id), 'render fills ' + id + ' every time');
+    }
+    assert.ok(!/style\.|classList\.add\('p3d-res/.test(render),
+      'render never repositions sections');
+    // the results container is the same element in both states
+    assert.ok(fn3d('pbv23dResultHtml').includes('Tap CALCULATE to size this box'));
+    assert.ok(fn3d('pbv23dResultHtml').includes('REQUIRED BOX SIZE'));
+  });
+
+  test('DENSE + selection + result: every section renders its own content', () => {
+    const s = api.build('dense');
+    const engine = require('../src/calc/pullBox');
+    const consts = ['PBV23D_GEO', 'PBV23D_SIZES', 'PBV23D_WALLS', 'PBV23D_CONN_COLORS',
+      'PBV23D_NEUTRAL', 'PBV23D_PULL_WORD']
+      .map((c) => html.match(new RegExp('var ' + c + ' = [\\s\\S]*?;\\n'))[0]).join('');
+    const names = ['pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex', 'pbv23dFindEntry',
+      'pbv23dClassify', 'pbv23dConnTypeOf', 'pbv23dConnColor', 'pbv23dConnNumber',
+      'pbv23dEngineRequest', 'pbv23dPresent', 'pbv23dIn', 'pbv23dAxisRow',
+      'pbv23dEndpointText', 'pbv23dResultHtml', 'pbv23dGlobalsHtml', 'pbv23dSelectionHtml'];
+    const out = {};
+    // eslint-disable-next-line no-new-func
+    new Function('EC', 'pbv23dSelected', 'pbv23dConnectFrom', 'pbv23dAddMode', 'exports',
+      'var PBV23D = null; var pbv23dPresentation = null;\n'
+      + 'var PBV23D_ERROR_TEXT = {};\n' + consts + names.map(fn3d).join('\n') + `
+      exports.run = function (state) {
+        PBV23D = state;
+        pbv23dPresentation = pbv23dPresent(
+          EC.pullBox.calculatePullBox(pbv23dEngineRequest(state)));
+        return { globals: pbv23dGlobalsHtml(state), selection: pbv23dSelectionHtml(state),
+          results: pbv23dResultHtml() };
+      };`)({ pullBox: engine }, s.entries[0].id, null, false, out);
+    const r = out.run(s);
+    // tier 1: both global actions, no selection actions
+    assert.ok(r.globals.includes('pbv23dStartAdd()') && r.globals.includes('pbv23dCalculate()'));
+    assert.ok(!r.globals.includes('pbv23dDeleteSelected()'));
+    // tier 2: summary plus the three selection actions, no global actions
+    assert.ok(/\d\u2033 \u00B7 [A-Z]+ \u00B7 R\d/.test(r.selection.replace(/<[^>]+>/g, '')),
+      'summary reads size, wall, row: ' + r.selection.replace(/<[^>]+>/g, ' ').trim());
+    for (const a of ['pbv23dOpenSheet()', 'pbv23dStartConnect()', 'pbv23dDeleteSelected()']) {
+      assert.ok(r.selection.includes(a));
+    }
+    assert.ok(!r.selection.includes('pbv23dCalculate()'), 'no duplicated global action');
+    // tier 3: real results, independent of the tiers above
+    assert.ok(r.results.includes('REQUIRED BOX SIZE'));
+    assert.ok(r.results.includes('ENTRY SPACING'), 'dense fixture has spacing cards');
+    assert.ok(!r.results.includes('pbv23dOpenSheet()'), 'controls never leak into results');
+  });
+
+  test('REGRESSION: semantics, numbering and engine integration untouched', () => {
+    const engine = require('../src/calc/pullBox');
+    const s = api.build('rows');
+    assert.strictEqual(engine.calculatePullBox(api.request(s)).minimumWidthIn, 26);
+    const three = s.entries.find((e) => e.size === '3');
+    api.setRow(s, three.id, api.rowsFor(s, 'left')[0].id);
+    assert.strictEqual(engine.calculatePullBox(api.request(s)).minimumWidthIn, 29);
+    const code = P3D.slice(P3D.indexOf('<style>'));
+    assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
+    assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/.test(code));
+    assert.ok(!/"v":/.test(JSON.stringify(api.request(s))));
+    const d = api.build('dense');
+    const svg = api.svg(d, { selected: d.entries[0].id });
+    assert.strictEqual((svg.match(/class="p3d-hub"/g) || []).length, 16);
+    assert.strictEqual((svg.match(/class="p3d-connnum"/g) || []).length, d.connections.length);
+    assert.ok(fn3d('pbv23dTapWall').includes('if (!pbv23dAddMode'));
+    assert.ok(fn3d('pbv23dSheetBody').includes('id="pbv2-3d-sheet-calc"'));
   });
 });
