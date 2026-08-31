@@ -9510,7 +9510,7 @@ var pbv23dConnectFrom = null;
 var pbv23dFixtureKey = 'standard';
 function pbv23dNextId(prefix) { pbv23dSeq++; return 'p3d-' + prefix + '-' + pbv23dSeq; }
 
-function pbv23dEmptyState() { return { entries: [], connections: [], showDims: false }; }
+function pbv23dEmptyState() { return { entries: [], connections: [] }; }
 function pbv23dFindEntry(state, id) {
   for (var i = 0; i < state.entries.length; i++) {
     if (state.entries[i].id === id) return state.entries[i];
@@ -9533,7 +9533,6 @@ function pbv23dNextPosition(state, wall) {
 function pbv23dAddEntry(state, wall, size, id) {
   var entry = { id: id, wall: wall, v: pbv23dNextPosition(state, wall), size: size };
   state.entries.push(entry);
-  state.showDims = false;
   return entry;
 }
 function pbv23dDeleteEntry(state, id) {
@@ -9541,18 +9540,16 @@ function pbv23dDeleteEntry(state, id) {
   state.connections = state.connections.filter(function (c) {
     return c.a !== id && c.b !== id;
   });
-  state.showDims = false;
 }
 function pbv23dSetSize(state, id, size) {
   var e = pbv23dFindEntry(state, id);
-  if (e) { e.size = size; state.showDims = false; }
+  if (e) { e.size = size; }
   return !!e;
 }
 function pbv23dSetPosition(state, id, v) {
   var e = pbv23dFindEntry(state, id);
   if (!e) return false;
   e.v = Math.min(0.94, Math.max(0.06, v));
-  state.showDims = false;
   return true;
 }
 /** Change wall: the raceway keeps its identity and its connections. */
@@ -9561,7 +9558,6 @@ function pbv23dSetWall(state, id, wall) {
   if (!e || PBV23D_WALLS.indexOf(wall) === -1) return false;
   e.wall = wall;
   e.v = pbv23dNextPosition(state, wall);
-  state.showDims = false;
   return true;
 }
 /** PROTOTYPE-ONLY relationship naming. Not the engine, not NEC logic — it
@@ -9586,7 +9582,6 @@ function pbv23dAddConnection(state, aId, bId, id) {
     }
   }
   state.connections.push({ id: id, a: aId, b: bId });
-  state.showDims = false;
   return { ok: true };
 }
 function pbv23dDeleteConnection(state, id) {
@@ -9657,7 +9652,6 @@ function pbv23dBuildFixture(key) {
     pbv23dSetPosition(s, b2.id, 0.7);
     pbv23dAddConnection(s, l2.id, t2.id, pbv23dNextId('c'));
     pbv23dAddConnection(s, b1.id, b2.id, pbv23dNextId('c'));
-    s.showDims = true;   // static fixture values only; cleared on any edit
     return s;
   }
   // dense: ~16 raceways across all four walls
@@ -9831,22 +9825,31 @@ function pbv23dRenderSvg(state, ui) {
   s += '<g class="p3d-hits">' + hitLayer + '</g>';
 
   // dimension layer: static fixture values only, and only until the user edits
-  if (state.showDims) {
+  if (ui.result && ui.result.state === 'OK') {
     var wy = G.dimWidthY; var hx = G.dimHeightX;
+    // every value below comes from the engine result; nothing is derived here
+    var wA = ui.result.width; var hA = ui.result.height;
+    var widthLabel = wA.kind === 'RESOLVED' ? (wA.valueIn + '\u2033 WIDTH')
+      : (wA.kind === 'LAYOUT_DEPENDENT' ? 'WIDTH \u2014 NOT FULLY DETERMINED'
+        : 'WIDTH \u2014 NO REQUIREMENT');
+    var heightLabel = hA.kind === 'RESOLVED' ? (hA.valueIn + '\u2033')
+      : (hA.kind === 'LAYOUT_DEPENDENT' ? '\u2014' : '\u2014');
+    var widthRef = (wA.kind !== 'RESOLVED');
     s += '<g class="p3d-dims" style="pointer-events:none">'
       + '<line x1="' + R.x1 + '" y1="' + (R.y2 + 4) + '" x2="' + R.x1 + '" y2="' + (wy - 4)
       + '" stroke="#3a3a3a" stroke-width="0.75"/>'
       + '<line x1="' + R.x2 + '" y1="' + (R.y2 + 4) + '" x2="' + R.x2 + '" y2="' + (wy - 4)
       + '" stroke="#3a3a3a" stroke-width="0.75"/>'
-      + '<line class="p3d-dim-width p3d-dim-ref" x1="' + R.x1 + '" y1="' + wy + '" x2="'
-      + R.x2 + '" y2="' + wy + '" stroke="#4a90d9" stroke-width="1" stroke-dasharray="5 4"/>'
+      + '<line class="p3d-dim-width' + (widthRef ? ' p3d-dim-ref' : '') + '" x1="' + R.x1
+      + '" y1="' + wy + '" x2="' + R.x2 + '" y2="' + wy + '" stroke="#4a90d9" '
+      + 'stroke-width="1"' + (widthRef ? ' stroke-dasharray="5 4"' : '') + '/>'
       + '<path d="M ' + (R.x1 + 9) + ' ' + (wy - 4) + ' L ' + R.x1 + ' ' + wy + ' L '
       + (R.x1 + 9) + ' ' + (wy + 4) + '" fill="none" stroke="#4a90d9" stroke-width="1"/>'
       + '<path d="M ' + (R.x2 - 9) + ' ' + (wy - 4) + ' L ' + R.x2 + ' ' + wy + ' L '
       + (R.x2 - 9) + ' ' + (wy + 4) + '" fill="none" stroke="#4a90d9" stroke-width="1"/>'
       + '<rect x="66" y="' + (wy - 9) + '" width="164" height="12" fill="#0a0a0a"/>'
       + '<text x="148" y="' + (wy + 1) + '" fill="#4a90d9" font-size="8.5" '
-      + 'letter-spacing="0.6" text-anchor="middle">WIDTH \u2014 NOT FULLY DETERMINED</text>'
+      + 'letter-spacing="0.6" text-anchor="middle">' + widthLabel + '</text>'
       + '<line x1="' + (R.x2 + 4) + '" y1="' + R.y1 + '" x2="' + (hx - 4) + '" y2="' + R.y1
       + '" stroke="#3a3a3a" stroke-width="0.75"/>'
       + '<line x1="' + (R.x2 + 4) + '" y1="' + R.y2 + '" x2="' + (hx - 4) + '" y2="' + R.y2
@@ -9857,7 +9860,7 @@ function pbv23dRenderSvg(state, ui) {
       + '<path d="M ' + hx + ' ' + R.y2 + ' l -4 -9 h 8 z" fill="#52c07a"/>'
       + '<rect x="' + (hx - 9) + '" y="94" width="18" height="30" fill="#0a0a0a"/>'
       + '<text x="' + hx + '" y="106" fill="#52c07a" font-size="11" '
-      + 'font-family="monospace" text-anchor="middle">21&#8243;</text>'
+      + 'font-family="monospace" text-anchor="middle">' + heightLabel + '</text>'
       + '<text x="' + hx + '" y="118" fill="#4c8a63" font-size="7" letter-spacing="0.8" '
       + 'text-anchor="middle">HEIGHT</text></g>';
   }
@@ -9865,6 +9868,84 @@ function pbv23dRenderSvg(state, ui) {
     + 'text-anchor="middle" style="pointer-events:none">SCHEMATIC \u2014 NOT TO SCALE</text>';
   s += '</svg>';
   return s;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PBV23D ADAPTER — the only boundary between the 3D editor and the engine.
+   Responsibilities: normalise wall identity, trade size, raceway identity
+   and relationship identity into the frozen calculatePullBox request, and
+   translate the frozen result into a presentation model.
+   It does NOT: calculate, classify pulls, know about the DOM, read labels,
+   or interpret NEC rules. The engine stays authoritative for all of that.
+
+   ROW MODEL (initial supported subset): the 3D editor cannot express more
+   than one row per wall, so every state it can create maps to exactly one
+   canonical row per occupied wall (order 0). This is lossless for states
+   the editor can build — and, where a real box would have several rows, a
+   single row is the CONSERVATIVE reading: the A(2) row rule sums all other
+   raceways in the row, so one row can only ever return a requirement >=
+   the multi-row answer, never smaller.
+
+   POSITION: the engine consumes no entry position (verified against the
+   contract), so the 3D slider stays presentation-only and is deliberately
+   NOT forwarded. Relationship colour and selection are likewise UI-only. */
+var PBV23D_UNSUPPORTED = [];   // reserved: no unsupported state exists yet
+function pbv23dRowIdFor(wall) { return 'p3d-row-' + wall; }
+/** 3D editor state -> canonical engine request (deterministic ordering). */
+function pbv23dEngineRequest(state) {
+  var walls = {};
+  var entries = state.entries.slice().sort(function (a, b) {
+    return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0);
+  });
+  var rows = [];
+  var out = [];
+  for (var i = 0; i < entries.length; i++) {
+    var e = entries[i];
+    if (!walls[e.wall]) {
+      walls[e.wall] = true;
+      rows.push({ id: pbv23dRowIdFor(e.wall), wall: e.wall, order: 0 });
+    }
+    out.push({ id: e.id, rowId: pbv23dRowIdFor(e.wall), tradeSize: e.size });
+  }
+  rows.sort(function (a, b) { return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0); });
+  var conns = state.connections.slice().sort(function (a, b) {
+    return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0);
+  }).map(function (c) { return { id: c.id, entryIds: [c.a, c.b] }; });
+  return { rows: rows, entries: out, connections: conns };
+}
+/** Trade sizes the engine will accept — read from the engine, never copied. */
+function pbv23dSupportedSizes() {
+  return (typeof EC !== 'undefined' && EC.pullBox) ? EC.pullBox.TRADE_SIZE_KEYS : PBV23D_SIZES;
+}
+/** Engine result -> presentation model. Carries values through unchanged;
+ *  performs no arithmetic and invents nothing. */
+function pbv23dPresent(result) {
+  if (!result) return { state: 'NONE' };
+  if (!result.ok) return { state: 'INVALID', reason: result.reason };
+  var axis = function (dimension) {
+    var min = dimension === 'width' ? result.minimumWidthIn : result.minimumHeightIn;
+    var st = result.dimensionStatus[dimension];
+    if (st.status === 'LAYOUT_DEPENDENT') {
+      return {
+        kind: 'LAYOUT_DEPENDENT',
+        pullRuleIn: min,
+        entrySpacingIn: st.minimumEntrySpacingIn,
+        spacingIds: st.constrainedBySpacingIds,
+      };
+    }
+    return min === null ? { kind: 'NO_CANDIDATE' } : { kind: 'RESOLVED', valueIn: min };
+  };
+  return {
+    state: 'OK',
+    width: axis('width'),
+    height: axis('height'),
+    spacing: result.spacingRequirements.map(function (s) {
+      return { id: s.id, entryIds: s.entryIds, minimumInches: s.minimumInches,
+        connectionType: s.connectionType };
+    }),
+    warnings: result.warnings,
+    scopeNotes: result.scopeNotes,
+  };
 }
 
 /* ── UI wiring ────────────────────────────────────────────────────────── */
@@ -9889,7 +9970,9 @@ function pbv23dBarHtml(state) {
     var n = state.entries.length; var k = state.connections.length;
     return '<span class="p3d-barlabel">' + n + ' raceway' + (n === 1 ? '' : 's')
       + ' \u00B7 ' + k + ' pull' + (k === 1 ? '' : 's') + '</span>'
-      + '<span style="font-size:11px;color:#7a7a7a">Tap a wall to add</span>';
+      + '<button class="p3d-btn" type="button" id="pbv2-3d-calc" style="border-color:#ffc700;'
+      + 'color:#ffc700"' + (n === 0 ? ' disabled' : '')
+      + ' onclick="pbv23dCalculate()">CALCULATE</button>';
   }
   var e = pbv23dFindEntry(state, pbv23dSelected);
   if (!e) return '';
@@ -9903,33 +9986,97 @@ function pbv23dBarHtml(state) {
     + '<button class="p3d-btn" type="button" onclick="pbv23dStartConnect()">CONNECT</button>'
     + '<button class="p3d-btn p3d-danger" type="button" onclick="pbv23dDeleteSelected()">DELETE</button>';
 }
-function pbv23dResultHtml(state) {
-  if (!state.showDims) {
-    return '<div class="p3d-h">DIMENSIONS</div>'
-      + '<div class="p3d-note">Not calculated in this prototype. This milestone tests the '
-      + 'editing interaction only \u2014 the real engine and results stay at ?pbv2=1.</div>';
+var pbv23dLastResult = null;      // engine result object, or null
+var pbv23dPresentation = null;    // adapter presentation model, or null
+var PBV23D_ERROR_TEXT = {
+  NO_ENTRIES: 'Add at least one raceway before calculating.',
+};
+/** The single integration point: 3D state -> adapter -> engine -> adapter. */
+function pbv23dCalculate() {
+  var request = pbv23dEngineRequest(PBV23D);
+  pbv23dLastResult = EC.pullBox.calculatePullBox(request);
+  pbv23dPresentation = pbv23dPresent(pbv23dLastResult);
+  pbv23dRender();
+}
+/** Any geometry change makes a shown result stale — never display it again. */
+function pbv23dInvalidateResult() {
+  pbv23dLastResult = null;
+  pbv23dPresentation = null;
+}
+function pbv23dIn(n) { return String(n) + '\u2033'; }
+function pbv23dAxisRow(label, axis) {
+  if (axis.kind === 'RESOLVED') {
+    return '<div class="p3d-row"><span class="p3d-lab">' + label + '</span>'
+      + '<span class="p3d-val" style="color:'
+      + (label === 'WIDTH' ? '#4a90d9' : '#52c07a') + '">'
+      + pbv23dIn(axis.valueIn) + '</span></div>';
   }
-  return '<div class="p3d-h">PULL-RULE MINIMUM DIMENSIONS \u2014 FIXTURE VALUES, NOT CALCULATED</div>'
-    + '<div class="p3d-row"><span class="p3d-lab">WIDTH</span>'
-    + '<span class="p3d-val p3d-undet">NOT FULLY DETERMINED</span></div>'
-    + '<div class="p3d-row"><span class="p3d-lab">HEIGHT</span>'
-    + '<span class="p3d-val" style="color:#52c07a">21\u2033</span></div>'
-    + '<div class="p3d-note">Static preset values shown for visual reference only. '
-    + 'They disappear as soon as you edit the box.</div>';
+  if (axis.kind === 'LAYOUT_DEPENDENT') {
+    return '<div class="p3d-row"><span class="p3d-lab">' + label + '</span>'
+      + '<span class="p3d-val p3d-undet">NOT FULLY DETERMINED</span></div>'
+      + '<div class="p3d-note" style="margin-top:0">'
+      + (axis.pullRuleIn === null
+        ? 'No pull-rule ' + label.toLowerCase() + ' candidate from the current pulls.'
+        : 'Pull-rule minimum: ' + pbv23dIn(axis.pullRuleIn))
+      + '<br>Known entry-spacing requirement: ' + pbv23dIn(axis.entrySpacingIn)
+      + ' minimum<br>Final ' + label.toLowerCase() + ' also depends on physical room for '
+      + 'the raceway entries and fittings.</div>';
+  }
+  return '<div class="p3d-row"><span class="p3d-lab">' + label + '</span>'
+    + '<span class="p3d-val p3d-undet">Not determined from current pulls</span></div>';
+}
+function pbv23dResultHtml() {
+  var p = pbv23dPresentation;
+  if (!p || p.state === 'NONE') {
+    return '<div class="p3d-h">DIMENSIONS</div>'
+      + '<div class="p3d-note">Tap CALCULATE to run the Pull Box engine on this box.</div>';
+  }
+  if (p.state === 'INVALID') {
+    return '<div class="p3d-h">DIMENSIONS</div><div class="p3d-note">'
+      + (PBV23D_ERROR_TEXT[p.reason]
+        || 'This configuration cannot be calculated (' + p.reason + ').') + '</div>';
+  }
+  var out = '<div class="p3d-h">PULL-RULE MINIMUM DIMENSIONS</div>'
+    + pbv23dAxisRow('WIDTH', p.width) + pbv23dAxisRow('HEIGHT', p.height);
+  if (p.spacing.length > 0) {
+    out += '<div class="p3d-h" style="margin-top:12px">ENTRY SPACING</div>';
+    for (var i = 0; i < p.spacing.length; i++) {
+      var sp = p.spacing[i];
+      var a = pbv23dFindEntry(PBV23D, sp.entryIds[0]);
+      var b = pbv23dFindEntry(PBV23D, sp.entryIds[1]);
+      out += '<div class="p3d-row"><span class="p3d-lab">MIN</span>'
+        + '<span class="p3d-val" style="font-size:14px;color:#b06ae8">'
+        + pbv23dIn(sp.minimumInches) + '</span>'
+        + '<span style="font-size:11px;color:#8a8a8a">'
+        + (a ? a.size + '\u2033 ' + a.wall : '?') + ' \u2194 '
+        + (b ? b.size + '\u2033 ' + b.wall : '?') + '</span></div>';
+    }
+  }
+  if (p.warnings.length > 0) {
+    out += '<div class="p3d-note">Unconnected raceways are still counted in same-row '
+      + 'sizing.</div>';
+  }
+  out += '<div class="p3d-note">Engine result. Rows are not modelled in this prototype: '
+    + 'all raceways on a wall are treated as one row, which can only ever return a '
+    + 'requirement equal to or larger than a multi-row layout. Code references are not '
+    + 'shown here yet \u2014 they stay at ?pbv2=1.</div>';
+  return out;
 }
 function pbv23dRender() {
   document.getElementById('pbv2-3d-stage').innerHTML =
-    pbv23dRenderSvg(PBV23D, { selected: pbv23dSelected, connectFrom: pbv23dConnectFrom });
+    pbv23dRenderSvg(PBV23D, { selected: pbv23dSelected, connectFrom: pbv23dConnectFrom,
+      result: pbv23dPresentation });
   var bar = document.getElementById('pbv2-3d-bar');
   bar.innerHTML = pbv23dBarHtml(PBV23D);
   bar.className = 'p3d-bar' + (pbv23dConnectFrom ? ' p3d-connecting' : '');
-  document.getElementById('pbv2-3d-result').innerHTML = pbv23dResultHtml(PBV23D);
+  document.getElementById('pbv2-3d-result').innerHTML = pbv23dResultHtml();
   document.getElementById('pbv2-3d-hint').textContent = pbv23dConnectFrom
     ? 'Connect mode: tap the second raceway.'
     : 'Tap a wall to add a raceway. Tap a raceway to select it.';
 }
 function pbv23dTapWall(wall) {
   if (pbv23dConnectFrom) return;
+  pbv23dInvalidateResult();
   var e = pbv23dAddEntry(PBV23D, wall, '2', pbv23dNextId('e'));
   pbv23dSelected = e.id;
   pbv23dRender();
@@ -9939,6 +10086,7 @@ function pbv23dTapEntry(id) {
   if (pbv23dConnectFrom) {
     if (id === pbv23dConnectFrom) return;
     pbv23dAddConnection(PBV23D, pbv23dConnectFrom, id, pbv23dNextId('c'));
+    pbv23dInvalidateResult();
     pbv23dConnectFrom = null;
     pbv23dSelected = id;
     pbv23dRender();
@@ -9955,6 +10103,7 @@ function pbv23dStartConnect() {
 function pbv23dCancelConnect() { pbv23dConnectFrom = null; pbv23dRender(); }
 function pbv23dDeleteSelected() {
   if (!pbv23dSelected) return;
+  pbv23dInvalidateResult();
   pbv23dDeleteEntry(PBV23D, pbv23dSelected);
   pbv23dSelected = null;
   pbv23dCloseSheet();
@@ -10011,19 +10160,23 @@ function pbv23dRefreshSheet() {
 }
 function pbv23dPickSize(size) {
   pbv23dSetSize(PBV23D, pbv23dSelected, size);
+  pbv23dInvalidateResult();
   pbv23dRender(); pbv23dRefreshSheet();
 }
 function pbv23dPickWall(wall) {
   pbv23dSetWall(PBV23D, pbv23dSelected, wall);
+  pbv23dInvalidateResult();
   pbv23dRender(); pbv23dRefreshSheet();
 }
 function pbv23dPickPosition(pct) {
   pbv23dSetPosition(PBV23D, pbv23dSelected, Number(pct) / 100);
+  pbv23dInvalidateResult();
   pbv23dRender();
 }
 function pbv23dSetFixture(key) {
   pbv23dFixtureKey = key;
   PBV23D = pbv23dBuildFixture(key);
+  pbv23dInvalidateResult();
   pbv23dSelected = null;
   pbv23dConnectFrom = null;
   pbv23dCloseSheet();

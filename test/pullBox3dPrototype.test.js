@@ -37,6 +37,7 @@ function api3d() {
     'pbv23dSetPosition', 'pbv23dSetWall', 'pbv23dClassify', 'pbv23dAddConnection',
     'pbv23dDeleteConnection', 'pbv23dRoutePath', 'pbv23dBuildFixture',
     'pbv23dConnColor', 'pbv23dEntryConns', 'pbv23dEntryColor', 'pbv23dHitRadius',
+    'pbv23dRowIdFor', 'pbv23dEngineRequest', 'pbv23dPresent',
     'pbv23dRenderSvg', 'pbv23dDevHost', 'pbv23dShouldOpen'].map(fn3d).join('\n');
   const out = {};
   // eslint-disable-next-line no-new-func
@@ -56,7 +57,9 @@ function api3d() {
     exports.devHost = pbv23dDevHost; exports.shouldOpen = pbv23dShouldOpen;
     exports.PALETTE = PBV23D_CONN_COLORS; exports.NEUTRAL = PBV23D_NEUTRAL;
     exports.connColor = pbv23dConnColor; exports.entryColor = pbv23dEntryColor;
-    exports.hitRadius = pbv23dHitRadius;`)(out);
+    exports.hitRadius = pbv23dHitRadius;
+    exports.request = pbv23dEngineRequest; exports.present = pbv23dPresent;
+    exports.rowIdFor = pbv23dRowIdFor;`)(out);
   return out;
 }
 
@@ -87,12 +90,17 @@ describe('PBV2-10B — isolation', () => {
     }
   });
 
-  test('calculation-free and deletable in one cut', () => {
+  test('engine access is confined to the adapter; everything else stays out', () => {
+    // PBV2-11 supersedes the 10B "no engine access" ban: the prototype now
+    // drives the real engine, but only through one adapter call site.
     const code = P3D.slice(P3D.indexOf('<style>'))
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-    for (const banned of ['EC.pullBox', 'calculatePullBox', 'validatePullBoxRequest',
-      'localStorage', 'sessionStorage', 'indexedDB', '<canvas', 'WebGL', 'THREE.',
-      'getContext(']) {
+    assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1,
+      'exactly one engine call site');
+    assert.ok(!code.includes('validatePullBoxRequest'),
+      'calculatePullBox owns validation — no double call');
+    for (const banned of ['localStorage', 'sessionStorage', 'indexedDB', '<canvas',
+      'WebGL', 'THREE.', 'getContext(']) {
       assert.ok(!code.includes(banned), 'forbidden in prototype: ' + banned);
     }
     assert.ok(fn3d('pbv23dShouldOpen').includes('pbv23dDevHost'), 'self-contained gate');
@@ -362,20 +370,14 @@ describe('PBV2-10B — density, fixtures and honesty', () => {
     assert.ok(api.find(std, e.id));
   });
 
-  test('fixture dimension values are static and vanish on the first edit', () => {
+  test('no dimensions are drawn until the engine has actually run', () => {
+    // superseded by PBV2-11: static fixture values are gone entirely. The
+    // dimension layer renders only from an engine-derived presentation.
     const s = api.build('standard');
-    assert.strictEqual(s.showDims, true);
-    let svg = api.svg(s, {});
-    assert.ok(svg.includes('NOT FULLY DETERMINED'), 'safety framing preserved');
-    assert.ok(!/>12&#8243;</.test(svg) && !/>12"</.test(svg),
-      'a 12 inch width is never presented as final');
-    api.add(s, 'left', '2', api.nextId('e'));
-    assert.strictEqual(s.showDims, false, 'editing clears the preset values');
-    svg = api.svg(s, {});
-    assert.ok(!svg.includes('p3d-dim-width'), 'no stale dimensions after an edit');
-    // empty and dense fixtures never show them at all
-    assert.strictEqual(api.build('empty').showDims, false);
-    assert.strictEqual(api.build('dense').showDims, false);
+    assert.ok(!('showDims' in s), 'the static fixture flag no longer exists');
+    const before = api.svg(s, {});
+    assert.ok(!before.includes('p3d-dim-width'), 'nothing drawn before CALCULATE');
+    assert.ok(!before.includes('NOT FULLY DETERMINED'));
   });
 
   test('single viewBox, no horizontal overflow assumptions', () => {
@@ -560,5 +562,293 @@ describe('PBV2-10B.1 — interaction polish', () => {
     assert.strictEqual(api.classify('left', 'right'), 'STRAIGHT');
     assert.strictEqual(api.classify('left', 'top'), 'ANGLE');
     assert.strictEqual(api.classify('bottom', 'bottom'), 'U');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-11 — controlled engine integration
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-11 — adapter contract', () => {
+  const api = api3d();
+  const engine = require('../src/calc/pullBox');
+
+  function sample() {
+    const s = api.empty();
+    const l = api.add(s, 'left', '2', api.nextId('e'));
+    const t = api.add(s, 'top', '2', api.nextId('e'));
+    const b1 = api.add(s, 'bottom', '3', api.nextId('e'));
+    const b2 = api.add(s, 'bottom', '3', api.nextId('e'));
+    api.connect(s, l.id, t.id, api.nextId('c'));
+    api.connect(s, b1.id, b2.id, api.nextId('c'));
+    return { s, l, t, b1, b2 };
+  }
+
+  test('produces canonical engine input the frozen contract accepts', () => {
+    const { s } = sample();
+    const req = api.request(s);
+    assert.deepStrictEqual(Object.keys(req).sort(), ['connections', 'entries', 'rows']);
+    for (const r of req.rows) {
+      assert.deepStrictEqual(Object.keys(r).sort(), ['id', 'order', 'wall']);
+      assert.strictEqual(r.order, 0);
+    }
+    for (const e of req.entries) {
+      assert.deepStrictEqual(Object.keys(e).sort(), ['id', 'rowId', 'tradeSize']);
+    }
+    for (const c of req.connections) {
+      assert.deepStrictEqual(Object.keys(c).sort(), ['entryIds', 'id']);
+      assert.strictEqual(c.entryIds.length, 2);
+    }
+    assert.strictEqual(engine.validatePullBoxRequest(req).ok, true,
+      'the real engine validates the adapter output');
+  });
+
+  test('adapter is DOM-free and does no arithmetic or classification', () => {
+    for (const name of ['pbv23dEngineRequest', 'pbv23dPresent', 'pbv23dRowIdFor']) {
+      const body = fn3d(name);
+      assert.ok(!/document|window|innerHTML|getElementById|querySelector/.test(body),
+        name + ' must not touch the DOM');
+      assert.ok(!/[*]\s*6|6\s*[*]|[*]\s*8|8\s*[*]|Math\.max\(|Math\.min\(/.test(body),
+        name + ' must contain no NEC arithmetic');
+      assert.ok(!/classifyConnection|STRAIGHT|ANGLE|'U'/.test(body),
+        name + ' must not classify pulls');
+    }
+  });
+
+  test('wall mapping, raceway ids and trade sizes normalise correctly', () => {
+    const s = api.empty();
+    const made = {};
+    for (const w of ['top', 'right', 'bottom', 'left']) {
+      made[w] = api.add(s, w, '4', api.nextId('e'));
+    }
+    const req = api.request(s);
+    assert.strictEqual(req.rows.length, 4, 'one canonical row per occupied wall');
+    assert.deepStrictEqual(req.rows.map((r) => r.wall).sort(),
+      ['bottom', 'left', 'right', 'top']);
+    for (const w of ['top', 'right', 'bottom', 'left']) {
+      const entry = req.entries.find((e) => e.id === made[w].id);
+      assert.ok(entry, 'raceway id survives normalisation unchanged');
+      assert.strictEqual(entry.rowId, api.rowIdFor(w), w + ' maps to its own row');
+      assert.strictEqual(entry.tradeSize, '4');
+    }
+    // sizes are the engine's own vocabulary, not a private list
+    for (const size of api.SIZES) {
+      assert.ok(engine.TRADE_SIZE_KEYS.includes(size), 'unknown trade size: ' + size);
+    }
+  });
+
+  test('same state always produces identical engine input', () => {
+    const { s } = sample();
+    const a = JSON.stringify(api.request(s));
+    const b = JSON.stringify(api.request(s));
+    assert.strictEqual(a, b);
+    // input order in the UI state must not change the canonical request
+    const shuffled = { entries: s.entries.slice().reverse(),
+      connections: s.connections.slice().reverse() };
+    assert.strictEqual(JSON.stringify(api.request(shuffled)), a,
+      'canonical ordering is deterministic');
+  });
+
+  test('ROW MODEL: one row per wall is lossless here and conservative in general', () => {
+    const { s } = sample();
+    const req = api.request(s);
+    const perWall = {};
+    for (const e of req.entries) perWall[e.rowId] = (perWall[e.rowId] || 0) + 1;
+    assert.strictEqual(perWall[api.rowIdFor('bottom')], 2,
+      'both bottom raceways share the wall row — the editor cannot express two rows');
+    // and a single row can never under-size versus a split into two rows
+    const single = engine.calculatePullBox({
+      rows: [{ id: 'r', wall: 'left', order: 0 }, { id: 't', wall: 'top', order: 0 }],
+      entries: [{ id: 'a', rowId: 'r', tradeSize: '4' }, { id: 'b', rowId: 'r', tradeSize: '2' },
+        { id: 'c', rowId: 'r', tradeSize: '3' }, { id: 't1', rowId: 't', tradeSize: '2' }],
+      connections: [{ id: 'c1', entryIds: ['a', 't1'] }],
+    });
+    const split = engine.calculatePullBox({
+      rows: [{ id: 'r', wall: 'left', order: 0 }, { id: 'r2', wall: 'left', order: 1 },
+        { id: 't', wall: 'top', order: 0 }],
+      entries: [{ id: 'a', rowId: 'r', tradeSize: '4' }, { id: 'b', rowId: 'r', tradeSize: '2' },
+        { id: 'c', rowId: 'r2', tradeSize: '3' }, { id: 't1', rowId: 't', tradeSize: '2' }],
+      connections: [{ id: 'c1', entryIds: ['a', 't1'] }],
+    });
+    assert.ok(single.minimumWidthIn >= split.minimumWidthIn,
+      'collapsing rows never returns a smaller requirement');
+  });
+
+  test('POSITION, COLOUR and SELECTION never reach the engine', () => {
+    const { s, l } = sample();
+    const baseline = JSON.stringify(api.request(s));
+    api.setPos(s, l.id, 0.06);
+    assert.strictEqual(JSON.stringify(api.request(s)), baseline,
+      'the visual slider is presentation-only');
+    api.setPos(s, l.id, 0.94);
+    assert.strictEqual(JSON.stringify(api.request(s)), baseline);
+    const req = api.request(s);
+    const flat = JSON.stringify(req);
+    assert.ok(!/#[0-9a-f]{6}/i.test(flat), 'no relationship colour in engine input');
+    assert.ok(!/selected|connectFrom|"v"/.test(flat), 'no UI state in engine input');
+  });
+
+  test('CONNECTIONS map to engine relationships; engine classification is authoritative', () => {
+    const { s, l, t } = sample();
+    const req = api.request(s);
+    const conn = req.connections.find((c) => c.entryIds.includes(l.id));
+    assert.ok(conn.entryIds.includes(t.id), 'both endpoints carried across');
+    // the prototype's own label plays no part in the engine's answer
+    const cls = engine.classifyConnection(conn, req.entries, req.rows);
+    assert.strictEqual(cls.type, 'ANGLE');
+    assert.strictEqual(cls.type, api.classify('left', 'top'),
+      'they agree here — but the engine value is the one used for results');
+    const body = fn3d('pbv23dCalculate');
+    assert.ok(!body.includes('pbv23dClassify'),
+      'calculation never consults the prototype classifier');
+  });
+
+  test('a deleted raceway can never leave a dangling relationship in engine input', () => {
+    const { s, l, t } = sample();
+    api.del(s, l.id);
+    const req = api.request(s);
+    const ids = req.entries.map((e) => e.id);
+    for (const c of req.connections) {
+      for (const id of c.entryIds) {
+        assert.ok(ids.includes(id), 'dangling endpoint reached the engine: ' + id);
+      }
+    }
+    assert.strictEqual(engine.validatePullBoxRequest(req).ok, true);
+    assert.ok(!req.entries.some((e) => e.id === l.id));
+    assert.ok(!req.connections.some((c) => c.entryIds.includes(t.id) && c.entryIds.includes(l.id)));
+  });
+});
+
+describe('PBV2-11 — live calculation and presentation', () => {
+  const api = api3d();
+  const engine = require('../src/calc/pullBox');
+
+  function auditFixture() {
+    const s = api.empty();
+    const l = api.add(s, 'left', '2', api.nextId('e'));
+    const t = api.add(s, 'top', '2', api.nextId('e'));
+    const b1 = api.add(s, 'bottom', '3', api.nextId('e'));
+    const b2 = api.add(s, 'bottom', '3', api.nextId('e'));
+    api.connect(s, l.id, t.id, api.nextId('c'));
+    api.connect(s, b1.id, b2.id, api.nextId('c'));
+    return s;
+  }
+
+  test('the engine is the source of every displayed number', () => {
+    const s = auditFixture();
+    const result = engine.calculatePullBox(api.request(s));
+    const p = api.present(result);
+    assert.strictEqual(p.state, 'OK');
+    // the safety-audit case, now computed live rather than hard-coded
+    assert.strictEqual(p.height.kind, 'RESOLVED');
+    assert.strictEqual(p.height.valueIn, result.minimumHeightIn);
+    assert.strictEqual(p.height.valueIn, 21);
+    assert.strictEqual(p.width.kind, 'LAYOUT_DEPENDENT');
+    assert.strictEqual(p.width.pullRuleIn, result.minimumWidthIn);
+    assert.strictEqual(p.width.entrySpacingIn,
+      result.dimensionStatus.width.minimumEntrySpacingIn);
+    assert.strictEqual(p.spacing.length, result.spacingRequirements.length);
+    for (let i = 0; i < p.spacing.length; i++) {
+      assert.strictEqual(p.spacing[i].minimumInches,
+        result.spacingRequirements[i].minimumInches);
+    }
+  });
+
+  test('NOT FULLY DETERMINED survives into the drawing; 12 inches never becomes final', () => {
+    const s = auditFixture();
+    const p = api.present(engine.calculatePullBox(api.request(s)));
+    const svg = api.svg(s, { result: p });
+    assert.ok(svg.includes('NOT FULLY DETERMINED'));
+    assert.ok(svg.includes('p3d-dim-ref'), 'reference dimension for the unresolved axis');
+    assert.ok(!/>12&#8243;|>12&#x2033;|12\u2033 WIDTH/.test(svg),
+      'the pull-rule 12 inch value never appears as the width answer');
+    assert.ok(svg.includes('21\u2033'), 'the resolved height renders normally');
+  });
+
+  test('a resolved axis draws a solid dimension carrying the engine value', () => {
+    const s = api.empty();
+    const a = api.add(s, 'left', '4', api.nextId('e'));
+    const b = api.add(s, 'right', '4', api.nextId('e'));
+    api.connect(s, a.id, b.id, api.nextId('c'));
+    const result = engine.calculatePullBox(api.request(s));
+    assert.strictEqual(result.minimumWidthIn, 32, 'engine says 32');
+    const svg = api.svg(s, { result: api.present(result) });
+    assert.ok(svg.includes('32\u2033 WIDTH'), 'the drawing shows the engine value');
+    assert.ok(!/class="p3d-dim-width p3d-dim-ref"/.test(svg), 'solid, not a reference dim');
+  });
+
+  test('unsupported and invalid states fail explicitly instead of inventing numbers', () => {
+    const empty = api.empty();
+    const result = engine.calculatePullBox(api.request(empty));
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.reason, 'NO_ENTRIES');
+    const p = api.present(result);
+    assert.strictEqual(p.state, 'INVALID');
+    assert.strictEqual(p.reason, 'NO_ENTRIES');
+    assert.ok(!('width' in p) && !('height' in p), 'no fabricated dimensions');
+    const svg = api.svg(empty, { result: p });
+    assert.ok(!svg.includes('p3d-dim-width'), 'nothing drawn for an invalid result');
+    assert.strictEqual(api.present(null).state, 'NONE', 'no result yet is its own state');
+  });
+
+  test('edit -> calculate -> edit -> recalculate stays truthful', () => {
+    const s = api.empty();
+    const a = api.add(s, 'left', '4', api.nextId('e'));
+    const b = api.add(s, 'right', '4', api.nextId('e'));
+    api.connect(s, a.id, b.id, api.nextId('c'));
+    let p = api.present(engine.calculatePullBox(api.request(s)));
+    assert.strictEqual(p.width.valueIn, 32);
+    api.setSize(s, a.id, '2');
+    p = api.present(engine.calculatePullBox(api.request(s)));
+    assert.strictEqual(p.width.valueIn, 32, 'largest of the pair still governs');
+    api.setSize(s, b.id, '2');
+    p = api.present(engine.calculatePullBox(api.request(s)));
+    assert.strictEqual(p.width.valueIn, 16, 'recalculation reflects the edit');
+  });
+
+  test('CALCULATE calls the engine exactly once, through the adapter', () => {
+    const body = fn3d('pbv23dCalculate');
+    assert.strictEqual((body.match(/EC\.pullBox\.calculatePullBox\(/g) || []).length, 1);
+    assert.ok(body.includes('pbv23dEngineRequest(PBV23D)'), 'input comes from the adapter');
+    assert.ok(body.includes('pbv23dPresent('), 'output goes through the adapter');
+    assert.ok(!/[*]|Math\./.test(body), 'no arithmetic in the calculate handler');
+    // and it is the ONLY engine call site in the whole prototype
+    const code = P3D.slice(P3D.indexOf('<style>'));
+    assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
+  });
+
+  test('every geometry mutation invalidates a shown result', () => {
+    for (const name of ['pbv23dTapWall', 'pbv23dDeleteSelected', 'pbv23dPickSize',
+      'pbv23dPickWall', 'pbv23dPickPosition', 'pbv23dSetFixture']) {
+      assert.ok(fn3d(name).includes('pbv23dInvalidateResult'),
+        name + ' must clear the stale result');
+    }
+    assert.ok(fn3d('pbv23dTapEntry').includes('pbv23dInvalidateResult'),
+      'creating a connection invalidates too');
+    assert.ok(fn3d('pbv23dInvalidateResult').includes('pbv23dLastResult = null'));
+  });
+
+  test('no engine constants or NEC rules were copied into the prototype', () => {
+    const code = P3D.slice(P3D.indexOf('<style>'))
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    assert.ok(!/314\.28|TRADE_SIZE_IN|WALL_DIMENSION|ANGLE_U_ROW|ENTRY_SPACING/.test(code),
+      'no engine internals or code references duplicated');
+    assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b/.test(code), 'no NEC multipliers');
+    assert.ok(fn3d('pbv23dSupportedSizes').includes('EC.pullBox.TRADE_SIZE_KEYS'),
+      'trade sizes are validated against the engine, not a private copy');
+  });
+
+  test('Code to AI is untouched and remains with the working editor', () => {
+    // the prototype deliberately renders no code references yet, so the
+    // global clickable rule holds trivially and the existing AI pipeline is
+    // not forked (see report: return-path coupling deferred)
+    const code = P3D.slice(P3D.indexOf('<style>'));
+    assert.ok(!/ecRenderCodeRef|ecOpenCodeRef|EC_CODE_CONTEXTS/.test(code),
+      'no second AI context pipeline');
+    assert.ok(!/314\.28|\bNEC \d|NYCEC/.test(code),
+      'no inert code section citations in the prototype');
+    // and the real pathway is intact in the working editor
+    assert.ok(html.includes('function ecRenderCodeRef') && html.includes('function ecOpenCodeRef'));
+    assert.ok(html.includes('function pbv2ReturnFromAi'));
   });
 });
