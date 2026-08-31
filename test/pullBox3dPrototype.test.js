@@ -37,6 +37,8 @@ function api3d() {
     'pbv23dSetPosition', 'pbv23dSetWall', 'pbv23dClassify', 'pbv23dAddConnection',
     'pbv23dDeleteConnection', 'pbv23dRoutePath', 'pbv23dBuildFixture',
     'pbv23dConnColor', 'pbv23dEntryConns', 'pbv23dEntryColor', 'pbv23dHitRadius',
+    'pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex', 'pbv23dAddRowOnWall',
+    'pbv23dEnsureRow', 'pbv23dSetEntryRow', 'pbv23dDeleteRowIfEmpty', 'pbv23dRowDepth',
     'pbv23dRowIdFor', 'pbv23dEngineRequest', 'pbv23dPresent',
     'pbv23dRenderSvg', 'pbv23dDevHost', 'pbv23dShouldOpen'].map(fn3d).join('\n');
   const out = {};
@@ -59,7 +61,11 @@ function api3d() {
     exports.connColor = pbv23dConnColor; exports.entryColor = pbv23dEntryColor;
     exports.hitRadius = pbv23dHitRadius;
     exports.request = pbv23dEngineRequest; exports.present = pbv23dPresent;
-    exports.rowIdFor = pbv23dRowIdFor;`)(out);
+    exports.rowIdFor = pbv23dRowIdFor;
+    exports.rowsFor = pbv23dRowsFor; exports.rowById = pbv23dRowById;
+    exports.rowIndex = pbv23dRowIndex; exports.addRow = pbv23dAddRowOnWall;
+    exports.ensureRow = pbv23dEnsureRow; exports.setRow = pbv23dSetEntryRow;
+    exports.dropRow = pbv23dDeleteRowIfEmpty; exports.rowDepth = pbv23dRowDepth;`)(out);
   return out;
 }
 
@@ -122,7 +128,8 @@ describe('PBV2-10B — editing raceways on the box', () => {
     assert.strictEqual(e.wall, 'left');
     assert.strictEqual(e.size, '2');
     assert.ok(e.v > 0 && e.v < 1, 'positioned along the wall');
-    assert.deepStrictEqual(Object.keys(e).sort(), ['id', 'size', 'v', 'wall']);
+    assert.deepStrictEqual(Object.keys(e).sort(), ['id', 'rowId', 'size', 'v', 'wall'],
+      'PBV2-12: raceways now carry an explicit row reference');
     api.add(s, 'top', '3', api.nextId('e'));
     assert.strictEqual(s.entries.length, 2);
     assert.strictEqual(s.entries.filter((x) => x.wall === 'top').length, 1);
@@ -439,7 +446,10 @@ describe('PBV2-10B.1 — interaction polish', () => {
     const svg = api.svg(dense, {});
     const G = api.GEO;
     const hubs = {};
-    for (const e of dense.entries) hubs[e.id] = api.hub(e.wall, e.v, G.hubDepth);
+    // depth now comes from the raceway's row, so the test must use it too
+    for (const e of dense.entries) {
+      hubs[e.id] = api.hub(e.wall, e.v, api.rowDepth(dense, e.rowId));
+    }
     const radii = {};
     for (const m of svg.match(/class="p3d-hit" data-entry="([^"]+)"[^>]*r="([\d.]+)"/g)) {
       const [, id, r] = m.match(/data-entry="([^"]+)"[^>]*r="([\d.]+)"/);
@@ -628,7 +638,8 @@ describe('PBV2-11 — adapter contract', () => {
     for (const w of ['top', 'right', 'bottom', 'left']) {
       const entry = req.entries.find((e) => e.id === made[w].id);
       assert.ok(entry, 'raceway id survives normalisation unchanged');
-      assert.strictEqual(entry.rowId, api.rowIdFor(w), w + ' maps to its own row');
+      const row = api.rowById(s, entry.rowId);
+      assert.strictEqual(row.wall, w, w + ' maps to a row on its own wall');
       assert.strictEqual(entry.tradeSize, '4');
     }
     // sizes are the engine's own vocabulary, not a private list
@@ -643,19 +654,23 @@ describe('PBV2-11 — adapter contract', () => {
     const b = JSON.stringify(api.request(s));
     assert.strictEqual(a, b);
     // input order in the UI state must not change the canonical request
-    const shuffled = { entries: s.entries.slice().reverse(),
+    const shuffled = { rows: s.rows.slice().reverse(),
+      entries: s.entries.slice().reverse(),
       connections: s.connections.slice().reverse() };
     assert.strictEqual(JSON.stringify(api.request(shuffled)), a,
       'canonical ordering is deterministic');
   });
 
-  test('ROW MODEL: one row per wall is lossless here and conservative in general', () => {
+  test('ROW MODEL: default single row still groups a wall, and collapsing is conservative', () => {
+    // superseded in part by PBV2-12: the editor CAN now express several rows.
+    // Default behaviour is unchanged — a wall starts with one row.
     const { s } = sample();
     const req = api.request(s);
-    const perWall = {};
-    for (const e of req.entries) perWall[e.rowId] = (perWall[e.rowId] || 0) + 1;
-    assert.strictEqual(perWall[api.rowIdFor('bottom')], 2,
-      'both bottom raceways share the wall row — the editor cannot express two rows');
+    const perRow = {};
+    for (const e of req.entries) perRow[e.rowId] = (perRow[e.rowId] || 0) + 1;
+    const bottomRow = api.rowsFor(s, 'bottom')[0];
+    assert.strictEqual(perRow[bottomRow.id], 2,
+      'both bottom raceways default into the wall first row');
     // and a single row can never under-size versus a split into two rows
     const single = engine.calculatePullBox({
       rows: [{ id: 'r', wall: 'left', order: 0 }, { id: 't', wall: 'top', order: 0 }],
@@ -850,5 +865,335 @@ describe('PBV2-11 — live calculation and presentation', () => {
     // and the real pathway is intact in the working editor
     assert.ok(html.includes('function ecRenderCodeRef') && html.includes('function ecOpenCodeRef'));
     assert.ok(html.includes('function pbv2ReturnFromAi'));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-12 — multi-row model / production parity
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-12 — engine row semantics (audit pins)', () => {
+  const engine = require('../src/calc/pullBox');
+
+  test('row.order carries no arithmetic — identity and ordering only', () => {
+    const build = (order) => engine.calculatePullBox({
+      rows: [{ id: 'r', wall: 'left', order }],
+      entries: [{ id: 'x', rowId: 'r', tradeSize: '2' }, { id: 'y', rowId: 'r', tradeSize: '2' }],
+      connections: [{ id: 'c', entryIds: ['x', 'y'] }],
+    });
+    const a = build(0); const b = build(9);
+    assert.strictEqual(a.minimumWidthIn, b.minimumWidthIn, 'order never changes a value');
+    assert.strictEqual(a.widthRequirements[0].rowOrder, 0);
+    assert.strictEqual(b.widthRequirements[0].rowOrder, 9, 'it survives only as metadata');
+  });
+
+  test('row grouping is what the A(2) rule consumes', () => {
+    const split = engine.calculatePullBox({
+      rows: [{ id: 'r1', wall: 'left', order: 0 }, { id: 'r2', wall: 'left', order: 1 },
+        { id: 't', wall: 'top', order: 0 }],
+      entries: [{ id: 'a', rowId: 'r1', tradeSize: '4' }, { id: 'b', rowId: 'r1', tradeSize: '2' },
+        { id: 'c', rowId: 'r2', tradeSize: '3' }, { id: 't1', rowId: 't', tradeSize: '2' }],
+      connections: [{ id: 'k', entryIds: ['a', 't1'] }],
+    });
+    const merged = engine.calculatePullBox({
+      rows: [{ id: 'r1', wall: 'left', order: 0 }, { id: 't', wall: 'top', order: 0 }],
+      entries: [{ id: 'a', rowId: 'r1', tradeSize: '4' }, { id: 'b', rowId: 'r1', tradeSize: '2' },
+        { id: 'c', rowId: 'r1', tradeSize: '3' }, { id: 't1', rowId: 't', tradeSize: '2' }],
+      connections: [{ id: 'k', entryIds: ['a', 't1'] }],
+    });
+    assert.strictEqual(split.minimumWidthIn, 26, '6x4 + 2 (untriggered row 2 contributes nothing)');
+    assert.strictEqual(merged.minimumWidthIn, 29, '6x4 + 2 + 3');
+    assert.notStrictEqual(split.minimumWidthIn, merged.minimumWidthIn,
+      'row assignment is electrically material');
+  });
+
+  test('row constraints: empty rows fine, per-wall order must be unique', () => {
+    assert.strictEqual(engine.calculatePullBox({
+      rows: [{ id: 'r', wall: 'left', order: 0 }, { id: 'empty', wall: 'top', order: 0 }],
+      entries: [{ id: 'x', rowId: 'r', tradeSize: '2' }], connections: [],
+    }).ok, true, 'an empty row is valid');
+    assert.strictEqual(engine.calculatePullBox({
+      rows: [{ id: 'a', wall: 'left', order: 0 }, { id: 'b', wall: 'left', order: 0 }],
+      entries: [{ id: 'x', rowId: 'a', tradeSize: '2' }], connections: [],
+    }).reason, 'INVALID_ROW_ORDER', 'duplicate order on one wall is rejected');
+    assert.strictEqual(engine.calculatePullBox({
+      rows: [{ id: 'a', wall: 'left', order: 0 }, { id: 'b', wall: 'top', order: 0 }],
+      entries: [{ id: 'x', rowId: 'a', tradeSize: '2' }], connections: [],
+    }).ok, true, 'the same order on different walls is fine');
+  });
+
+  test('PROPERTY: collapsing rows never returns a SMALLER requirement (exhaustive)', () => {
+    // Reasoning from the rule's shape: a triggered row requires
+    //   5*L + S   (6*largest + sum of the others = 5L + S)
+    // Merging rows gives L >= every L_i and S >= every S_i, so the merged
+    // candidate dominates each split candidate — and merging can only ADD
+    // triggered entries, never remove them. Verified exhaustively below.
+    const SIZES = ['1/2', '1', '2', '3', '4', '6'];
+    const partitions = (arr) => {
+      if (arr.length === 0) return [[]];
+      const first = arr[0]; const rest = partitions(arr.slice(1)); const out = [];
+      for (const p of rest) {
+        for (let i = 0; i < p.length; i++) {
+          const q = p.map((g) => g.slice()); q[i].push(first); out.push(q);
+        }
+        out.push([[first]].concat(p.map((g) => g.slice())));
+      }
+      return out;
+    };
+    const calc = (sizes, part, trigger) => {
+      const rows = part.map((g, i) => ({ id: 'r' + i, wall: 'left', order: i }));
+      rows.push({ id: 't', wall: 'top', order: 0 });
+      const entries = [];
+      part.forEach((g, i) => g.forEach((j) => entries.push({
+        id: 'e' + j, rowId: 'r' + i, tradeSize: sizes[j],
+      })));
+      entries.push({ id: 't1', rowId: 't', tradeSize: '1/2' });
+      return engine.calculatePullBox({ rows, entries,
+        connections: [{ id: 'k', entryIds: ['e' + trigger, 't1'] }] });
+    };
+    const combos = (n) => (n === 0 ? [[]]
+      : SIZES.flatMap((s) => combos(n - 1).map((rest) => [s].concat(rest))));
+    let checked = 0;
+    const violations = [];
+    for (let n = 2; n <= 3; n++) {
+      for (const sizes of combos(n)) {
+        const idx = [...Array(n).keys()];
+        const merged = calc(sizes, [idx], 0);
+        for (const part of partitions(idx)) {
+          for (let trig = 0; trig < n; trig++) {
+            const split = calc(sizes, part, trig);
+            checked++;
+            if (merged.minimumWidthIn < split.minimumWidthIn) {
+              violations.push({ sizes, part, trig,
+                merged: merged.minimumWidthIn, split: split.minimumWidthIn });
+            }
+          }
+        }
+      }
+    }
+    assert.ok(checked > 1500, 'meaningful coverage: ' + checked + ' cases');
+    assert.deepStrictEqual(violations, [], 'no counterexample to the conservative claim');
+  });
+});
+
+describe('PBV2-12 — 3D row model', () => {
+  const api = api3d();
+  const engine = require('../src/calc/pullBox');
+
+  test('state carries explicit stable rows; the first raceway creates one', () => {
+    const s = api.empty();
+    assert.deepStrictEqual(s.rows, []);
+    const e = api.add(s, 'left', '2', api.nextId('e'));
+    assert.strictEqual(s.rows.length, 1, 'a valid row is created on demand');
+    assert.strictEqual(s.rows[0].wall, 'left');
+    assert.strictEqual(s.rows[0].order, 0);
+    assert.strictEqual(e.rowId, s.rows[0].id, 'the raceway references it explicitly');
+    // second raceway on the same wall joins the same row by default
+    const e2 = api.add(s, 'left', '3', api.nextId('e'));
+    assert.strictEqual(e2.rowId, s.rows[0].id);
+    assert.strictEqual(api.rowsFor(s, 'left').length, 1, 'no surprise extra rows');
+  });
+
+  test('several rows can exist on one wall and a raceway can move between them', () => {
+    const s = api.empty();
+    const a = api.add(s, 'left', '4', api.nextId('e'));
+    const b = api.add(s, 'left', '3', api.nextId('e'));
+    const row2 = api.addRow(s, 'left', api.nextId('row'));
+    assert.strictEqual(api.rowsFor(s, 'left').length, 2);
+    assert.strictEqual(row2.order, 1, 'orders stay unique per wall');
+    assert.strictEqual(api.setRow(s, b.id, row2.id), true);
+    assert.strictEqual(api.find(s, b.id).rowId, row2.id);
+    assert.strictEqual(api.find(s, a.id).rowId, api.rowsFor(s, 'left')[0].id,
+      'the other raceway is unaffected');
+    // display numbers derive from sorted order, not raw values
+    assert.strictEqual(api.rowIndex(s, row2.id), 1);
+  });
+
+  test('a raceway can never reference a row on another wall', () => {
+    const s = api.empty();
+    const left = api.add(s, 'left', '2', api.nextId('e'));
+    api.add(s, 'top', '2', api.nextId('e'));
+    const topRow = api.rowsFor(s, 'top')[0];
+    assert.strictEqual(api.setRow(s, left.id, topRow.id), false,
+      'cross-wall row assignment is refused');
+    assert.notStrictEqual(api.find(s, left.id).rowId, topRow.id);
+    assert.strictEqual(api.setRow(s, left.id, 'ghost-row'), false);
+  });
+
+  test('changing wall lands on a valid row of the DESTINATION wall', () => {
+    const s = api.empty();
+    const a = api.add(s, 'left', '4', api.nextId('e'));
+    const keep = api.add(s, 'left', '2', api.nextId('e'));
+    const row2 = api.addRow(s, 'left', api.nextId('row'));
+    api.setRow(s, a.id, row2.id);
+    assert.strictEqual(api.setWall(s, a.id, 'bottom'), true);
+    const moved = api.find(s, a.id);
+    const destRow = api.rowById(s, moved.rowId);
+    assert.strictEqual(destRow.wall, 'bottom', 'row belongs to the new wall');
+    assert.strictEqual(moved.wall, 'bottom');
+    // the emptied left row is tidied, the occupied one survives
+    assert.strictEqual(api.rowsFor(s, 'left').length, 1);
+    assert.strictEqual(api.find(s, keep.id).rowId, api.rowsFor(s, 'left')[0].id);
+  });
+
+  test('row ids are stable and independent of array position', () => {
+    const s = api.empty();
+    const a = api.add(s, 'left', '2', api.nextId('e'));
+    const r2 = api.addRow(s, 'left', api.nextId('row'));
+    const r3 = api.addRow(s, 'left', api.nextId('row'));
+    api.setRow(s, a.id, r3.id);
+    const idBefore = api.find(s, a.id).rowId;
+    assert.strictEqual(api.dropRow(s, r2.id), true, 'delete an unrelated empty row');
+    assert.strictEqual(api.find(s, a.id).rowId, idBefore,
+      'the surviving raceway still points at the same row identity');
+    assert.strictEqual(api.rowById(s, r3.id).id, r3.id);
+  });
+
+  test('only EMPTY rows can be deleted — raceways are never destroyed', () => {
+    const s = api.empty();
+    const a = api.add(s, 'left', '2', api.nextId('e'));
+    const occupied = api.find(s, a.id).rowId;
+    assert.strictEqual(api.dropRow(s, occupied), false, 'refused: the row holds a raceway');
+    assert.strictEqual(s.entries.length, 1, 'nothing was destroyed');
+    assert.ok(api.rowById(s, occupied), 'the row survives');
+    const empty = api.addRow(s, 'left', api.nextId('row'));
+    assert.strictEqual(api.dropRow(s, empty.id), true);
+    assert.strictEqual(api.rowsFor(s, 'left').length, 1);
+  });
+});
+
+describe('PBV2-12 — rows through the adapter and the engine', () => {
+  const api = api3d();
+  const engine = require('../src/calc/pullBox');
+
+  test('rows map 1:1 into canonical engine rows — no collapsing', () => {
+    const s = api.build('rows');
+    const req = api.request(s);
+    assert.strictEqual(api.rowsFor(s, 'left').length, 2, 'two real rows in the editor');
+    assert.strictEqual(req.rows.filter((r) => r.wall === 'left').length, 2,
+      'both rows reach the engine');
+    for (const r of req.rows) {
+      assert.ok(api.rowById(s, r.id), 'engine row id is the editor row id');
+      assert.deepStrictEqual(Object.keys(r).sort(), ['id', 'order', 'wall']);
+    }
+    for (const e of req.entries) {
+      const owner = req.rows.find((r) => r.id === e.rowId);
+      assert.ok(owner, 'every entry references a forwarded row');
+      assert.strictEqual(owner.wall, api.find(s, e.id).wall, 'wall/row stay consistent');
+    }
+    assert.strictEqual(engine.validatePullBoxRequest(req).ok, true);
+  });
+
+  test('CONCRETE: moving one raceway between rows changes the engine answer', () => {
+    const s = api.build('rows');
+    const split = engine.calculatePullBox(api.request(s));
+    assert.strictEqual(split.minimumWidthIn, 26, '6x4 + 2 with the 3 inch in row 2');
+    const three = s.entries.find((e) => e.size === '3');
+    const row1 = api.rowsFor(s, 'left')[0];
+    assert.strictEqual(api.setRow(s, three.id, row1.id), true);
+    const merged = engine.calculatePullBox(api.request(s));
+    assert.strictEqual(merged.minimumWidthIn, 29, '6x4 + 2 + 3 once they share a row');
+    assert.ok(merged.minimumWidthIn > split.minimumWidthIn,
+      'the row UX is electrically meaningful, not decorative');
+  });
+
+  test('visual position stays out of the engine; row assignment does not', () => {
+    const s = api.build('rows');
+    const baseline = JSON.stringify(api.request(s));
+    const three = s.entries.find((e) => e.size === '3');
+    api.setPos(s, three.id, 0.06);
+    api.setPos(s, three.id, 0.94);
+    assert.strictEqual(JSON.stringify(api.request(s)), baseline,
+      'moving within the same row changes nothing the engine sees');
+    api.setRow(s, three.id, api.rowsFor(s, 'left')[0].id);
+    assert.notStrictEqual(JSON.stringify(api.request(s)), baseline,
+      'moving to another row does change the engine input');
+    const flat = JSON.stringify(api.request(s));
+    assert.ok(!/"v":/.test(flat), 'visualPosition is never forwarded');
+  });
+
+  test('row depth is a grouping cue only, never engine data', () => {
+    const s = api.build('rows');
+    const rows = api.rowsFor(s, 'left');
+    assert.notStrictEqual(api.rowDepth(s, rows[0].id), api.rowDepth(s, rows[1].id),
+      'rows sit on distinct visual tracks');
+    assert.ok(api.rowDepth(s, rows[1].id) <= 0.85, 'depth stays inside the enclosure');
+    const flat = JSON.stringify(api.request(s));
+    assert.ok(!/0\.3|0\.55|depth/.test(flat), 'no depth value reaches the engine');
+    const body = fn3d('pbv23dEngineRequest');
+    assert.ok(!body.includes('RowDepth') && !body.includes('.v'),
+      'the adapter cannot see visual geometry');
+  });
+
+  test('row cues are visible without clutter and never reuse pull colours', () => {
+    const s = api.build('rows');
+    const svg = api.svg(s, {});
+    const tracks = svg.match(/class="p3d-track"/g) || [];
+    assert.strictEqual(tracks.length, 2, 'one track per row on the multi-row wall');
+    // single-row walls get no track at all
+    const single = api.empty();
+    api.add(single, 'left', '2', api.nextId('e'));
+    assert.strictEqual((api.svg(single, {}).match(/class="p3d-track"/g) || []).length, 0);
+    // track cue is neutral grey — relationship colours keep their meaning
+    const trackLine = svg.match(/class="p3d-track"[^>]*stroke="([^"]+)"/)[1];
+    assert.ok(!api.PALETTE.includes(trackLine), 'row cue never borrows a pull colour');
+    assert.strictEqual(trackLine, '#3a3a3a');
+    // the row number appears contextually on the SELECTED raceway only
+    const three = s.entries.find((e) => e.size === '3');
+    assert.ok(/R2<\/text>/.test(api.svg(s, { selected: three.id })), 'contextual row tag');
+    assert.ok(!/R1<\/text>|R2<\/text>/.test(svg), 'no permanent row labels');
+  });
+
+  test('pull relationships survive row movement intact', () => {
+    const s = api.build('rows');
+    const four = s.entries.find((e) => e.size === '4');
+    const before = JSON.parse(JSON.stringify(s.connections));
+    const colourBefore = api.entryColor(s, four.id);
+    const row2 = api.rowsFor(s, 'left')[1];
+    api.setRow(s, four.id, row2.id);
+    assert.deepStrictEqual(s.connections, before, 'connection ids and endpoints unchanged');
+    assert.strictEqual(api.entryColor(s, four.id), colourBefore,
+      'relationship colour is unaffected by row assignment');
+    const req = api.request(s);
+    const ids = req.entries.map((e) => e.id);
+    for (const c of req.connections) {
+      for (const id of c.entryIds) assert.ok(ids.includes(id), 'endpoints stay valid');
+    }
+    assert.strictEqual(engine.validatePullBoxRequest(req).ok, true);
+  });
+
+  test('every row mutation invalidates a stale result', () => {
+    for (const name of ['pbv23dPickRow', 'pbv23dAddRowHere', 'pbv23dDropRow']) {
+      assert.ok(fn3d(name).includes('pbv23dInvalidateResult'),
+        name + ' must clear the stale result');
+    }
+    assert.ok(fn3d('pbv23dSetWall').includes('pbv23dEnsureRow'),
+      'wall change always resolves a destination row');
+  });
+
+  test('dense mode keeps every raceway reachable across two real rows', () => {
+    const s = api.build('dense');
+    assert.strictEqual(s.entries.length, 16);
+    assert.strictEqual(api.rowsFor(s, 'left').length, 2, 'the busy wall is split');
+    const svg = api.svg(s, {});
+    assert.strictEqual((svg.match(/class="p3d-hub"/g) || []).length, 16, 'none hidden');
+    assert.strictEqual((svg.match(/class="p3d-hit"/g) || []).length, 16, 'all tappable');
+    assert.strictEqual((svg.match(/class="p3d-track"/g) || []).length, 2);
+    for (const e of s.entries) {
+      const row = api.rowById(s, e.rowId);
+      assert.ok(row && row.wall === e.wall, 'every raceway has a consistent row');
+    }
+  });
+
+  test('the four-wall form UI was not recreated, and no NEC arithmetic appeared', () => {
+    const code = P3D.slice(P3D.indexOf('<style>'))
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/.test(code), 'no NEC arithmetic');
+    assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
+    // rows are edited from the selected raceway, not from wall panels
+    assert.ok(fn3d('pbv23dSheetBody').includes('ROW ON THIS WALL'),
+      'row editing lives in the raceway editor');
+    assert.ok(!/\+ ROW<\/button>|id="pbv2-3d-wallpanel/.test(code),
+      'no permanent per-wall row management panels');
   });
 });

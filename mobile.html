@@ -9347,7 +9347,7 @@ function pbv2ResetConfirm() {
 .p3d-title{font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;flex:1}
 .p3d-dev{font-size:10px;letter-spacing:1px;color:#ffc700;border:1px solid #ffc700;border-radius:3px;padding:2px 6px}
 .p3d-fixtures{display:flex;gap:6px;padding:10px 14px 4px}
-.p3d-fx{flex:1;min-height:44px;background:#141414;border:1px solid #2a2a2a;border-radius:8px;color:#bbb;font-size:11px;letter-spacing:1px;cursor:pointer}
+.p3d-fx{flex:1;min-width:0;min-height:44px;font-size:10px;background:#141414;border:1px solid #2a2a2a;border-radius:8px;color:#bbb;font-size:11px;letter-spacing:1px;cursor:pointer}
 .p3d-fx[aria-pressed="true"]{border-color:#ffc700;color:#ffc700}
 .p3d-fx:focus-visible,.p3d-btn:focus-visible{outline:2px solid #ffc700;outline-offset:2px}
 #pbv2-3d-stage{padding:0 6px;touch-action:manipulation}
@@ -9510,7 +9510,67 @@ var pbv23dConnectFrom = null;
 var pbv23dFixtureKey = 'standard';
 function pbv23dNextId(prefix) { pbv23dSeq++; return 'p3d-' + prefix + '-' + pbv23dSeq; }
 
-function pbv23dEmptyState() { return { entries: [], connections: [] }; }
+function pbv23dEmptyState() { return { rows: [], entries: [], connections: [] }; }
+/* ── ROW MODEL ──────────────────────────────────────────────────────────
+   An engine row is a GROUPING of raceways on one wall: the A(2) rule sums
+   the other raceways sharing that (wall, row). row.order carries no
+   arithmetic — it only orders rows and surfaces as metadata — so a row is
+   an identity plus a stable ordering, never a measurement. The 3D editor
+   therefore models rows as explicit structured state and shows them as
+   parallel tracks on the wall, never as a dimension.                    */
+function pbv23dRowsFor(state, wall) {
+  return state.rows.filter(function (r) { return r.wall === wall; })
+    .sort(function (a, b) { return a.order - b.order; });
+}
+function pbv23dRowById(state, rowId) {
+  for (var i = 0; i < state.rows.length; i++) {
+    if (state.rows[i].id === rowId) return state.rows[i];
+  }
+  return null;
+}
+/** Display number: derived from sorted order, never from the raw value. */
+function pbv23dRowIndex(state, rowId) {
+  var row = pbv23dRowById(state, rowId);
+  if (!row) return 0;
+  var rows = pbv23dRowsFor(state, row.wall);
+  for (var i = 0; i < rows.length; i++) if (rows[i].id === rowId) return i;
+  return 0;
+}
+function pbv23dAddRowOnWall(state, wall, id) {
+  var max = -1;
+  for (var i = 0; i < state.rows.length; i++) {
+    if (state.rows[i].wall === wall && state.rows[i].order > max) max = state.rows[i].order;
+  }
+  var row = { id: id, wall: wall, order: max + 1 };
+  state.rows.push(row);
+  return row;
+}
+/** The wall's first row, created on demand. */
+function pbv23dEnsureRow(state, wall, id) {
+  var rows = pbv23dRowsFor(state, wall);
+  if (rows.length > 0) return rows[0];
+  return pbv23dAddRowOnWall(state, wall, id);
+}
+/** Move a raceway to another row — same wall only, by construction. */
+function pbv23dSetEntryRow(state, entryId, rowId) {
+  var e = pbv23dFindEntry(state, entryId);
+  var row = pbv23dRowById(state, rowId);
+  if (!e || !row || row.wall !== e.wall) return false;
+  e.rowId = rowId;
+  return true;
+}
+/** Only empty rows may be removed: never destroy raceways as a side effect. */
+function pbv23dDeleteRowIfEmpty(state, rowId) {
+  var used = state.entries.some(function (e) { return e.rowId === rowId; });
+  if (used) return false;
+  state.rows = state.rows.filter(function (r) { return r.id !== rowId; });
+  return true;
+}
+/** Visual track depth for a row — a GROUPING cue only. Never sent to the
+ *  engine and never claims to encode a physical dimension. */
+function pbv23dRowDepth(state, rowId) {
+  return Math.min(0.85, 0.30 + 0.25 * pbv23dRowIndex(state, rowId));
+}
 function pbv23dFindEntry(state, id) {
   for (var i = 0; i < state.entries.length; i++) {
     if (state.entries[i].id === id) return state.entries[i];
@@ -9530,16 +9590,25 @@ function pbv23dNextPosition(state, wall) {
   }
   return Math.min(0.94, Math.max(0.06, bestV));
 }
-function pbv23dAddEntry(state, wall, size, id) {
-  var entry = { id: id, wall: wall, v: pbv23dNextPosition(state, wall), size: size };
+function pbv23dAddEntry(state, wall, size, id, rowId) {
+  var row = rowId ? pbv23dRowById(state, rowId)
+    : pbv23dEnsureRow(state, wall, pbv23dNextId('row'));
+  var entry = { id: id, wall: wall, rowId: row.id, v: pbv23dNextPosition(state, wall),
+    size: size };
   state.entries.push(entry);
   return entry;
 }
 function pbv23dDeleteEntry(state, id) {
+  var gone = pbv23dFindEntry(state, id);
+  var rowId = gone ? gone.rowId : null;
   state.entries = state.entries.filter(function (e) { return e.id !== id; });
   state.connections = state.connections.filter(function (c) {
     return c.a !== id && c.b !== id;
   });
+  // an emptied row is removed, but only ever because it is now empty
+  if (rowId && pbv23dRowsFor(state, gone.wall).length > 1) {
+    pbv23dDeleteRowIfEmpty(state, rowId);
+  }
 }
 function pbv23dSetSize(state, id, size) {
   var e = pbv23dFindEntry(state, id);
@@ -9556,8 +9625,13 @@ function pbv23dSetPosition(state, id, v) {
 function pbv23dSetWall(state, id, wall) {
   var e = pbv23dFindEntry(state, id);
   if (!e || PBV23D_WALLS.indexOf(wall) === -1) return false;
+  var oldRowId = e.rowId;
   e.wall = wall;
+  // deterministic: the destination wall's first row, created if it has none.
+  // A raceway can never keep pointing at a row belonging to its old wall.
+  e.rowId = pbv23dEnsureRow(state, wall, pbv23dNextId('row')).id;
   e.v = pbv23dNextPosition(state, wall);
+  pbv23dDeleteRowIfEmpty(state, oldRowId);
   return true;
 }
 /** PROTOTYPE-ONLY relationship naming. Not the engine, not NEC logic — it
@@ -9654,6 +9728,19 @@ function pbv23dBuildFixture(key) {
     pbv23dAddConnection(s, b1.id, b2.id, pbv23dNextId('c'));
     return s;
   }
+  if (key === 'rows') {
+    // Same wall, same trade sizes, two rows. Moving the 3" raceway between
+    // Row 1 and Row 2 changes the engine's width answer — the row UX is not
+    // decorative. (Row 1 alone: 6x4 + 2; both in one row: 6x4 + 2 + 3.)
+    var r1 = pbv23dAddRowOnWall(s, 'left', pbv23dNextId('row'));
+    var r2 = pbv23dAddRowOnWall(s, 'left', pbv23dNextId('row'));
+    var a4 = pbv23dAddEntry(s, 'left', '4', pbv23dNextId('e'), r1.id);
+    pbv23dAddEntry(s, 'left', '2', pbv23dNextId('e'), r1.id);
+    pbv23dAddEntry(s, 'left', '3', pbv23dNextId('e'), r2.id);
+    var tp = pbv23dAddEntry(s, 'top', '2', pbv23dNextId('e'));
+    pbv23dAddConnection(s, a4.id, tp.id, pbv23dNextId('c'));
+    return s;
+  }
   // dense: ~16 raceways across all four walls
   var plan = [
     ['left', '2', 0.08], ['left', '3', 0.24], ['left', '2', 0.4],
@@ -9664,8 +9751,13 @@ function pbv23dBuildFixture(key) {
     ['bottom', '3', 0.84],
   ];
   var made = [];
+  var leftRow1 = pbv23dAddRowOnWall(s, 'left', pbv23dNextId('row'));
+  var leftRow2 = pbv23dAddRowOnWall(s, 'left', pbv23dNextId('row'));
   for (var i = 0; i < plan.length; i++) {
-    var e = pbv23dAddEntry(s, plan[i][0], plan[i][1], pbv23dNextId('e'));
+    // the busy left wall is split across two real rows
+    var rowId = plan[i][0] === 'left'
+      ? (i % 2 === 0 ? leftRow1.id : leftRow2.id) : undefined;
+    var e = pbv23dAddEntry(s, plan[i][0], plan[i][1], pbv23dNextId('e'), rowId);
     pbv23dSetPosition(s, e.id, plan[i][2]);
     made.push(e);
   }
@@ -9714,6 +9806,21 @@ function pbv23dRenderSvg(state, ui) {
       + '" font-size="' + (empty ? 13 : 10) + '" text-anchor="middle"'
       + ' style="pointer-events:none">+</text>';
   }
+  // row tracks: a restrained grouping cue, shown only where a wall has >1 row
+  s += '<g class="p3d-tracks" style="pointer-events:none">';
+  for (var tw = 0; tw < PBV23D_WALLS.length; tw++) {
+    var wRows = pbv23dRowsFor(state, PBV23D_WALLS[tw]);
+    if (wRows.length < 2) continue;
+    for (var tr = 0; tr < wRows.length; tr++) {
+      var depth = pbv23dRowDepth(state, wRows[tr].id);
+      var p1 = pbv23dHub(PBV23D_WALLS[tw], 0.02, depth);
+      var p2 = pbv23dHub(PBV23D_WALLS[tw], 0.98, depth);
+      s += '<line class="p3d-track" data-row="' + wRows[tr].id + '" x1="' + p1.x
+        + '" y1="' + p1.y + '" x2="' + p2.x + '" y2="' + p2.y
+        + '" stroke="#3a3a3a" stroke-width="0.75" stroke-dasharray="2 3"/>';
+    }
+  }
+  s += '</g>';
   s += '<g fill="#6d6d6d" font-size="8" letter-spacing="1.4" text-anchor="middle" '
     + 'style="pointer-events:none">'
     + '<text x="106" y="45">TOP</text><text x="106" y="174">BOTTOM</text>'
@@ -9724,7 +9831,7 @@ function pbv23dRenderSvg(state, ui) {
   var i;
   for (i = 0; i < state.entries.length; i++) {
     var en = state.entries[i];
-    hubs[en.id] = pbv23dHub(en.wall, en.v, G.hubDepth);
+    hubs[en.id] = pbv23dHub(en.wall, en.v, pbv23dRowDepth(state, en.rowId));
   }
   s += '<g class="p3d-routes" fill="none" stroke-width="2.5" '
     + 'stroke-linecap="round" stroke-linejoin="round">';
@@ -9809,9 +9916,11 @@ function pbv23dRenderSvg(state, ui) {
       + '" rx="' + rx + '" ry="' + ry + '" fill="#0a0a0a" stroke="' + ink
       + '" stroke-width="' + (sel || src ? 2.5 : 2) + '"/>';
     if (showLabels || sel || src) {
+      var rowTag = (sel && pbv23dRowsFor(state, e.wall).length > 1)
+        ? ' R' + (pbv23dRowIndex(state, e.rowId) + 1) : '';
       s += '<text x="' + lx + '" y="' + ly + '" fill="' + ((sel || src) ? ink : '#c9c9c9')
         + '" font-size="10" font-family="monospace" text-anchor="' + anchor + '">'
-        + e.size + '&#8243;</text>';
+        + e.size + '&#8243;' + rowTag + '</text>';
     }
     // primary target: the wall opening. Radius shrinks before it would ever
     // overlap a neighbour, so a tap always resolves to the nearest hub.
@@ -9893,21 +10002,17 @@ var PBV23D_UNSUPPORTED = [];   // reserved: no unsupported state exists yet
 function pbv23dRowIdFor(wall) { return 'p3d-row-' + wall; }
 /** 3D editor state -> canonical engine request (deterministic ordering). */
 function pbv23dEngineRequest(state) {
-  var walls = {};
-  var entries = state.entries.slice().sort(function (a, b) {
-    return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0);
+  var byId = function (a, b) { return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0); };
+  var entries = state.entries.slice().sort(byId);
+  // PBV2-12: the editor now owns real rows, so they map 1:1 — no collapsing.
+  var rows = state.rows.slice().sort(byId).map(function (r) {
+    return { id: r.id, wall: r.wall, order: r.order };
   });
-  var rows = [];
   var out = [];
   for (var i = 0; i < entries.length; i++) {
     var e = entries[i];
-    if (!walls[e.wall]) {
-      walls[e.wall] = true;
-      rows.push({ id: pbv23dRowIdFor(e.wall), wall: e.wall, order: 0 });
-    }
-    out.push({ id: e.id, rowId: pbv23dRowIdFor(e.wall), tradeSize: e.size });
+    out.push({ id: e.id, rowId: e.rowId, tradeSize: e.size });
   }
-  rows.sort(function (a, b) { return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0); });
   var conns = state.connections.slice().sort(function (a, b) {
     return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0);
   }).map(function (c) { return { id: c.id, entryIds: [c.a, c.b] }; });
@@ -10124,6 +10229,24 @@ function pbv23dSheetBody() {
       + (PBV23D_WALLS[w] === e.wall) + '" onclick="pbv23dPickWall(\'' + PBV23D_WALLS[w]
       + '\')">' + PBV23D_WALLS[w].toUpperCase() + '</button>';
   }
+  out += '</div><div class="p3d-flab">ROW ON THIS WALL</div><div class="p3d-strip">';
+  var wallRows = pbv23dRowsFor(PBV23D, e.wall);
+  for (var rr = 0; rr < wallRows.length; rr++) {
+    out += '<button class="p3d-opt" type="button" aria-pressed="'
+      + (wallRows[rr].id === e.rowId) + '" onclick="pbv23dPickRow(\'' + wallRows[rr].id
+      + '\')">' + (rr + 1) + '</button>';
+  }
+  out += '<button class="p3d-opt" type="button" aria-label="Add a row to this wall" '
+    + 'onclick="pbv23dAddRowHere()">+</button>';
+  // empty rows can be removed; rows holding raceways never can
+  for (var er = 0; er < wallRows.length; er++) {
+    var isEmpty = !PBV23D.entries.some(function (x) { return x.rowId === wallRows[er].id; });
+    if (isEmpty) {
+      out += '<button class="p3d-opt" type="button" style="color:#c0392b" '
+        + 'aria-label="Delete empty row ' + (er + 1) + '" onclick="pbv23dDropRow(\''
+        + wallRows[er].id + '\')">\u2715 ' + (er + 1) + '</button>';
+    }
+  }
   out += '</div><div class="p3d-flab">POSITION ALONG WALL</div>'
     + '<input id="pbv2-3d-pos" type="range" min="6" max="94" value="' + Math.round(e.v * 100)
     + '" oninput="pbv23dPickPosition(this.value)" aria-label="Position along wall">'
@@ -10168,6 +10291,24 @@ function pbv23dPickWall(wall) {
   pbv23dInvalidateResult();
   pbv23dRender(); pbv23dRefreshSheet();
 }
+function pbv23dPickRow(rowId) {
+  pbv23dInvalidateResult();
+  pbv23dSetEntryRow(PBV23D, pbv23dSelected, rowId);
+  pbv23dRender(); pbv23dRefreshSheet();
+}
+function pbv23dAddRowHere() {
+  var e = pbv23dFindEntry(PBV23D, pbv23dSelected);
+  if (!e) return;
+  pbv23dInvalidateResult();
+  var row = pbv23dAddRowOnWall(PBV23D, e.wall, pbv23dNextId('row'));
+  pbv23dSetEntryRow(PBV23D, e.id, row.id);
+  pbv23dRender(); pbv23dRefreshSheet();
+}
+function pbv23dDropRow(rowId) {
+  pbv23dInvalidateResult();
+  pbv23dDeleteRowIfEmpty(PBV23D, rowId);
+  pbv23dRender(); pbv23dRefreshSheet();
+}
 function pbv23dPickPosition(pct) {
   pbv23dSetPosition(PBV23D, pbv23dSelected, Number(pct) / 100);
   pbv23dInvalidateResult();
@@ -10188,7 +10329,8 @@ function pbv23dSetFixture(key) {
 }
 (function () {
   if (!pbv23dShouldOpen(window.location)) return;
-  var keys = [['empty', 'EMPTY'], ['standard', 'STANDARD'], ['dense', 'DENSE']];
+  var keys = [['empty', 'EMPTY'], ['standard', 'STANDARD'], ['rows', 'ROWS'],
+    ['dense', 'DENSE']];
   var html = '';
   for (var i = 0; i < keys.length; i++) {
     html += '<button class="p3d-fx" type="button" data-fx="' + keys[i][0]
