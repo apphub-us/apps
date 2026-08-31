@@ -9380,6 +9380,7 @@ function pbv2ResetConfirm() {
 .p3d-opt{min-width:52px;min-height:44px;background:#181818;border:1px solid #2c2c2c;border-radius:8px;color:#ddd;font-size:12px;font-family:'IBM Plex Mono',monospace;cursor:pointer}
 .p3d-opt[aria-pressed="true"]{border-color:#ffc700;color:#ffc700;background:#1d1a0d}
 .p3d-flab{font-size:10px;letter-spacing:1px;color:#7a7a7a;margin-bottom:4px}
+.p3d-sheetres{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#bbb;text-align:center;padding:6px 0 2px}
 #pbv2-3d-pos{width:100%;height:36px;accent-color:#ffc700;margin-bottom:2px}
 </style>
 <div id="pbv2-3d-prototype" role="region" aria-label="Pull box 3D editor prototype">
@@ -9507,6 +9508,7 @@ var PBV23D = null;
 var pbv23dSeq = 0;
 var pbv23dSelected = null;
 var pbv23dConnectFrom = null;
+var pbv23dAddMode = false;   // wall taps create a raceway ONLY while true
 var pbv23dFixtureKey = 'standard';
 function pbv23dNextId(prefix) { pbv23dSeq++; return 'p3d-' + prefix + '-' + pbv23dSeq; }
 
@@ -9556,7 +9558,11 @@ function pbv23dSetEntryRow(state, entryId, rowId) {
   var e = pbv23dFindEntry(state, entryId);
   var row = pbv23dRowById(state, rowId);
   if (!e || !row || row.wall !== e.wall) return false;
+  var from = e.rowId;
   e.rowId = rowId;
+  // a row exists because raceways belong to it: once the last one leaves,
+  // the row (and its track) goes away by itself
+  if (from !== rowId) pbv23dDeleteRowIfEmpty(state, from);
   return true;
 }
 /** Only empty rows may be removed: never destroy raceways as a side effect. */
@@ -9606,9 +9612,7 @@ function pbv23dDeleteEntry(state, id) {
     return c.a !== id && c.b !== id;
   });
   // an emptied row is removed, but only ever because it is now empty
-  if (rowId && pbv23dRowsFor(state, gone.wall).length > 1) {
-    pbv23dDeleteRowIfEmpty(state, rowId);
-  }
+  if (rowId) pbv23dDeleteRowIfEmpty(state, rowId);
 }
 function pbv23dSetSize(state, id, size) {
   var e = pbv23dFindEntry(state, id);
@@ -9790,8 +9794,10 @@ function pbv23dRenderSvg(state, ui) {
     ['bottom', pt(fc.bl) + ' ' + pt(bc.bl) + ' ' + pt(bc.br) + ' ' + pt(fc.br), '#1d1d1d'],
   ];
   for (var w = 0; w < walls.length; w++) {
-    s += '<polygon class="p3d-wall" data-wall="' + walls[w][0] + '" points="' + walls[w][1]
-      + '" fill="' + walls[w][2] + '" stroke="#2c2c2c" style="cursor:pointer"'
+    s += '<polygon class="p3d-wall' + (ui.addMode ? ' p3d-wall-target' : '')
+      + '" data-wall="' + walls[w][0] + '" points="' + walls[w][1]
+      + '" fill="' + walls[w][2] + '" stroke="' + (ui.addMode ? '#ffc700' : '#2c2c2c')
+      + '" stroke-width="' + (ui.addMode ? '1.5' : '1') + '" style="cursor:pointer"'
       + ' onclick="pbv23dTapWall(\'' + walls[w][0] + '\')"></polygon>';
   }
   s += '<rect class="p3d-back" x="' + B.x1 + '" y="' + B.y1 + '" width="' + (B.x2 - B.x1)
@@ -9801,10 +9807,10 @@ function pbv23dRenderSvg(state, ui) {
   for (var pw = 0; pw < PBV23D_WALLS.length; pw++) {
     var pos = plusAt[PBV23D_WALLS[pw]];
     var empty = state.entries.filter(function (e) { return e.wall === PBV23D_WALLS[pw]; }).length === 0;
+    if (!ui.addMode) continue;
     s += '<text class="p3d-add" data-wall="' + PBV23D_WALLS[pw] + '" x="' + pos[0]
-      + '" y="' + pos[1] + '" fill="' + (empty ? '#6a6a6a' : '#3d3d3d')
-      + '" font-size="' + (empty ? 13 : 10) + '" text-anchor="middle"'
-      + ' style="pointer-events:none">+</text>';
+      + '" y="' + pos[1] + '" fill="#ffc700" font-size="' + (empty ? 14 : 12)
+      + '" text-anchor="middle" style="pointer-events:none">+</text>';
   }
   // row tracks: a restrained grouping cue, shown only where a wall has >1 row
   s += '<g class="p3d-tracks" style="pointer-events:none">';
@@ -10071,10 +10077,16 @@ function pbv23dBarHtml(state) {
       + ' \u2192 tap another raceway</span>'
       + '<button class="p3d-btn" type="button" onclick="pbv23dCancelConnect()">CANCEL</button>';
   }
+  if (pbv23dAddMode) {
+    return '<span class="p3d-barlabel">Tap a wall to place raceway</span>'
+      + '<button class="p3d-btn" type="button" onclick="pbv23dCancelAdd()">CANCEL</button>';
+  }
   if (!pbv23dSelected) {
     var n = state.entries.length; var k = state.connections.length;
     return '<span class="p3d-barlabel">' + n + ' raceway' + (n === 1 ? '' : 's')
       + ' \u00B7 ' + k + ' pull' + (k === 1 ? '' : 's') + '</span>'
+      + '<button class="p3d-btn" type="button" id="pbv2-3d-add" '
+      + 'onclick="pbv23dStartAdd()">+ ADD RACEWAY</button>'
       + '<button class="p3d-btn" type="button" id="pbv2-3d-calc" style="border-color:#ffc700;'
       + 'color:#ffc700"' + (n === 0 ? ' disabled' : '')
       + ' onclick="pbv23dCalculate()">CALCULATE</button>';
@@ -10102,6 +10114,8 @@ function pbv23dCalculate() {
   pbv23dLastResult = EC.pullBox.calculatePullBox(request);
   pbv23dPresentation = pbv23dPresent(pbv23dLastResult);
   pbv23dRender();
+  var line = document.getElementById('pbv2-3d-sheetres');
+  if (line) line.innerHTML = pbv23dSheetResultLine();
 }
 /** Any geometry change makes a shown result stale — never display it again. */
 function pbv23dInvalidateResult() {
@@ -10170,24 +10184,42 @@ function pbv23dResultHtml() {
 function pbv23dRender() {
   document.getElementById('pbv2-3d-stage').innerHTML =
     pbv23dRenderSvg(PBV23D, { selected: pbv23dSelected, connectFrom: pbv23dConnectFrom,
-      result: pbv23dPresentation });
+      addMode: pbv23dAddMode, result: pbv23dPresentation });
   var bar = document.getElementById('pbv2-3d-bar');
   bar.innerHTML = pbv23dBarHtml(PBV23D);
-  bar.className = 'p3d-bar' + (pbv23dConnectFrom ? ' p3d-connecting' : '');
+  bar.className = 'p3d-bar'
+    + ((pbv23dConnectFrom || pbv23dAddMode) ? ' p3d-connecting' : '');
   document.getElementById('pbv2-3d-result').innerHTML = pbv23dResultHtml();
   document.getElementById('pbv2-3d-hint').textContent = pbv23dConnectFrom
     ? 'Connect mode: tap the second raceway.'
-    : 'Tap a wall to add a raceway. Tap a raceway to select it.';
+    : (pbv23dAddMode
+      ? 'Add mode: tap TOP, LEFT, RIGHT or BOTTOM to place the raceway.'
+      : 'Tap a raceway to select it. Use + ADD RACEWAY to place a new one.');
 }
+/** Wall surfaces are inert in normal mode: missing a hub by a few pixels
+ *  must never mutate the box. Creation requires explicit ADD mode. */
 function pbv23dTapWall(wall) {
-  if (pbv23dConnectFrom) return;
+  if (!pbv23dAddMode || pbv23dConnectFrom) return false;
   pbv23dInvalidateResult();
   var e = pbv23dAddEntry(PBV23D, wall, '2', pbv23dNextId('e'));
+  pbv23dAddMode = false;           // exactly one raceway per activation
   pbv23dSelected = e.id;
   pbv23dRender();
   pbv23dOpenSheet();
+  return true;
+}
+function pbv23dStartAdd() {
+  pbv23dConnectFrom = null;
+  pbv23dAddMode = true;
+  pbv23dCloseSheet();
+  pbv23dRender();
+}
+function pbv23dCancelAdd() {
+  pbv23dAddMode = false;
+  pbv23dRender();
 }
 function pbv23dTapEntry(id) {
+  if (pbv23dAddMode) return;   // placing: existing raceways are not targets
   if (pbv23dConnectFrom) {
     if (id === pbv23dConnectFrom) return;
     pbv23dAddConnection(PBV23D, pbv23dConnectFrom, id, pbv23dNextId('c'));
@@ -10238,24 +10270,36 @@ function pbv23dSheetBody() {
   }
   out += '<button class="p3d-opt" type="button" aria-label="Add a row to this wall" '
     + 'onclick="pbv23dAddRowHere()">+</button>';
-  // empty rows can be removed; rows holding raceways never can
-  for (var er = 0; er < wallRows.length; er++) {
-    var isEmpty = !PBV23D.entries.some(function (x) { return x.rowId === wallRows[er].id; });
-    if (isEmpty) {
-      out += '<button class="p3d-opt" type="button" style="color:#c0392b" '
-        + 'aria-label="Delete empty row ' + (er + 1) + '" onclick="pbv23dDropRow(\''
-        + wallRows[er].id + '\')">\u2715 ' + (er + 1) + '</button>';
-    }
-  }
+  // no manual row deletion: empty rows clean themselves up
   out += '</div><div class="p3d-flab">POSITION ALONG WALL</div>'
     + '<input id="pbv2-3d-pos" type="range" min="6" max="94" value="' + Math.round(e.v * 100)
     + '" oninput="pbv23dPickPosition(this.value)" aria-label="Position along wall">'
+    + '<button class="p3d-btn" type="button" id="pbv2-3d-sheet-calc" '
+    + 'style="width:100%;margin-top:8px;border-color:#ffc700;color:#ffc700;font-weight:600" '
+    + 'onclick="pbv23dCalculate()">CALCULATE</button>'
+    + '<div class="p3d-sheetres" id="pbv2-3d-sheetres">' + pbv23dSheetResultLine() + '</div>'
     + '<div class="p3d-strip" style="margin:6px 0 0">'
     + '<button class="p3d-opt p3d-btn" type="button" style="min-width:104px" '
     + 'onclick="pbv23dStartConnect();pbv23dCloseSheet()">CONNECT\u2026</button>'
     + '<button class="p3d-opt p3d-btn p3d-danger" type="button" style="min-width:104px" '
     + 'onclick="pbv23dDeleteSelected()">DELETE</button></div>';
   return out;
+}
+/** One-line engine result for the open editor: lets the user change a row
+ *  and see the real calculated answer without closing the sheet. Reads the
+ *  adapter presentation only — no arithmetic, no second engine call. */
+function pbv23dSheetResultLine() {
+  var p = pbv23dPresentation;
+  if (!p || p.state === 'NONE') return 'Not calculated yet.';
+  if (p.state === 'INVALID') {
+    return PBV23D_ERROR_TEXT[p.reason] || 'Cannot calculate (' + p.reason + ').';
+  }
+  var part = function (label, axis) {
+    if (axis.kind === 'RESOLVED') return label + ' ' + pbv23dIn(axis.valueIn);
+    if (axis.kind === 'LAYOUT_DEPENDENT') return label + ' not fully determined';
+    return label + ' \u2014';
+  };
+  return part('W', p.width) + '  \u00B7  ' + part('H', p.height);
 }
 function pbv23dOpenSheet() {
   var e = pbv23dFindEntry(PBV23D, pbv23dSelected);
@@ -10304,11 +10348,6 @@ function pbv23dAddRowHere() {
   pbv23dSetEntryRow(PBV23D, e.id, row.id);
   pbv23dRender(); pbv23dRefreshSheet();
 }
-function pbv23dDropRow(rowId) {
-  pbv23dInvalidateResult();
-  pbv23dDeleteRowIfEmpty(PBV23D, rowId);
-  pbv23dRender(); pbv23dRefreshSheet();
-}
 function pbv23dPickPosition(pct) {
   pbv23dSetPosition(PBV23D, pbv23dSelected, Number(pct) / 100);
   pbv23dInvalidateResult();
@@ -10320,6 +10359,7 @@ function pbv23dSetFixture(key) {
   pbv23dInvalidateResult();
   pbv23dSelected = null;
   pbv23dConnectFrom = null;
+  pbv23dAddMode = false;
   pbv23dCloseSheet();
   var btns = document.querySelectorAll('#pbv2-3d-fixtures .p3d-fx[data-fx]');
   for (var i = 0; i < btns.length; i++) {

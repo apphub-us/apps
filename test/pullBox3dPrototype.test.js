@@ -245,7 +245,10 @@ describe('PBV2-10B — drawing and interaction surfaces', () => {
       'every wall surface adds a raceway directly');
     assert.strictEqual((svg.match(/class="p3d-back"/g) || []).length, 1, 'interior plane');
     assert.ok(svg.includes('rx="3" fill="#1e1e1e"'), 'rim = visible wall thickness');
-    assert.strictEqual((svg.match(/class="p3d-add"/g) || []).length, 4, 'add affordances');
+    // PBV2-12.1: wall taps no longer create raceways, so the "+" affordances
+    // appear only while ADD mode is active (see the add-mode test below)
+    assert.strictEqual((svg.match(/class="p3d-add"/g) || []).length, 0);
+    assert.strictEqual((api.svg(s, { addMode: true }).match(/class="p3d-add"/g) || []).length, 4);
     assert.ok(svg.includes('NOT TO SCALE'));
     for (const name of ['TOP', 'BOTTOM', 'LEFT', 'RIGHT']) {
       assert.ok(svg.includes('>' + name + '</text>'));
@@ -1163,10 +1166,12 @@ describe('PBV2-12 — rows through the adapter and the engine', () => {
   });
 
   test('every row mutation invalidates a stale result', () => {
-    for (const name of ['pbv23dPickRow', 'pbv23dAddRowHere', 'pbv23dDropRow']) {
+    for (const name of ['pbv23dPickRow', 'pbv23dAddRowHere']) {
       assert.ok(fn3d(name).includes('pbv23dInvalidateResult'),
         name + ' must clear the stale result');
     }
+    // manual row deletion was removed in PBV2-12.1: rows clean themselves up
+    assert.ok(!P3D.includes('pbv23dDropRow'), 'no manual row-delete path remains');
     assert.ok(fn3d('pbv23dSetWall').includes('pbv23dEnsureRow'),
       'wall change always resolves a destination row');
   });
@@ -1195,5 +1200,255 @@ describe('PBV2-12 — rows through the adapter and the engine', () => {
       'row editing lives in the raceway editor');
     assert.ok(!/\+ ROW<\/button>|id="pbv2-3d-wallpanel/.test(code),
       'no permanent per-wall row management panels');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-12.1 — row / add-raceway UX polish
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-12.1 — UX polish', () => {
+  const api = api3d();
+  const engine = require('../src/calc/pullBox');
+
+  /** Executes the SHIPPED UI handlers against stub DOM + the real engine, so
+   *  the accidental-creation guarantee is proven behaviourally. */
+  function ui() {
+    const consts = ['PBV23D_GEO', 'PBV23D_SIZES', 'PBV23D_WALLS',
+      'PBV23D_CONN_COLORS', 'PBV23D_NEUTRAL']
+      .map((c) => html.match(new RegExp('var ' + c + ' = [\\s\\S]*?;\\n'))[0]).join('');
+    const pure = ['pbv23dHub', 'pbv23dInward', 'pbv23dEmptyState', 'pbv23dRowsFor',
+      'pbv23dRowById', 'pbv23dRowIndex', 'pbv23dAddRowOnWall', 'pbv23dEnsureRow',
+      'pbv23dSetEntryRow', 'pbv23dDeleteRowIfEmpty', 'pbv23dRowDepth', 'pbv23dFindEntry',
+      'pbv23dNextPosition', 'pbv23dAddEntry', 'pbv23dDeleteEntry', 'pbv23dSetSize',
+      'pbv23dSetPosition', 'pbv23dSetWall', 'pbv23dClassify', 'pbv23dAddConnection',
+      'pbv23dConnColor', 'pbv23dEntryConns', 'pbv23dEntryColor', 'pbv23dHitRadius',
+      'pbv23dRoutePath', 'pbv23dBuildFixture', 'pbv23dEngineRequest', 'pbv23dPresent',
+      'pbv23dTapWall', 'pbv23dStartAdd', 'pbv23dCancelAdd', 'pbv23dTapEntry',
+      'pbv23dPickRow', 'pbv23dAddRowHere', 'pbv23dCalculate', 'pbv23dInvalidateResult',
+      'pbv23dIn', 'pbv23dSheetResultLine'].map(fn3d).join('\n');
+    let calls = 0;
+    const counted = Object.create(engine);
+    counted.calculatePullBox = function (r) { calls++; return engine.calculatePullBox(r); };
+    const els = {};
+    const doc = { getElementById: (id) => (els[id] || (els[id] = { innerHTML: '' })) };
+    const out = {};
+    let sheetOpens = 0;
+    // eslint-disable-next-line no-new-func
+    new Function('EC', 'document', 'pbv23dRender', 'pbv23dOpenSheet', 'pbv23dCloseSheet',
+      'pbv23dRefreshSheet', 'exports',
+      'var pbv23dSeq = 0;\n'
+      + 'function pbv23dNextId(p) { pbv23dSeq++; return "p3d-" + p + "-" + pbv23dSeq; }\n'
+      + 'var PBV23D = null; var pbv23dSelected = null; var pbv23dConnectFrom = null;\n'
+      + 'var pbv23dAddMode = false; var pbv23dLastResult = null;\n'
+      + 'var pbv23dPresentation = null;\n'
+      + 'var PBV23D_ERROR_TEXT = { NO_ENTRIES: "Add at least one raceway before calculating." };\n'
+      + consts + pure + `
+      exports.load = (s) => { PBV23D = s; };
+      exports.state = () => PBV23D;
+      exports.tapWall = pbv23dTapWall; exports.startAdd = pbv23dStartAdd;
+      exports.cancelAdd = pbv23dCancelAdd; exports.tapEntry = pbv23dTapEntry;
+      exports.pickRow = pbv23dPickRow; exports.addRowHere = pbv23dAddRowHere;
+      exports.calculate = pbv23dCalculate; exports.build = pbv23dBuildFixture;
+      exports.addMode = () => pbv23dAddMode; exports.selected = () => pbv23dSelected;
+      exports.select = (id) => { pbv23dSelected = id; };
+      exports.presentation = () => pbv23dPresentation;
+      exports.sheetLine = pbv23dSheetResultLine;
+      exports.rowsFor = pbv23dRowsFor; exports.find = pbv23dFindEntry;`)(
+      { pullBox: counted }, doc, () => {}, () => { sheetOpens++; }, () => {}, () => {}, out);
+    out.calls = () => calls;
+    out.sheetOpens = () => sheetOpens;
+    return out;
+  }
+
+  test('ADD MODE: normal wall taps create nothing at all', () => {
+    const u = ui();
+    u.load(u.build('dense'));
+    const before = u.state().entries.length;
+    assert.strictEqual(before, 16);
+    // hammer every wall repeatedly in normal mode
+    for (let i = 0; i < 5; i++) {
+      for (const w of ['top', 'left', 'right', 'bottom']) {
+        assert.strictEqual(u.tapWall(w), false, 'wall taps are inert in normal mode');
+      }
+    }
+    assert.strictEqual(u.state().entries.length, before,
+      'missing a hub in a dense box can never mutate the model');
+    assert.strictEqual(u.state().rows.length, u.build('dense').rows.length);
+  });
+
+  test('ADD MODE: explicit entry, one placement, automatic exit', () => {
+    const u = ui();
+    u.load(u.build('standard'));
+    const before = u.state().entries.length;
+    assert.strictEqual(u.addMode(), false);
+    u.startAdd();
+    assert.strictEqual(u.addMode(), true, 'explicit mode entered');
+    assert.strictEqual(u.tapWall('right'), true, 'the wall tap now places');
+    assert.strictEqual(u.state().entries.length, before + 1, 'exactly one raceway');
+    assert.strictEqual(u.addMode(), false, 'mode exits after placement');
+    const made = u.state().entries[u.state().entries.length - 1];
+    assert.strictEqual(made.wall, 'right');
+    assert.strictEqual(u.selected(), made.id, 'the new raceway is selected');
+    assert.strictEqual(u.sheetOpens(), 1, 'its editor opens');
+    // a second wall tap after placement does nothing
+    assert.strictEqual(u.tapWall('left'), false);
+    assert.strictEqual(u.state().entries.length, before + 1, 'no repeat adds');
+  });
+
+  test('ADD MODE: cancelling creates nothing; existing raceways stay inert while placing', () => {
+    const u = ui();
+    u.load(u.build('standard'));
+    const before = u.state().entries.length;
+    u.startAdd();
+    // tapping an existing raceway during placement must not select it
+    u.tapEntry(u.state().entries[0].id);
+    assert.strictEqual(u.selected(), null, 'selection is not hijacked while placing');
+    u.cancelAdd();
+    assert.strictEqual(u.addMode(), false);
+    assert.strictEqual(u.state().entries.length, before, 'cancel creates nothing');
+    // and normal selection works again afterwards
+    u.tapEntry(u.state().entries[0].id);
+    assert.strictEqual(u.selected(), u.state().entries[0].id);
+  });
+
+  test('ADD MODE: walls are visibly eligible only while placing', () => {
+    const s = api.build('standard');
+    const normal = api.svg(s, {});
+    const adding = api.svg(s, { addMode: true });
+    assert.ok(!normal.includes('p3d-wall-target'), 'no target styling in normal mode');
+    assert.strictEqual((adding.match(/p3d-wall-target/g) || []).length, 4);
+    assert.ok(adding.includes('stroke="#ffc700"'), 'walls highlight in the app accent');
+    assert.strictEqual((normal.match(/class="p3d-add"/g) || []).length, 0,
+      'the plus affordances only appear while placing');
+    assert.strictEqual((adding.match(/class="p3d-add"/g) || []).length, 4);
+  });
+
+  test('HIT TESTING did not regress: hub and stub still select', () => {
+    const u = ui();
+    u.load(u.build('dense'));
+    for (const e of u.state().entries.slice(0, 5)) {
+      u.select(null);
+      u.tapEntry(e.id);
+      assert.strictEqual(u.selected(), e.id, 'hub/stub tap still selects ' + e.id);
+    }
+    const svg = api.svg(api.build('dense'), {});
+    assert.strictEqual((svg.match(/class="p3d-hit"/g) || []).length, 16);
+    assert.strictEqual((svg.match(/class="p3d-stubhit"/g) || []).length, 16);
+  });
+
+  test('CALCULATE is available inside the editor and uses the one engine path', () => {
+    const sheet = fn3d('pbv23dSheetBody');
+    assert.ok(sheet.includes('id="pbv2-3d-sheet-calc"'), 'a CALCULATE button in the sheet');
+    assert.ok(sheet.includes('onclick="pbv23dCalculate()"'), 'it uses the existing path');
+    assert.ok(sheet.includes('pbv23dSheetResultLine()'), 'the result shows in the sheet');
+    const code = P3D.slice(P3D.indexOf('<style>'));
+    assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1,
+      'still exactly one engine call site');
+    assert.ok(!/[*]|Math\./.test(fn3d('pbv23dSheetResultLine')),
+      'the sheet result line does no arithmetic');
+  });
+
+  test('PRIMARY ACCEPTANCE: 26 -> 29 without ever closing the editor', () => {
+    const u = ui();
+    u.load(u.build('rows'));
+    u.calculate();
+    assert.strictEqual(u.presentation().width.valueIn, 26, 'engine says 26 inches');
+    assert.strictEqual(u.sheetLine(), 'W 26\u2033  \u00B7  H 12\u2033');
+    // select the 3 inch raceway and move it into Row 1 from inside the editor
+    const three = u.state().entries.find((e) => e.size === '3');
+    u.select(three.id);
+    const row1 = u.rowsFor(u.state(), 'left')[0];
+    u.pickRow(row1.id);
+    assert.strictEqual(u.presentation(), null, 'the row change invalidated the old result');
+    u.calculate();
+    assert.strictEqual(u.presentation().width.valueIn, 29, 'engine now says 29 inches');
+    assert.ok(u.sheetLine().includes('29\u2033'), 'the editor shows it immediately');
+    assert.strictEqual(u.calls(), 2, 'one engine call per CALCULATE press');
+  });
+
+  test('ROW LIFECYCLE: emptied rows disappear by themselves', () => {
+    const u = ui();
+    u.load(u.build('rows'));
+    assert.strictEqual(u.rowsFor(u.state(), 'left').length, 2);
+    const three = u.state().entries.find((e) => e.size === '3');
+    const emptied = three.rowId;
+    u.select(three.id);
+    u.pickRow(u.rowsFor(u.state(), 'left')[0].id);
+    assert.strictEqual(u.rowsFor(u.state(), 'left').length, 1,
+      'the vacated row removed itself');
+    assert.ok(!u.state().rows.some((r) => r.id === emptied));
+    // and its track disappears with it
+    assert.strictEqual((api.svg(u.state(), {}).match(/class="p3d-track"/g) || []).length, 0);
+  });
+
+  test('ROW LIFECYCLE: no manual row-delete controls remain', () => {
+    const sheet = fn3d('pbv23dSheetBody');
+    assert.ok(sheet.includes('ROW ON THIS WALL'));
+    assert.ok(!/pbv23dDropRow/.test(P3D), 'the manual delete handler is gone entirely');
+    assert.ok(!/Delete empty row/.test(sheet), 'no delete affordance in the row strip');
+    // the strip is now only: row numbers plus one add control
+    assert.ok(sheet.includes('pbv23dPickRow') && sheet.includes('pbv23dAddRowHere'));
+  });
+
+  test('ROW LIFECYCLE: delete and wall-change also clean up, without losing raceways', () => {
+    const s = api.build('rows');
+    const three = s.entries.find((e) => e.size === '3');
+    const row2 = three.rowId;
+    api.del(s, three.id);
+    assert.ok(!s.rows.some((r) => r.id === row2), 'emptied row cleaned after delete');
+    assert.strictEqual(s.entries.length, 3, 'no other raceway was harmed');
+    // wall change empties the source row
+    const s2 = api.build('rows');
+    const t3 = s2.entries.find((e) => e.size === '3');
+    const src = t3.rowId;
+    api.setWall(s2, t3.id, 'right');
+    assert.ok(!s2.rows.some((r) => r.id === src), 'source row cleaned after wall change');
+    const moved = api.find(s2, t3.id);
+    assert.strictEqual(api.rowById(s2, moved.rowId).wall, 'right');
+    // last raceway on a wall: its row goes too
+    const s3 = api.empty();
+    const only = api.add(s3, 'top', '2', api.nextId('e'));
+    api.del(s3, only.id);
+    assert.deepStrictEqual(s3.rows, [], 'no orphan row survives');
+  });
+
+  test('ROW LIFECYCLE: [+] creates a row and moves the raceway into it', () => {
+    const u = ui();
+    u.load(u.build('rows'));
+    const four = u.state().entries.find((e) => e.size === '4');
+    u.select(four.id);
+    const before = u.rowsFor(u.state(), 'left').length;
+    u.addRowHere();
+    assert.strictEqual(u.rowsFor(u.state(), 'left').length, before + 1);
+    const moved = u.find(u.state(), four.id);
+    const newRow = u.rowsFor(u.state(), 'left').slice(-1)[0];
+    assert.strictEqual(moved.rowId, newRow.id, 'the raceway moved into the new row');
+    // no standalone empty-row creation exists
+    assert.ok(!u.state().rows.some((r) => !u.state().entries.some((e) => e.rowId === r.id)),
+      'every row holds at least one raceway');
+  });
+
+  test('INVARIANTS after cleanup: ids stable, rows valid, connections intact', () => {
+    const s = api.build('rows');
+    const idsBefore = s.rows.map((r) => r.id);
+    const connsBefore = JSON.stringify(s.connections);
+    const three = s.entries.find((e) => e.size === '3');
+    const colours = s.entries.map((e) => api.entryColor(s, e.id));
+    api.setRow(s, three.id, api.rowsFor(s, 'left')[0].id);
+    // surviving row ids unchanged
+    for (const r of s.rows) assert.ok(idsBefore.includes(r.id), 'row id churned: ' + r.id);
+    assert.strictEqual(JSON.stringify(s.connections), connsBefore, 'connections intact');
+    assert.deepStrictEqual(s.entries.map((e) => api.entryColor(s, e.id)), colours,
+      'relationship colours unaffected by row cleanup');
+    for (const e of s.entries) {
+      const row = api.rowById(s, e.rowId);
+      assert.ok(row && row.wall === e.wall, 'every raceway has a valid same-wall row');
+    }
+    // the adapter forwards only rows that still exist
+    const req = api.request(s);
+    assert.strictEqual(req.rows.length, s.rows.length, 'no fabricated empty engine row');
+    assert.strictEqual(engine.validatePullBoxRequest(req).ok, true);
+    assert.ok(!/"v":/.test(JSON.stringify(req)), 'visualPosition still absent');
   });
 });
