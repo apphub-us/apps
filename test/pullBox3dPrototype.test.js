@@ -101,7 +101,8 @@ describe('PBV2-10B — isolation', () => {
     // PBV2-11 supersedes the 10B "no engine access" ban: the prototype now
     // drives the real engine, but only through one adapter call site.
     const code = P3D.slice(P3D.indexOf('<style>'))
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+      .replace(/function pbv23dDim\([\s\S]*?\n\}/, '');   // display rounding only
     assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1,
       'exactly one engine call site');
     assert.ok(!code.includes('validatePullBoxRequest'),
@@ -836,7 +837,8 @@ describe('PBV2-11 — live calculation and presentation', () => {
     assert.ok(body.includes('pbv23dPresent('), 'output goes through the adapter');
     assert.ok(!/[*]|Math\./.test(body), 'no arithmetic in the calculate handler');
     // and it is the ONLY engine call site in the whole prototype
-    const code = P3D.slice(P3D.indexOf('<style>'));
+    const code = P3D.slice(P3D.indexOf('<style>'))
+      .replace(/function pbv23dDim\([\s\S]*?\n\}/, '');   // display rounding only
     assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
   });
 
@@ -853,7 +855,8 @@ describe('PBV2-11 — live calculation and presentation', () => {
 
   test('no engine constants or NEC rules were copied into the prototype', () => {
     const code = P3D.slice(P3D.indexOf('<style>'))
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+      .replace(/function pbv23dDim\([\s\S]*?\n\}/, '');   // display rounding only
     // reading the engine's public kind labels is consumption, not duplication;
     // engine internals and code references must still stay out
     assert.ok(!/314\.28|TRADE_SIZE_IN|WALL_DIMENSION/.test(code),
@@ -869,7 +872,8 @@ describe('PBV2-11 — live calculation and presentation', () => {
     // the prototype deliberately renders no code references yet, so the
     // global clickable rule holds trivially and the existing AI pipeline is
     // not forked (see report: return-path coupling deferred)
-    const code = P3D.slice(P3D.indexOf('<style>'));
+    const code = P3D.slice(P3D.indexOf('<style>'))
+      .replace(/function pbv23dDim\([\s\S]*?\n\}/, '');   // display rounding only
     assert.ok(!/ecRenderCodeRef|ecOpenCodeRef|EC_CODE_CONTEXTS/.test(code),
       'no second AI context pipeline');
     assert.ok(!/314\.28|\bNEC \d|NYCEC/.test(code),
@@ -1204,7 +1208,8 @@ describe('PBV2-12 — rows through the adapter and the engine', () => {
 
   test('the four-wall form UI was not recreated, and no NEC arithmetic appeared', () => {
     const code = P3D.slice(P3D.indexOf('<style>'))
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+      .replace(/function pbv23dDim\([\s\S]*?\n\}/, '');   // display rounding only
     assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/.test(code), 'no NEC arithmetic');
     assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
     // rows are edited from the selected raceway, not from wall panels
@@ -1227,7 +1232,7 @@ describe('PBV2-12.1 — UX polish', () => {
    *  the accidental-creation guarantee is proven behaviourally. */
   function ui() {
     const consts = ['PBV23D_GEO', 'PBV23D_SIZES', 'PBV23D_WALLS',
-      'PBV23D_CONN_COLORS', 'PBV23D_NEUTRAL']
+      'PBV23D_CONN_COLORS', 'PBV23D_NEUTRAL', 'PBV23D_ENTRY_SYSTEM', 'PBV23D_POLICY_ORDER']
       .map((c) => html.match(new RegExp('var ' + c + ' = [\\s\\S]*?;\\n'))[0]).join('');
     const pure = ['pbv23dHub', 'pbv23dInward', 'pbv23dEmptyState', 'pbv23dRowsFor',
       'pbv23dRowById', 'pbv23dRowIndex', 'pbv23dAddRowOnWall', 'pbv23dEnsureRow',
@@ -1237,7 +1242,9 @@ describe('PBV2-12.1 — UX polish', () => {
       'pbv23dConnColor', 'pbv23dConnNumber', 'pbv23dEntryConns', 'pbv23dEntryColor', 'pbv23dHitRadius',
       'pbv23dRoutePath', 'pbv23dBuildFixture', 'pbv23dEngineRequest', 'pbv23dPresent',
       'pbv23dTapWall', 'pbv23dStartAdd', 'pbv23dCancelAdd', 'pbv23dTapEntry',
-      'pbv23dPickRow', 'pbv23dAddRowHere', 'pbv23dCalculate', 'pbv23dInvalidateResult',
+      'pbv23dPickRow', 'pbv23dAddRowHere', 'pbv23dLayoutGeometry', 'pbv23dCertifyBox',
+      'pbv23dCertifiedBox', 'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dCalculate',
+      'pbv23dInvalidateResult',
       'pbv23dIn', 'pbv23dSheetResultLine'].map(fn3d).join('\n');
     let calls = 0;
     const counted = Object.create(engine);
@@ -1252,7 +1259,7 @@ describe('PBV2-12.1 — UX polish', () => {
       'var pbv23dSeq = 0;\n'
       + 'function pbv23dNextId(p) { pbv23dSeq++; return "p3d-" + p + "-" + pbv23dSeq; }\n'
       + 'var PBV23D = null; var pbv23dSelected = null; var pbv23dConnectFrom = null;\n'
-      + 'var pbv23dAddMode = false; var pbv23dLastResult = null;\n'
+      + 'var pbv23dAddMode = false; var pbv23dLastResult = null; var pbv23dLayout = null;\n'
       + 'var pbv23dPresentation = null;\n'
       + 'var PBV23D_ERROR_TEXT = { NO_ENTRIES: "Add at least one raceway before calculating." };\n'
       + consts + pure + `
@@ -1267,7 +1274,9 @@ describe('PBV2-12.1 — UX polish', () => {
       exports.presentation = () => pbv23dPresentation;
       exports.sheetLine = pbv23dSheetResultLine;
       exports.rowsFor = pbv23dRowsFor; exports.find = pbv23dFindEntry;`)(
-      { pullBox: counted }, doc, () => {}, () => { sheetOpens++; }, () => {}, () => {}, out);
+      { pullBox: counted, pullBoxLayout: require('../src/layout/pullBoxLayout'),
+        pullBoxEntryGeometry: require('../src/standards/pullBoxEntryGeometry') },
+      doc, () => {}, () => { sheetOpens++; }, () => {}, () => {}, out);
     out.calls = () => calls;
     out.sheetOpens = () => sheetOpens;
     return out;
@@ -1354,7 +1363,8 @@ describe('PBV2-12.1 — UX polish', () => {
     assert.ok(sheet.includes('id="pbv2-3d-sheet-calc"'), 'a CALCULATE button in the sheet');
     assert.ok(sheet.includes('onclick="pbv23dCalculate()"'), 'it uses the existing path');
     assert.ok(sheet.includes('pbv23dSheetResultLine()'), 'the result shows in the sheet');
-    const code = P3D.slice(P3D.indexOf('<style>'));
+    const code = P3D.slice(P3D.indexOf('<style>'))
+      .replace(/function pbv23dDim\([\s\S]*?\n\}/, '');   // display rounding only
     assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1,
       'still exactly one engine call site');
     assert.ok(!/[*]|Math\./.test(fn3d('pbv23dSheetResultLine')),
@@ -1366,7 +1376,8 @@ describe('PBV2-12.1 — UX polish', () => {
     u.load(u.build('rows'));
     u.calculate();
     assert.strictEqual(u.presentation().width.valueIn, 26, 'engine says 26 inches');
-    assert.strictEqual(u.sheetLine(), 'W 26\u2033  \u00B7  H 12\u2033');
+    // PBV2-13B-3: the sheet shows the certified box and flags conservative geometry
+    assert.strictEqual(u.sheetLine(), 'W 26\u2033  \u00B7  H 12\u2033  \u00B7  conservative');
     // select the 3 inch raceway and move it into Row 1 from inside the editor
     const three = u.state().entries.find((e) => e.size === '3');
     u.select(three.id);
@@ -1605,7 +1616,8 @@ describe('PBV2-12.2 — add action and label consistency', () => {
     assert.ok(fn3d('pbv23dTapWall').includes('pbv23dAddMode = false'), 'still exits after one');
     // calculate still reachable from the sheet, one call site
     assert.ok(fn3d('pbv23dSheetBody').includes('id="pbv2-3d-sheet-calc"'));
-    const code = P3D.slice(P3D.indexOf('<style>'));
+    const code = P3D.slice(P3D.indexOf('<style>'))
+      .replace(/function pbv23dDim\([\s\S]*?\n\}/, '');   // display rounding only
     assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
     // row lifecycle intact
     assert.ok(!code.includes('pbv23dDropRow'), 'no manual row delete returned');
@@ -1637,15 +1649,16 @@ describe('PBV2-12.3 — results clarity', () => {
   /** Renders the SHIPPED result HTML for a state, using the real engine. */
   function resultsFor(state) {
     const consts = ['PBV23D_GEO', 'PBV23D_SIZES', 'PBV23D_WALLS', 'PBV23D_CONN_COLORS',
-      'PBV23D_NEUTRAL', 'PBV23D_PULL_WORD']
+      'PBV23D_NEUTRAL', 'PBV23D_PULL_WORD', 'PBV23D_ENTRY_SYSTEM', 'PBV23D_POLICY_ORDER']
       .map((c) => html.match(new RegExp('var ' + c + ' = [\\s\\S]*?;\\n'))[0]).join('');
     const names = ['pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex', 'pbv23dFindEntry',
       'pbv23dConnColor', 'pbv23dConnNumber', 'pbv23dEngineRequest', 'pbv23dPresent',
-      'pbv23dIn', 'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dResultHtml'];
+      'pbv23dIn', 'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dCertifiedBox',
+      'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dResultHtml'];
     const out = {};
     // eslint-disable-next-line no-new-func
     new Function('EC', 'exports',
-      'var PBV23D = null; var pbv23dPresentation = null;\n'
+      'var PBV23D = null; var pbv23dPresentation = null; var pbv23dLayout = null;\n'
       + 'var PBV23D_ERROR_TEXT = { NO_ENTRIES: "Add at least one raceway before calculating." };\n'
       + consts + names.map(fn3d).join('\n') + `
       exports.render = function (state) {
@@ -1653,7 +1666,8 @@ describe('PBV2-12.3 — results clarity', () => {
         pbv23dPresentation = pbv23dPresent(
           EC.pullBox.calculatePullBox(pbv23dEngineRequest(state)));
         return { html: pbv23dResultHtml(), presentation: pbv23dPresentation };
-      };`)({ pullBox: engine }, out);
+      };`)({ pullBox: engine, pullBoxLayout: require('../src/layout/pullBoxLayout'),
+        pullBoxEntryGeometry: require('../src/standards/pullBoxEntryGeometry') }, out);
     return out.render(state);
   }
   const text = (h) => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -1675,8 +1689,11 @@ describe('PBV2-12.3 — results clarity', () => {
     assert.strictEqual(p.height.kind, 'RESOLVED');
     const t = text(h);
     assert.ok(t.startsWith('REQUIRED BOX SIZE'), 'the section answers the real question first');
-    assert.ok(h.includes('p3d-boxsize'), 'and is the strongest element on screen');
-    assert.ok(t.includes('32\u2033 W \u00D7 24\u2033 H'), 'engine values as W x H: ' + t);
+    // PBV2-13B-3: a W x H headline is now emitted ONLY when Layer 2 certifies a
+    // box. This renderer harness supplies no layout, so the honest per-axis
+    // rows are shown instead; the certified headline is covered in the 13B-3 suite.
+    assert.ok(!h.includes('p3d-boxsize'), 'no headline without a certified layout');
+    assert.ok(t.includes('WIDTH 32\u2033') && t.includes('HEIGHT 24\u2033'), 'engine values: ' + t);
     assert.ok(!/dimensionStatus|governing|LAYOUT_DEPENDENT|minimumWidthIn/.test(t),
       'no implementation terminology reaches the user');
   });
@@ -1810,7 +1827,8 @@ describe('PBV2-12.3 — results clarity', () => {
   });
 
   test('REGRESSION: engine boundary, add mode, rows, calculate, dense all intact', () => {
-    const code = P3D.slice(P3D.indexOf('<style>'));
+    const code = P3D.slice(P3D.indexOf('<style>'))
+      .replace(/function pbv23dDim\([\s\S]*?\n\}/, '');   // display rounding only
     assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
     assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/.test(code), 'no NEC arithmetic');
     assert.ok(!/"v":/.test(JSON.stringify(api.request(api.build('rows')))));
@@ -1951,7 +1969,8 @@ describe('PBV2-12.3.1 — global CALCULATE', () => {
     assert.ok(fn3d('pbv23dSheetBody').includes('onclick="pbv23dCalculate()"'), 'editor sheet');
     const calc = fn3d('pbv23dCalculate');
     assert.ok(calc.includes('pbv23dEngineRequest(PBV23D)') && calc.includes('pbv23dPresent('));
-    const code = P3D.slice(P3D.indexOf('<style>'));
+    const code = P3D.slice(P3D.indexOf('<style>'))
+      .replace(/function pbv23dDim\([\s\S]*?\n\}/, '');   // display rounding only
     assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1,
       'still exactly one engine call site');
     assert.ok(!/[*]|Math\./.test(calc), 'no arithmetic in the calculate handler');
@@ -1981,7 +2000,8 @@ describe('PBV2-12.3.1 — global CALCULATE', () => {
     // engine boundary
     assert.ok(!/"v":/.test(JSON.stringify(api.request(s))));
     assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/
-      .test(P3D.slice(P3D.indexOf('<style>'))), 'no NEC arithmetic');
+      .test(P3D.slice(P3D.indexOf('<style>'))
+        .replace(/function pbv23dDim\([\s\S]*?\n\}/, '')), 'no NEC arithmetic');
   });
 });
 
@@ -2108,16 +2128,17 @@ describe('PBV2-12.3.2 — stacked layout cannot overlap', () => {
     const s = api.build('dense');
     const engine = require('../src/calc/pullBox');
     const consts = ['PBV23D_GEO', 'PBV23D_SIZES', 'PBV23D_WALLS', 'PBV23D_CONN_COLORS',
-      'PBV23D_NEUTRAL', 'PBV23D_PULL_WORD']
+      'PBV23D_NEUTRAL', 'PBV23D_PULL_WORD', 'PBV23D_ENTRY_SYSTEM', 'PBV23D_POLICY_ORDER']
       .map((c) => html.match(new RegExp('var ' + c + ' = [\\s\\S]*?;\\n'))[0]).join('');
     const names = ['pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex', 'pbv23dFindEntry',
       'pbv23dClassify', 'pbv23dConnTypeOf', 'pbv23dConnColor', 'pbv23dConnNumber',
       'pbv23dEngineRequest', 'pbv23dPresent', 'pbv23dIn', 'pbv23dAxisRow',
-      'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dResultHtml', 'pbv23dGlobalsHtml', 'pbv23dSelectionHtml'];
+      'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dCertifiedBox',
+      'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dResultHtml', 'pbv23dGlobalsHtml', 'pbv23dSelectionHtml'];
     const out = {};
     // eslint-disable-next-line no-new-func
     new Function('EC', 'pbv23dSelected', 'pbv23dConnectFrom', 'pbv23dAddMode', 'exports',
-      'var PBV23D = null; var pbv23dPresentation = null;\n'
+      'var PBV23D = null; var pbv23dPresentation = null; var pbv23dLayout = null;\n'
       + 'var PBV23D_ERROR_TEXT = {};\n' + consts + names.map(fn3d).join('\n') + `
       exports.run = function (state) {
         PBV23D = state;
@@ -2151,7 +2172,8 @@ describe('PBV2-12.3.2 — stacked layout cannot overlap', () => {
     const three = s.entries.find((e) => e.size === '3');
     api.setRow(s, three.id, api.rowsFor(s, 'left')[0].id);
     assert.strictEqual(engine.calculatePullBox(api.request(s)).minimumWidthIn, 29);
-    const code = P3D.slice(P3D.indexOf('<style>'));
+    const code = P3D.slice(P3D.indexOf('<style>'))
+      .replace(/function pbv23dDim\([\s\S]*?\n\}/, '');   // display rounding only
     assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
     assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/.test(code));
     assert.ok(!/"v":/.test(JSON.stringify(api.request(s))));
@@ -2175,19 +2197,20 @@ describe('PBV2-12.3.3 — every numbered pull has a result card', () => {
   /** Runs the SHIPPED adapter + result renderer against the real engine. */
   function ui() {
     const consts = ['PBV23D_GEO', 'PBV23D_SIZES', 'PBV23D_WALLS', 'PBV23D_CONN_COLORS',
-      'PBV23D_NEUTRAL', 'PBV23D_PULL_WORD']
+      'PBV23D_NEUTRAL', 'PBV23D_PULL_WORD', 'PBV23D_ENTRY_SYSTEM', 'PBV23D_POLICY_ORDER']
       .map((c) => html.match(new RegExp('var ' + c + ' = [\\s\\S]*?;\\n'))[0]).join('');
     const names = ['pbv23dEmptyState', 'pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex',
       'pbv23dAddRowOnWall', 'pbv23dEnsureRow', 'pbv23dFindEntry', 'pbv23dNextPosition',
       'pbv23dAddEntry', 'pbv23dAddConnection', 'pbv23dClassify', 'pbv23dConnColor',
       'pbv23dConnNumber', 'pbv23dEngineRequest', 'pbv23dPresent', 'pbv23dIn',
-      'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dResultHtml'];
+      'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dCertifiedBox',
+      'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dResultHtml'];
     const out = {};
     // eslint-disable-next-line no-new-func
     new Function('EC', 'exports',
       'var pbv23dSeq = 0;\n'
       + 'function pbv23dNextId(p) { pbv23dSeq++; return "p3d-" + p + "-" + pbv23dSeq; }\n'
-      + 'var PBV23D = null; var pbv23dPresentation = null;\n'
+      + 'var PBV23D = null; var pbv23dPresentation = null; var pbv23dLayout = null;\n'
       + 'var PBV23D_ERROR_TEXT = {};\n' + consts + names.map(fn3d).join('\n') + `
       exports.empty = pbv23dEmptyState; exports.add = pbv23dAddEntry;
       exports.conn = pbv23dAddConnection; exports.nextId = pbv23dNextId;
@@ -2196,7 +2219,8 @@ describe('PBV2-12.3.3 — every numbered pull has a result card', () => {
         pbv23dPresentation = pbv23dPresent(
           EC.pullBox.calculatePullBox(pbv23dEngineRequest(s)));
         return { html: pbv23dResultHtml(), p: pbv23dPresentation };
-      };`)({ pullBox: engine }, out);
+      };`)({ pullBox: engine, pullBoxLayout: require('../src/layout/pullBoxLayout'),
+        pullBoxEntryGeometry: require('../src/standards/pullBoxEntryGeometry') }, out);
     return out;
   }
   const text = (h) => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -2286,8 +2310,9 @@ describe('PBV2-12.3.3 — every numbered pull has a result card', () => {
     const t = text(h);
     assert.ok(t.includes('Minimum required entry spacing: 12\u2033'), 'angle spacing');
     assert.ok(t.includes('Minimum required entry spacing: 18\u2033'), 'U spacing');
-    // a shared row rule is labelled as shared rather than attributed to one pull
-    assert.ok(/Triggers row requirement \u2014 [A-Z]+ wall/.test(t), 'row rule labelled: ' + t);
+    // PBV2-12.3.4: row-derived requirements speak as box-dimension contributions
+    assert.ok(/Minimum box-dimension contribution: \d+\u2033 (width|height)/.test(t),
+      'row-derived requirement in electrician language: ' + t);
   });
 
   test('one connection groups its distinct requirements into ONE card', () => {
@@ -2426,7 +2451,8 @@ describe('PBV2-12.3.3 — every numbered pull has a result card', () => {
     const t = text(u.run(s).html);
     assert.ok(t.startsWith('REQUIRED BOX SIZE'));
     assert.ok(!/\bMIN\b/.test(t), 'no naked MIN values returned');
-    const code = P3D.slice(P3D.indexOf('<style>'));
+    const code = P3D.slice(P3D.indexOf('<style>'))
+      .replace(/function pbv23dDim\([\s\S]*?\n\}/, '');   // display rounding only
     assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
     assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/.test(code), 'no NEC arithmetic');
     assert.ok(!/"v":/.test(JSON.stringify(api.request(api.build('rows')))));
@@ -2439,5 +2465,226 @@ describe('PBV2-12.3.3 — every numbered pull has a result card', () => {
     const dh = du.run(d).html;
     assert.strictEqual((dh.match(/class="p3d-card"/g) || []).length, d.connections.length);
     assert.deepStrictEqual(cardNumbers(dh), d.connections.map((c, i) => i + 1));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// PBV2-12.3.4 — electrician-facing result language
+// ═══════════════════════════════════════════════════════════════════════
+
+describe('PBV2-12.3.4 — no engine vocabulary in the results', () => {
+  const api = api3d();
+  const engine = require('../src/calc/pullBox');
+
+  function ui() {
+    const consts = ['PBV23D_GEO', 'PBV23D_SIZES', 'PBV23D_WALLS', 'PBV23D_CONN_COLORS',
+      'PBV23D_NEUTRAL', 'PBV23D_PULL_WORD', 'PBV23D_ENTRY_SYSTEM', 'PBV23D_POLICY_ORDER']
+      .map((c) => html.match(new RegExp('var ' + c + ' = [\\s\\S]*?;\\n'))[0]).join('');
+    const names = ['pbv23dEmptyState', 'pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex',
+      'pbv23dAddRowOnWall', 'pbv23dEnsureRow', 'pbv23dFindEntry', 'pbv23dNextPosition',
+      'pbv23dAddEntry', 'pbv23dAddConnection', 'pbv23dClassify', 'pbv23dConnColor',
+      'pbv23dConnNumber', 'pbv23dEngineRequest', 'pbv23dPresent', 'pbv23dIn',
+      'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dCertifiedBox',
+      'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dResultHtml'];
+    const out = {};
+    // eslint-disable-next-line no-new-func
+    new Function('EC', 'exports',
+      'var pbv23dSeq = 0;\n'
+      + 'function pbv23dNextId(p) { pbv23dSeq++; return "p3d-" + p + "-" + pbv23dSeq; }\n'
+      + 'var PBV23D = null; var pbv23dPresentation = null; var pbv23dLayout = null;\n'
+      + 'var PBV23D_ERROR_TEXT = {};\n' + consts + names.map(fn3d).join('\n') + `
+      exports.empty = pbv23dEmptyState; exports.add = pbv23dAddEntry;
+      exports.conn = pbv23dAddConnection; exports.nextId = pbv23dNextId;
+      exports.run = function (s) {
+        PBV23D = s;
+        pbv23dPresentation = pbv23dPresent(
+          EC.pullBox.calculatePullBox(pbv23dEngineRequest(s)));
+        return { html: pbv23dResultHtml(), p: pbv23dPresentation };
+      };`)({ pullBox: engine, pullBoxLayout: require('../src/layout/pullBoxLayout'),
+        pullBoxEntryGeometry: require('../src/standards/pullBoxEntryGeometry') }, out);
+    return out;
+  }
+  const text = (h) => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const cardNumbers = (h) => (h.match(/class="p3d-num"[^>]*>(\d+)</g) || [])
+    .map((m) => Number(m.match(/>(\d+)<$/)[1]));
+
+  function mixedThree(u) {
+    const s = u.empty();
+    const L2 = u.add(s, 'left', '2', u.nextId('e'));
+    const La = u.add(s, 'left', '2', u.nextId('e'));
+    const R2 = u.add(s, 'right', '2', u.nextId('e'));
+    const T2 = u.add(s, 'top', '2', u.nextId('e'));
+    const B1 = u.add(s, 'bottom', '3', u.nextId('e'));
+    const B2 = u.add(s, 'bottom', '3', u.nextId('e'));
+    u.conn(s, La.id, T2.id, u.nextId('c'));
+    u.conn(s, B1.id, B2.id, u.nextId('c'));
+    u.conn(s, L2.id, R2.id, u.nextId('c'));
+    return s;
+  }
+  /** Every fixture family this suite cares about, rendered. */
+  function allRendered() {
+    const out = [];
+    const u1 = ui(); out.push(text(u1.run(mixedThree(u1)).html));
+    for (const key of ['standard', 'rows', 'dense']) {
+      const u = ui(); out.push(text(u.run(api.build(key)).html));
+    }
+    const u2 = ui(); const s2 = u2.empty();
+    const a = u2.add(s2, 'left', '2', u2.nextId('e'));
+    const b = u2.add(s2, 'right', '2', u2.nextId('e'));
+    const c = u2.add(s2, 'top', '2', u2.nextId('e'));
+    const d = u2.add(s2, 'bottom', '2', u2.nextId('e'));
+    u2.conn(s2, a.id, b.id, u2.nextId('c')); u2.conn(s2, c.id, d.id, u2.nextId('c'));
+    out.push(text(u2.run(s2).html));
+    return out;
+  }
+
+  test('LANGUAGE: no engine or row-rule vocabulary reaches the user', () => {
+    for (const t of allRendered()) {
+      for (const banned of ['Triggers row requirement', 'row requirement', 'triggered',
+        'ANGLE_U_ROW', 'ENTRY_SPACING', 'triggerConnectionIds', 'rowId', 'row rule',
+        'dimensionStatus', 'governingWidthRequirementId', 'LAYOUT_DEPENDENT']) {
+        assert.ok(!t.includes(banned), 'engine vocabulary leaked: "' + banned + '" in: ' + t);
+      }
+    }
+    // and the old phrase is gone from the shipped renderer itself
+    assert.ok(!/Triggers row requirement/.test(fn3d('pbv23dPullCardHtml')));
+  });
+
+  test('TRANSLATION: row-derived requirements read as box-dimension contributions', () => {
+    const u = ui();
+    const { html: h, p } = u.run(mixedThree(u));
+    const t = text(h);
+    // the angle pull triggers two rows on the engine side -> two plain lines
+    const angle = p.byConnection[Object.keys(p.byConnection)[0]];
+    for (const conn of Object.keys(p.byConnection)) {
+      for (const row of p.byConnection[conn].rows) {
+        assert.ok(t.includes('Minimum box-dimension contribution: '
+          + row.minimumInches + '\u2033 ' + row.dimension),
+          'each engine row requirement appears as a contribution: ' + row.minimumInches);
+      }
+    }
+    assert.ok(angle.rows.length >= 1);
+    assert.ok(t.includes('Minimum box-dimension contribution: 14\u2033 width'));
+    assert.ok(t.includes('Minimum box-dimension contribution: 21\u2033 height'));
+  });
+
+  test('NOUNS: straight = box dimension in pull direction; angle/U = entry spacing', () => {
+    const u = ui();
+    const t = text(u.run(mixedThree(u)).html);
+    assert.ok(t.includes('Required minimum box dimension in pull direction: 16\u2033'));
+    assert.ok(t.includes('Minimum required entry spacing: 12\u2033'));
+    assert.ok(t.includes('Minimum required entry spacing: 18\u2033'));
+    // the straight card never carries the entry-spacing noun
+    const straightCard = text((() => {
+      const h = u.run(mixedThree(ui())).html;
+      return h.slice(h.lastIndexOf('class="p3d-card"'));
+    })());
+    assert.ok(straightCard.includes('STRAIGHT PULL'));
+    assert.ok(!/entry spacing/i.test(straightCard));
+    assert.ok(!/\bMIN\b/.test(t), 'no naked MIN values');
+  });
+
+  test('SHARED contributions are stated plainly, only when the engine says shared', () => {
+    // two angle pulls into the same left row share that row's requirement
+    const u = ui();
+    const s = u.empty();
+    const a = u.add(s, 'left', '2', u.nextId('e'));
+    const b = u.add(s, 'left', '3', u.nextId('e'));
+    const t1 = u.add(s, 'top', '2', u.nextId('e'));
+    const t2 = u.add(s, 'top', '2', u.nextId('e'));
+    u.conn(s, a.id, t1.id, u.nextId('c'));
+    u.conn(s, b.id, t2.id, u.nextId('c'));
+    const { html: h, p } = u.run(s);
+    const shared = Object.values(p.byConnection).some((slot) =>
+      slot.rows.some((r) => r.sharedWith.length > 1));
+    assert.ok(shared, 'the engine reports a requirement triggered by both pulls');
+    const t = text(h);
+    assert.ok(t.includes('(shared with another pull)'), 'honest, plain shared wording: ' + t);
+    assert.ok(!/row/i.test(t.replace(/BOTTOM R\d|LEFT R\d|TOP R\d|RIGHT R\d/g, '')),
+      'no row vocabulary beyond endpoint disambiguation');
+    // a single-pull requirement never claims to be shared
+    const u2 = ui();
+    const t2s = text(u2.run(mixedThree(u2)).html);
+    assert.ok(!t2s.includes('shared with'), 'no shared wording where nothing is shared');
+    assert.ok(fn3d('pbv23dPullCardHtml').includes('row.sharedWith.length - 1'),
+      'shared wording comes from the engine trigger list, not inference');
+  });
+
+  test('GOVERNING badges remain, still sourced from engine ids only', () => {
+    const u = ui();
+    const s = mixedThree(u);
+    const { html: h, p } = u.run(s);
+    const result = engine.calculatePullBox(api.request(s));
+    const t = text(h);
+    assert.ok(t.includes('GOVERNS WIDTH') && t.includes('GOVERNS HEIGHT'));
+    for (const slot of Object.values(p.byConnection)) {
+      if (slot.dimension) {
+        assert.strictEqual(slot.dimension.governs,
+          slot.dimension.id === result.governingWidthRequirementId
+          || slot.dimension.id === result.governingHeightRequirementId);
+      }
+      for (const row of slot.rows) {
+        assert.strictEqual(row.governs, row.id === result.governingWidthRequirementId
+          || row.id === result.governingHeightRequirementId);
+      }
+    }
+    for (const f of ['pbv23dPresent', 'pbv23dPullCardHtml', 'pbv23dResultHtml']) {
+      assert.ok(!/[*]\s*\d|\d\s*[*]|Math\.max|Math\.min/.test(fn3d(f)), f + ' has no arithmetic');
+    }
+  });
+
+  test('COMPLETENESS and PRIMARY RESULT unchanged', () => {
+    const u = ui();
+    const { html: h, p } = u.run(mixedThree(u));
+    assert.deepStrictEqual(cardNumbers(h), [1, 2, 3], 'every numbered pull has its card');
+    const t = text(h);
+    assert.ok(t.startsWith('REQUIRED BOX SIZE'), 'box size stays first and primary');
+    assert.strictEqual(p.width.kind, 'LAYOUT_DEPENDENT');
+    assert.ok(t.includes('NOT FULLY DETERMINED'));
+    assert.ok(t.includes('Known requirements:'));
+    assert.ok(!h.includes('p3d-boxsize'), 'no W x H headline while unresolved');
+    assert.ok(!/WIDTH 16\u2033|WIDTH 14\u2033/.test(t),
+      'no per-pull contribution is promoted to the width answer');
+    // multi-straight still two cards
+    const u2 = ui(); const s2 = u2.empty();
+    const a = u2.add(s2, 'left', '2', u2.nextId('e'));
+    const b = u2.add(s2, 'right', '2', u2.nextId('e'));
+    const c = u2.add(s2, 'top', '2', u2.nextId('e'));
+    const d = u2.add(s2, 'bottom', '2', u2.nextId('e'));
+    u2.conn(s2, a.id, b.id, u2.nextId('c')); u2.conn(s2, c.id, d.id, u2.nextId('c'));
+    assert.deepStrictEqual(cardNumbers(u2.run(s2).html), [1, 2]);
+  });
+
+  test('COMPACT: cards stay short enough for a phone', () => {
+    const u = ui();
+    const h = u.run(mixedThree(u)).html;
+    const cards = h.split('class="p3d-card"').slice(1);
+    for (const c of cards) {
+      const lines = (c.match(/class="p3d-reqline"/g) || []).length;
+      assert.ok(lines <= 3, 'a card carries at most three requirement lines, got ' + lines);
+      assert.ok(!/Derived from|because|therefore/i.test(text(c)), 'no explanatory paragraphs');
+    }
+    assert.ok(/\.p3d-muted\{[^}]*font-size:11px/.test(P3D), 'shared note is visually secondary');
+  });
+
+  test('REGRESSION: layout, identity, engine boundary all intact', () => {
+    const code = P3D.slice(P3D.indexOf('<style>'))
+      .replace(/function pbv23dDim\([\s\S]*?\n\}/, '');   // display rounding only
+    assert.strictEqual((code.match(/EC\.pullBox\.calculatePullBox/g) || []).length, 1);
+    assert.ok(!/\b6 \*|\* 6\b|\b8 \*|\* 8\b|314\.28/.test(code), 'no NEC arithmetic');
+    assert.ok(!/"v":/.test(JSON.stringify(api.request(api.build('rows')))));
+    assert.ok(/\.p3d-tier\{[^}]*row-gap:8px/.test(P3D), 'stacking architecture intact');
+    assert.ok(fn3d('pbv23dGlobalsHtml').includes('pbv23dStartAdd()')
+      && fn3d('pbv23dGlobalsHtml').includes('pbv23dCalculate()'), 'persistent globals');
+    assert.ok(fn3d('pbv23dSheetBody').includes('id="pbv2-3d-sheet-calc"'));
+    const s = api.build('rows');
+    assert.strictEqual(engine.calculatePullBox(api.request(s)).minimumWidthIn, 26);
+    const three = s.entries.find((e) => e.size === '3');
+    api.setRow(s, three.id, api.rowsFor(s, 'left')[0].id);
+    assert.strictEqual(engine.calculatePullBox(api.request(s)).minimumWidthIn, 29);
+    const d = api.build('dense');
+    const svg = api.svg(d, {});
+    assert.strictEqual((svg.match(/class="p3d-connnum"/g) || []).length, d.connections.length);
+    for (const c of d.connections) assert.ok(api.PALETTE.includes(api.connColor(d, c.id)));
   });
 });
