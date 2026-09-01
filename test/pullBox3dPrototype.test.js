@@ -1243,7 +1243,7 @@ describe('PBV2-12.1 — UX polish', () => {
       'pbv23dRoutePath', 'pbv23dBuildFixture', 'pbv23dEngineRequest', 'pbv23dPresent',
       'pbv23dTapWall', 'pbv23dStartAdd', 'pbv23dCancelAdd', 'pbv23dTapEntry',
       'pbv23dPickRow', 'pbv23dAddRowHere', 'pbv23dLayoutGeometry', 'pbv23dCertifyBox',
-      'pbv23dCertifiedBox', 'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dCalculate',
+      'pbv23dCertifiedBox', 'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dCeilBoxDim', 'pbv23dEffectiveAxes', 'pbv23dCalculate',
       'pbv23dInvalidateResult',
       'pbv23dIn', 'pbv23dSheetResultLine'].map(fn3d).join('\n');
     let calls = 0;
@@ -1654,7 +1654,7 @@ describe('PBV2-12.3 — results clarity', () => {
     const names = ['pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex', 'pbv23dFindEntry',
       'pbv23dConnColor', 'pbv23dConnNumber', 'pbv23dEngineRequest', 'pbv23dPresent',
       'pbv23dIn', 'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dCertifiedBox',
-      'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dResultHtml'];
+      'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dCeilBoxDim', 'pbv23dEffectiveAxes', 'pbv23dResultHtml'];
     const out = {};
     // eslint-disable-next-line no-new-func
     new Function('EC', 'exports',
@@ -2134,7 +2134,7 @@ describe('PBV2-12.3.2 — stacked layout cannot overlap', () => {
       'pbv23dClassify', 'pbv23dConnTypeOf', 'pbv23dConnColor', 'pbv23dConnNumber',
       'pbv23dEngineRequest', 'pbv23dPresent', 'pbv23dIn', 'pbv23dAxisRow',
       'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dCertifiedBox',
-      'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dResultHtml', 'pbv23dGlobalsHtml', 'pbv23dSelectionHtml'];
+      'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dCeilBoxDim', 'pbv23dEffectiveAxes', 'pbv23dResultHtml', 'pbv23dGlobalsHtml', 'pbv23dSelectionHtml'];
     const out = {};
     // eslint-disable-next-line no-new-func
     new Function('EC', 'pbv23dSelected', 'pbv23dConnectFrom', 'pbv23dAddMode', 'exports',
@@ -2204,7 +2204,7 @@ describe('PBV2-12.3.3 — every numbered pull has a result card', () => {
       'pbv23dAddEntry', 'pbv23dAddConnection', 'pbv23dClassify', 'pbv23dConnColor',
       'pbv23dConnNumber', 'pbv23dEngineRequest', 'pbv23dPresent', 'pbv23dIn',
       'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dCertifiedBox',
-      'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dResultHtml'];
+      'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dCeilBoxDim', 'pbv23dEffectiveAxes', 'pbv23dResultHtml'];
     const out = {};
     // eslint-disable-next-line no-new-func
     new Function('EC', 'exports',
@@ -2485,7 +2485,7 @@ describe('PBV2-12.3.4 — no engine vocabulary in the results', () => {
       'pbv23dAddEntry', 'pbv23dAddConnection', 'pbv23dClassify', 'pbv23dConnColor',
       'pbv23dConnNumber', 'pbv23dEngineRequest', 'pbv23dPresent', 'pbv23dIn',
       'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dPullCardHtml', 'pbv23dCertifiedBox',
-      'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dResultHtml'];
+      'pbv23dLayoutNote', 'pbv23dDim', 'pbv23dCeilBoxDim', 'pbv23dEffectiveAxes', 'pbv23dResultHtml'];
     const out = {};
     // eslint-disable-next-line no-new-func
     new Function('EC', 'exports',

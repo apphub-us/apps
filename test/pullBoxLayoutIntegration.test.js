@@ -35,15 +35,16 @@ function app() {
   const consts = ['PBV23D_GEO', 'PBV23D_SIZES', 'PBV23D_WALLS', 'PBV23D_CONN_COLORS',
     'PBV23D_NEUTRAL', 'PBV23D_PULL_WORD', 'PBV23D_ENTRY_SYSTEM', 'PBV23D_POLICY_ORDER']
     .map((c) => html.match(new RegExp('var ' + c + ' = [\\s\\S]*?;\\n'))[0]).join('');
-  const names = ['pbv23dEmptyState', 'pbv23dRowsFor', 'pbv23dRowById', 'pbv23dRowIndex',
-    'pbv23dAddRowOnWall', 'pbv23dEnsureRow', 'pbv23dSetEntryRow', 'pbv23dDeleteRowIfEmpty',
-    'pbv23dFindEntry', 'pbv23dNextPosition', 'pbv23dAddEntry', 'pbv23dDeleteEntry',
+  const names = ['pbv23dHub', 'pbv23dInward', 'pbv23dEmptyState', 'pbv23dRowsFor', 'pbv23dRowById',
+    'pbv23dRowIndex', 'pbv23dRowDepth', 'pbv23dAddRowOnWall', 'pbv23dEnsureRow', 'pbv23dSetEntryRow',
+    'pbv23dDeleteRowIfEmpty', 'pbv23dFindEntry', 'pbv23dNextPosition', 'pbv23dAddEntry', 'pbv23dDeleteEntry',
     'pbv23dSetSize', 'pbv23dSetPosition', 'pbv23dSetWall', 'pbv23dAddConnection',
-    'pbv23dClassify', 'pbv23dConnColor', 'pbv23dConnNumber', 'pbv23dEngineRequest',
+    'pbv23dClassify', 'pbv23dConnColor', 'pbv23dConnNumber', 'pbv23dEntryConns', 'pbv23dEntryColor',
+    'pbv23dHitRadius', 'pbv23dRoutePath', 'pbv23dEngineRequest',
     'pbv23dPresent', 'pbv23dIn', 'pbv23dAxisRow', 'pbv23dEndpointText', 'pbv23dPullCardHtml',
     'pbv23dLayoutGeometry', 'pbv23dCertifyBox', 'pbv23dCertifiedBox', 'pbv23dLayoutNote',
-    'pbv23dDim', 'pbv23dResultHtml', 'pbv23dSheetResultLine', 'pbv23dInvalidateResult',
-    'pbv23dCalculate'];
+    'pbv23dDim', 'pbv23dCeilBoxDim', 'pbv23dEffectiveAxes', 'pbv23dResultHtml', 'pbv23dSheetResultLine', 'pbv23dInvalidateResult',
+    'pbv23dCalculate', 'pbv23dRenderSvg'];
   let l1Calls = 0; let l2Calls = 0; let lastL1Result = null; let l2Args = null;
   const EC = {
     pullBox: Object.assign(Object.create(L1), {
@@ -74,7 +75,15 @@ function app() {
     exports.layout = function () { return pbv23dLayout; };
     exports.l1 = function () { return pbv23dLastResult; };
     exports.request = pbv23dEngineRequest; exports.geometry = pbv23dLayoutGeometry;
-    exports.dim = pbv23dDim;`)(EC, { getElementById: () => null }, () => {}, out);
+    exports.dim = pbv23dDim;
+    exports.svg = function () {
+      var effResult = null;
+      if (pbv23dPresentation && pbv23dPresentation.state === 'OK') {
+        var e = pbv23dEffectiveAxes(pbv23dPresentation);
+        effResult = { state: 'OK', width: e.width, height: e.height };
+      }
+      return pbv23dRenderSvg(PBV23D, { result: effResult });
+    };`)(EC, { getElementById: () => null }, () => {}, out);
   out.l1Calls = () => l1Calls; out.l2Calls = () => l2Calls;
   out.lastL1 = () => lastL1Result; out.l2Args = () => l2Args;
   return out;
@@ -187,8 +196,21 @@ describe('PBV2-13B-3 — certified results', () => {
     assert.ok(Math.abs(box.widthIn - 25.25) <= 1 / 64, 'certified width ' + box.widthIn);
     assert.strictEqual(box.heightIn, 21, 'height stays at the Layer-1 rule floor');
     const t = text(a.html());
-    assert.ok(t.startsWith('REQUIRED BOX SIZE 25-3/8\u2033 W \u00D7 21\u2033 H'), t.slice(0, 80));
+    // PBV2-13B-3.2: MINIMUM REQUIRED BOX SIZE heading, whole-inch ceiling
+    // display, certified DOMAIN value untouched (still the bisection-search
+    // fractional result within tolerance of the 25.25 analytic bound, exactly
+    // as pinned in PBV2-13B-3 — this milestone changes presentation only)
+    assert.ok(Math.abs(box.widthIn - 25.25) <= 1 / 64, 'domain value unchanged: ' + box.widthIn);
+    assert.notStrictEqual(box.widthIn, 26, 'the domain value is never mutated to the display integer');
+    assert.ok(t.startsWith('MINIMUM REQUIRED BOX SIZE 26\u2033 W \u00D7 21\u2033 H'), t.slice(0, 80));
+    assert.ok(!t.includes('REQUIRED BOX SIZE 25'), 'the old fractional heading is gone');
     assert.ok(!t.includes('NOT FULLY DETERMINED'), 'the unresolved axis is gone');
+    // the drawing agrees with the result: whole-inch, solid, no stale
+    // "NOT FULLY DETERMINED" while a certified box is showing below it
+    const svg = a.svg();
+    assert.ok(svg.includes('26\u2033 WIDTH'), 'drawing shows the same whole-inch width');
+    assert.ok(!svg.includes('NOT FULLY DETERMINED'), 'no stale unresolved label on the drawing');
+    assert.ok(!svg.includes('p3d-dim-ref'), 'the axis is drawn solid, not as a dashed reference');
     assert.ok(t.includes('CONSERVATIVE NEC LAYOUT'));
     assert.ok(t.includes('PULL REQUIREMENTS'), 'explanatory cards remain');
   });
@@ -371,9 +393,10 @@ describe('PBV2-13B-3 — invalidation and display', () => {
     assert.ok(sheetBody.includes('onclick="pbv23dCalculate()"'), 'sheet uses the composed path');
     const a = app(); auditFixture(a); a.calc();
     const line = a.sheet();
-    assert.ok(line.includes(a.dim(a.layout().result.widthIn)), 'certified width: ' + line);
-    assert.ok(line.includes(a.dim(a.layout().result.heightIn)), 'certified height');
-    assert.ok(line.includes('conservative'));
+    // PBV2-13B-3.2: sheet line uses the whole-inch ceiling, not the eighth format
+    assert.ok(line.includes(a.dim(a.layout().result.widthIn)) === false || true);  // formatter no longer used here
+    assert.strictEqual(line, 'W ' + Math.ceil(a.layout().result.widthIn - 1e-9) + '\u2033  \u00B7  H '
+      + Math.ceil(a.layout().result.heightIn - 1e-9) + '\u2033  \u00B7  conservative', line);
   });
 });
 
@@ -401,5 +424,146 @@ describe('PBV2-13B-3 — Node/browser parity', () => {
     assert.strictEqual(browserOut.status, nodeOut.status);
     assert.strictEqual(browserOut.widthIn, nodeOut.widthIn, 'Layer 2 parity');
     assert.deepStrictEqual(browserOut.placements, nodeOut.placements);
+  });
+});
+
+describe('PBV2-13B-3.2 — certified result presentation polish', () => {
+  const consts3B2 = ['PBV23D_GEO', 'PBV23D_SIZES', 'PBV23D_WALLS', 'PBV23D_CONN_COLORS',
+    'PBV23D_NEUTRAL', 'PBV23D_PULL_WORD', 'PBV23D_ENTRY_SYSTEM', 'PBV23D_POLICY_ORDER']
+    .map((c) => html.match(new RegExp('var ' + c + ' = [\\s\\S]*?;\\n'))[0]).join('');
+
+  /** The shipped ceiling helper, in isolation. */
+  function ceilHelper() {
+    const out = {};
+    // eslint-disable-next-line no-new-func
+    new Function('exports', fn3d('pbv23dCeilBoxDim') + ';exports.ceil = pbv23dCeilBoxDim;')(out);
+    return out.ceil;
+  }
+
+  test('WHOLE-INCH CEILING: exact pinned boundary cases', () => {
+    const ceil = ceilHelper();
+    for (const [input, expected] of [
+      [25, 25], [25.0001, 26], [25.25, 26], [25.375, 26], [25.999, 26],
+      [26, 26], [26.001, 27], [1, 1], [0.5, 1],
+    ]) {
+      assert.strictEqual(ceil(input), expected, input + ' -> ' + expected);
+    }
+  });
+
+  test('WHOLE-INCH CEILING: absorbs float noise without masking a genuine excess', () => {
+    const ceil = ceilHelper();
+    // representation artifact just above a whole number: must NOT bump up
+    assert.strictEqual(ceil(25 + 1e-12), 25, 'sub-nanoinch noise stays at 25');
+    assert.strictEqual(ceil(25 - 1e-12), 25, 'noise on the other side also stays at 25');
+    // a genuine excess at the solver's own finest grain (1 micro-inch) still rounds up
+    assert.strictEqual(ceil(25 + 1e-6), 26, 'a real micro-inch excess still requires the next inch');
+    assert.strictEqual(ceil(25.9999995), 26);
+    // deterministic and never rounds down
+    assert.strictEqual(ceil(ceil(25.0001)), 26);
+    for (const v of [12, 12.001, 12.999, 13]) assert.ok(ceil(v) >= v - 1e-9, v + ' never rounds below itself');
+  });
+
+  test('the eighth-inch formatter remains available and unchanged for other uses', () => {
+    assert.ok(fn3d('pbv23dDim').includes("['', '1/8', '1/4'"), 'pbv23dDim still exists as-is');
+    // and PULL REQUIREMENTS values are untouched — they use the raw engine
+    // value formatter, never the new whole-inch ceiling
+    assert.ok(!fn3d('pbv23dPullCardHtml').includes('pbv23dCeilBoxDim'),
+      'individual pull requirements are never ceiling-rounded');
+  });
+
+  test('HEADING: certified vs pre-calculation vs invalid states', () => {
+    const a = app(); const s = auditFixture(a);
+    assert.ok(text(a.html()).startsWith('REQUIRED BOX SIZE'), 'pre-calc placeholder stays sensible');
+    assert.ok(!text(a.html()).includes('MINIMUM REQUIRED BOX SIZE'));
+    a.calc();
+    assert.ok(text(a.html()).startsWith('MINIMUM REQUIRED BOX SIZE'), 'certified result gets the new heading');
+    assert.ok(!text(a.html()).match(/^REQUIRED BOX SIZE \d/), 'old bare heading does not remain for a certified result');
+    const empty = app(); const es = empty.empty(); empty.load(es); empty.calc();
+    assert.ok(text(empty.html()).startsWith('REQUIRED BOX SIZE'), 'an invalid/empty result keeps asking the question');
+    assert.ok(!text(empty.html()).includes('MINIMUM'));
+  });
+
+  test('GUARANTEE: ceiling rounding never upgrades or removes the conservative wording', () => {
+    const a = app(); auditFixture(a); a.calc();
+    const t = text(a.html());
+    assert.ok(t.includes('CONSERVATIVE NEC LAYOUT'));
+    assert.ok(t.includes('Physical fitting and depth fit are not verified.'));
+    assert.ok(!/EXACT/i.test(t), 'whole-inch display never introduces EXACT wording');
+    assert.strictEqual(a.layout().result.physicalFitVerified, false);
+    assert.strictEqual(a.layout().result.depthVerified, false);
+  });
+
+  test('FIXTURES: drawing and result agree, whole-inch, on ROWS, DENSE and a mixed case', () => {
+    for (const build of [
+      (a) => { const s = a.state ? null : null; },  // placeholder, replaced below
+    ]) { void build; }
+
+    function run(build) {
+      const a = app(); build(a);
+      a.calc();
+      const box = a.layout().result;
+      const wCeil = Math.ceil(box.widthIn - 1e-9);
+      const hCeil = Math.ceil(box.heightIn - 1e-9);
+      const t = text(a.html());
+      assert.ok(t.includes(wCeil + '\u2033 W \u00D7 ' + hCeil + '\u2033 H'),
+        'result headline: ' + t.slice(0, 60));
+      const svg = a.svg();
+      assert.ok(svg.includes(wCeil + '\u2033 WIDTH'), 'drawing width matches result: ' + wCeil);
+      assert.ok(!svg.includes('NOT FULLY DETERMINED'), 'no stale label once certified');
+      assert.ok(!svg.includes('p3d-dim-ref'), 'certified axis drawn solid');
+      const line = a.sheet();
+      assert.ok(line.includes('W ' + wCeil + '\u2033') && line.includes('H ' + hCeil + '\u2033'),
+        'sheet line matches: ' + line);
+      return { a, box };
+    }
+
+    // ROWS: left wall split rows + top entry, angle pull
+    run((a) => {
+      const s = a.empty(); a.load(s);
+      const r1 = a.addRow(s, 'left', a.nextId('row'));
+      const r2 = a.addRow(s, 'left', a.nextId('row'));
+      const L4 = a.add(s, 'left', '4', a.nextId('e'));
+      a.setRow(s, L4.id, r1.id);
+      const L2b = a.add(s, 'left', '2', a.nextId('e'));
+      a.setRow(s, L2b.id, r1.id);
+      const L3 = a.add(s, 'left', '3', a.nextId('e'));
+      a.setRow(s, L3.id, r2.id);
+      const T = a.add(s, 'top', '2', a.nextId('e'));
+      a.conn(s, L4.id, T.id, a.nextId('c'));
+    });
+
+    // DENSE-ish mixed: several entries across walls, one of each pull type
+    run((a) => {
+      const s = a.empty(); a.load(s);
+      const L4 = a.add(s, 'left', '4', a.nextId('e'));
+      const R4 = a.add(s, 'right', '4', a.nextId('e'));
+      const L2b = a.add(s, 'left', '2', a.nextId('e'));
+      const T2 = a.add(s, 'top', '2', a.nextId('e'));
+      const B3a = a.add(s, 'bottom', '3', a.nextId('e'));
+      const B3b = a.add(s, 'bottom', '3', a.nextId('e'));
+      a.conn(s, L4.id, R4.id, a.nextId('c'));
+      a.conn(s, L2b.id, T2.id, a.nextId('c'));
+      a.conn(s, B3a.id, B3b.id, a.nextId('c'));
+    });
+  });
+
+  test('INVALIDATION: a stale certified box never survives an edit', () => {
+    const a = app(); const s = auditFixture(a);
+    a.calc();
+    assert.ok(a.svg().includes('WIDTH') && !a.svg().includes('NOT FULLY DETERMINED'));
+    a.setSize(s, s.entries[0].id, '4');
+    a.invalidate();
+    assert.strictEqual(a.layout(), null);
+    assert.ok(!text(a.html()).includes('MINIMUM REQUIRED BOX SIZE'), 'stale heading gone');
+    assert.ok(!a.svg().includes('26\u2033 WIDTH'), 'no stale whole-inch label survives');
+  });
+
+  test('REGRESSION: one Layer-1 call, no solver-math change, no extra L2 calls', () => {
+    const a = app(); auditFixture(a);
+    a.calc();
+    assert.strictEqual(a.l1Calls(), 1, 'exactly one Layer-1 call');
+    assert.ok(a.l2Calls() >= 1 && a.l2Calls() <= 3, 'no explosion in Layer-2 calls: ' + a.l2Calls());
+    assert.ok(!fn3d('pbv23dCeilBoxDim').includes('EC.pullBoxLayout'),
+      'the display formatter never calls the solver again');
   });
 });

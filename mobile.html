@@ -10912,11 +10912,15 @@ function pbv23dRenderSvg(state, ui) {
     // every value below comes from the engine result; nothing is derived here
     var wA = ui.result.width; var hA = ui.result.height;
     var widthLabel = wA.kind === 'RESOLVED' ? (wA.valueIn + '\u2033 WIDTH')
+      : wA.kind === 'CERTIFIED' ? (pbv23dCeilBoxDim(wA.valueIn) + '\u2033 WIDTH')
       : (wA.kind === 'LAYOUT_DEPENDENT' ? 'WIDTH \u2014 NOT FULLY DETERMINED'
         : 'WIDTH \u2014 NO REQUIREMENT');
     var heightLabel = hA.kind === 'RESOLVED' ? (hA.valueIn + '\u2033')
+      : hA.kind === 'CERTIFIED' ? (pbv23dCeilBoxDim(hA.valueIn) + '\u2033')
       : (hA.kind === 'LAYOUT_DEPENDENT' ? '\u2014' : '\u2014');
-    var widthRef = (wA.kind !== 'RESOLVED');
+    // a certified axis is authoritative, drawn solid like a resolved one —
+    // never the dashed "not yet determined" reference styling
+    var widthRef = (wA.kind !== 'RESOLVED' && wA.kind !== 'CERTIFIED');
     s += '<g class="p3d-dims" style="pointer-events:none">'
       + '<line x1="' + R.x1 + '" y1="' + (R.y2 + 4) + '" x2="' + R.x1 + '" y2="' + (wy - 4)
       + '" stroke="#3a3a3a" stroke-width="0.75"/>'
@@ -11338,6 +11342,20 @@ function pbv23dDim(valueIn) {
   var frac = ['', '1/8', '1/4', '3/8', '1/2', '5/8', '3/4', '7/8'][rem];
   return (frac ? whole + '-' + frac : String(whole)) + '\u2033';
 }
+/** PBV2-13B-3.2: whole-inch recommended minimum for the MAIN certified box
+ *  result — headline, in-sheet line, and drawing labels. Ceiling only, NEVER
+ *  rounds down, and never touches the domain result: widthIn/heightIn/
+ *  placements/certificate on the Layer-2 object are read-only here.
+ *
+ *  Epsilon (1e-9) exists solely to absorb floating-point representation
+ *  noise from the fromMicro() BigInt->Number conversion in the solver
+ *  (empirically <1e-13 at these magnitudes) — it is 1000x smaller than the
+ *  solver's own finest exact grain (1 micro-inch = 1e-6"), so it can never
+ *  mask a genuine requirement: any value truly above a whole inch, down to
+ *  that micro-inch grain, still rounds up. */
+function pbv23dCeilBoxDim(valueIn) {
+  return Math.ceil(valueIn - 1e-9);
+}
 function pbv23dResultHtml() {
   var p = pbv23dPresentation;
   if (!p || p.state === 'NONE') {
@@ -11349,13 +11367,17 @@ function pbv23dResultHtml() {
       + (PBV23D_ERROR_TEXT[p.reason]
         || 'This configuration cannot be calculated (' + p.reason + ').') + '</div>';
   }
-  var out = '<div class="p3d-h">REQUIRED BOX SIZE</div>';
   var certified = pbv23dCertifiedBox();
+  // "MINIMUM REQUIRED BOX SIZE" only once Layer 2 has actually certified one;
+  // the pre-calculation and non-certified states keep asking the question.
+  var out = '<div class="p3d-h">'
+    + (certified ? 'MINIMUM REQUIRED BOX SIZE' : 'REQUIRED BOX SIZE') + '</div>';
   if (certified) {
     // Layer 2 proved a concrete box: it answers the whole-box question and
-    // supersedes any axis the pull rules alone could not settle.
-    out += '<div class="p3d-boxsize">' + pbv23dDim(certified.widthIn) + ' W  \u00D7  '
-      + pbv23dDim(certified.heightIn) + ' H</div>'
+    // supersedes any axis the pull rules alone could not settle. Displayed
+    // in whole inches (ceiling) — the certified DOMAIN value stays fractional.
+    out += '<div class="p3d-boxsize">' + pbv23dCeilBoxDim(certified.widthIn) + '\u2033 W  \u00D7  '
+      + pbv23dCeilBoxDim(certified.heightIn) + '\u2033 H</div>'
       + '<div class="p3d-h" style="margin-top:2px;color:#8a8a8a">'
       + (pbv23dLayout.conservative ? 'CONSERVATIVE NEC LAYOUT' : 'CERTIFIED NEC LAYOUT') + '</div>'
       + '<div class="p3d-note" style="margin-top:2px">All supported pull rules and entry '
@@ -11385,10 +11407,28 @@ function pbv23dResultHtml() {
   }
   return out;
 }
+/** Drawing priority (PBV2-13B-3.2): a certified Layer-2 box always wins
+ *  over Layer-1's own dimensionStatus, so the SVG can never simultaneously
+ *  show a certified box below and "NOT FULLY DETERMINED" on the drawing.
+ *  Falls back to the existing Layer-1 presentation only when nothing was
+ *  certified (unresolved geometry, UNKNOWN, or no calculation yet). */
+function pbv23dEffectiveAxes(presentation) {
+  var box = pbv23dCertifiedBox();
+  if (!box) return { width: presentation.width, height: presentation.height };
+  return {
+    width: { kind: 'CERTIFIED', valueIn: box.widthIn },
+    height: { kind: 'CERTIFIED', valueIn: box.heightIn },
+  };
+}
 function pbv23dRender() {
+  var effResult = null;
+  if (pbv23dPresentation && pbv23dPresentation.state === 'OK') {
+    var eff = pbv23dEffectiveAxes(pbv23dPresentation);
+    effResult = { state: 'OK', width: eff.width, height: eff.height };
+  }
   document.getElementById('pbv2-3d-stage').innerHTML =
     pbv23dRenderSvg(PBV23D, { selected: pbv23dSelected, connectFrom: pbv23dConnectFrom,
-      addMode: pbv23dAddMode, result: pbv23dPresentation });
+      addMode: pbv23dAddMode, result: effResult });
   // each tier fills its own normal-flow container: nothing is positioned
   var globals = document.getElementById('pbv2-3d-globals');
   globals.innerHTML = pbv23dGlobalsHtml(PBV23D);
@@ -11500,7 +11540,8 @@ function pbv23dSheetResultLine() {
   if (!p || p.state === 'NONE') return 'Not calculated yet.';
   var box = pbv23dCertifiedBox();
   if (box) {
-    return 'W ' + pbv23dDim(box.widthIn) + '  \u00B7  H ' + pbv23dDim(box.heightIn)
+    return 'W ' + pbv23dCeilBoxDim(box.widthIn) + '\u2033  \u00B7  H '
+      + pbv23dCeilBoxDim(box.heightIn) + '\u2033'
       + (pbv23dLayout.conservative ? '  \u00B7  conservative' : '');
   }
   if (p.state === 'INVALID') {
