@@ -6674,12 +6674,309 @@ async function runSymbolsIsolation(engineName, engine) {
   return { engine: engineName, available: true, detail: R, checks, errs };
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// V2-0 — REAL v1 -> v2 DATABASE UPGRADE.
+//
+// The single most important promise of V2-0: an electrician's existing Wire
+// Map data survives the schema bump untouched. So this does NOT use the
+// store to seed; it builds a genuine DB_VERSION=1 database through raw
+// indexedDB with the frozen v1 stores/indices and representative legacy
+// records — a Blank Sheet, a Photo Sheet whose image Blob has REAL bytes,
+// and one annotation of every legacy type — closes it, then opens it with
+// the V2 store and compares complete structured values.
+// ─────────────────────────────────────────────────────────────────────────
+async function runV2Upgrade(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  await page.goto(APP);
+
+  const R = await page.evaluate(async () => {
+    const NAME = WM.store.DB_NAME;
+    const out = {};
+    // 0. a clean slate, then a GENUINE v1 database
+    await new Promise((res) => { const d = indexedDB.deleteDatabase(NAME); d.onsuccess = d.onerror = d.onblocked = () => res(); });
+    const V1 = {
+      jobs: { keyPath: 'id', indexes: [['updatedAt', 'updatedAt'], ['name', 'name']] },
+      sheets: { keyPath: 'id', indexes: [['jobId', 'jobId'], ['jobId_order', ['jobId', 'order']]] },
+      annotations: { keyPath: 'id', indexes: [['sheetId', 'sheetId'], ['labelKey', 'data.labelKey'], ['sheetId_labelKey', ['sheetId', 'data.labelKey']]] },
+      images: { keyPath: 'id', indexes: [] },
+      meta: { keyPath: 'key', indexes: [] },
+    };
+    const v1db = await new Promise((res, rej) => {
+      const req = indexedDB.open(NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        for (const [n, spec] of Object.entries(V1)) {
+          const st = db.createObjectStore(n, { keyPath: spec.keyPath });
+          for (const [iname, kp] of spec.indexes) st.createIndex(iname, kp, { unique: false });
+        }
+      };
+      req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error);
+    });
+    out.v1Version = v1db.version;
+    out.v1Stores = Array.from(v1db.objectStoreNames).sort();
+
+    // 1. representative legacy data, including an image with real pixels
+    const now = 1700000000000;
+    const blob = await new Promise((res) => {
+      const c = document.createElement('canvas'); c.width = 64; c.height = 48;
+      const g = c.getContext('2d'); g.fillStyle = '#c84'; g.fillRect(0, 0, 64, 48); g.fillStyle = '#48c'; g.fillRect(8, 8, 32, 24);
+      c.toBlob((b) => res(b), 'image/png');
+    });
+    const bytesBefore = new Uint8Array(await blob.arrayBuffer());
+    const job = WM.model.createJob({ id: 'v1job', name: 'Legacy Job', now });
+    const blank = WM.model.createSheet({ id: 'v1blank', jobId: 'v1job', name: 'Blank', kind: 'blank', width: 1000, height: 800, order: 0, now });
+    const photo = WM.model.createSheet({ id: 'v1photo', jobId: 'v1job', name: 'Photo', kind: 'photo', imageId: 'v1img', width: 64, height: 48, order: 1, now });
+    const image = { id: 'v1img', blob, width: 64, height: 48, type: 'image/png', createdAt: now };
+    const ann = (id, over) => WM.model.createAnnotation(Object.assign({ id, sheetId: 'v1photo', now }, over));
+    const legacy = [
+      ann('a-label', { type: 'wireLabel', at: { x: 0.2, y: 0.3 }, data: { label: 'HR-07', from: 'LP-1', to: 'Kitchen', cable: '12/2 MC', room: 'Kitchen', notes: '' } }),
+      ann('a-arrow', { type: 'arrow', a: { x: 0.1, y: 0.1 }, b: { x: 0.6, y: 0.4 } }),
+      ann('a-symbol', { type: 'symbol', at: { x: 0.5, y: 0.5 }, data: { symbolKey: 'outlet.duplex' } }),
+      ann('a-line', { type: 'line', a: { x: 0.2, y: 0.8 }, b: { x: 0.8, y: 0.8 } }),
+      ann('a-rect', { type: 'rect', a: { x: 0.3, y: 0.3 }, b: { x: 0.7, y: 0.6 } }),
+      ann('a-text', { type: 'text', at: { x: 0.9, y: 0.9 }, data: { text: 'note' } }),
+    ];
+    await new Promise((res, rej) => {
+      const tx = v1db.transaction(['jobs', 'sheets', 'images', 'annotations', 'meta'], 'readwrite');
+      tx.objectStore('jobs').put(job); tx.objectStore('sheets').put(blank); tx.objectStore('sheets').put(photo);
+      tx.objectStore('images').put(image); for (const a of legacy) tx.objectStore('annotations').put(a);
+      tx.objectStore('meta').put({ key: 'currentSheet', value: 'v1photo' });
+      tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error);
+    });
+    v1db.close();
+
+    // 2. open with the V2 store: a genuine version-change upgrade
+    const db = WM.store.createStore(); await db.openDatabase();
+    const raw = await new Promise((res, rej) => { const r = indexedDB.open(NAME); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+    out.v2Version = raw.version;
+    out.v2Stores = Array.from(raw.objectStoreNames).sort();
+    out.pointsIndices = Array.from(raw.transaction('points').objectStore('points').indexNames).sort();
+    out.connIndices = Array.from(raw.transaction('connections').objectStore('connections').indexNames).sort();
+    out.annIndices = Array.from(raw.transaction('annotations').objectStore('annotations').indexNames).sort();
+    raw.close();
+
+    // 3. legacy records: complete structured values, image bytes
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    out.jobSame = same(await db.getJob('v1job'), job);
+    out.blankSame = same(await db.getSheet('v1blank'), blank);
+    out.photoSame = same(await db.getSheet('v1photo'), photo);
+    const img = await db.getImage('v1img');
+    const bytesAfter = new Uint8Array(await img.blob.arrayBuffer());
+    out.imageSize = [bytesBefore.length, bytesAfter.length];
+    out.imageBytesSame = bytesBefore.length === bytesAfter.length && bytesBefore.every((v, i) => v === bytesAfter[i]);
+    out.imageMeta = same({ w: img.width, h: img.height, t: img.type, c: img.createdAt }, { w: 64, h: 48, t: 'image/png', c: now });
+    out.photoLinksImage = (await db.getSheet('v1photo')).imageId === 'v1img';
+    const anns = await db.listAnnotations('v1photo');
+    out.annCount = anns.length;
+    out.annSame = legacy.every((a) => same(anns.find((x) => x.id === a.id), a));
+    out.annTypes = anns.map((a) => a.type).sort();
+    out.lookupStillWorks = (await db.listAnnotations('v1photo')).some((a) => a.data && a.data.labelKey === 'hr-07');
+    out.metaSame = same(await db.getMeta('currentSheet'), 'v1photo');
+    out.pointsEmpty = (await db.listPoints('v1photo')).length === 0;
+
+    // 4. new topology after the upgrade, then reopen and verify everything again
+    await db.putPoint(WM.model.createPoint({ id: 'p1', jobId: 'v1job', sheetId: 'v1blank', type: 'panel', name: 'LP-1', x: 0.1, y: 0.1, now }));
+    await db.putPoint(WM.model.createPoint({ id: 'p2', jobId: 'v1job', sheetId: 'v1photo', type: 'gangBox', x: 0.6, y: 0.6, now,
+      gang: { count: 2, slots: [{ device: 'switch1p' }, { device: 'duplex' }] } }));
+    await db.putConnection(WM.model.createConnection({ id: 'c1', jobId: 'v1job', fromPointId: 'p1', toPointId: 'p2', label: 'HR-07', now }));
+    db.closeDatabase();
+    const db2 = WM.store.createStore(); await db2.openDatabase();
+    out.reopenPoint = same(await db2.getPoint('p2'), WM.model.createPoint({ id: 'p2', jobId: 'v1job', sheetId: 'v1photo', type: 'gangBox', x: 0.6, y: 0.6, now,
+      gang: { count: 2, slots: [{ device: 'switch1p' }, { device: 'duplex' }] } }));
+    out.reopenConn = (await db2.getConnection('c1')).labelKey === 'hr-07';
+    out.reopenCross = (await db2.listConnectionsForPoint('p1')).length === 1 && (await db2.listConnectionsForPoint('p2')).length === 1;
+    out.reopenLookup = (await db2.findConnectionsByLabel('v1job', 'hr 07')).map((c) => c.id).join() === 'c1';
+    out.reopenLegacy = same(await db2.getSheet('v1photo'), photo) && (await db2.listAnnotations('v1photo')).length === 6
+      && new Uint8Array(await (await db2.getImage('v1img')).blob.arrayBuffer()).length === bytesBefore.length;
+    // cross-sheet cascade on the real engine: delete the blank sheet -> p1 and c1 go, p2 stays
+    const impact = await db2.sheetDeletionImpact('v1blank');
+    out.impact = impact;
+    const del = await db2.deleteSheet('v1blank');
+    out.cascade = { del, p1: await db2.getPoint('p1'), c1: await db2.getConnection('c1'), p2: !!(await db2.getPoint('p2')), photo: !!(await db2.getSheet('v1photo')) };
+    db2.closeDatabase();
+    return out;
+  });
+
+  const checks = [
+    ['the seed really was a DB_VERSION=1 database with only the five legacy stores', R.v1Version === 1 && R.v1Stores.join() === 'annotations,images,jobs,meta,sheets'],
+    ['opening with the V2 store upgraded it to version 2', R.v2Version === 2],
+    ['the two topology stores were ADDED and every legacy store remains', R.v2Stores.join() === 'annotations,connections,images,jobs,meta,points,sheets'],
+    ['points carries jobId, sheetId, jobId_type', R.pointsIndices.join() === 'jobId,jobId_type,sheetId'],
+    ['connections carries jobId, both endpoints, labelKey, jobId_labelKey', R.connIndices.join() === 'fromPointId,jobId,jobId_labelKey,labelKey,toPointId'],
+    ['legacy annotation indices were not touched', R.annIndices.join() === 'labelKey,sheetId,sheetId_labelKey'],
+    ['the legacy job survived as a complete structured value', R.jobSame],
+    ['the Blank Sheet survived unchanged', R.blankSame],
+    ['the Photo Sheet survived unchanged, still linked to its image', R.photoSame && R.photoLinksImage],
+    ['the image Blob survived with IDENTICAL bytes (' + R.imageSize.join(' -> ') + ')', R.imageBytesSame],
+    ['the image record metadata survived', R.imageMeta],
+    ['all six legacy annotations survived, one of each type, values unchanged', R.annCount === 6 && R.annSame && R.annTypes.join() === 'arrow,line,rect,symbol,text,wireLabel'],
+    ['the legacy labelKey still drives lookup', R.lookupStillWorks],
+    ['legacy meta survived', R.metaSame],
+    ['the new points store starts empty for legacy sheets', R.pointsEmpty],
+    ['a Point and a cross-sheet Connection can be created after the upgrade', R.reopenPoint && R.reopenConn],
+    ['after close + reopen the topology is intact and reachable from both ends', R.reopenCross && R.reopenLookup],
+    ['after close + reopen every legacy record is still intact', R.reopenLegacy],
+    ['sheetDeletionImpact previews the cross-sheet cascade', R.impact.points === 1 && R.impact.connections === 1 && R.impact.crossSheetConnections === 1],
+    ['deleting the sheet removes its point and the cross-sheet cable; the far point and sheet survive', R.cascade.del.points === 1 && R.cascade.del.connections === 1 && R.cascade.p1 === null && R.cascade.c1 === null && R.cascade.p2 && R.cascade.photo],
+    ['no page errors through the upgrade', errs.length === 0],
+  ];
+  await browser.close();
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// V2-0 — MID-TRANSACTION ROLLBACK ON REAL INDEXEDDB.
+//
+// The Node suite proves rollback against the memory driver's working-copy
+// commit. This proves it against the browser's own transaction engine: the
+// PRODUCTION store, the PRODUCTION cascades, the PRODUCTION native driver —
+// only decorated so that one store operation rejects AFTER earlier deletes
+// in the same transaction have already been issued. The driver's contract
+// is that a rejecting `work` calls tx.abort(); IndexedDB must then discard
+// every request already queued in that transaction.
+// ─────────────────────────────────────────────────────────────────────────
+async function runV2Atomicity(engineName, engine) {
+  let browser;
+  try {
+    browser = await engine.launch();
+  } catch (e) {
+    return { engine: engineName, available: false, reason: e.message.split('\n')[0] };
+  }
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e).split('\n')[0]));
+  await page.goto(APP);
+
+  const R = await page.evaluate(async () => {
+    const NAME = WM.store.DB_NAME;
+    await new Promise((res) => { const d = indexedDB.deleteDatabase(NAME); d.onsuccess = d.onerror = d.onblocked = () => res(); });
+    const now = 1700000000000;
+
+    /** The real native driver, with ONE store operation made to fail on its n-th call. */
+    function faultyDriver(faults) {
+      const inner = WM.store.createNativeDriver(indexedDB);
+      const calls = {};
+      return {
+        async open(name, version, applySchema) {
+          const conn = await inner.open(name, version, applySchema);
+          return {
+            close: () => conn.close(),
+            withTransaction(storeNames, mode, work) {
+              return conn.withTransaction(storeNames, mode, (s) => {
+                const wrapped = {};
+                for (const n of storeNames) {
+                  wrapped[n] = Object.assign({}, s[n]);
+                  for (const op of ['put', 'delete']) {
+                    const key = n + '.' + op;
+                    wrapped[n][op] = (...args) => {
+                      calls[key] = (calls[key] || 0) + 1;
+                      if (faults[key] === calls[key]) return Promise.reject(new Error('injected failure: ' + key + ' #' + calls[key]));
+                      return s[n][op](...args);
+                    };
+                  }
+                }
+                return work(wrapped);
+              });
+            },
+          };
+        },
+      };
+    }
+    async function seed(db) {
+      await db.putJob(WM.model.createJob({ id: 'J', name: 'Atomic Job', now }));
+      await db.putSheet(WM.model.createSheet({ id: 'SA', jobId: 'J', name: 'A', kind: 'blank', width: 1000, height: 800, order: 0, now }));
+      await db.putSheet(WM.model.createSheet({ id: 'SB', jobId: 'J', name: 'B', kind: 'blank', width: 1000, height: 800, order: 1, now }));
+      await db.putAnnotation(WM.model.createAnnotation({ id: 'L', sheetId: 'SA', type: 'wireLabel', at: { x: 0.2, y: 0.3 }, now,
+        data: { label: 'HR-07', from: 'LP-1', to: 'Kitchen', cable: '12/2 MC', room: 'Kitchen', notes: '' } }));
+      await db.putPoint(WM.model.createPoint({ id: 'PA', jobId: 'J', sheetId: 'SA', type: 'panel', x: 0.1, y: 0.1, now }));
+      await db.putPoint(WM.model.createPoint({ id: 'PB', jobId: 'J', sheetId: 'SB', type: 'junctionBox', x: 0.9, y: 0.9, now }));
+      await db.putPoint(WM.model.createPoint({ id: 'PC', jobId: 'J', sheetId: 'SA', type: 'sconce', x: 0.5, y: 0.5, now }));
+      await db.putConnection(WM.model.createConnection({ id: 'C1', jobId: 'J', fromPointId: 'PA', toPointId: 'PB', label: 'HR-07', now }));
+      await db.putConnection(WM.model.createConnection({ id: 'C2', jobId: 'J', fromPointId: 'PB', toPointId: 'PC', label: 'K-12', now }));
+    }
+    async function snapshot(db) {
+      const rows = {};
+      for (const [k, fn] of [['J', db.getJob], ['SA', db.getSheet], ['SB', db.getSheet], ['L', db.getAnnotation],
+        ['PA', db.getPoint], ['PB', db.getPoint], ['PC', db.getPoint], ['C1', db.getConnection], ['C2', db.getConnection]]) rows[k] = await fn(k);
+      return JSON.stringify(rows);
+    }
+    const out = {};
+    // fresh data, plain driver
+    const plain = WM.store.createStore(); await plain.openDatabase(); await seed(plain); const before = await snapshot(plain);
+    out.seeded = Object.values(JSON.parse(before)).every((row) => row !== null);   // every record resolved (optional fields inside may be null)
+    plain.closeDatabase();
+
+    async function attempt(label, faults, cascade) {
+      const db = WM.store.createStore({ driver: faultyDriver(faults) }); await db.openDatabase();
+      let rejected = null;
+      try { await cascade(db); } catch (e) { rejected = String(e && e.message); }
+      const after = await snapshot(db);
+      db.closeDatabase();
+      out[label] = { rejected, intact: after === before };
+    }
+    // deletePoint(PB): cascade issues connections.delete C1, C2, then points.delete PB.
+    await attempt('point', { 'connections.delete': 2 }, (db) => db.deletePoint('PB'));
+    await attempt('pointLast', { 'points.delete': 1 }, (db) => db.deletePoint('PB'));
+    // deleteSheet(SA): annotations.delete L, points… then connections, then sheets.delete.
+    await attempt('sheet', { 'connections.delete': 1 }, (db) => db.deleteSheet('SA'));
+    await attempt('sheetLast', { 'sheets.delete': 1 }, (db) => db.deleteSheet('SA'));
+    // deleteJob(J): sheets first (annotations), then connections, points, job.
+    await attempt('job', { 'connections.delete': 1 }, (db) => db.deleteJob('J'));
+    await attempt('jobLast', { 'jobs.delete': 1 }, (db) => db.deleteJob('J'));
+    // raw driver-level proof: two real deletes issued, then work throws
+    const drv = WM.store.createNativeDriver(indexedDB);
+    const conn = await drv.open(NAME, WM.store.DB_VERSION, () => {});
+    let rawRejected = null;
+    try {
+      await conn.withTransaction(['points', 'connections'], 'readwrite', async (s) => {
+        await s.connections.delete('C1'); await s.connections.delete('C2'); await s.points.delete('PB');
+        throw new Error('injected after three deletes');
+      });
+    } catch (e) { rawRejected = String(e && e.message); }
+    conn.close();
+    const check = WM.store.createStore(); await check.openDatabase();
+    out.raw = { rejected: rawRejected, intact: (await snapshot(check)) === before };
+    // and finally the same cascade with NO fault commits completely
+    const done = await check.deleteSheet('SA');
+    out.commit = { del: done, PA: await check.getPoint('PA'), PC: await check.getPoint('PC'), C1: await check.getConnection('C1'), C2: await check.getConnection('C2'), PB: !!(await check.getPoint('PB')), SB: !!(await check.getSheet('SB')) };
+    check.closeDatabase();
+    return out;
+  });
+
+  const ok = (r) => r && /injected/.test(r.rejected || '') && r.intact === true;
+  const checks = [
+    ['the seeded topology exists (job, 2 sheets, annotation, 3 points, 2 cables)', R.seeded],
+    ['deletePoint: 1 connection delete issued, the 2nd rejects -> transaction aborted, everything intact', ok(R.point)],
+    ['deletePoint: both connection deletes issued, the point delete rejects -> everything intact', ok(R.pointLast)],
+    ['deleteSheet: annotation + point deletes issued, connection delete rejects -> everything intact', ok(R.sheet)],
+    ['deleteSheet: everything issued, the final sheet delete rejects -> everything intact', ok(R.sheetLast)],
+    ['deleteJob: sheets + annotations issued, connection delete rejects -> everything intact', ok(R.job)],
+    ['deleteJob: everything issued, the final job delete rejects -> everything intact', ok(R.jobLast)],
+    ['raw native driver: three real deletes then a throw -> IndexedDB discarded all three', ok(R.raw)],
+    ['the identical cascade without a fault commits completely', R.commit.del.deleted === true && R.commit.del.points === 2 && R.commit.del.connections === 2
+      && R.commit.PA === null && R.commit.PC === null && R.commit.C1 === null && R.commit.C2 === null && R.commit.PB && R.commit.SB],
+    ['no page errors', errs.length === 0],
+  ];
+  await browser.close();
+  return { engine: engineName, available: true, detail: R, checks, errs };
+}
+
 (async () => {
   const engines = [['chromium', withExecOverride('chromium', playwright.chromium)], ['webkit', playwright.webkit]];
   let failures = 0;
 
   for (const [name, engine] of engines) {
-    for (const [suite, fn] of [['image + EXIF', run], ['viewport + pointers', runViewport], ['wire labels', runLabels], ['label text', runLabelText], ['arrows', runArrows], ['arrow tip', runArrowTip], ['sketch', runSketch], ['hit priority', runPriority], ['control layout', runControlLayout], ['sketch text', runText], ['wire lookup', runLookup], ['lookup aftermath', runLookupAftermath], ['sheets manager', runSheets], ['sheets photo paths', runSheetsPhoto], ['sheets isolation', runSheetsIsolation], ['sheets lookup sync', runSheetsLookupSync], ['sheets touch mutations', runSheetsTouchMutations], ['post-switch interactions', runPostSwitchInteractions], ['photo persistence', runPhotoPersistence], ['symbols foundation', runSymbolsFoundation], ['symbols interaction', runSymbolsInteraction], ['symbols isolation', runSymbolsIsolation]]) {
+    for (const [suite, fn] of [['image + EXIF', run], ['viewport + pointers', runViewport], ['wire labels', runLabels], ['label text', runLabelText], ['arrows', runArrows], ['arrow tip', runArrowTip], ['sketch', runSketch], ['hit priority', runPriority], ['control layout', runControlLayout], ['sketch text', runText], ['wire lookup', runLookup], ['lookup aftermath', runLookupAftermath], ['sheets manager', runSheets], ['sheets photo paths', runSheetsPhoto], ['sheets isolation', runSheetsIsolation], ['sheets lookup sync', runSheetsLookupSync], ['sheets touch mutations', runSheetsTouchMutations], ['post-switch interactions', runPostSwitchInteractions], ['photo persistence', runPhotoPersistence], ['symbols foundation', runSymbolsFoundation], ['symbols interaction', runSymbolsInteraction], ['symbols isolation', runSymbolsIsolation], ['v2 upgrade', runV2Upgrade], ['v2 atomicity', runV2Atomicity]]) {
     const result = await fn(name, engine);
     console.log(`\n=== ${name.toUpperCase()} — ${suite} ===`);
     if (!result.available) {

@@ -37,11 +37,14 @@ const label = (id, sheetId, text, over) => ({
 describe('WM-2 store — schema', () => {
   test('the database name and version are as specified', () => {
     assert.strictEqual(store.DB_NAME, 'empire-wiremap');
-    assert.strictEqual(store.DB_VERSION, 1);
+    // V2-0: schema version 2 adds the points/connections stores additively.
+    assert.strictEqual(store.DB_VERSION, 2);
   });
 
-  test('all five object stores are defined with the right keyPaths', () => {
-    assert.deepStrictEqual(store.STORE_NAMES, ['jobs', 'sheets', 'annotations', 'images', 'meta']);
+  test('the legacy object stores and the V2-0 topology stores are defined with the right keyPaths', () => {
+    // The five v1 stores keep their names AND their order; V2-0 appends two.
+    assert.deepStrictEqual(store.STORE_NAMES.slice(0, 5), ['jobs', 'sheets', 'annotations', 'images', 'meta']);
+    assert.deepStrictEqual(store.STORE_NAMES.slice(5), ['points', 'connections']);
     assert.strictEqual(store.STORES.jobs.keyPath, 'id');
     assert.strictEqual(store.STORES.sheets.keyPath, 'id');
     assert.strictEqual(store.STORES.annotations.keyPath, 'id');
@@ -87,7 +90,8 @@ describe('WM-2 store — schema', () => {
       existing: ['jobs', 'sheets'],
       createStore(name) { created.push(name); return { createIndex() {} }; },
     });
-    assert.deepStrictEqual(created, ['annotations', 'images', 'meta']);
+    // V2-0: the same additive pass now also creates the two topology stores
+    assert.deepStrictEqual(created, ['annotations', 'images', 'meta', 'points', 'connections']);
   });
 });
 
@@ -173,13 +177,13 @@ describe('WM-2 store — jobs', () => {
   test('deleting a job with no children reports what it removed', async () => {
     await db.putJob(job('j1'));
     assert.deepStrictEqual(await db.deleteJob('j1'),
-      { deleted: true, sheets: 0, annotations: 0, images: 0 });
+      { deleted: true, sheets: 0, annotations: 0, images: 0, points: 0, connections: 0 });   // V2-0 reports topology too
     assert.strictEqual(await db.getJob('j1'), null);
   });
 
   test('deleting an unknown job is a no-op, not an error', async () => {
     assert.deepStrictEqual(await db.deleteJob('ghost'),
-      { deleted: false, sheets: 0, annotations: 0, images: 0 });
+      { deleted: false, sheets: 0, annotations: 0, images: 0, points: 0, connections: 0 });
   });
 });
 
@@ -322,7 +326,7 @@ describe('WM-2 store — cascade delete', () => {
 
   test('deleting a sheet removes its annotations', async () => {
     const r = await db.deleteSheet('s1');
-    assert.deepStrictEqual(r, { deleted: true, sheets: 1, annotations: 2, images: 0 });
+    assert.deepStrictEqual(r, { deleted: true, sheets: 1, annotations: 2, images: 0, points: 0, connections: 0 });
     assert.strictEqual(await db.getSheet('s1'), null);
     assert.strictEqual(await db.getAnnotation('a1'), null);
     assert.strictEqual(await db.getAnnotation('a2'), null);
@@ -345,7 +349,7 @@ describe('WM-2 store — cascade delete', () => {
 
   test('deleting a job removes every descendant sheet and annotation', async () => {
     const r = await db.deleteJob('j1');
-    assert.deepStrictEqual(r, { deleted: true, sheets: 2, annotations: 3, images: 1 });
+    assert.deepStrictEqual(r, { deleted: true, sheets: 2, annotations: 3, images: 1, points: 0, connections: 0 });
     assert.strictEqual(await db.getJob('j1'), null);
     for (const id of ['s1', 's2']) assert.strictEqual(await db.getSheet(id), null, id);
     for (const id of ['a1', 'a2', 'a3']) assert.strictEqual(await db.getAnnotation(id), null, id);

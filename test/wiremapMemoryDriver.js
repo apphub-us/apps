@@ -42,6 +42,22 @@ function createMemoryDriver() {
   /** dbName -> { version, stores: Map<name, {keyPath, indexes, rows: Map}> } */
   const databases = new Map();
   const state = { openConnections: 0, transactions: 0, aborted: 0 };
+  /**
+   * V2-0: injected failures AT THE MUTATION BOUNDARY. Unlike __breakStore
+   * (which removes a store so a transaction cannot even start), an injected
+   * operation failure fires from inside `work`, after earlier mutations have
+   * already been STAGED in the working copies — the honest way to prove that
+   * a cascade rolls back rather than half-applies.
+   * key "<db>|<store>|<op>" -> { remaining: n }  (fails on the n-th call)
+   */
+  const faults = new Map();
+  function maybeFail(dbName, storeName, op) {
+    const f = faults.get(`${dbName}|${storeName}|${op}`);
+    if (!f) return null;
+    f.calls += 1;
+    if (f.calls === f.onCall) { faults.delete(`${dbName}|${storeName}|${op}`); return new Error(`injected failure: ${storeName}.${op} #${f.calls}`); }
+    return null;
+  }
 
   function driver() {
     return {
@@ -104,12 +120,16 @@ function createMemoryDriver() {
                 },
                 put: (value) => {
                   if (readonly) return Promise.reject(new Error('write in a readonly transaction'));
+                  const fault = maybeFail(name, n, 'put');
+                  if (fault) return Promise.reject(fault);
                   const key = readPath(value, w.spec.keyPath);
                   w.rows.set(JSON.stringify(key), clone(value));
                   return Promise.resolve(value);
                 },
                 delete: (key) => {
                   if (readonly) return Promise.reject(new Error('write in a readonly transaction'));
+                  const fault = maybeFail(name, n, 'delete');
+                  if (fault) return Promise.reject(fault);
                   w.rows.delete(JSON.stringify(key));
                   return Promise.resolve();
                 },
@@ -135,7 +155,15 @@ function createMemoryDriver() {
   const d = driver();
   d.__state = state;
   d.__databases = databases;
-  /** Force the next transaction touching `storeName` to fail, to test rollback. */
+  /**
+   * Make the `onCall`-th `put`/`delete` on `storeName` reject FROM INSIDE the
+   * transaction (default: the first). Everything staged before it must be
+   * discarded by the commit-or-discard rule; `__state.aborted` increments.
+   */
+  d.__failOperation = (dbName, storeName, op, onCall) => {
+    faults.set(`${dbName}|${storeName}|${op}`, { onCall: onCall || 1, calls: 0 });
+  };
+  /** Force the next transaction touching `storeName` to fail BEFORE it starts (no mutation staged). */
   d.__breakStore = (dbName, storeName) => {
     const db = databases.get(dbName);
     if (db) db.stores.delete(storeName);

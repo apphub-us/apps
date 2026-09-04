@@ -261,10 +261,157 @@ function createAnnotation(input) {
   return a;
 }
 
+// ── Wire Map V2 — Point + Connection (V2-0 storage foundation) ────────────
+//
+// A POINT is a physical electrical location — a panel, a box, a fixture, a
+// device — anchored on one sheet by ONE normalized coordinate. A CONNECTION is
+// one real cable/run between two Points, owned by the job (never by a sheet)
+// so a cable may cross plans. Neither carries any visual geometry: rendering
+// is derived. These are model contracts only in V2-0; no UI reads them.
+//
+// Naming: the legacy `POINT_TYPES` above means "single-anchor annotation
+// types" and is untouched. The V2 electrical vocabulary is prefixed with
+// ELECTRICAL_ to make the two impossible to confuse.
+
+/** The approved MVP taxonomy. Gang Box is ONE type with composition. */
+const ELECTRICAL_POINT_TYPES = [
+  'panel', 'junctionBox', 'gangBox',
+  'light.ceiling', 'light.recessed', 'sconce',
+  'device.smoke', 'device.thermostat', 'disconnect',
+];
+/** What may sit in one gang slot. Order in `slots` is left -> right. */
+const GANG_DEVICES = ['simplex', 'duplex', 'gfci', 'dedicated', 'switch1p', 'switch3w', 'switch4w', 'blank'];
+const GANG_MIN = 1;
+const GANG_MAX = 6;
+
+/** Optional text: null, or a trimmed non-empty string. '' normalizes to null. */
+function optionalText(v) {
+  if (typeof v !== 'string') return null;
+  const t = v.trim();
+  return t.length > 0 ? t : null;
+}
+
+function createGang(input) {
+  const i = input || {};
+  const count = Number.isInteger(i.count) ? i.count : GANG_MIN;
+  const slots = Array.isArray(i.slots) ? i.slots.map((s) => ({ device: (s && typeof s.device === 'string') ? s.device : 'blank' })) : [];
+  // pad/trim to the count so a well-formed input round-trips and a sparse one
+  // is still shaped; validation decides whether the result is acceptable
+  while (slots.length < count) slots.push({ device: 'blank' });
+  return { count, slots: slots.slice(0, count) };
+}
+
+function validateGang(gang, problems) {
+  if (!gang || typeof gang !== 'object') { problems.push('gang must be an object for a gangBox'); return; }
+  if (!Number.isInteger(gang.count) || gang.count < GANG_MIN || gang.count > GANG_MAX) {
+    problems.push(`gang.count must be an integer ${GANG_MIN}..${GANG_MAX}`);
+  }
+  if (!Array.isArray(gang.slots)) { problems.push('gang.slots must be an array'); return; }
+  if (Number.isInteger(gang.count) && gang.slots.length !== gang.count) {
+    problems.push(`gang.slots must have exactly gang.count (${gang.count}) entries, got ${gang.slots.length}`);
+  }
+  gang.slots.forEach((slot, idx) => {
+    if (!slot || typeof slot !== 'object' || GANG_DEVICES.indexOf(slot.device) === -1) {
+      problems.push(`gang.slots[${idx}].device must be one of: ${GANG_DEVICES.join(', ')}`);
+    }
+  });
+}
+
+function validatePoint(point) {
+  const problems = baseProblems(point, 'point');
+  if (problems.length === 1 && problems[0].startsWith('point must be')) {
+    return { valid: false, problems };
+  }
+  if (!isNonEmptyString(point.jobId)) problems.push('jobId must be a non-empty string');
+  if (!isNonEmptyString(point.sheetId)) problems.push('sheetId must be a non-empty string');
+  if (ELECTRICAL_POINT_TYPES.indexOf(point.type) === -1) {
+    problems.push(`type must be one of: ${ELECTRICAL_POINT_TYPES.join(', ')}`);
+  }
+  if (point.name !== null && typeof point.name !== 'string') problems.push('name must be a string or null');
+  if (!isNormalizedUnit(point.x)) problems.push('x must be a finite number in 0..1');
+  if (!isNormalizedUnit(point.y)) problems.push('y must be a finite number in 0..1');
+  if (point.type === 'gangBox') {
+    validateGang(point.gang, problems);
+  } else if (point.gang !== null && point.gang !== undefined) {
+    problems.push('gang must be null for a non-gangBox point');
+  }
+  return { valid: problems.length === 0, problems };
+}
+
+/** Normalize a Point. `id` is the caller's opaque stable id; identity never derives from content. */
+function createPoint(input) {
+  const i = input || {};
+  const now = isTimestamp(i.now) ? i.now : 0;
+  const type = i.type || 'junctionBox';
+  return {
+    id: i.id || '',
+    jobId: i.jobId || '',
+    sheetId: i.sheetId || '',
+    type,
+    name: optionalText(i.name),
+    x: isFiniteNumber(i.x) ? i.x : 0,
+    y: isFiniteNumber(i.y) ? i.y : 0,
+    gang: type === 'gangBox' ? createGang(i.gang) : null,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function validateConnection(connection) {
+  const problems = baseProblems(connection, 'connection');
+  if (problems.length === 1 && problems[0].startsWith('connection must be')) {
+    return { valid: false, problems };
+  }
+  if (!isNonEmptyString(connection.jobId)) problems.push('jobId must be a non-empty string');
+  if (!isNonEmptyString(connection.fromPointId)) problems.push('fromPointId must be a non-empty string');
+  if (!isNonEmptyString(connection.toPointId)) problems.push('toPointId must be a non-empty string');
+  if (isNonEmptyString(connection.fromPointId) && connection.fromPointId === connection.toPointId) {
+    problems.push('a connection cannot join a point to itself');
+  }
+  if (connection.label !== null && typeof connection.label !== 'string') problems.push('label must be a string or null');
+  // labelKey is DERIVED. A caller-supplied key that disagrees with the label is
+  // rejected rather than trusted, exactly as for wire labels.
+  if (connection.labelKey !== toLabelKey(connection.label === null ? '' : connection.label)) {
+    problems.push('labelKey must be derived from label');
+  }
+  for (const f of ['cableType', 'circuit', 'notes']) {
+    if (connection[f] !== null && typeof connection[f] !== 'string') problems.push(`${f} must be a string or null`);
+  }
+  return { valid: problems.length === 0, problems };
+}
+
+/** Normalize a Connection. Label is optional; an unlabeled cable has labelKey ''. */
+function createConnection(input) {
+  const i = input || {};
+  const now = isTimestamp(i.now) ? i.now : 0;
+  const label = optionalText(i.label);
+  return {
+    id: i.id || '',
+    jobId: i.jobId || '',
+    fromPointId: i.fromPointId || '',
+    toPointId: i.toPointId || '',
+    label,
+    labelKey: toLabelKey(label === null ? '' : label),
+    cableType: optionalText(i.cableType),
+    circuit: optionalText(i.circuit),
+    notes: optionalText(i.notes),
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 module.exports = {
   SHEET_KINDS,
   ANNOTATION_TYPES,
   POINT_TYPES,
+  ELECTRICAL_POINT_TYPES,
+  GANG_DEVICES,
+  GANG_MIN,
+  GANG_MAX,
+  createPoint,
+  validatePoint,
+  createConnection,
+  validateConnection,
   MAX_SYMBOL_KEY_LENGTH,
   TWO_POINT_TYPES,
   toLabelKey,

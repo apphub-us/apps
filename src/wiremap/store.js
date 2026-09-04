@@ -20,7 +20,10 @@
 const model = require('./model');
 
 const DB_NAME = 'empire-wiremap';
-const DB_VERSION = 1;
+/* V2-0: 1 -> 2. The upgrade is ADDITIVE — it creates `points` and
+ * `connections` and touches nothing that already exists. A v1 database keeps
+ * every job, sheet, annotation and image blob exactly as stored. */
+const DB_VERSION = 2;
 
 const STORES = {
   jobs: {
@@ -50,6 +53,27 @@ const STORES = {
   // WM-2 reads and writes no image content.
   images: { keyPath: 'id', indexes: [] },
   meta: { keyPath: 'key', indexes: [] },
+  /* ── V2-0: Point + Connection topology (job-owned) ────────────────────── */
+  points: {
+    keyPath: 'id',
+    indexes: [
+      { name: 'jobId', keyPath: 'jobId' },
+      { name: 'sheetId', keyPath: 'sheetId' },              // sheet render + sheet cascade
+      { name: 'jobId_type', keyPath: ['jobId', 'type'] }, // type within job
+    ],
+  },
+  connections: {
+    keyPath: 'id',
+    indexes: [
+      { name: 'jobId', keyPath: 'jobId' },
+      { name: 'fromPointId', keyPath: 'fromPointId' },    // inspector + cascades, either end
+      { name: 'toPointId', keyPath: 'toPointId' },
+      // labelKey reuses the wire-label normalization; the compound index is the
+      // job-wide Lookup path, the plain one keeps cross-job diagnostics cheap.
+      { name: 'labelKey', keyPath: 'labelKey' },
+      { name: 'jobId_labelKey', keyPath: ['jobId', 'labelKey'] },
+    ],
+  },
 };
 
 const STORE_NAMES = Object.keys(STORES);
@@ -185,6 +209,10 @@ function nativeStoreOps(objectStore, request) {
  * created v1 database leaves the stores untouched.
  */
 function applySchemaV1(upgrade) {
+  // Despite the name (kept so existing callers and tests hold), this is the
+  // one additive schema pass for EVERY version: it creates whichever stores
+  // an older database lacks and leaves existing stores untouched. A v1 -> v2
+  // upgrade therefore adds `points` and `connections` and nothing else.
   for (const name of STORE_NAMES) {
     if (upgrade.existing.indexOf(name) !== -1) continue;
     const spec = STORES[name];
@@ -395,6 +423,184 @@ function createStore(options) {
     return tx(['annotations'], 'readwrite', (s) => s.annotations.delete(id));
   }
 
+  // ── V2-0: Points ─────────────────────────────────────────────────────
+  /**
+   * Insert or update a Point. The model validates shape; the parent checks
+   * run INSIDE the write transaction so a sheet or job deleted concurrently
+   * can never leave a Point pointing at nothing. Ownership is strict: the
+   * sheet must exist and belong to the same job as the Point. Nothing is
+   * repaired silently — a mismatch is an error.
+   */
+  function putPoint(point) {
+    try { assertValid('point', point, model.validatePoint); } catch (e) { return Promise.reject(e); }
+    return tx(['jobs', 'sheets', 'points'], 'readwrite', async (s) => {
+      const job = await s.jobs.get(point.jobId);
+      if (!job) {
+        throw new StoreError(ERR.MISSING_PARENT,
+          `point ${point.id} references job ${point.jobId}, which does not exist`,
+          { pointId: point.id, jobId: point.jobId });
+      }
+      const sheet = await s.sheets.get(point.sheetId);
+      if (!sheet) {
+        throw new StoreError(ERR.MISSING_PARENT,
+          `point ${point.id} references sheet ${point.sheetId}, which does not exist`,
+          { pointId: point.id, sheetId: point.sheetId });
+      }
+      if (sheet.jobId !== point.jobId) {
+        throw new StoreError(ERR.INVALID,
+          `point ${point.id} is owned by job ${point.jobId} but its sheet belongs to job ${sheet.jobId}`,
+          { pointId: point.id, jobId: point.jobId, sheetJobId: sheet.jobId });
+      }
+      return s.points.put(point);
+    });
+  }
+
+  function getPoint(id) {
+    if (!id) return reject(ERR.BAD_ARGUMENT, 'getPoint requires an id');
+    return tx(['points'], 'readonly', (s) => s.points.get(id)).then((v) => v || null);
+  }
+
+  /** Oldest first by createdAt; id ascending breaks ties (as for annotations). */
+  function byCreation(rows) {
+    return rows.slice().sort((a, b) =>
+      (a.createdAt - b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  }
+
+  function listPoints(sheetId) {
+    if (!sheetId) return reject(ERR.BAD_ARGUMENT, 'listPoints requires a sheetId');
+    return tx(['points'], 'readonly', (s) => s.points.getAllByIndex('sheetId', sheetId)).then(byCreation);
+  }
+
+  function listPointsByJob(jobId) {
+    if (!jobId) return reject(ERR.BAD_ARGUMENT, 'listPointsByJob requires a jobId');
+    return tx(['points'], 'readonly', (s) => s.points.getAllByIndex('jobId', jobId)).then(byCreation);
+  }
+
+  /**
+   * Remove a Point AND every Connection touching it, in ONE transaction.
+   * Storage never demands "disconnect first"; the confirmation belongs to UI.
+   */
+  function deletePoint(id) {
+    if (!id) return reject(ERR.BAD_ARGUMENT, 'deletePoint requires an id');
+    return tx(['points', 'connections'], 'readwrite', async (s) => {
+      const point = await s.points.get(id);
+      if (!point) return { deleted: false, points: 0, connections: 0 };
+      const removed = await removeConnectionsTouching(s, [id]);
+      await s.points.delete(id);
+      return { deleted: true, points: 1, connections: removed };
+    });
+  }
+
+  /** Delete every Connection whose either end is in `pointIds`. Returns the count. */
+  async function removeConnectionsTouching(s, pointIds) {
+    const seen = new Set();
+    for (const pid of pointIds) {
+      const outs = await s.connections.getAllByIndex('fromPointId', pid);
+      const ins = await s.connections.getAllByIndex('toPointId', pid);
+      for (const c of outs.concat(ins)) seen.add(c.id);
+    }
+    for (const cid of seen) await s.connections.delete(cid);
+    return seen.size;
+  }
+
+  // ── V2-0: Connections ────────────────────────────────────────────────
+  /**
+   * Insert or update a Connection. Both endpoints must exist, differ, and
+   * belong to the Connection's job — checked in the write transaction.
+   * Cross-SHEET is valid (that is the point of job ownership); cross-JOB is
+   * rejected and nothing is written.
+   */
+  function putConnection(connection) {
+    try { assertValid('connection', connection, model.validateConnection); } catch (e) { return Promise.reject(e); }
+    return tx(['jobs', 'points', 'connections'], 'readwrite', async (s) => {
+      const job = await s.jobs.get(connection.jobId);
+      if (!job) {
+        throw new StoreError(ERR.MISSING_PARENT,
+          `connection ${connection.id} references job ${connection.jobId}, which does not exist`,
+          { connectionId: connection.id, jobId: connection.jobId });
+      }
+      for (const end of ['fromPointId', 'toPointId']) {
+        const p = await s.points.get(connection[end]);
+        if (!p) {
+          throw new StoreError(ERR.MISSING_PARENT,
+            `connection ${connection.id} ${end} ${connection[end]} does not exist`,
+            { connectionId: connection.id, [end]: connection[end] });
+        }
+        if (p.jobId !== connection.jobId) {
+          throw new StoreError(ERR.INVALID,
+            `connection ${connection.id} ${end} belongs to job ${p.jobId}, not ${connection.jobId}`,
+            { connectionId: connection.id, [end]: connection[end], pointJobId: p.jobId });
+        }
+      }
+      return s.connections.put(connection);
+    });
+  }
+
+  function getConnection(id) {
+    if (!id) return reject(ERR.BAD_ARGUMENT, 'getConnection requires an id');
+    return tx(['connections'], 'readonly', (s) => s.connections.get(id)).then((v) => v || null);
+  }
+
+  function listConnections(jobId) {
+    if (!jobId) return reject(ERR.BAD_ARGUMENT, 'listConnections requires a jobId');
+    return tx(['connections'], 'readonly', (s) => s.connections.getAllByIndex('jobId', jobId)).then(byCreation);
+  }
+
+  /** Every Connection with this Point at either end — one entity each, never duplicated. */
+  function listConnectionsForPoint(pointId) {
+    if (!pointId) return reject(ERR.BAD_ARGUMENT, 'listConnectionsForPoint requires a pointId');
+    return tx(['connections'], 'readonly', async (s) => {
+      const outs = await s.connections.getAllByIndex('fromPointId', pointId);
+      const ins = await s.connections.getAllByIndex('toPointId', pointId);
+      const byId = new Map();
+      for (const c of outs.concat(ins)) byId.set(c.id, c);
+      return Array.from(byId.values());
+    }).then(byCreation);
+  }
+
+  /**
+   * Job-wide lookup by label, through the SAME normalization as wire labels.
+   * Duplicates are returned together. An empty/blank query matches nothing:
+   * an unlabeled cable (labelKey '') is reachable by id, by endpoint and by
+   * job, but never by label search.
+   */
+  function findConnectionsByLabel(jobId, label) {
+    if (!jobId) return reject(ERR.BAD_ARGUMENT, 'findConnectionsByLabel requires a jobId');
+    const key = model.toLabelKey(label);
+    if (!key) return Promise.resolve([]);
+    return tx(['connections'], 'readonly', (s) => s.connections.getAllByIndex('jobId_labelKey', [jobId, key]))
+      .then(byCreation);
+  }
+
+  function deleteConnection(id) {
+    if (!id) return reject(ERR.BAD_ARGUMENT, 'deleteConnection requires an id');
+    return tx(['connections'], 'readwrite', (s) => s.connections.delete(id));
+  }
+
+  /**
+   * Read-only preview for a future sheet-delete confirmation: how many Points
+   * the sheet owns and how many Connections (including cross-sheet ones) would
+   * go with them. Query-layer only; no UI here.
+   */
+  function sheetDeletionImpact(sheetId) {
+    if (!sheetId) return reject(ERR.BAD_ARGUMENT, 'sheetDeletionImpact requires a sheetId');
+    return tx(['sheets', 'points', 'connections'], 'readonly', async (s) => {
+      const sheet = await s.sheets.get(sheetId);
+      if (!sheet) return { exists: false, points: 0, connections: 0, crossSheetConnections: 0 };
+      const pts = await s.points.getAllByIndex('sheetId', sheetId);
+      const own = new Set(pts.map((p) => p.id));
+      const seen = new Map();
+      for (const p of pts) {
+        const outs = await s.connections.getAllByIndex('fromPointId', p.id);
+        const ins = await s.connections.getAllByIndex('toPointId', p.id);
+        for (const c of outs.concat(ins)) seen.set(c.id, c);
+      }
+      let cross = 0;
+      for (const c of seen.values()) if (!(own.has(c.fromPointId) && own.has(c.toPointId))) cross += 1;
+      return { exists: true, points: pts.length, connections: seen.size, crossSheetConnections: cross };
+    });
+  }
+
   // ── Cascades ────────────────────────────────────────────────────────
   /**
    * Remove a sheet, its annotations and its image in ONE transaction.
@@ -403,25 +609,31 @@ function createStore(options) {
    */
   function deleteSheet(id) {
     if (!id) return reject(ERR.BAD_ARGUMENT, 'deleteSheet requires an id');
-    return tx(['sheets', 'annotations', 'images'], 'readwrite', async (s) => {
+    return tx(['sheets', 'annotations', 'images', 'points', 'connections'], 'readwrite', async (s) => {
       const sheet = await s.sheets.get(id);
-      if (!sheet) return { deleted: false, sheets: 0, annotations: 0, images: 0 };
+      if (!sheet) return { deleted: false, sheets: 0, annotations: 0, images: 0, points: 0, connections: 0 };
 
       const kids = await s.annotations.getAllByIndex('sheetId', id);
       for (const a of kids) await s.annotations.delete(a.id);
       if (sheet.imageId) await s.images.delete(sheet.imageId);
+      // V2-0: the sheet's Points go with it, and so does EVERY Connection that
+      // touches them — including cross-sheet ones, whose far Point survives.
+      const pts = await s.points.getAllByIndex('sheetId', id);
+      const connections = await removeConnectionsTouching(s, pts.map((p) => p.id));
+      for (const p of pts) await s.points.delete(p.id);
       await s.sheets.delete(id);
 
-      return { deleted: true, sheets: 1, annotations: kids.length, images: sheet.imageId ? 1 : 0 };
+      return { deleted: true, sheets: 1, annotations: kids.length, images: sheet.imageId ? 1 : 0,
+        points: pts.length, connections };
     });
   }
 
   /** Remove a job and everything beneath it in ONE transaction. */
   function deleteJob(id) {
     if (!id) return reject(ERR.BAD_ARGUMENT, 'deleteJob requires an id');
-    return tx(['jobs', 'sheets', 'annotations', 'images'], 'readwrite', async (s) => {
+    return tx(['jobs', 'sheets', 'annotations', 'images', 'points', 'connections'], 'readwrite', async (s) => {
       const job = await s.jobs.get(id);
-      if (!job) return { deleted: false, sheets: 0, annotations: 0, images: 0 };
+      if (!job) return { deleted: false, sheets: 0, annotations: 0, images: 0, points: 0, connections: 0 };
 
       const sheets = await s.sheets.getAllByIndex('jobId', id);
       let annotations = 0;
@@ -433,9 +645,14 @@ function createStore(options) {
         if (sheet.imageId) { await s.images.delete(sheet.imageId); images += 1; }
         await s.sheets.delete(sheet.id);
       }
+      // V2-0: topology is job-owned, so it is removed by job, not per sheet
+      const conns = await s.connections.getAllByIndex('jobId', id);
+      for (const c of conns) await s.connections.delete(c.id);
+      const pts = await s.points.getAllByIndex('jobId', id);
+      for (const p of pts) await s.points.delete(p.id);
       await s.jobs.delete(id);
 
-      return { deleted: true, sheets: sheets.length, annotations, images };
+      return { deleted: true, sheets: sheets.length, annotations, images, points: pts.length, connections: conns.length };
     });
   }
 
@@ -484,6 +701,10 @@ function createStore(options) {
     putJob, getJob, listJobs, deleteJob,
     putSheet, getSheet, listSheets, deleteSheet, reorderSheets,
     putAnnotation, getAnnotation, listAnnotations, deleteAnnotation,
+    // V2-0 topology
+    putPoint, getPoint, listPoints, listPointsByJob, deletePoint,
+    putConnection, getConnection, listConnections, listConnectionsForPoint,
+    findConnectionsByLabel, deleteConnection, sheetDeletionImpact,
     getMeta, setMeta,
     putImage, getImage, deleteImage,
     // Retained so WM-2 tests and any existing caller keep working.
