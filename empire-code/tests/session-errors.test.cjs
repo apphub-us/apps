@@ -73,9 +73,9 @@ const ACCESS=[
  ['refused redirect',refused]
 ];
 
-test('labels: PRIVATE-PILOT-3 in the build constant, the title and the header',()=>{
- assert.equal(require('../candidate/build.cjs').BUILD,'PRIVATE-PILOT-3');
- assert.match(INDEX,/<title>Empire Code — PRIVATE-PILOT-3<\/title>/);assert.match(INDEX,/<span class="build">PRIVATE-PILOT-3<\/span>/);
+test('labels: PRIVATE-PILOT-4 in the build constant, the title and the header',()=>{
+ assert.equal(require('../candidate/build.cjs').BUILD,'PRIVATE-PILOT-4');
+ assert.match(INDEX,/<title>Empire Code — PRIVATE-PILOT-4<\/title>/);assert.match(INDEX,/<span class="build">PRIVATE-PILOT-4<\/span>/);
  assert.ok(!INDEX.includes('PRIVATE-PILOT-1'));
 });
 

@@ -16,11 +16,13 @@ const at=(dir,p)=>path.join(dir,'candidate/browser',p);
 const refused=re=>e=>e.code==='EC_BUILD_REFUSED'&&re.test(e.message);
 function evaluate(moduleText){const out={};new Function('out',moduleText.replace(/^export const (\w+)=/gm,'out.$1='))(out);return out;}
 
-test('whitelist is exactly the 18 baseline paths; only three files may change',()=>{
+test('whitelist is exactly the 18 baseline paths; only four files may change (the three shell files and, since CONVERTER-WH-1, workspace/mobile.html)',()=>{
  assert.equal(B.ASSET_PATHS.length,18);
  assert.deepEqual([...B.ASSET_PATHS].sort(),[...BASELINE.keys()].sort());
- assert.deepEqual([...B.CHANGED].sort(),['index.html','sw.js','ui.js']);
- assert.equal(B.BUILD,'PRIVATE-PILOT-3');
+ assert.deepEqual([...B.CHANGED].sort(),['index.html','sw.js','ui.js','workspace/mobile.html']);
+ // the other 14 assets stay pinned, byte for byte, to the historical baseline
+ assert.equal(B.ASSET_PATHS.filter(p=>!B.CHANGED.includes(p)).length,14);
+ assert.equal(B.BUILD,'PRIVATE-PILOT-4');
 });
 
 test('served map: root alias plus the 18 exact pathnames, unchanged assets pinned to the baseline',t=>{
@@ -64,9 +66,39 @@ test('worker-only and shell changes both isolate the new cache identity; the bui
 test('refuses a modified protected asset',t=>{
  const dir=fixture(t);fs.appendFileSync(at(dir,'style.css'),'\n/* x */');
  assert.throws(()=>B.compute({root:dir}),refused(/protected asset modified: style\.css/));
- const dir2=fixture(t);fs.appendFileSync(at(dir2,'workspace/mobile.html'),' ');
- assert.throws(()=>B.build({root:dir2}),refused(/protected asset modified: workspace\/mobile\.html/));
+ // CONVERTER-WH-1: workspace/mobile.html left the protected set, so the write-nothing check moved to a file that is still pinned.
+ const dir2=fixture(t);fs.appendFileSync(at(dir2,'workspace/host-core.js'),' ');
+ assert.throws(()=>B.build({root:dir2}),refused(/protected asset modified: workspace\/host-core\.js/));
  assert.equal(fs.existsSync(path.join(dir2,B.OUT.assets)),false,'nothing is written when the build is refused');
+ // every other workspace file is still protected
+ for(const p of ['workspace/handoff.js','workspace/host-core.css','workspace/material-edit.js','workspace/manifest.json']){
+  const d=fixture(t);fs.appendFileSync(at(d,p),' ');
+  assert.throws(()=>B.compute({root:d}),e=>e.code==='EC_BUILD_REFUSED'&&e.message==='build refused: protected asset modified: '+p,p);
+ }
+});
+
+test('workspace/mobile.html may change, is hashed into the shell pin, and must keep its host wiring',t=>{
+ const dir=fixture(t),a=B.compute({root:dir}),file=at(dir,'workspace/mobile.html'),html=fs.readFileSync(file,'utf8');
+ // a content change inside the page is accepted, reported as changed and moves the cache identity
+ fs.writeFileSync(file,html.replace('<body>','<body><!-- x -->'));
+ const b=B.compute({root:dir}),bytes=fs.readFileSync(file);
+ assert.equal(b.served.get('/workspace/mobile.html').sha256,B.sha256(bytes));
+ assert.ok(b.served.get('/workspace/mobile.html').bytes.equals(bytes));
+ assert.equal(b.manifest.sources.find(s=>s.path==='workspace/mobile.html').status,'changed');
+ assert.equal(b.manifest.sources.find(s=>s.path==='workspace/mobile.html').baselineSha256,BASELINE.get('workspace/mobile.html'),'the historical pin is still reported');
+ assert.notEqual(b.pin,a.pin);assert.notEqual(b.cacheName,a.cacheName);
+ // losing any part of the host wiring is refused, and nothing is written
+ const W=B.WORKSPACE_HOST_WIRING;
+ for(const [label,broken] of [
+  ['stylesheet',html.replace(W.stylesheet,'</head>')],
+  ['sw',html.replace(W.worker,"navigator.serviceWorker.register('sw.js')")],
+  ['host scripts',html.replace('<script src="/workspace/host-core.js"></script>','')],
+  ['host scripts',html.trimEnd()+'\n<script src="/workspace/extra.js"></script>\n']
+ ]){
+  const d=fixture(t);fs.writeFileSync(at(d,'workspace/mobile.html'),broken);
+  assert.throws(()=>B.build({root:d}),refused(/workspace\/mobile\.html lost the /),label);
+  assert.equal(fs.existsSync(path.join(d,B.OUT.assets)),false,label);
+ }
 });
 
 test('refuses an absent asset',t=>{
@@ -117,9 +149,9 @@ test('writes the generated modules and the manifest outside the served assets; t
  assert.ok(fs.readFileSync(at(dir,'sw.js')).equals(template));
  for(const rel of Object.values(B.OUT))assert.ok(!rel.startsWith('candidate/browser/'),rel);
  const assetsText=fs.readFileSync(path.join(dir,B.OUT.assets),'utf8'),promptText=fs.readFileSync(path.join(dir,B.OUT.prompt),'utf8');
- assert.match(assetsText,/^export const BUILD="PRIVATE-PILOT-3";$/m);assert.match(assetsText,/^export const ASSETS=\{$/m);
+ assert.match(assetsText,/^export const BUILD="PRIVATE-PILOT-4";$/m);assert.match(assetsText,/^export const ASSETS=\{$/m);
  const mod=evaluate(assetsText);
- assert.equal(mod.BUILD,'PRIVATE-PILOT-3');
+ assert.equal(mod.BUILD,'PRIVATE-PILOT-4');
  assert.deepEqual(Object.keys(mod.ASSETS).sort(),[...r.served.keys()].sort());
  for(const [url,a] of Object.entries(mod.ASSETS)){
   assert.deepEqual(Object.keys(a),['base64','mime','sha256']);
@@ -128,7 +160,7 @@ test('writes the generated modules and the manifest outside the served assets; t
  assert.equal(mod.ASSETS['/'].base64,mod.ASSETS['/index.html'].base64);
  assert.equal(evaluate(promptText).PROMPT,fs.readFileSync(path.join(dir,'input/online-prompt.txt'),'utf8'));
  const manifest=JSON.parse(fs.readFileSync(path.join(dir,B.OUT.manifest),'utf8'));
- assert.equal(manifest.build,'PRIVATE-PILOT-3');assert.equal(manifest.shellPin,r.pin);
+ assert.equal(manifest.build,'PRIVATE-PILOT-4');assert.equal(manifest.shellPin,r.pin);
  assert.equal(manifest.sources.length,18);assert.equal(manifest.served.length,19);
  assert.equal(manifest.outputs.find(o=>o.path===B.OUT.assets).sha256,B.sha256(Buffer.from(assetsText,'utf8')));
  assert.ok(!Object.keys(mod.ASSETS).some(k=>k.includes('generated')||k.includes('manifest.generated')));

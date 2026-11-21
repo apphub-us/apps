@@ -1,60 +1,94 @@
 {
   "application": "Empire Code",
-  "build": "PRIVATE-PILOT-3",
+  "build": "PRIVATE-PILOT-4",
   "publishedDate": "2026-11-21",
-  "sourceContentPin": "ab6d3aa893ddf3fcebc278039c8185e23f7afbefc1a6b7b611a34e6022574bda",
+  "sourceContentPin": "8fbc7621fd2c5146d60a13d2c917a05fae87c2b1cd137af047b66e50b3e7b830",
   "entryUrl": "https://empirecode.app/",
   "directAppUrl": "https://empire-code-private-pilot.szczepan-msg.workers.dev/",
-  "sourceTag": "private-pilot-3",
-  "sourceBranch": "release/private-pilot-3",
+  "sourceTag": "private-pilot-4",
+  "sourceBranch": "release/private-pilot-4",
   "developmentBranch": "develop",
   "pagesBranch": "main",
-  "cloudVersion": "47f5e0df-a4a6-4347-b78f-498f91379da3",
-  "originalPrivateCandidatePin": "da1e02413abdc65f5fc4a581875f10dd409f248656a43326ee948a8e67dd8955",
-  "browserShellPin": "986db4f5927c0faedc51aae1f7cf2a42ce4c167aabe5dab5d3f574b493399fc5",
-  "runtimeSourcesUnchanged": true,
+  "cloudVersion": "c1eda983-3b34-470f-bf89-2d90a76862ae",
+  "previousRelease": {
+    "sourceTag": "private-pilot-3",
+    "sourceCommit": "75674b1e98b5d233a5d030056d5ce61230f324b6",
+    "cloudVersion": "47f5e0df-a4a6-4347-b78f-498f91379da3"
+  },
+  "browserShellPin": "8660858492a3dc2ba62234120c1e6f58d6a744cde59ab0e9d4ec015a20f1d5b4",
+  "runtimeSourcesUnchanged": false,
   "privateDeploymentConfigPublished": false,
-  "publicationChanges": [
-    "Pages entry and fixed redirect",
-    "Public deployment template",
-    "Reproducible package scripts and docs",
-    "Four optional test baseline paths made portable"
+  "changes": [
+    "Offline Wh / Runtime tool in Converter",
+    "Average W, measured kWh/day and label kWh/year input",
+    "Editable charge and usable energy assumptions",
+    "Strict decimal input, validation, illustrative fridge example, persistent example marker until edited",
+    "One pure calculator emitted identically into core and hosted workspace"
   ],
   "currentChecks": {
-    "unitPass": 101,
-    "unitFail": 0,
-    "unitSkip": 0,
-    "buildMatchesDeployed": true,
-    "coreModulesMatchRuntime": true,
-    "entryEngines": [
-      "Chrome",
-      "WebKit"
+    "rootTests": {
+      "tests": 118,
+      "pass": 118,
+      "fail": 0,
+      "skipped": 0
+    },
+    "coreFocusedTests": {
+      "tests": 142,
+      "pass": 142,
+      "fail": 0,
+      "skipped": 0
+    },
+    "browserEngines": [
+      "chromium",
+      "webkit"
     ],
-    "entryCases": [
-      "fresh isolated profile",
-      "existing original service worker"
+    "browserStages": 28,
+    "browserStageResults": [
+      {
+        "engine": "chromium",
+        "passed": 14,
+        "failed": 0
+      },
+      {
+        "engine": "webkit",
+        "passed": 14,
+        "failed": 0
+      }
     ],
-    "entryChecks": 34,
-    "realProviderCalls": 0,
-    "ownerProfileAccessed": false
-  },
-  "priorApplicationChecks": {
-    "browserScenarios": 38,
-    "source": "PRIVATE-PILOT-3 acceptance",
-    "audio": "Synthetic WebAudio through actual MediaRecorder, controlled model responses",
-    "realSpeechRecognitionAccepted": false,
-    "physicalIphoneAccepted": false
-  },
-  "referenceCore": {
-    "files": 228,
-    "legacyWhisperPayloadFilesExcluded": 12,
-    "licensesRetained": true,
-    "fullCoreTestsRerunForPublication": false
+    "offlineOriginStoppedAndProbedUnreachable": true,
+    "layoutWidths": [
+      320,
+      390,
+      1280
+    ],
+    "savedSyntheticJobAndDraftPreserved": true,
+    "sourceModulesMatchGeneratedBrowser": true,
+    "deployedFromVerifiedSource": true,
+    "anonymousAccessGateVerified": true,
+    "applicationProviderCalls": 0,
+    "ownerProfileAccessed": false,
+    "physicalIphoneAccepted": false,
+    "sameOriginOldToNewServiceWorkerUpgradeExercised": false
   },
   "codingModel": {
     "model": "claude-fable-5-2",
     "effort": "high",
-    "actualExecutionVerified": true
+    "actualExecutionVerified": true,
+    "independentStaticReview": "PASS; bounded static review of current code; parent separately verified diff, builds, tests and final small fixes"
+  },
+  "referenceCore": {
+    "fullCoreTestsRerunForPublication": false,
+    "focusedCoreTestFiles": [
+      "batteryRuntime.test.js",
+      "designSystem.test.js",
+      "navigation.test.js",
+      "uiFocus.test.js",
+      "loadCalcOracles.test.js",
+      "loadCalcServiceUi.test.js",
+      "loadCalcParity.test.js"
+    ],
+    "legacyWhisperPayloadFilesExcluded": 12,
+    "licensesRetained": true
   },
   "storage": "Per browser and device. Access login is not cloud sync. Jobs .ecjob export/restore; conversations export separately.",
   "nextMilestones": [

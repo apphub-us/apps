@@ -8,11 +8,20 @@
 //         candidate/build-manifest.generated.json (hash record; not a served asset)
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 
-const BUILD='PRIVATE-PILOT-3';
+const BUILD='PRIVATE-PILOT-4';
 // Fixed whitelist: the 18 browser paths of the baseline. Nothing else may exist under candidate/browser.
 const ASSET_PATHS=Object.freeze(['conversation-bank.js','draft-recovery.js','handoff-session.js','index.html','material-edit-host.js','style.css','sw.js','ui.js','workspace-host.js','workspace/handoff.js','workspace/host-core.css','workspace/host-core.js','workspace/icon-192.png','workspace/icon-512.png','workspace/icon.svg','workspace/manifest.json','workspace/material-edit.js','workspace/mobile.html']);
 // The only files allowed to differ from the baseline hashes.
-const CHANGED=Object.freeze(['index.html','sw.js','ui.js']);
+// CONVERTER-WH-1: workspace/mobile.html joins the list for the Converter "Wh / Runtime" tab. Its baseline pin stays
+// recorded as historical evidence; in exchange the file must keep its host wiring (WORKSPACE_HOST_WIRING below).
+const CHANGED=Object.freeze(['index.html','sw.js','ui.js','workspace/mobile.html']);
+// What makes workspace/mobile.html the HOSTED copy of core/mobile.html: the host stylesheet, the root-scoped worker
+// registration and the three host scripts as the last bytes of the file. A raw core copy has none of them.
+const WORKSPACE_HOST_WIRING=Object.freeze({
+ stylesheet:'<link rel="stylesheet" href="/workspace/host-core.css"></head>',
+ worker:"navigator.serviceWorker.register('/sw.js')",
+ tail:'</html>\n\n<script src="/workspace/handoff.js"></script>\n<script src="/workspace/material-edit.js"></script>\n<script src="/workspace/host-core.js"></script>'
+});
 const DIRS=Object.freeze(['workspace']);
 const MIME=Object.freeze({'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.svg':'image/svg+xml'});
 const PH_PIN='__EC_SHELL_PIN__',PH_MANIFEST='__EC_SHELL_MANIFEST__',CACHE_PREFIX='empire-private-shell-v1-';
@@ -77,6 +86,11 @@ function compute(options={}){
   sources.set(p,{bytes,sha256:hash,mime,status:hash===baseline.get(p)?'baseline':'changed'});
  }
 
+ const frame=utf8(sources.get('workspace/mobile.html').bytes,'workspace/mobile.html').replace(/\r\n/g,'\n');
+ if(count(frame,WORKSPACE_HOST_WIRING.stylesheet)!==1)fail('workspace/mobile.html lost the host stylesheet link');
+ if(count(frame,WORKSPACE_HOST_WIRING.worker)!==1)fail('workspace/mobile.html lost the /sw.js registration');
+ if(!frame.trimEnd().endsWith(WORKSPACE_HOST_WIRING.tail))fail('workspace/mobile.html lost the trailing host scripts');
+
  const index=utf8(sources.get('index.html').bytes,'index.html');
  if(!index.includes(BUILD))fail('index.html does not carry the build label');
  const refs=[...index.matchAll(/\s(?:src|href)="([^"]*)"/g)].map(m=>m[1]);
@@ -130,7 +144,7 @@ function build(options={}){
  if(options.write!==false){writeOut(result.root,OUT.assets,result.assetsModule);writeOut(result.root,OUT.prompt,result.promptModule);writeOut(result.root,OUT.manifest,result.manifestJson);}
  return result;
 }
-module.exports={BUILD,ASSET_PATHS,CHANGED,MIME,OUT,PH_PIN,PH_MANIFEST,CACHE_PREFIX,sha256,compute,build};
+module.exports={BUILD,ASSET_PATHS,CHANGED,WORKSPACE_HOST_WIRING,MIME,OUT,PH_PIN,PH_MANIFEST,CACHE_PREFIX,sha256,compute,build};
 
 if(require.main===module){
  try{

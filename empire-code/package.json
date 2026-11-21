@@ -2,7 +2,7 @@
   "name": "empire-code-private-pilot",
   "version": "0.0.0",
   "private": true,
-  "description": "Empire Code PRIVATE-PILOT-3: browser app, Cloudflare Worker backend, local build and tests. No dependencies.",
+  "description": "Empire Code PRIVATE-PILOT-4: browser app, Cloudflare Worker backend, local build and tests. No dependencies.",
   "scripts": {
     "build": "node candidate/build.cjs",
     "build:check": "node candidate/build.cjs --check",

@@ -1,4 +1,4 @@
-# Empire Code — PRIVATE-PILOT-3
+# Empire Code — PRIVATE-PILOT-4
 
 Source of the current Empire Code app: a browser app served by a Cloudflare
 Worker, with the local build and tests that produce and check it.
@@ -7,10 +7,38 @@ Worker, with the local build and tests that produce and check it.
 - Direct app address: <https://empire-code-private-pilot.szczepan-msg.workers.dev/>
 - Previous app (unchanged): <https://empirecode.app/mobile.html>
 
-The runtime source published here is the exact source of the live
-PRIVATE-PILOT-3 deployment, with one difference: the private deployment config
-is not published and is replaced by the template
+This directory is the source of the PRIVATE-PILOT-4 release (tag
+`private-pilot-4`, branch `release/private-pilot-4`). The private deployment
+config is not published and is replaced by the template
 `candidate/server/wrangler.example.json`.
+
+The deployed version and the checks actually run for this release are recorded
+in `RELEASE.json`. This README does not restate them and makes no test or
+deployment claim of its own for PRIVATE-PILOT-4.
+
+## What PRIVATE-PILOT-4 changes
+
+PRIVATE-PILOT-4 is PRIVATE-PILOT-3 plus one feature: a **Wh / Runtime** tab in
+the Converter ("Na ile wystarczy bateria?"), which estimates how long a battery
+of a given capacity in Wh runs a load. It works offline and stores nothing. The
+formula, assumptions and limits are in
+[`docs/converter-wh-runtime.md`](docs/converter-wh-runtime.md).
+
+- The calculation lives in one module, `core/src/calc/batteryRuntime.js`.
+  `core/tools/build-calc.js` injects it, with the other calculators, into
+  `core/mobile.html` and into the hosted copy
+  `candidate/browser/workspace/mobile.html`.
+- `candidate/build.cjs` now lets `workspace/mobile.html` differ from its
+  baseline pin, and in exchange refuses the build if that file loses its host
+  wiring (the host stylesheet link, the `/sw.js` registration, the three
+  trailing host scripts).
+- The build label is `PRIVATE-PILOT-4` in the build constant, the page title,
+  the header and the "Online, offline i dane" text. Both generated Worker
+  modules carry the label, so both are regenerated.
+- The Worker, the budget object, the provider, the online prompt and the pinned
+  files in `input/` are the PRIVATE-PILOT-3 sources. `input/RELEASE.json` and
+  `input/BROWSER-BASELINE.json` are historical pins and are not rewritten for a
+  new release.
 
 ## Using the app
 
@@ -46,8 +74,10 @@ input/         pinned inputs: online-prompt.txt, BROWSER-BASELINE.json,
                RELEASE.json, openai-provider.cjs; plus contract.cjs, which
                the comparison fixture in tests/ requires
 tests/         unit tests (*.test.cjs, *.test.mjs) and their fixtures
+docs/          feature notes for this app (converter-wh-runtime.md)
 core/          original modular calculators and Jobs source, plus the legacy
-               app, tests and docs, kept as reference
+               app, tests and docs; src/calc/ is the source of the calculator
+               block injected into the hosted workspace page
 ```
 
 `candidate/server/assets.generated.mjs` and `prompt.generated.mjs` are build
@@ -66,12 +96,49 @@ npm run verify        # npm test, then build:check
 ```
 
 The build is deterministic: it reads `candidate/browser/` and `input/`, checks
-every file against the pinned hashes (only `index.html`, `sw.js` and `ui.js` may
-differ from the browser baseline), and writes the two generated Worker modules
-and the build manifest. The same inputs give the same outputs.
+every file against the pinned hashes (only `index.html`, `sw.js`, `ui.js` and
+`workspace/mobile.html` may differ from the browser baseline; the other 14
+files stay byte-pinned), and writes the two generated Worker modules and the
+build manifest. The same inputs give the same outputs.
 
-`tests/` holds 101 unit tests. They run against fixtures and mocks: no
-Cloudflare account, no provider key and no network.
+### Regenerating everything for a release
+
+`npm run build` does not regenerate the calculator block. It hashes
+`candidate/browser/workspace/mobile.html` as it finds it, so the two `core`
+steps come first, in this order:
+
+```bash
+cd core
+node tools/build-calc.js               # inject core/src/calc/* into core/mobile.html
+node tools/build-calc.js --workspace   # same block into ../candidate/browser/workspace/mobile.html
+cd ..
+npm run build                          # node candidate/build.cjs: generated Worker modules + build manifest
+```
+
+To verify without writing anything:
+
+```bash
+cd core
+node tools/build-calc.js --check && node tools/build-calc.js --workspace --check
+cd ..
+npm run build:check
+```
+
+`build-calc.js` replaces only the text between the two `EC-CALC` markers in
+each page. Never edit that block, `candidate/server/*.generated.mjs` or
+`candidate/build-manifest.generated.json` by hand.
+
+### Tests
+
+The tests in `tests/` run against fixtures and mocks: no Cloudflare account, no
+provider key and no network.
+
+At the PRIVATE-PILOT-3 publication `tests/` held 101 unit tests. That is a
+prior figure for that release. PRIVATE-PILOT-4 adds
+`tests/converter-wh-runtime.test.cjs` and changes the build-label expectations
+in `browser-build`, `browser-ui` and `session-errors`, so the figure no longer
+describes this directory. No new count or pass result is stated here; see
+`RELEASE.json`.
 
 By default every test reads the browser sources from `candidate/browser/`.
 Four of the conversation UI tests can optionally be pointed at another copy of
@@ -82,8 +149,9 @@ that directory, to compare against an earlier baseline: set
 baseline copy is part of this directory.
 
 Earlier native evidence — 38 Chrome and WebKit scenarios driven by synthetic
-audio fixtures — was collected before this publication. It is prior evidence;
-it was not rerun for this publication and is not part of this directory.
+audio fixtures — was collected before the PRIVATE-PILOT-3 publication. It is
+prior evidence: it was not rerun for that publication, this README does not
+claim it was rerun for PRIVATE-PILOT-4, and it is not part of this directory.
 
 ## Backend
 
@@ -102,7 +170,8 @@ config. The account, the owner e-mail and the origin are left out.
   variable, it is not in this repository, and it never reaches the browser.
 - A real config belongs in a local file such as `wrangler.local.json`, which
   `.gitignore` excludes together with `.dev.vars` and `.env` files.
-- The live deployment was made with Wrangler 4.163.0. Wrangler is not a
+- The PRIVATE-PILOT-3 deployment was made with Wrangler 4.163.0. That is a
+  prior record and is not restated here for PRIVATE-PILOT-4. Wrangler is not a
   dependency of this package and there is no deploy script.
 
 ## `core/`
@@ -110,6 +179,14 @@ config. The account, the owner e-mail and the origin are left out.
 `core/` is a source snapshot of the original app: the modular calculators, the
 Jobs source, the legacy app, its tests and its docs. It is here as reference
 for the calculators and Jobs code that the current app builds on.
+
+Since PRIVATE-PILOT-4 it is also a build input: `core/src/calc/*` is injected
+into `candidate/browser/workspace/mobile.html` by `core/tools/build-calc.js`
+(see "Regenerating everything for a release"). PRIVATE-PILOT-4 changes these
+`core/` files: `src/calc/batteryRuntime.js` (new), `tools/build-calc.js`,
+`mobile.html`, `test/batteryRuntime.test.js` and
+`test/helpers/batteryRuntimeDom.js` (new), and four existing test files
+(`designSystem`, `loadCalcOracles`, `loadCalcParity`, `loadCalcServiceUi`).
 
 Of the old local speech pack, only `core/voice-pack/licenses/` (four license
 files) is kept. The obsolete Whisper model and runtime payloads (12 files) are
@@ -119,9 +196,10 @@ online speech. Because of that:
 - `core/mobile.html` and `core/sw.js` still reference `voice-pack/` files that
   are not in this snapshot, so standalone offline speech does not work from
   this source;
-- the `core/` tests and their assertions are unchanged, and a full
-  `npm run verify` inside `core/` is not claimed to pass in this source-only
-  publication.
+- at the PRIVATE-PILOT-3 publication the `core/` tests and their assertions
+  were unchanged from the original app; PRIVATE-PILOT-4 changes only the test
+  files listed above. A full `npm run verify` inside `core/` is not claimed to
+  pass by this README.
 
 The `npm` scripts in this directory do not run the `core/` tests.
 

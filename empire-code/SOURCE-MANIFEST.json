@@ -1,6 +1,6 @@
 {
   "algorithm": "sha256",
-  "contentPin": "ab6d3aa893ddf3fcebc278039c8185e23f7afbefc1a6b7b611a34e6022574bda",
+  "contentPin": "8fbc7621fd2c5146d60a13d2c917a05fae87c2b1cd137af047b66e50b3e7b830",
   "excludes": [
     "SOURCE-MANIFEST.json",
     "RELEASE.json"
@@ -12,7 +12,7 @@
     ],
     [
       "README.md",
-      "a4fd68528b0bc979ee0e8e7f779046b0273a230c761f48f84aedb87dcdc3e4c8"
+      "084f63e046ac2441f500f3c8846120246fd1b110499917c143a6e3801ba98164"
     ],
     [
       "candidate/browser/conversation-bank.js",
@@ -28,7 +28,7 @@
     ],
     [
       "candidate/browser/index.html",
-      "9c75d7d61d69a0631d9b769a227e553ec67c5204fcb97ddc80b915bd235b4bcc"
+      "55cfe329ea106e3584ac5adf708535d87430a2039be8b987f0ac9de1af80e53c"
     ],
     [
       "candidate/browser/material-edit-host.js",
@@ -84,19 +84,19 @@
     ],
     [
       "candidate/browser/workspace/mobile.html",
-      "0350f9a4835a985b5ce6a3d2ca683bb3f0294c02d534cfe6ca681ffdce145e5b"
+      "13bc2ffbaeb35bf5cc185e8f9a04cb19eba3df2fe4c7d241599b29669ffdd444"
     ],
     [
       "candidate/build-manifest.generated.json",
-      "7806d378e08f0e1e6302dda5666b67d0e9c868030d6ae69a7998c316062f0065"
+      "11ac0ed36b95f80eab4f4d31e8919a2f87b0d41ec7d534b769d1f44b8a88d81e"
     ],
     [
       "candidate/build.cjs",
-      "3459817d732db993e2797110a276fc818085a93c39b9854957ef182b4e780148"
+      "de32b7495a6fef830c12e6585fffbc0e49b3eac23c43cc5f4e1d3baeb38dfc33"
     ],
     [
       "candidate/server/assets.generated.mjs",
-      "332b2b6fc609f981b8344c94624c654d321d1d0bcb7a11d1f3eb6a9a3b5c5d44"
+      "dfa96c153d3d6eef8e99da3c6becca9609bb2faaa37f7a290bab532eef5ff446"
     ],
     [
       "candidate/server/budget.mjs",
@@ -112,7 +112,7 @@
     ],
     [
       "candidate/server/prompt.generated.mjs",
-      "9b0407094736b16c1de80feaea12437c5264e1cb693d5db5f794a5e5bd180b1c"
+      "24205149fc37131aa2497055a959320e2ffc34238a174d925a2b0cf1d4f88007"
     ],
     [
       "candidate/server/worker.mjs",
@@ -268,7 +268,7 @@
     ],
     [
       "core/mobile.html",
-      "e5f82a432c2520e1a7a42d022a5244745761d7ca4c8d7f97019ccaceb523a12c"
+      "f9fc8c7c014930a9ec2dfb3f418f03e8ba0846185be804bad4622f3fa7f22e05"
     ],
     [
       "core/nema-wiki-test.html",
@@ -317,6 +317,10 @@
     [
       "core/src/calc/ampacity.js",
       "e768d2f0fdfb77a0a35f15f56a5140bdfb00a6f26de2abca0ac72bed1675137a"
+    ],
+    [
+      "core/src/calc/batteryRuntime.js",
+      "2d6216343d2230a11c08aa7178edca4d578f58dcacbf7519eb93888cfc4f1b86"
     ],
     [
       "core/src/calc/boxFill.js",
@@ -483,6 +487,10 @@
       "7a97c5dfe33a049e32d0bfa98ac7659370b2c6cee6041cb88d24f59b5c315c11"
     ],
     [
+      "core/test/batteryRuntime.test.js",
+      "b3994506e2e94ad7cc91db4be0eba825b1942bd8afb5381a59543716435e600a"
+    ],
+    [
       "core/test/boxFill.test.js",
       "29327bd61dec57ef76d7c6eafcba273459cc6d2e7729c3f72173c526973ff26d"
     ],
@@ -512,7 +520,7 @@
     ],
     [
       "core/test/designSystem.test.js",
-      "c1f98019597d3c1aaa622b90e682764e269d0c5d41c2741d249944832cea928a"
+      "8131e37ca08a69e967fa1cdb7b275275fa73adc50de6edd2bcedc1e36c42bd63"
     ],
     [
       "core/test/fixtures/loadCalc/EC-CALC-2-A3-schema-r21.json",
@@ -577,6 +585,10 @@
     [
       "core/test/helpers/archiveFixtures.js",
       "a7a0601bb2adc8e50b734fa4d4fb5d82525fd08f502c260dbe127b5c4dcdd73d"
+    ],
+    [
+      "core/test/helpers/batteryRuntimeDom.js",
+      "a6b783f37d6db27c7829cb3298fe7c840731ac0752bbf08f43875d88d2438748"
     ],
     [
       "core/test/helpers/jobIndexedDb.js",
@@ -756,11 +768,11 @@
     ],
     [
       "core/test/loadCalcOracles.test.js",
-      "34ab5b4ecb1c9714348f98c6e2ffe969b0022d8724afc104fa8ec03ef0a6b9e1"
+      "c38fe5d844cc2a229cc51e4df797df552f2d8f09e2e075d61945f95f971e6e08"
     ],
     [
       "core/test/loadCalcParity.test.js",
-      "fdd23af22de3a3ff238ff6eb839e1cc2240858feaa16650a508a949f942a5b6c"
+      "7d05d663deac6c60623420e4b1418ea5ff7898c0d98d3199e45c546696604281"
     ],
     [
       "core/test/loadCalcPersistence.test.js",
@@ -808,7 +820,7 @@
     ],
     [
       "core/test/loadCalcServiceUi.test.js",
-      "9751b801da75cfd06fa1b4fe4e9a6b2d3d94b4ef630eaea3a91d599c6a16b9c7"
+      "f26db7163eb18e27d505f38562adfa9f9e801854514dd7b29fe97d6378f6f711"
     ],
     [
       "core/test/loadCalcServiceUiCleanup.test.js",
@@ -956,7 +968,7 @@
     ],
     [
       "core/tools/build-calc.js",
-      "8a6905511985c7293635cc517e7a55d034f8f124ec5226e7a18ec0d929a322ff"
+      "db35e471773dc4383872a5cb5a0563b42770b7cd9be1d2c8a3f916df75231504"
     ],
     [
       "core/tools/check-job-card-browser.js",
@@ -1035,6 +1047,10 @@
       "17029d8675f4315623424a152039d9f7d6451a551db951f96b9921e18517d3db"
     ],
     [
+      "docs/converter-wh-runtime.md",
+      "cf6b9e9391513dc21e23ee1e525089f9a44816c8a9082e3048bb62f3a5d7ca83"
+    ],
+    [
       "input/BROWSER-BASELINE.json",
       "0e245eb65dea0f88a61455f25408e46b56d04f8b9f6b843f8c62570d2f2f28a6"
     ],
@@ -1056,7 +1072,7 @@
     ],
     [
       "package.json",
-      "5f18b710357147ce8b3dc523d69b6154bbbae3d9c4e073235f764f53fa4bfa1b"
+      "795a7eb7a08f1e428e475265dde1626095220e034f32754e2fbb76a5204864af"
     ],
     [
       "tests/backend-budget.test.mjs",
@@ -1072,7 +1088,7 @@
     ],
     [
       "tests/browser-build.test.cjs",
-      "a7f3a636a72ac01967dddf32e8d2bba97eba224e0b719bc5dbc3a459219a8e4a"
+      "aada39190029cec34d0ce777a31558392d5dad1e3b51d3c2afe919fac2ccad4c"
     ],
     [
       "tests/browser-sw.test.cjs",
@@ -1080,7 +1096,15 @@
     ],
     [
       "tests/browser-ui.test.cjs",
-      "69ef3624c7e0cce34b3d083b980e654f41c78d6dab666922862b6eafa8f78ccd"
+      "10e5d3d94d157945ee8b65feab5cf977fb79e5f8cbfbb26441778985e9184dfb"
+    ],
+    [
+      "tests/converter-runtime-browser.cjs",
+      "bf1b2cb048ebfb4d72cf88ba56bb6a951fa30e04fe9b89c358697337645c2f4d"
+    ],
+    [
+      "tests/converter-wh-runtime.test.cjs",
+      "3e253103d96458eb59135c587aea54c8ccbcc4ea1e75f894e8c80e20cec8d573"
     ],
     [
       "tests/independent-audio-errors.test.cjs",
@@ -1120,7 +1144,7 @@
     ],
     [
       "tests/session-errors.test.cjs",
-      "69bd3cc757b1edb9a4665e7c212014d154a1c4267bc9d7160ab479045912a550"
+      "32fe1cfde6b578aa8cb6c1d60ef551f10f718f5062d6ac79f552e6d1905ae2ea"
     ],
     [
       "tests/voice-harness-base.txt",

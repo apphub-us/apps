@@ -1,12 +1,13 @@
 {
-  "build": "PRIVATE-PILOT-3",
-  "shellPin": "986db4f5927c0faedc51aae1f7cf2a42ce4c167aabe5dab5d3f574b493399fc5",
-  "cacheName": "empire-private-shell-v1-986db4f5927c0faedc51aae1f7cf2a42ce4c167aabe5dab5d3f574b493399fc5",
+  "build": "PRIVATE-PILOT-4",
+  "shellPin": "8660858492a3dc2ba62234120c1e6f58d6a744cde59ab0e9d4ec015a20f1d5b4",
+  "cacheName": "empire-private-shell-v1-8660858492a3dc2ba62234120c1e6f58d6a744cde59ab0e9d4ec015a20f1d5b4",
   "baselineFileSha256": "0e245eb65dea0f88a61455f25408e46b56d04f8b9f6b843f8c62570d2f2f28a6",
   "changedAllowed": [
     "index.html",
     "sw.js",
-    "ui.js"
+    "ui.js",
+    "workspace/mobile.html"
   ],
   "sources": [
     {
@@ -32,8 +33,8 @@
     },
     {
       "path": "index.html",
-      "bytes": 5990,
-      "sha256": "9c75d7d61d69a0631d9b769a227e553ec67c5204fcb97ddc80b915bd235b4bcc",
+      "bytes": 5989,
+      "sha256": "55cfe329ea106e3584ac5adf708535d87430a2039be8b987f0ac9de1af80e53c",
       "baselineSha256": "bf1ec4b7f87e10b548a47649a2ec8f42aff844945a45c5f9386318aaf9cba258",
       "status": "changed"
     },
@@ -130,18 +131,18 @@
     },
     {
       "path": "workspace/mobile.html",
-      "bytes": 1691650,
-      "sha256": "0350f9a4835a985b5ce6a3d2ca683bb3f0294c02d534cfe6ca681ffdce145e5b",
+      "bytes": 1714237,
+      "sha256": "13bc2ffbaeb35bf5cc185e8f9a04cb19eba3df2fe4c7d241599b29669ffdd444",
       "baselineSha256": "0350f9a4835a985b5ce6a3d2ca683bb3f0294c02d534cfe6ca681ffdce145e5b",
-      "status": "baseline"
+      "status": "changed"
     }
   ],
   "served": [
     {
       "url": "/",
-      "bytes": 5990,
+      "bytes": 5989,
       "mime": "text/html; charset=utf-8",
-      "sha256": "9c75d7d61d69a0631d9b769a227e553ec67c5204fcb97ddc80b915bd235b4bcc"
+      "sha256": "55cfe329ea106e3584ac5adf708535d87430a2039be8b987f0ac9de1af80e53c"
     },
     {
       "url": "/conversation-bank.js",
@@ -163,9 +164,9 @@
     },
     {
       "url": "/index.html",
-      "bytes": 5990,
+      "bytes": 5989,
       "mime": "text/html; charset=utf-8",
-      "sha256": "9c75d7d61d69a0631d9b769a227e553ec67c5204fcb97ddc80b915bd235b4bcc"
+      "sha256": "55cfe329ea106e3584ac5adf708535d87430a2039be8b987f0ac9de1af80e53c"
     },
     {
       "url": "/material-edit-host.js",
@@ -183,7 +184,7 @@
       "url": "/sw.js",
       "bytes": 7715,
       "mime": "text/javascript; charset=utf-8",
-      "sha256": "f6e3895d75716c36dae89ee6bdf0d373fabde3ecbbba80cc07c38023241259f3"
+      "sha256": "49cd0b46a0932644bb432ff83bf31ad86ec8e63c118b14a56ea3776b1be78616"
     },
     {
       "url": "/ui.js",
@@ -247,15 +248,15 @@
     },
     {
       "url": "/workspace/mobile.html",
-      "bytes": 1691650,
+      "bytes": 1714237,
       "mime": "text/html; charset=utf-8",
-      "sha256": "0350f9a4835a985b5ce6a3d2ca683bb3f0294c02d534cfe6ca681ffdce145e5b"
+      "sha256": "13bc2ffbaeb35bf5cc185e8f9a04cb19eba3df2fe4c7d241599b29669ffdd444"
     }
   ],
   "shell": [
     {
       "url": "/",
-      "sha256": "9c75d7d61d69a0631d9b769a227e553ec67c5204fcb97ddc80b915bd235b4bcc",
+      "sha256": "55cfe329ea106e3584ac5adf708535d87430a2039be8b987f0ac9de1af80e53c",
       "mime": "text/html; charset=utf-8"
     },
     {
@@ -275,7 +276,7 @@
     },
     {
       "url": "/index.html",
-      "sha256": "9c75d7d61d69a0631d9b769a227e553ec67c5204fcb97ddc80b915bd235b4bcc",
+      "sha256": "55cfe329ea106e3584ac5adf708535d87430a2039be8b987f0ac9de1af80e53c",
       "mime": "text/html; charset=utf-8"
     },
     {
@@ -340,13 +341,13 @@
     },
     {
       "url": "/workspace/mobile.html",
-      "sha256": "0350f9a4835a985b5ce6a3d2ca683bb3f0294c02d534cfe6ca681ffdce145e5b",
+      "sha256": "13bc2ffbaeb35bf5cc185e8f9a04cb19eba3df2fe4c7d241599b29669ffdd444",
       "mime": "text/html; charset=utf-8"
     }
   ],
   "serviceWorker": {
     "templateSha256": "d7fe72ff80bcc0d6dcd8e028470348278f23a5dd0eee23423952f85182494edf",
-    "generatedSha256": "f6e3895d75716c36dae89ee6bdf0d373fabde3ecbbba80cc07c38023241259f3"
+    "generatedSha256": "49cd0b46a0932644bb432ff83bf31ad86ec8e63c118b14a56ea3776b1be78616"
   },
   "prompt": {
     "source": "input/online-prompt.txt",
@@ -355,11 +356,11 @@
   "outputs": [
     {
       "path": "candidate/server/assets.generated.mjs",
-      "sha256": "332b2b6fc609f981b8344c94624c654d321d1d0bcb7a11d1f3eb6a9a3b5c5d44"
+      "sha256": "dfa96c153d3d6eef8e99da3c6becca9609bb2faaa37f7a290bab532eef5ff446"
     },
     {
       "path": "candidate/server/prompt.generated.mjs",
-      "sha256": "9b0407094736b16c1de80feaea12437c5264e1cb693d5db5f794a5e5bd180b1c"
+      "sha256": "24205149fc37131aa2497055a959320e2ffc34238a174d925a2b0cf1d4f88007"
     }
   ]
 }

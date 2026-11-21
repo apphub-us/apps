@@ -64,7 +64,7 @@ describe('LC-SERVICE-UI-1 — bundle registration and exact parity', () => {
   test('module 20 is registered after its dependencies and embedded verbatim; the source is the pinned R2 bytes; the bundled API is the real one', () => {
     const builder = fs.readFileSync(path.join(ROOT, 'tools', 'build-calc.js'), 'utf8');
     const ids = [...builder.matchAll(/\{ id: '([A-Za-z0-9]+)', file: '([^']+)' \}/g)].map((m) => m[1]);
-    assert.strictEqual(ids.length, 38); assert.strictEqual(ids[19], 'loadCalcServiceSizing'); assert.strictEqual(ids[20], 'loadCalcServiceRecord'); assert.strictEqual(ids[21], 'jobCard'); assert.strictEqual(ids[22], 'jobCardStore');
+    assert.strictEqual(ids.length, 39); assert.strictEqual(ids[38], 'batteryRuntime'); /* CONVERTER-WH-1: one module appended after the 38 */ assert.strictEqual(ids[19], 'loadCalcServiceSizing'); assert.strictEqual(ids[20], 'loadCalcServiceRecord'); assert.strictEqual(ids[21], 'jobCard'); assert.strictEqual(ids[22], 'jobCardStore');
     assert.ok(ids.indexOf('loadCalcFacade') < 19 && ids.indexOf('loadCalcInputV2') < 19, 'after both dependencies');
     const raw = fs.readFileSync(path.join(ROOT, 'src', 'calc', 'loadCalcServiceSizing.js'));
     const s = html.indexOf('<!-- EC-CALC:START'); const e = html.indexOf('<!-- EC-CALC:END -->'); const block = html.slice(s, e);

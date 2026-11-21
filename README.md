@@ -1,8 +1,8 @@
-# Empire Code — current release: PRIVATE-PILOT-3
+# Empire Code — current release: PRIVATE-PILOT-4
 
 - Open the current app: <https://empirecode.app/current/>
 - Direct app address: <https://empire-code-private-pilot.szczepan-msg.workers.dev/>
-- Source (tag `private-pilot-3`): [`empire-code/`](https://github.com/apphub-us/apps/tree/private-pilot-3/empire-code)
+- Source (tag `private-pilot-4`): [`empire-code/`](https://github.com/apphub-us/apps/tree/private-pilot-4/empire-code)
 - Previous app, unchanged: <https://empirecode.app/mobile.html>
 
 The current app uses the existing login. The login controls access only: saved

@@ -51,8 +51,11 @@ const BASELINE = {
   home: { tools: 12, ids: 'wiresizer,ampacity,loadcalc,conduit,wireway,boxfill,pullbox,motor,grounding,outlets,bender,converter', pinTools: 12, groups: 4, staticButtons: 5 },
   panels: {
     'panel-wiresizer': [10, 3, 1], 'panel-conduit': [5, 0, 5], 'panel-ampacity': [8, 0, 3], 'panel-boxfill': [5, 4, 7],   // EC-CALC-1: EGC select -> count input + size select; ring select -> decimal input. EC-CALC-1B: + ring/raised-cover select, + 6 ⓘ help buttons (Reset makes 7)
-    'sub-loadcalc': [16, 17, 11], 'sub-motor': [12, 17, 3], 'sub-bender': [6, 16, 2], 'sub-converter': [4, 16, 1],
-    'sub-outlets': [13, 17, 3], 'sub-coderef': [14, 17, 9], 'panel-chat': [0, 0, 4],
+    // panel() slices from the id to the NEXT <div class="panel">, so every sub-* range overlaps: each one runs through the
+    // end of panel-more and therefore includes Converter (the last sub-panel). CONVERTER-WH-1 added 1 select / 4 inputs /
+    // 2 buttons there, so all six sub-* aggregates grow by exactly +1 / +4 / +2; no pre-existing control was removed.
+    'sub-loadcalc': [17, 21, 13], 'sub-motor': [13, 21, 5], 'sub-bender': [7, 20, 4], 'sub-converter': [5, 20, 3],   // CONVERTER-WH-1: + Wh / Runtime tab content (1 mode select, 4 decimal text inputs, Example + Reset buttons); the previous 4 / 16 / 1 controls are all still present
+    'sub-outlets': [14, 21, 5], 'sub-coderef': [15, 21, 11], 'panel-chat': [0, 0, 4],
   },
 };
 
