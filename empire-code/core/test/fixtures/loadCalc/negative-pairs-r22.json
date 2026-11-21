@@ -1,0 +1,239 @@
+[
+  {
+    "id": "INPUT_READING_CHANGED",
+    "violates": "operative existing125 line no longer bound to the current reading (40 -> 80 kVA)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-14 existing125 not bound to normalized reading 80000.0 VA x 1.25",
+      "I-14 norm line not bound to the envelope reading/unit/PF"
+    ]
+  },
+  {
+    "id": "INPUT_RATING_CHANGED",
+    "violates": "comparison ratingValue 225 != current serviceRatingA 100",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-17 ratingValue 225 != envelope serviceRatingA 100"
+    ]
+  },
+  {
+    "id": "PRECALCULATED_OMITTED",
+    "violates": "qualified 5,000 VA new term absent from the operative demand (50,000 instead of 55,000 VA)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-14 VA reading must be a leaf operand (ref null)",
+      "I-15 newTerm line missing or not equal to precalculated.va 5000",
+      "I-15 total must be sum(existing125, newTerm) in precalculated mode",
+      "I-21 existing125 must be multiply[None] exactly once and in order"
+    ]
+  },
+  {
+    "id": "RAW_TOLERANCE_FLIPS_VERDICT",
+    "violates": "operative current 200.00000002000004 A > 200 A but comparison copies 200.0 and says adequate",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-05 comparison on None must copy the raw operative value exactly (got 200.0, operative 200.00000002000004)",
+      "I-18 verdict side disagrees with the operative raw value"
+    ]
+  },
+  {
+    "id": "INPUT_PERIOD_CHANGED",
+    "violates": "annual data now covers 11 months; old COMPLETE result kept",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "L3-specified (qualification rule 220.87(1); engine test T-N-08 expects UNQUALIFIED_METHOD)",
+    "schemaErrors": [],
+    "invariantViolations": []
+  },
+  {
+    "id": "RATING_SOURCE_WRONG_FOR_PURPOSE",
+    "violates": "purpose feeder but comparison uses serviceRatingA",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-17 ratingSource serviceRatingA does not match purpose feeder",
+      "I-17 ratingValue 225 != envelope feederAmpacityA 100"
+    ]
+  },
+  {
+    "id": "SUPPLY_CHANGED_OLD_CURRENT",
+    "violates": "supply changed to 120/208 network; old current computed with 240 V and old model kept",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-16 current.model != envelope loadModel.kind",
+      "I-16 lineA 208.33333333333334 != exact 240.3846153846154 from envelope supply/model"
+    ]
+  },
+  {
+    "id": "COVERS_quantity",
+    "violates": "covered load edited ({'quantity': 2}) but old COMPLETE/adequate result kept (must be PARTIAL + AGGREGATE_STALE)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-19 stale aggregate (coversSnapshot != current covered loads) but COMPLETE",
+      "I-19 stale aggregate without AGGREGATE_STALE",
+      "I-19 covered load ev1 must be unresolved(AGGREGATE_STALE) when stale"
+    ]
+  },
+  {
+    "id": "COVERS_continuous",
+    "violates": "covered load edited ({'continuous': True}) but old COMPLETE/adequate result kept (must be PARTIAL + AGGREGATE_STALE)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-19 stale aggregate (coversSnapshot != current covered loads) but COMPLETE",
+      "I-19 stale aggregate without AGGREGATE_STALE",
+      "I-19 covered load ev1 must be unresolved(AGGREGATE_STALE) when stale"
+    ]
+  },
+  {
+    "id": "COVERS_connection",
+    "violates": "covered load edited ({'connection': 'LN', 'leg': 'L2'}) but old COMPLETE/adequate result kept (must be PARTIAL + AGGREGATE_STALE)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-19 stale aggregate (coversSnapshot != current covered loads) but COMPLETE",
+      "I-19 stale aggregate without AGGREGATE_STALE",
+      "I-19 covered load ev1 must be unresolved(AGGREGATE_STALE) when stale"
+    ]
+  },
+  {
+    "id": "COVERS_category",
+    "violates": "covered load edited ({'category': 'motor'}) but old COMPLETE/adequate result kept (must be PARTIAL + AGGREGATE_STALE)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-19 stale aggregate (coversSnapshot != current covered loads) but COMPLETE",
+      "I-19 stale aggregate without AGGREGATE_STALE",
+      "I-19 covered load ev1 must be unresolved(AGGREGATE_STALE) when stale"
+    ]
+  },
+  {
+    "id": "COVERS_rating_value",
+    "violates": "covered load edited ({'rating': {'kind': 'va', 'value': 14400, 'volts': None}}) but old COMPLETE/adequate result kept (must be PARTIAL + AGGREGATE_STALE)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-19 stale aggregate (coversSnapshot != current covered loads) but COMPLETE",
+      "I-19 stale aggregate without AGGREGATE_STALE",
+      "I-19 covered load ev1 must be unresolved(AGGREGATE_STALE) when stale"
+    ]
+  },
+  {
+    "id": "COVERS_status",
+    "violates": "covered load edited ({'status': 'existing'}) but old COMPLETE/adequate result kept (must be PARTIAL + AGGREGATE_STALE)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-19 stale aggregate (coversSnapshot != current covered loads) but COMPLETE",
+      "I-19 stale aggregate without AGGREGATE_STALE"
+    ]
+  },
+  {
+    "id": "COVERS_label_only_POSITIVE",
+    "violates": "(positive control) descriptive edit must NOT invalidate the aggregate",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "accepted (as intended)",
+    "schemaErrors": [],
+    "invariantViolations": []
+  },
+  {
+    "id": "COVERS_SNAPSHOT_MISSING",
+    "violates": "coversSnapshot null (never recorded) while result claims counted_via_aggregate",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-19 stale aggregate (coversSnapshot != current covered loads) but COMPLETE",
+      "I-19 stale aggregate without AGGREGATE_STALE",
+      "I-19 covered load ev1 must be unresolved(AGGREGATE_STALE) when stale"
+    ]
+  },
+  {
+    "id": "COVERS_DUPLICATE_ID_WITH_OLD_RESULT",
+    "violates": "duplicate id in covers[] but old COMPLETE result kept (must be INVALID_INPUT DUPLICATE_ID)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-19 undefined covers projection (duplicate/unknown ids) without DUPLICATE_ID/COVERS_UNKNOWN_LOAD"
+    ]
+  },
+  {
+    "id": "PARSER_NULL_measurement.reading.value",
+    "violates": "active field null + parseError, but an old COMPLETE result is presented (positive expectation: T-S-41a / T-S-42a INCOMPLETE_INPUT)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-20 parseError MISSING_FIELD:measurement.reading.value not surfaced as a parser problem",
+      "I-20 parse errors present but demand computed",
+      "I-14 COMPLETE with an unnormalizable/missing reading"
+    ]
+  },
+  {
+    "id": "PARSER_NULL_measurement.newLoad.precalculated.va",
+    "violates": "active field null + parseError, but an old COMPLETE result is presented (positive expectation: T-S-41a / T-S-42a INCOMPLETE_INPUT)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-20 parseError MISSING_FIELD:measurement.newLoad.precalculated.va not surfaced as a parser problem",
+      "I-20 parse errors present but demand computed",
+      "I-15 complete demand with precalculated mode but no va"
+    ]
+  },
+  {
+    "id": "3PH_TERM_WITH_VA_OVER_VLL",
+    "violates": "3PH term divided by V_LL (obsolete \u00a77.4 wording, 159.6 A inadequate) instead of sqrt3 x V_LL (144.985 A adequate)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-15 3PH term must use sqrt3 x vLineToLine",
+      "I-21 n_3PH must be divide_by_sqrt3_voltage[None] exactly once and in order"
+    ]
+  },
+  {
+    "id": "3PH_LL_TERM_EXACT_VERDICT",
+    "violates": "single L-L term on a 3-phase amperes path presented with an exact verdict (must be UNSUPPORTED_SCOPE / CAPABILITY_DISABLED)",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-15 LL term must divide by vLineToLine",
+      "I-13 exact verdict with an LL/LN term on a 3-phase amperes path (unsupported combination)",
+      "I-21 missing line n_LL",
+      "I-21 t_measured must be sum['e_measured', 'n_LL'] exactly once and in order"
+    ]
+  },
+  {
+    "id": "NETWORK_LL_TERM_EXACT_VERDICT",
+    "violates": "L-L term on the 120/208 network amperes path presented as exact",
+    "envelopeSchemaValid": true,
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-15 LL term must divide by vLineToLine",
+      "I-13 exact verdict with a new term on the network amperes path (unsupported combination)",
+      "I-21 missing line t_measured",
+      "I-21 missing/unexpected/disconnected A line(s): ['t_measured']"
+    ]
+  }
+]

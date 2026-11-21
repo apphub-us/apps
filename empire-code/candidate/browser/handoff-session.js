@@ -1,0 +1,59 @@
+'use strict';
+// Host-owned metadata. Same localStorage envelope as the conversation, never model supplied.
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.JHSession=api;})(typeof window==='object'?window:globalThis,function(){
+ const clone=x=>JSON.parse(JSON.stringify(x)),utc=x=>{try{return typeof x==='string'&&new Date(x).toISOString()===x;}catch{return false;}};
+ const exact=(o,keys)=>o&&Object.getPrototypeOf(o)===Object.prototype&&Object.keys(o).length===keys.length&&keys.every(k=>Object.hasOwn(o,k));
+ const fields=['version','sourceId','sourceRevision','sourceSavedAt','boundState','targetJobId','prepared','receipts'];
+ const pending=m=>!!(m&&(m.prepared&&m.prepared.phase==='pending'||m.materialEdit&&m.materialEdit.phase==='pending'));
+ function preparedValid(p,m){
+  if(!exact(p,['phase','input','handoff'])||!['review','pending'].includes(p.phase))return false;
+  const x=p.input,h=p.handoff;
+  if(!exact(x,['sourceId','sourceRevision','sourceSavedAt','items','selectedItemIds','job','acknowledgedReviewIds'])||x.sourceId!==m.sourceId||x.sourceRevision!==m.sourceRevision||x.sourceSavedAt!==m.sourceSavedAt||!Array.isArray(x.items)||x.items.length>16||!Array.isArray(x.selectedItemIds)||!x.selectedItemIds.length||x.selectedItemIds.length>8||new Set(x.selectedItemIds).size!==x.selectedItemIds.length||!x.selectedItemIds.every(id=>/^i\d{4}$/.test(id))||!Array.isArray(x.acknowledgedReviewIds)||!exact(x.job,['head','revision'])||!x.job.head||!x.job.revision||x.job.head.jobId!==m.targetJobId||x.job.head.currentRevisionId!==x.job.revision.revisionId)return false;
+  if(JSON.stringify(x.items.filter(i=>i&&x.selectedItemIds.includes(i.id)).map(i=>i.id))!==JSON.stringify(x.selectedItemIds))return false;
+  if(!exact(h,['kind','version','binding','excludedItemIds','plan'])||h.kind!=='empire-code.conversation-handoff'||h.version!==1||!exact(h.binding,['inputHash','sourceId','sourceRevision'])||!/^[a-f0-9]{64}$/.test(h.binding.inputHash)||h.binding.sourceId!==m.sourceId||h.binding.sourceRevision!==m.sourceRevision||!Array.isArray(h.excludedItemIds)||h.excludedItemIds.length>16)return false;
+  const plan=h.plan;
+  if(!exact(plan,['kind','version','id','jobId','jobRevisionId','title','createdAt','transcript','actions'])||plan.kind!=='empire-code.voice-plan'||plan.version!==1||!/^voice1_[a-f0-9]{32}$/.test(plan.id)||plan.jobId!==x.job.head.jobId||plan.jobRevisionId!==x.job.head.currentRevisionId||typeof plan.title!=='string'||plan.title.length>200||!utc(plan.createdAt)||typeof plan.transcript!=='string'||plan.transcript.length>5000||!Array.isArray(plan.actions)||plan.actions.length!==x.selectedItemIds.length)return false;
+  for(const a of plan.actions){if(!exact(a,['kind','id','revisionId','fields'])||a.kind!=='material'||!/^mat1_[a-f0-9]{32}$/.test(a.id)||!/^trev1_[a-f0-9]{32}$/.test(a.revisionId)||!exact(a.fields,['label','specification','quantityText','unit','status','location','supplier','notes'])||Object.values(a.fields).some(v=>typeof v!=='string')||!a.fields.label.trim()||a.fields.label.length>160||a.fields.specification.length>1000||a.fields.notes.length>4000)return false;}
+  return true;
+ }
+ function capacity(m,input){const count=input.selectedItemIds.filter(id=>!m.receipts.some(r=>r.jobId===input.job.head.jobId&&r.itemId===id)).length;if(m.receipts.length+count>128)throw Error('Limit powiązań szkicu osiągnięty. Nowy zapis nie został rozpoczęty.');}
+
+ function validate(m){
+  if(!(exact(m,fields)||exact(m,fields.concat('materialEdit')))||m.version!==1||!/^conv1_[0-9a-f]{32}$/.test(m.sourceId)||!Number.isSafeInteger(m.sourceRevision)||m.sourceRevision<0||m.sourceRevision>100||!utc(m.sourceSavedAt)||typeof m.boundState!=='string'||m.boundState.length>60000||m.targetJobId!==null&&!/^job1_[0-9a-f]{32}$/.test(m.targetJobId))throw Error('Nieprawidłowe powiązanie szkicu. Nie nadpisano zapisu.');
+  if(!Array.isArray(m.receipts)||m.receipts.length>128||m.receipts.some(r=>!exact(r,['jobId','itemId','materialId','revisionId'])||!/^job1_[0-9a-f]{32}$/.test(r.jobId)||!/^i\d{4}$/.test(r.itemId)||!/^mat1_[0-9a-f]{32}$/.test(r.materialId)||!/^trev1_[0-9a-f]{32}$/.test(r.revisionId)))throw Error('Nieprawidłowe potwierdzenie wcześniejszego zapisu.');
+  if(new Set(m.receipts.map(r=>r.jobId+'/'+r.itemId)).size!==m.receipts.length)throw Error('Powtórzone powiązanie materiału.');
+  if(m.prepared!==null&&!preparedValid(m.prepared,m))throw Error('Nieprawidłowy stan przygotowanego zapisu.');
+  if(m.materialEdit!=null&&!editValid(m.materialEdit,m))throw Error('Nieprawidłowe podsumowanie poprawki materiału.');if(m.prepared&&m.materialEdit)throw Error('Dwie równoległe operacje zapisu są niedozwolone.');if(JSON.stringify(m).length>200000)throw Error('Przekroczono limit powiązania szkicu.');const result=clone(m);result.materialEdit=result.materialEdit||null;return result;
+ }
+ function bind(meta,state,crypto,now){
+  const boundState=JSON.stringify(state);if(typeof boundState!=='string'||boundState.length>60000||!utc(now))throw Error('Nieprawidłowy szkic lub czas.');
+  if(!meta){if(!crypto||typeof crypto.getRandomValues!=='function')throw Error('Brak bezpiecznych identyfikatorów.');const b=new Uint8Array(16);crypto.getRandomValues(b);return {version:1,sourceId:'conv1_'+Array.from(b,x=>x.toString(16).padStart(2,'0')).join(''),sourceRevision:0,sourceSavedAt:now,boundState,targetJobId:null,prepared:null,receipts:[],materialEdit:null};}
+  const m=validate(meta);if(m.boundState===boundState)return m;
+  if(pending(m))throw Error('Dokończ rozpoczęty zapis przed zmianą szkicu.');if(m.sourceRevision>=100)throw Error('Limit wersji szkicu. Wyeksportuj rozmowę przed rozpoczęciem nowej.');
+  return {...m,sourceRevision:m.sourceRevision+1,sourceSavedAt:now,boundState,prepared:null,materialEdit:null};
+ }
+ function target(meta,jobId){const m=validate(meta);if(pending(m))throw Error('Najpierw dokończ zapis do wybranej roboty.');if(jobId!==null&&!/^job1_[0-9a-f]{32}$/.test(jobId))throw Error('Nieprawidłowa robota.');return {...m,targetJobId:jobId,prepared:null,materialEdit:null};}
+ function review(meta,input,handoff){const m=validate(meta);if(pending(m))throw Error('Zapis jest w toku.');if(input.sourceId!==m.sourceId||input.sourceRevision!==m.sourceRevision||input.sourceSavedAt!==m.sourceSavedAt||input.job.head.jobId!==m.targetJobId)throw Error('Szkic lub robota uległy zmianie.');capacity(m,input);return validate({...m,materialEdit:null,prepared:{phase:'review',input:clone(input),handoff:clone(handoff)}});}
+ function enter(meta){const m=validate(meta);if(!m.prepared)throw Error('Brak sprawdzonego podsumowania.');capacity(m,m.prepared.input);m.prepared.phase='pending';return validate(m);}
+ function done(meta){const m=validate(meta);if(!pending(m))throw Error('Brak rozpoczętego zapisu.');const p=m.prepared,actions=p.handoff.plan.actions;for(let i=0;i<actions.length;i++){const r={jobId:p.input.job.head.jobId,itemId:p.input.selectedItemIds[i],materialId:actions[i].id,revisionId:actions[i].revisionId};if(!m.receipts.some(x=>x.jobId===r.jobId&&x.itemId===r.itemId))m.receipts.push(r);}m.prepared=null;return validate(m);}
+ function discard(meta){const m=validate(meta);if(pending(m))throw Error('Zapis może być częściowy — należy go wznowić, nie usuwać.');m.prepared=null;return m;}
+ 
+ function materialFields(f){return exact(f,['label','specification','quantityText','unit','status','location','supplier','notes'])&&Object.values(f).every(v=>typeof v==='string')&&f.label.length<=160&&f.specification.length<=1000&&f.notes.length<=4000&&f.location.length<=500&&f.supplier.length<=200&&/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(f.quantityText)&&/[1-9]/.test(f.quantityText)&&['pcs','ft','m','in','cm','mm','roll','set','box','pack'].includes(f.unit);}
+ function rowValid(r){return exact(r,['kind','recordVersion','materialId','revisionId','parentRevisionId','revisionNumber','jobId','jobRevisionId','createdAt','savedAt','producer','item','changeReason'])&&r.kind==='empire-code.material-revision'&&r.recordVersion===1&&/^mat1_[a-f0-9]{32}$/.test(r.materialId)&&/^trev1_[a-f0-9]{32}$/.test(r.revisionId)&&/^job1_[a-f0-9]{32}$/.test(r.jobId)&&/^jrev1_[a-f0-9]{32}$/.test(r.jobRevisionId)&&Number.isSafeInteger(r.revisionNumber)&&r.revisionNumber>=1&&r.revisionNumber<=50&&utc(r.createdAt)&&utc(r.savedAt)&&typeof r.changeReason==='string'&&r.changeReason.length<=1000&&materialFields(r.item);}
+ function editValid(e,m){
+  if(!exact(e,['phase','plan'])||!['review','pending','conflict'].includes(e.phase))return false;
+  const p=e.plan;if(!exact(p,['kind','version','id','input','revision','changes'])||p.kind!=='empire-code.material-edit'||p.version!==1||!/^edit1_[a-f0-9]{64}$/.test(p.id))return false;
+  const x=p.input;if(!exact(x,['sourceId','sourceRevision','sourceSavedAt','reviewedAt','item','receipt','job','baseline','current','acknowledged','rebase'])||x.sourceId!==m.sourceId||x.sourceRevision!==m.sourceRevision||x.sourceSavedAt!==m.sourceSavedAt||!utc(x.reviewedAt)||!x.item||!exact(x.receipt,['jobId','itemId','materialId','revisionId'])||!exact(x.job,['head','revision'])||!x.job.head||!x.job.revision||!/^job1_[a-f0-9]{32}$/.test(x.job.head.jobId)||x.job.head.jobId!==m.targetJobId||x.job.head.currentRevisionId!==x.job.revision.revisionId||typeof x.job.revision.title!=='string'||typeof x.acknowledged!=='boolean'||typeof x.rebase!=='boolean')return false;
+  if(!m.receipts.some(r=>JSON.stringify(r)===JSON.stringify(x.receipt))||x.receipt.itemId!==x.item.id||x.receipt.jobId!==m.targetJobId||!rowValid(x.baseline)||!rowValid(x.current)||!rowValid(p.revision))return false;
+  if(x.baseline.revisionId!==x.receipt.revisionId||[x.baseline,x.current,p.revision].some(r=>r.materialId!==x.receipt.materialId||r.jobId!==m.targetJobId)||p.revision.parentRevisionId!==x.current.revisionId||p.revision.revisionNumber!==x.current.revisionNumber+1||p.revision.savedAt!==x.reviewedAt||p.revision.jobRevisionId!==x.job.head.currentRevisionId)return false;
+  if(!Array.isArray(p.changes)||!p.changes.length||p.changes.length>5||new Set(p.changes.map(c=>c.field)).size!==p.changes.length||p.changes.some(c=>!exact(c,['field','before','after'])||!['label','quantityText','unit','specification','notes'].includes(c.field)||typeof c.before!=='string'||typeof c.after!=='string'||c.before!==x.current.item[c.field]||c.after!==p.revision.item[c.field]))return false;
+  let bound;try{bound=JSON.parse(m.boundState);}catch{return false;}
+  return Array.isArray(bound.items)&&bound.items.some(i=>JSON.stringify(i)===JSON.stringify(x.item));
+ }
+ function editReview(meta,plan){const m=validate(meta);if(pending(m))throw Error('Najpierw dokończ zapis.');return validate({...m,prepared:null,materialEdit:{phase:'review',plan:clone(plan)}});}
+ function editEnter(meta){const m=validate(meta);if(!m.materialEdit||m.materialEdit.phase==='conflict')throw Error('Brak aktualnego przeglądu poprawki.');m.materialEdit.phase='pending';return validate(m);}
+ function editDone(meta){const m=validate(meta);if(m.materialEdit?.phase!=='pending')throw Error('Brak rozpoczętej poprawki.');const p=m.materialEdit.plan,r=m.receipts.find(r=>r.jobId===p.input.receipt.jobId&&r.itemId===p.input.item.id);if(!r||r.materialId!==p.revision.materialId||r.revisionId!==p.input.receipt.revisionId)throw Error('Powiązanie materiału zmieniło się.');r.revisionId=p.revision.revisionId;m.materialEdit=null;return validate(m);}
+ function editDiscard(meta){const m=validate(meta);if(m.materialEdit?.phase==='pending')throw Error('Wznów tę samą poprawkę przed jej odrzuceniem.');m.materialEdit=null;return validate(m);}
+ function editConflict(meta){const m=validate(meta);if(!m.materialEdit)throw Error('Brak poprawki.');m.materialEdit.phase='conflict';return validate(m);}
+ return {validate,bind,target,review,enter,done,discard,pending,editReview,editEnter,editDone,editDiscard,editConflict};
+});

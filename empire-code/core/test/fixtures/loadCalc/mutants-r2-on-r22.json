@@ -1,0 +1,128 @@
+[
+  {
+    "id": "PARTIAL_HAS_COMPUTED_CURRENT",
+    "violates": "PARTIAL must not carry a computed current",
+    "rejectedBy": "schema",
+    "schemaErrors": [
+      "$.current.status: const 'not_computed' expected, got 'computed'",
+      "$.demand.status: const 'complete' expected, got 'partial_diagnostic'"
+    ],
+    "invariantViolations": []
+  },
+  {
+    "id": "COMPLETE_WITH_UNRESOLVED_LOAD",
+    "violates": "unresolved coverage blocks completeness",
+    "rejectedBy": "schema",
+    "schemaErrors": [
+      "$.loadsCoverage[0].coverage: not-schema matched"
+    ],
+    "invariantViolations": []
+  },
+  {
+    "id": "COMPLETE_WITH_PENDING_RULE",
+    "violates": "pending rule cannot produce COMPLETE",
+    "rejectedBy": "schema",
+    "schemaErrors": [
+      "$.demand.lines[0].ruleStatus: not-schema matched"
+    ],
+    "invariantViolations": []
+  },
+  {
+    "id": "NEGATIVE_TOTAL_COMPLETE",
+    "violates": "non-negative demand",
+    "rejectedBy": "schema",
+    "schemaErrors": [
+      "$.demand.totalVA: minimum 0"
+    ],
+    "invariantViolations": []
+  },
+  {
+    "id": "ADEQUATE_WITH_NO_COMPARISON",
+    "violates": "adequacy requires comparisons",
+    "rejectedBy": "schema",
+    "schemaErrors": [
+      "$.existingCapacity.comparisons: minItems 1"
+    ],
+    "invariantViolations": []
+  },
+  {
+    "id": "NOT_ASSESSED_RETAINS_COMPARISON",
+    "violates": "absent verdict must not retain an operative comparison",
+    "rejectedBy": "schema",
+    "schemaErrors": [
+      "$.existingCapacity.comparisons: maxItems 0"
+    ],
+    "invariantViolations": []
+  },
+  {
+    "id": "ROUNDED_COMPARISON_VALUE",
+    "violates": "comparison must use the raw current (208.333..), not a display-rounded value",
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-05 comparison on None must copy the raw operative value exactly (got 208.3, operative 208.33333333333334)"
+    ]
+  },
+  {
+    "id": "DISPLAY_STRING_WRONG_PRECISION",
+    "violates": "display string must be derived from raw with the declared precision",
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-06 display.lineA = '208.33 A', expected '208.3 A'"
+    ]
+  },
+  {
+    "id": "LINE_ARITHMETIC_WRONG",
+    "violates": "typed line equation must hold",
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-03 convert_unit mismatch in norm",
+      "I-03 line existing125 operand != referenced line result (exact)"
+    ]
+  },
+  {
+    "id": "VERDICT_ON_UPPER_BOUND",
+    "violates": "adequate/inadequate require comparisonKind exact",
+    "rejectedBy": "schema",
+    "schemaErrors": [
+      "$.existingCapacity.comparisonKind: const 'exact' expected, got 'upper_bound'"
+    ],
+    "invariantViolations": []
+  },
+  {
+    "id": "ADEQUATE_WITH_FAILED_COMPARISON",
+    "violates": "adequate requires all comparisons satisfied",
+    "rejectedBy": "schema",
+    "schemaErrors": [
+      "$.existingCapacity.comparisons[0].satisfied: const True expected, got False"
+    ],
+    "invariantViolations": []
+  },
+  {
+    "id": "AMPS_LINE_LABELLED_VA",
+    "violates": "R-R1-02: amperes-path line operands must be A",
+    "rejectedBy": "invariant",
+    "schemaErrors": [],
+    "invariantViolations": [
+      "I-03 multiply mismatch in e_measured",
+      "I-14 existing line e_measured not bound to the envelope reading 100 A x 1.25"
+    ]
+  },
+  {
+    "id": "CONTRADICTORY_SUPPLY",
+    "violates": "topology <-> derived voltages/phases coupling",
+    "rejectedBy": "schema",
+    "schemaErrors": [
+      "$.supply.vLineToLine: const 240 expected, got 208",
+      "$.supply.phases: const 1 expected, got 3"
+    ]
+  },
+  {
+    "id": "L3_ON_SPLIT_PHASE",
+    "violates": "LEG_INVALID semantic rule (test T-S-34)",
+    "rejectedBy": "L3-specified (engine semantic rule; test T-S-34; NOT executed)",
+    "schemaErrors": []
+  }
+]

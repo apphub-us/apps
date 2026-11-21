@@ -1,0 +1,30 @@
+{
+  "name": "empire-code-private-pilot",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "routes": [],
+  "observability": {
+    "enabled": false
+  },
+  "vars": {
+    "EC_ALLOWED_EMAIL": "",
+    "EC_ORIGIN": ""
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PILOT_BUDGET",
+        "class_name": "PilotBudget"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["PilotBudget"]
+    }
+  ]
+}

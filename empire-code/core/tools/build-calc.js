@@ -1,0 +1,198 @@
+#!/usr/bin/env node
+'use strict';
+/**
+ * build-calc.js — inject the deterministic calculator engine into mobile.html.
+ *
+ * WHY INJECT RATHER THAN LINK
+ * ---------------------------
+ * mobile.html is a single-file offline PWA. Loading the engine with
+ * <script src="..."> would add a runtime network request and a new entry that
+ * sw.js must cache; if that cache list were ever out of step the app would work
+ * online and fail silently offline — the exact place where electricians need it.
+ * Injecting keeps one file, no new requests, and leaves sw.js untouched.
+ *
+ * HOW IT STAYS HONEST
+ * -------------------
+ * Module sources are embedded VERBATIM inside a tiny CommonJS shim. Nothing is
+ * rewritten, regex-stripped or reformatted, so the code executing in the
+ * browser is byte-for-byte the code the tests require(). Output is a pure
+ * function of the sources: no timestamps, no hashes of anything volatile, no
+ * directory scanning. Same inputs always produce the same bytes.
+ *
+ * Usage:
+ *   node tools/build-calc.js          write the block into mobile.html
+ *   node tools/build-calc.js --check  verify only; exit 1 if stale
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const ROOT = path.join(__dirname, '..');
+const APP = path.join(ROOT, 'mobile.html');
+
+const START = '<!-- EC-CALC:START — generated, do not edit by hand -->';
+const END = '<!-- EC-CALC:END -->';
+
+/**
+ * Explicit dependency order. NOT a directory scan — a glob would reorder on a
+ * different filesystem and silently produce a different bundle.
+ */
+const MODULES = [
+  { id: 'tables', file: 'calc/tables.js' },
+  { id: 'ampacity', file: 'calc/ampacity.js' },
+  { id: 'voltageDrop', file: 'calc/voltageDrop.js' },
+  { id: 'conduitFill', file: 'calc/conduitFill.js' },
+  { id: 'boxFill', file: 'calc/boxFill.js' },
+  { id: 'motor', file: 'calc/motor.js' },
+  { id: 'grounding', file: 'calc/grounding.js' },
+  { id: 'wireSizing', file: 'calc/wireSizing.js' },
+  { id: 'pullBox', file: 'calc/pullBox.js' },
+  // PBV2-13B-3: Layer 0 and Layer 2 ship in the same bundle so the browser
+  // uses the SAME sources as Node — never a second implementation.
+  { id: 'pullBoxEntryGeometry', file: 'standards/pullBoxEntryGeometry.js' },
+  { id: 'pullBoxLayout', file: 'layout/pullBoxLayout.js' },
+  // EC-CALC-2 / B2: the accepted B1-r1 Load Calc core (state, input, engine —
+  // dependency order; loadCalc.js requires './loadCalcState' and
+  // './loadCalcInput', which the shim resolves to these ids). Embedded
+  // verbatim like every other module: the browser runs the exact bytes the
+  // Node tests and the historical 128 pairs run.
+  { id: 'loadCalcState', file: 'calc/loadCalcState.js' },
+  { id: 'loadCalcInput', file: 'calc/loadCalcInput.js' },
+  { id: 'loadCalc', file: 'calc/loadCalc.js' },
+  // LC-22082 (accepted core R3 + state/store R2): the V2 request boundary, the isolated 220.82
+  // engine, the facade and the pure draft/storage helpers — dependency order from their actual
+  // require() statements (loadCalcInputV2 -> loadCalcInput; loadCalcOpt82 -> loadCalcInputV2,
+  // loadCalc; loadCalcFacade -> loadCalcInputV2, loadCalc, loadCalcOpt82; loadCalcStateV2 ->
+  // loadCalcInput, loadCalcState, loadCalcInputV2; loadCalcStorageV2 -> loadCalcInput,
+  // loadCalcState, loadCalcInputV2, loadCalcStateV2). Embedded verbatim like every other module.
+  { id: 'loadCalcInputV2', file: 'calc/loadCalcInputV2.js' },
+  { id: 'loadCalcOpt82', file: 'calc/loadCalcOpt82.js' },
+  { id: 'loadCalcFacade', file: 'calc/loadCalcFacade.js' },
+  { id: 'loadCalcStateV2', file: 'calc/loadCalcStateV2.js' },
+  { id: 'loadCalcStorageV2', file: 'calc/loadCalcStorageV2.js' },
+  // LC-SERVICE-UI-1: the unchanged R2 service sizing prototype, after its dependencies (it requires
+  // './loadCalcFacade.js' and './loadCalcInputV2.js'; the shim strips the extension). Embedded verbatim; the
+  // design preview panel renders its analysis and never re-implements it.
+  { id: 'loadCalcServiceSizing', file: 'calc/loadCalcServiceSizing.js' },
+  // LC-SERVICE-RESULT-STORE-1: the versioned historical record boundary follows its unchanged calculation dependencies.
+  { id: 'loadCalcServiceRecord', file: 'calc/loadCalcServiceRecord.js' },
+  // LC-JOB-CARD-1: the independent card model and injected store add no calculator dependencies.
+  { id: 'jobCard', file: 'jobs/jobCard.js' },
+  { id: 'jobCardStore', file: 'jobs/jobCardStore.js' },
+  { id: 'jobMeasurement', file: 'jobs/jobMeasurement.js' },
+  { id: 'jobMeasurementStore', file: 'jobs/jobMeasurementStore.js' },
+  { id: 'jobMaterial', file: 'jobs/jobMaterial.js' },
+  { id: 'jobMaterialStore', file: 'jobs/jobMaterialStore.js' },
+  { id: 'jobPhoto', file: 'jobs/jobPhoto.js' },
+  { id: 'jobPhotoFile', file: 'jobs/jobPhotoFile.js' },
+  { id: 'jobPhotoStore', file: 'jobs/jobPhotoStore.js' },
+  { id: 'jobArchive', file: 'jobs/jobArchive.js' },
+  { id: 'jobArchiveFile', file: 'jobs/jobArchiveFile.js' },
+  { id: 'jobArchiveSource', file: 'jobs/jobArchiveSource.js' },
+  { id: 'jobRestore', file: 'jobs/jobRestore.js' },
+  { id: 'jobRestoreStore', file: 'jobs/jobRestoreStore.js' },
+  { id: 'jobVoiceMaterials', file: 'jobs/jobVoiceMaterials.js' },
+  { id: 'jobVoiceIntent', file: 'jobs/jobVoiceIntent.js' },
+  { id: 'jobVoiceBatch', file: 'jobs/jobVoiceBatch.js' },
+];
+
+function readModule(mod) {
+  const file = path.join(ROOT, 'src', mod.file);
+  if (!fs.existsSync(file)) throw new Error(`missing module: ${file}`);
+  // Normalise line endings only. Content is otherwise untouched.
+  return fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n').replace(/\s+$/, '');
+}
+
+function buildBlock() {
+  const parts = MODULES.map((mod) => {
+    const src = readModule(mod);
+    return [
+      `  // ---- src/${mod.file} ----`,
+      `  __reg[${JSON.stringify(mod.id)}] = function (module, exports, require) {`,
+      src.split('\n').map((l) => (l ? '    ' + l : '')).join('\n'),
+      '  };',
+    ].join('\n');
+  });
+
+  return [
+    START,
+    '<script>',
+    '/* GENERATED by tools/build-calc.js — edit the src/*.js modules instead.',
+    '   Run `npm run build` after changing any calculator source.',
+    '   `npm run build:check` fails if this block is stale. */',
+    'window.EC = (function () {',
+    '  "use strict";',
+    '  var __reg = {}, __cache = {};',
+    '  function __require(p) {',
+    '    var key = String(p).replace(/^\\.\\//, "").replace(/\\.js$/, "");',
+    '    if (key === "../calc/loadCalcServiceRecord") key = "loadCalcServiceRecord";',
+    '    if (__cache[key]) return __cache[key].exports;',
+    '    if (!__reg[key]) throw new Error("EC: unknown module " + key);',
+    '    var m = { exports: {} };',
+    '    __cache[key] = m;',
+    '    __reg[key](m, m.exports, __require);',
+    '    return m.exports;',
+    '  }',
+    '',
+    parts.join('\n\n'),
+    '',
+    '  var api = {};',
+    MODULES.map((m) => `  api[${JSON.stringify(m.id)}] = __require(${JSON.stringify(m.id)});`).join('\n'),
+    '  return api;',
+    '})();',
+    '</script>',
+    END,
+  ].join('\n');
+}
+
+function main() {
+  const check = process.argv.includes('--check');
+
+  if (!fs.existsSync(APP)) {
+    console.error(`ERROR: cannot find ${APP}`);
+    console.error('mobile.html is expected in the repository root, beside package.json.');
+    process.exit(2);
+  }
+
+  const html = fs.readFileSync(APP, 'utf8');
+  const block = buildBlock();
+
+  const s = html.indexOf(START);
+  const e = html.indexOf(END);
+
+  if (s === -1 || e === -1) {
+    if (check) {
+      console.error('BUILD CHECK FAILED: markers not found in mobile.html.');
+      console.error('The calculator engine has never been injected. Run: npm run build');
+      process.exit(1);
+    }
+    console.error('ERROR: markers not found in mobile.html.');
+    console.error(`Insert these two lines where the engine should go:\n  ${START}\n  ${END}`);
+    process.exit(2);
+  }
+
+  const current = html.slice(s, e + END.length);
+
+  if (check) {
+    if (current === block) {
+      console.log('BUILD CHECK OK — mobile.html matches src/*.js modules');
+      process.exit(0);
+    }
+    console.error('BUILD CHECK FAILED — mobile.html is STALE.');
+    console.error('The injected engine does not match the current sources.');
+    console.error(`  generated block: ${block.length} bytes`);
+    console.error(`  block in app:    ${current.length} bytes`);
+    console.error('Run `npm run build` and commit mobile.html before deploying.');
+    process.exit(1);
+  }
+
+  if (current === block) {
+    console.log('mobile.html already up to date — nothing written.');
+    return;
+  }
+
+  fs.writeFileSync(APP, html.slice(0, s) + block + html.slice(e + END.length));
+  console.log(`Injected calculator engine into mobile.html (${block.length} bytes, ${MODULES.length} modules).`);
+}
+
+main();

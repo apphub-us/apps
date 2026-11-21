@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SparkyPro</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0A0A0A">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0A0A0A;
+    color: #e8e8e8;
+    font-family: 'IBM Plex Mono', monospace;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    letter-spacing: 6px;
+    color: #FFC700;
+    margin-bottom: 6px;
+  }
+
+  .tagline {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 60px;
+  }
+
+  .btn-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 260px;
+  }
+
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 18px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 4px;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+
+  .btn-mobile {
+    background: #FFC700;
+    color: #000;
+  }
+
+  .btn-web {
+    background: transparent;
+    color: #FFC700;
+    border: 2px solid #FFC700;
+  }
+</style>
+</head>
+<body>
+  <div class="logo">SparkyPro</div>
+  <div class="tagline">Electrician Field Assistant</div>
+  <div class="btn-wrap">
+    <a class="btn btn-mobile" href="mobile.html">MOBILE</a>
+    <a class="btn btn-web" href="index.html">WEB</a>
+  </div>
+</body>
+</html>

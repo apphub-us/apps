@@ -1,0 +1,30 @@
+# Private deployment config. Only the template wrangler.example.json is published.
+wrangler.json
+wrangler.jsonc
+wrangler.toml
+wrangler.*.json
+wrangler.*.jsonc
+wrangler.*.toml
+!wrangler.example.json
+
+# Local secrets and environment files.
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+
+# Tooling output.
+node_modules/
+.wrangler/
+
+# Evidence, runtime captures and user archives stay local.
+# Anchored to this directory on purpose, so nothing under tests/, candidate/,
+# input/ or core/ (fixtures, sources, generated worker modules) is ever hidden.
+/evidence/
+/runtime/
+/archives/
+/user-archives/
+/exports/
+*.ecjob
+!/tests/**/*.ecjob
+!/core/**/*.ecjob

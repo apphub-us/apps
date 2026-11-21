@@ -1,0 +1,3324 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "urn:empire-code:load-calc:b82-schema-r1",
+ "title": "Empire Code Load Calc \u2014 engine B82_core1 request/result (LC-22082-B0-CORE-1; proposed schema 3.3.0)",
+ "$comment": "Structural shapes only. Semantic invariants (family, bindings, E4, precedence) are enforced by tools/contract_invariants_82.py. The A schema r21 is untouched; A-derived definitions are copied, not referenced across files.",
+ "$defs": {
+  "ruleBasis": {
+   "type": "object",
+   "properties": {
+    "code": {
+     "const": "NYCEC-2025"
+    },
+    "base": {
+     "const": "NEC-2020"
+    },
+    "amendments": {
+     "const": "NYC-2025"
+    }
+   },
+   "required": [
+    "code",
+    "base",
+    "amendments"
+   ],
+   "additionalProperties": false
+  },
+  "provenance": {
+   "type": "object",
+   "properties": {
+    "source": {
+     "enum": [
+      "utility_data",
+      "recording_report",
+      "designer_declaration",
+      "legacy_record",
+      "other"
+     ]
+    },
+    "note": {
+     "type": [
+      "string",
+      "null"
+     ]
+    }
+   },
+   "required": [
+    "source"
+   ],
+   "additionalProperties": false
+  },
+  "declaredBool": {
+   "type": "object",
+   "properties": {
+    "value": {
+     "type": [
+      "boolean",
+      "null"
+     ]
+    },
+    "provenance": {
+     "$ref": "#/$defs/provenance"
+    }
+   },
+   "required": [
+    "value"
+   ],
+   "additionalProperties": false
+  },
+  "quantity": {
+   "type": "object",
+   "properties": {
+    "value": {
+     "type": "number"
+    },
+    "unit": {
+     "enum": [
+      "VA",
+      "kVA",
+      "kW",
+      "A",
+      "V",
+      "dimensionless"
+     ]
+    }
+   },
+   "required": [
+    "value",
+    "unit"
+   ],
+   "additionalProperties": false
+  },
+  "rating": {
+   "type": "object",
+   "properties": {
+    "kind": {
+     "enum": [
+      "va",
+      "w",
+      "amps_at_volts",
+      "hp"
+     ]
+    },
+    "value": {
+     "type": "number"
+    },
+    "volts": {
+     "type": [
+      "number",
+      "null"
+     ]
+    }
+   },
+   "required": [
+    "kind",
+    "value"
+   ],
+   "additionalProperties": false,
+   "$comment": "only kind='va' is computable; other kinds are accepted structurally so the engine reports UNSUPPORTED_RATING_KIND deterministically"
+  },
+  "legacyItem": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "name": {
+     "type": "string"
+    },
+    "va": {
+     "type": "number"
+    },
+    "category": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "id",
+    "name",
+    "va",
+    "category"
+   ],
+   "additionalProperties": false
+  },
+  "coversEntry": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "category": {
+     "enum": [
+      "range",
+      "oven",
+      "cooktop",
+      "dryer",
+      "water_heater",
+      "dishwasher",
+      "appliance_fixed_other",
+      "motor",
+      "ac",
+      "heat_pump_compressor",
+      "heat_pump_supplemental",
+      "electric_space_heat",
+      "thermal_storage_heat",
+      "evse",
+      "other",
+      null
+     ]
+    },
+    "classification": {
+     "enum": [
+      "confirmed",
+      "required"
+     ]
+    },
+    "rating": {
+     "$ref": "#/$defs/rating"
+    },
+    "quantity": {
+     "type": "integer",
+     "minimum": 1
+    },
+    "status": {
+     "enum": [
+      "existing",
+      "new",
+      null
+     ]
+    },
+    "continuous": {
+     "type": [
+      "boolean",
+      "null"
+     ]
+    },
+    "connection": {
+     "enum": [
+      "LL",
+      "LN",
+      "3PH",
+      null
+     ]
+    },
+    "leg": {
+     "enum": [
+      "L1",
+      "L2",
+      "L3",
+      null
+     ]
+    },
+    "separatelyControlledUnits": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "alms": {
+     "type": "object",
+     "properties": {
+      "present": {
+       "type": "boolean"
+      },
+      "maxLoadVA": {
+       "type": [
+        "number",
+        "null"
+       ]
+      }
+     },
+     "required": [
+      "present"
+     ],
+     "additionalProperties": false
+    }
+   },
+   "required": [
+    "id",
+    "category",
+    "classification",
+    "rating",
+    "quantity",
+    "status",
+    "continuous",
+    "connection",
+    "leg",
+    "separatelyControlledUnits",
+    "alms"
+   ],
+   "additionalProperties": false,
+   "$comment": "basis-relevant projection of a covered load; label and legacy are descriptive-only and excluded"
+  },
+  "newLoadBasis": {
+   "type": "object",
+   "properties": {
+    "method": {
+     "enum": [
+      "opt_220_82",
+      "existing_220_83",
+      "measured_220_87",
+      "standard_part_III",
+      "multifamily_220_84",
+      "other_stated",
+      null
+     ]
+    },
+    "ruleRefs": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "demandFactorsApplied": {
+     "type": [
+      "boolean",
+      "null"
+     ]
+    },
+    "continuousFactorApplied": {
+     "type": [
+      "boolean",
+      "null"
+     ]
+    },
+    "establishedForThisComparison": {
+     "type": [
+      "boolean",
+      "null"
+     ]
+    },
+    "calculatedBy": {
+     "enum": [
+      "designer",
+      "engineer",
+      "contractor",
+      "other",
+      null
+     ]
+    },
+    "provenance": {
+     "$ref": "#/$defs/provenance"
+    },
+    "note": {
+     "type": [
+      "string",
+      "null"
+     ]
+    }
+   },
+   "required": [
+    "method",
+    "ruleRefs",
+    "demandFactorsApplied",
+    "continuousFactorApplied",
+    "establishedForThisComparison",
+    "calculatedBy"
+   ],
+   "additionalProperties": false,
+   "$comment": "R-R1-04A: the tool applies no factor to precalculatedVA. An exact capacity verdict requires establishedForThisComparison=true (attestation that every applicable demand/continuous treatment is already inside the value); otherwise NEWLOAD_BASIS_UNQUALIFIED -> existingCapacity.not_assessed"
+  },
+  "newLoad": {
+   "type": "object",
+   "properties": {
+    "mode": {
+     "enum": [
+      "none",
+      "precalculated",
+      "from_loads",
+      null
+     ]
+    },
+    "precalculated": {
+     "anyOf": [
+      {
+       "type": "object",
+       "properties": {
+        "va": {
+         "type": [
+          "number",
+          "null"
+         ],
+         "minimum": 0,
+         "$comment": "R-R2-03: null = empty/unparsable entry"
+        },
+        "connection": {
+         "enum": [
+          "LL",
+          "LN",
+          "3PH",
+          null
+         ]
+        },
+        "leg": {
+         "enum": [
+          "L1",
+          "L2",
+          "L3",
+          null
+         ]
+        },
+        "continuous": {
+         "type": [
+          "boolean",
+          "null"
+         ]
+        },
+        "basis": {
+         "$ref": "#/$defs/newLoadBasis"
+        },
+        "covers": {
+         "type": "array",
+         "items": {
+          "type": "string"
+         }
+        },
+        "coversSnapshot": {
+         "type": [
+          "array",
+          "null"
+         ],
+         "items": {
+          "$ref": "#/$defs/coversEntry"
+         },
+         "$comment": "R-R2-02: canonical projection of the covered loads at entry time \u2014 sorted by id (codepoint order), basis-relevant fields only; compared as canonical JSON (sorted keys, no whitespace); any difference => AGGREGATE_STALE"
+        }
+       },
+       "required": [
+        "va",
+        "connection",
+        "leg",
+        "continuous",
+        "basis",
+        "covers",
+        "coversSnapshot"
+       ],
+       "additionalProperties": false
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "mode",
+    "precalculated"
+   ],
+   "additionalProperties": false,
+   "$comment": "R-R1-04B/R-R2-02 coverage: mode=none is valid only when no retained load has status=new; precalculated lists the new loads it covers (covers[], no duplicates) and stores coversSnapshot (canonical projection) so any basis-relevant edit is detected (AGGREGATE_STALE)"
+  },
+  "measurement": {
+   "type": "object",
+   "properties": {
+    "basis": {
+     "enum": [
+      "annual_max_demand",
+      "30d_recording_exception",
+      null
+     ]
+    },
+    "reading": {
+     "type": "object",
+     "properties": {
+      "value": {
+       "type": [
+        "number",
+        "null"
+       ],
+       "$comment": "R-R2-03: null = empty/unparsable form entry (adapter also reports parseErrors); never coerced to 0, never a previous value"
+      },
+      "unit": {
+       "enum": [
+        "VA",
+        "kVA",
+        "kW",
+        "A"
+       ]
+      }
+     },
+     "required": [
+      "value",
+      "unit"
+     ],
+     "additionalProperties": false
+    },
+    "readingsPerConductor": {
+     "type": [
+      "object",
+      "null"
+     ],
+     "properties": {
+      "L1": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "L2": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "L3": {
+       "type": [
+        "number",
+        "null"
+       ]
+      }
+     },
+     "additionalProperties": false
+    },
+    "readingScope": {
+     "enum": [
+      "highest_loaded_conductor",
+      "per_conductor",
+      "total_apparent_power",
+      null
+     ],
+     "$comment": "R-R1-03: what the reading represents; 'highest_loaded_conductor' means a single conductor value, never a total"
+    },
+    "powerFactor": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "annualDataAvailable": {
+     "type": "object",
+     "properties": {
+      "value": {
+       "type": [
+        "boolean",
+        "null"
+       ]
+      },
+      "provenance": {
+       "$ref": "#/$defs/provenance"
+      }
+     },
+     "required": [
+      "value"
+     ],
+     "additionalProperties": false
+    },
+    "periodMonths": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "periodDays": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "intervalMinutes": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "metric": {
+     "enum": [
+      "highest_avg_kw_15min",
+      "max_demand_kw",
+      "max_demand_kva",
+      "other",
+      null
+     ]
+    },
+    "continuousRecording": {
+     "type": "object",
+     "properties": {
+      "value": {
+       "type": [
+        "boolean",
+        "null"
+       ]
+      },
+      "provenance": {
+       "$ref": "#/$defs/provenance"
+      }
+     },
+     "required": [
+      "value"
+     ],
+     "additionalProperties": false
+    },
+    "instrument": {
+     "enum": [
+      "recording_ammeter",
+      "power_meter",
+      "utility_demand_meter",
+      "other",
+      null
+     ]
+    },
+    "connectedTo": {
+     "enum": [
+      "highest_loaded_conductor",
+      "each_conductor",
+      "unknown",
+      null
+     ]
+    },
+    "basedOnInitialLoading": {
+     "type": "object",
+     "properties": {
+      "value": {
+       "type": [
+        "boolean",
+        "null"
+       ]
+      },
+      "provenance": {
+       "$ref": "#/$defs/provenance"
+      }
+     },
+     "required": [
+      "value"
+     ],
+     "additionalProperties": false
+    },
+    "recordedWhileOccupied": {
+     "type": "object",
+     "properties": {
+      "value": {
+       "type": [
+        "boolean",
+        "null"
+       ]
+      },
+      "provenance": {
+       "$ref": "#/$defs/provenance"
+      }
+     },
+     "required": [
+      "value"
+     ],
+     "additionalProperties": false
+    },
+    "includesLargerOfHeatingOrCooling": {
+     "type": "object",
+     "properties": {
+      "value": {
+       "type": [
+        "boolean",
+        "null"
+       ]
+      },
+      "provenance": {
+       "$ref": "#/$defs/provenance"
+      }
+     },
+     "required": [
+      "value"
+     ],
+     "additionalProperties": false
+    },
+    "includesPeriodicSeasonalLoads": {
+     "type": "object",
+     "properties": {
+      "value": {
+       "type": [
+        "boolean",
+        "null"
+       ]
+      },
+      "provenance": {
+       "$ref": "#/$defs/provenance"
+      }
+     },
+     "required": [
+      "value"
+     ],
+     "additionalProperties": false
+    },
+    "hasRenewableEnergySystem": {
+     "type": "object",
+     "properties": {
+      "value": {
+       "type": [
+        "boolean",
+        "null"
+       ]
+      },
+      "provenance": {
+       "$ref": "#/$defs/provenance"
+      }
+     },
+     "required": [
+      "value"
+     ],
+     "additionalProperties": false
+    },
+    "hasPeakLoadShaving": {
+     "type": "object",
+     "properties": {
+      "value": {
+       "type": [
+        "boolean",
+        "null"
+       ]
+      },
+      "provenance": {
+       "$ref": "#/$defs/provenance"
+      }
+     },
+     "required": [
+      "value"
+     ],
+     "additionalProperties": false
+    },
+    "existing": {
+     "type": "object",
+     "properties": {
+      "serviceRatingA": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "feederAmpacityA": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "ocpdA": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "feederOcpPer240_4": {
+       "type": "object",
+       "properties": {
+        "value": {
+         "type": [
+          "boolean",
+          "null"
+         ]
+        },
+        "provenance": {
+         "$ref": "#/$defs/provenance"
+        }
+       },
+       "required": [
+        "value"
+       ],
+       "additionalProperties": false
+      },
+      "serviceOverloadPer230_90": {
+       "type": "object",
+       "properties": {
+        "value": {
+         "type": [
+          "boolean",
+          "null"
+         ]
+        },
+        "provenance": {
+         "$ref": "#/$defs/provenance"
+        }
+       },
+       "required": [
+        "value"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "additionalProperties": false
+    },
+    "newLoad": {
+     "$ref": "#/$defs/newLoad"
+    }
+   },
+   "required": [
+    "basis",
+    "reading",
+    "readingScope",
+    "newLoad"
+   ],
+   "additionalProperties": false
+  },
+  "migrationTransform": {
+   "type": "object",
+   "properties": {
+    "itemId": {
+     "type": "string"
+    },
+    "legacy": {
+     "$ref": "#/$defs/legacyItem"
+    },
+    "target": {
+     "enum": [
+      "loads",
+      "dwelling.laundryCircuits",
+      "dwelling.nycAcCircuitCount",
+      "none"
+     ]
+    },
+    "targetId": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "contribution": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "status": {
+     "enum": [
+      "applied",
+      "unresolved"
+     ]
+    },
+    "reason": {
+     "enum": [
+      "NOT_FINITE",
+      "OUT_OF_RANGE",
+      "NOT_INTEGER",
+      "UNKNOWN_ENUM",
+      "LEGACY_AMBIGUOUS",
+      "UNSUPPORTED_RATING_KIND",
+      "MISSING_FIELD",
+      "QUALIFICATION_UNKNOWN",
+      "QUALIFICATION_FAILED",
+      "CLASSIFICATION_REQUIRED",
+      "SCOPE_UNSUPPORTED",
+      "CAPABILITY_DISABLED",
+      "RULE_PENDING",
+      "LOAD_UNRESOLVED",
+      "MODEL_UNSUPPORTED",
+      "MODEL_DECLARATION_MISSING",
+      "SUPPLY_INCONSISTENT",
+      "LEG_INVALID",
+      "CONNECTION_INVALID",
+      "ASSOCIATION_UNKNOWN",
+      "NEWLOAD_BASIS_UNQUALIFIED",
+      "NEWLOAD_MODE_NONE_WITH_NEW_LOADS",
+      "NOT_COVERED_BY_AGGREGATE",
+      "AGGREGATE_STALE",
+      "COVERS_UNKNOWN_LOAD",
+      "DUPLICATE_ID",
+      "LEGACY_LAUNDRY_MERGED",
+      "PARSE_REJECTED",
+      null
+     ]
+    },
+    "note": {
+     "type": [
+      "string",
+      "null"
+     ]
+    }
+   },
+   "required": [
+    "itemId",
+    "legacy",
+    "target",
+    "targetId",
+    "contribution",
+    "status",
+    "reason"
+   ],
+   "additionalProperties": false
+  },
+  "migration": {
+   "type": "object",
+   "properties": {
+    "from": {
+     "const": 1
+    },
+    "savePolicy": {
+     "const": "save_as_copy"
+    },
+    "sourceRecord": {
+     "type": "object",
+     "properties": {
+      "method": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "voltage": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "scope": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "sqFt": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "appliances": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "hvac": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "ev": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "lcMeterVA": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "lcNumUnits": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "lcHouseLoads": {
+       "type": [
+        "string",
+        "null"
+       ]
+      }
+     },
+     "additionalProperties": false,
+     "$comment": "the raw v1 Favorites record, verbatim strings, kept whole"
+    },
+    "transforms": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/migrationTransform"
+     }
+    },
+    "unresolvedItems": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/migrationTransform"
+     }
+    },
+    "fieldMap": {
+     "type": "object",
+     "additionalProperties": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "$comment": "legacy field -> v3.2 path or null (kept raw only)"
+    },
+    "notes": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "required": [
+    "from",
+    "savePolicy",
+    "sourceRecord",
+    "transforms",
+    "unresolvedItems",
+    "fieldMap"
+   ],
+   "additionalProperties": false
+  },
+  "parseError": {
+   "type": "object",
+   "properties": {
+    "field": {
+     "type": "string"
+    },
+    "raw": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "code": {
+     "enum": [
+      "NOT_FINITE",
+      "NOT_INTEGER",
+      "OUT_OF_RANGE",
+      "UNKNOWN_ENUM",
+      "MISSING_FIELD",
+      "PARSE_REJECTED"
+     ]
+    }
+   },
+   "required": [
+    "field",
+    "raw",
+    "code"
+   ],
+   "additionalProperties": false
+  },
+  "problem": {
+   "type": "object",
+   "properties": {
+    "code": {
+     "enum": [
+      "NOT_FINITE",
+      "OUT_OF_RANGE",
+      "NOT_INTEGER",
+      "UNKNOWN_ENUM",
+      "LEGACY_AMBIGUOUS",
+      "UNSUPPORTED_RATING_KIND",
+      "MISSING_FIELD",
+      "QUALIFICATION_UNKNOWN",
+      "QUALIFICATION_FAILED",
+      "CLASSIFICATION_REQUIRED",
+      "SCOPE_UNSUPPORTED",
+      "CAPABILITY_DISABLED",
+      "RULE_PENDING",
+      "LOAD_UNRESOLVED",
+      "MODEL_UNSUPPORTED",
+      "MODEL_DECLARATION_MISSING",
+      "SUPPLY_INCONSISTENT",
+      "LEG_INVALID",
+      "CONNECTION_INVALID",
+      "ASSOCIATION_UNKNOWN",
+      "NEWLOAD_BASIS_UNQUALIFIED",
+      "NEWLOAD_MODE_NONE_WITH_NEW_LOADS",
+      "NOT_COVERED_BY_AGGREGATE",
+      "AGGREGATE_STALE",
+      "COVERS_UNKNOWN_LOAD",
+      "DUPLICATE_ID",
+      "LEGACY_LAUNDRY_MERGED",
+      "PARSE_REJECTED",
+      "RESOLUTION_EXCEEDED",
+      "HVAC_ARRANGEMENT_INCONSISTENT",
+      "PREMISE_STALE",
+      "INVENTORY_INCOMPLETE_DECLARED",
+      "IMPORTED_METHOD_UNCONFIRMED",
+      "MODEL_NOT_SELECTED"
+     ]
+    },
+    "field": {
+     "type": "string"
+    },
+    "layer": {
+     "enum": [
+      "input",
+      "demand",
+      "current",
+      "capacity"
+     ]
+    },
+    "source": {
+     "enum": [
+      "parser",
+      "engine",
+      "migration"
+     ]
+    },
+    "ruleRef": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "message": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "code",
+    "field",
+    "layer",
+    "source",
+    "message"
+   ],
+   "additionalProperties": false
+  },
+  "lineOperand": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "ref",
+    "quantity",
+    "loadId"
+   ],
+   "properties": {
+    "ref": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "quantity": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "value",
+      "unit"
+     ],
+     "properties": {
+      "value": {
+       "type": "number"
+      },
+      "unit": {
+       "enum": [
+        "VA",
+        "ft2",
+        "count"
+       ]
+      }
+     }
+    },
+    "loadId": {
+     "type": [
+      "string",
+      "null"
+     ]
+    }
+   }
+  },
+  "demandLine": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "id",
+    "label",
+    "op",
+    "operands",
+    "factor",
+    "unitFactor",
+    "percent",
+    "threshold",
+    "selected",
+    "controlUnitsRef",
+    "divisorV",
+    "powerFactor",
+    "conductor",
+    "bindings",
+    "result",
+    "ruleRef",
+    "amended",
+    "ruleStatus",
+    "loadIds"
+   ],
+   "properties": {
+    "id": {
+     "type": "string"
+    },
+    "label": {
+     "type": "string"
+    },
+    "op": {
+     "enum": [
+      "identity",
+      "multiply",
+      "divide_by_voltage",
+      "divide_by_sqrt3_voltage",
+      "sum",
+      "convert_unit",
+      "multiply_unit",
+      "min_cap",
+      "excess_over",
+      "multiply_percent",
+      "max_of",
+      "count_sum"
+     ]
+    },
+    "operands": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/lineOperand"
+     }
+    },
+    "factor": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "unitFactor": {
+     "oneOf": [
+      {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "value",
+        "unit"
+       ],
+       "properties": {
+        "value": {
+         "type": "number"
+        },
+        "unit": {
+         "enum": [
+          "VA_per_ft2",
+          "VA_per_count"
+         ]
+        }
+       }
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "percent": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "threshold": {
+     "oneOf": [
+      {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "value",
+        "unit",
+        "exactE4"
+       ],
+       "properties": {
+        "value": {
+         "type": "number"
+        },
+        "unit": {
+         "const": "VA"
+        },
+        "exactE4": {
+         "type": "integer"
+        }
+       }
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "selected": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "controlUnitsRef": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "divisorV": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "powerFactor": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "conductor": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "bindings": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/binding"
+     }
+    },
+    "result": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "value",
+      "unit",
+      "exactE4"
+     ],
+     "properties": {
+      "value": {
+       "type": "number"
+      },
+      "unit": {
+       "const": "VA"
+      },
+      "exactE4": {
+       "type": "integer",
+       "minimum": 0
+      }
+     }
+    },
+    "ruleRef": {
+     "type": "string"
+    },
+    "amended": {
+     "type": "boolean"
+    },
+    "ruleStatus": {
+     "enum": [
+      "verified",
+      "pending",
+      "user_supplied"
+     ]
+    },
+    "loadIds": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "comparison": {
+   "type": "object",
+   "properties": {
+    "conductor": {
+     "enum": [
+      "L1",
+      "L2",
+      "L3",
+      null
+     ]
+    },
+    "unit": {
+     "const": "A"
+    },
+    "demandValueRaw": {
+     "type": "number",
+     "minimum": 0
+    },
+    "ratingValue": {
+     "type": "number",
+     "exclusiveMinimum": 0
+    },
+    "ratingSource": {
+     "enum": [
+      "serviceRatingA",
+      "feederAmpacityA"
+     ]
+    },
+    "satisfied": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "conductor",
+    "unit",
+    "demandValueRaw",
+    "ratingValue",
+    "ratingSource",
+    "satisfied"
+   ],
+   "additionalProperties": false
+  },
+  "load": {
+   "type": "object",
+   "properties": {
+    "id": {
+     "type": "string",
+     "minLength": 1
+    },
+    "label": {
+     "type": "string"
+    },
+    "legacy": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/legacyItem"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "category": {
+     "enum": [
+      "range",
+      "oven",
+      "cooktop",
+      "dryer",
+      "water_heater",
+      "dishwasher",
+      "appliance_fixed_other",
+      "motor",
+      "ac",
+      "heat_pump_compressor",
+      "heat_pump_supplemental",
+      "electric_space_heat",
+      "thermal_storage_heat",
+      "evse",
+      "other",
+      null
+     ]
+    },
+    "classification": {
+     "enum": [
+      "confirmed",
+      "required"
+     ]
+    },
+    "rating": {
+     "$ref": "#/$defs/rating"
+    },
+    "quantity": {
+     "type": "integer",
+     "minimum": 1
+    },
+    "status": {
+     "enum": [
+      "existing",
+      "new",
+      null
+     ]
+    },
+    "continuous": {
+     "type": [
+      "boolean",
+      "null"
+     ]
+    },
+    "connection": {
+     "enum": [
+      "LL",
+      "LN",
+      "3PH",
+      null
+     ]
+    },
+    "leg": {
+     "enum": [
+      "L1",
+      "L2",
+      "L3",
+      null
+     ]
+    },
+    "separatelyControlledUnits": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "alms": {
+     "type": "object",
+     "properties": {
+      "present": {
+       "type": "boolean"
+      },
+      "maxLoadVA": {
+       "type": [
+        "number",
+        "null"
+       ]
+      }
+     },
+     "required": [
+      "present"
+     ],
+     "additionalProperties": false
+    },
+    "basisId": {
+     "type": "string",
+     "minLength": 1
+    },
+    "inclusion82": {
+     "oneOf": [
+      {
+       "$ref": "#/$defs/inclusion82"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "ratingCoverage82": {
+     "oneOf": [
+      {
+       "$ref": "#/$defs/ratingCoverage82"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "required": [
+    "basisId",
+    "category",
+    "classification",
+    "connection",
+    "continuous",
+    "id",
+    "inclusion82",
+    "leg",
+    "quantity",
+    "rating",
+    "ratingCoverage82",
+    "status"
+   ],
+   "additionalProperties": false
+  },
+  "LoadCalcInput": {
+   "type": "object",
+   "properties": {
+    "schemaVersion": {
+     "const": "3.3.0"
+    },
+    "ruleBasis": {
+     "$ref": "#/$defs/ruleBasis"
+    },
+    "purpose": {
+     "enum": [
+      "service",
+      "feeder",
+      null
+     ]
+    },
+    "occupancy": {
+     "enum": [
+      "dwelling_unit_house",
+      "dwelling_unit_apartment",
+      "multifamily_building",
+      "nondwelling",
+      null
+     ]
+    },
+    "supply": {
+     "type": "object",
+     "properties": {
+      "topology": {
+       "enum": [
+        "1ph_2w_120",
+        "1ph_2w_240",
+        "1ph_3w_120_240",
+        "1ph_3w_120_208_network",
+        "3ph_4w_208Y_120",
+        "3ph_4w_480Y_277",
+        "3ph_3w_480_delta",
+        "3ph_3w_240_delta",
+        "3ph_4w_240_delta_highleg",
+        "other",
+        null
+       ]
+      },
+      "vLineToLine": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "vLineToNeutral": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "phases": {
+       "enum": [
+        1,
+        3,
+        null
+       ]
+      },
+      "wires": {
+       "enum": [
+        2,
+        3,
+        4,
+        null
+       ]
+      }
+     },
+     "required": [
+      "topology",
+      "vLineToLine",
+      "vLineToNeutral",
+      "phases",
+      "wires"
+     ],
+     "additionalProperties": false,
+     "allOf": [
+      {
+       "if": {
+        "properties": {
+         "topology": {
+          "const": "1ph_2w_120"
+         }
+        },
+        "required": [
+         "topology"
+        ]
+       },
+       "then": {
+        "properties": {
+         "vLineToLine": {
+          "const": 120
+         },
+         "vLineToNeutral": {
+          "const": 120
+         },
+         "phases": {
+          "const": 1
+         },
+         "wires": {
+          "const": 2
+         }
+        }
+       }
+      },
+      {
+       "if": {
+        "properties": {
+         "topology": {
+          "const": "1ph_2w_240"
+         }
+        },
+        "required": [
+         "topology"
+        ]
+       },
+       "then": {
+        "properties": {
+         "vLineToLine": {
+          "const": 240
+         },
+         "vLineToNeutral": {
+          "type": "null"
+         },
+         "phases": {
+          "const": 1
+         },
+         "wires": {
+          "const": 2
+         }
+        }
+       }
+      },
+      {
+       "if": {
+        "properties": {
+         "topology": {
+          "const": "1ph_3w_120_240"
+         }
+        },
+        "required": [
+         "topology"
+        ]
+       },
+       "then": {
+        "properties": {
+         "vLineToLine": {
+          "const": 240
+         },
+         "vLineToNeutral": {
+          "const": 120
+         },
+         "phases": {
+          "const": 1
+         },
+         "wires": {
+          "const": 3
+         }
+        }
+       }
+      },
+      {
+       "if": {
+        "properties": {
+         "topology": {
+          "const": "1ph_3w_120_208_network"
+         }
+        },
+        "required": [
+         "topology"
+        ]
+       },
+       "then": {
+        "properties": {
+         "vLineToLine": {
+          "const": 208
+         },
+         "vLineToNeutral": {
+          "const": 120
+         },
+         "phases": {
+          "const": 1
+         },
+         "wires": {
+          "const": 3
+         }
+        }
+       }
+      },
+      {
+       "if": {
+        "properties": {
+         "topology": {
+          "const": "3ph_4w_208Y_120"
+         }
+        },
+        "required": [
+         "topology"
+        ]
+       },
+       "then": {
+        "properties": {
+         "vLineToLine": {
+          "const": 208
+         },
+         "vLineToNeutral": {
+          "const": 120
+         },
+         "phases": {
+          "const": 3
+         },
+         "wires": {
+          "const": 4
+         }
+        }
+       }
+      },
+      {
+       "if": {
+        "properties": {
+         "topology": {
+          "const": "3ph_4w_480Y_277"
+         }
+        },
+        "required": [
+         "topology"
+        ]
+       },
+       "then": {
+        "properties": {
+         "vLineToLine": {
+          "const": 480
+         },
+         "vLineToNeutral": {
+          "const": 277
+         },
+         "phases": {
+          "const": 3
+         },
+         "wires": {
+          "const": 4
+         }
+        }
+       }
+      },
+      {
+       "if": {
+        "properties": {
+         "topology": {
+          "const": "3ph_3w_480_delta"
+         }
+        },
+        "required": [
+         "topology"
+        ]
+       },
+       "then": {
+        "properties": {
+         "vLineToLine": {
+          "const": 480
+         },
+         "vLineToNeutral": {
+          "type": "null"
+         },
+         "phases": {
+          "const": 3
+         },
+         "wires": {
+          "const": 3
+         }
+        }
+       }
+      },
+      {
+       "if": {
+        "properties": {
+         "topology": {
+          "const": "3ph_3w_240_delta"
+         }
+        },
+        "required": [
+         "topology"
+        ]
+       },
+       "then": {
+        "properties": {
+         "vLineToLine": {
+          "const": 240
+         },
+         "vLineToNeutral": {
+          "type": "null"
+         },
+         "phases": {
+          "const": 3
+         },
+         "wires": {
+          "const": 3
+         }
+        }
+       }
+      },
+      {
+       "if": {
+        "properties": {
+         "topology": {
+          "const": "3ph_4w_240_delta_highleg"
+         }
+        },
+        "required": [
+         "topology"
+        ]
+       },
+       "then": {
+        "properties": {
+         "vLineToLine": {
+          "const": 240
+         },
+         "vLineToNeutral": {
+          "const": 120
+         },
+         "phases": {
+          "const": 3
+         },
+         "wires": {
+          "const": 4
+         }
+        }
+       }
+      },
+      {
+       "if": {
+        "properties": {
+         "topology": {
+          "enum": [
+           "other",
+           null
+          ]
+         }
+        }
+       },
+       "then": {
+        "properties": {
+         "vLineToLine": {
+          "type": "null"
+         },
+         "vLineToNeutral": {
+          "type": "null"
+         },
+         "phases": {
+          "type": "null"
+         },
+         "wires": {
+          "type": "null"
+         }
+        }
+       }
+      }
+     ]
+    },
+    "loadModel": {
+     "type": "object",
+     "properties": {
+      "kind": {
+       "enum": [
+        "single_2w",
+        "split_240_all_LL",
+        "split_240_balanced_LN",
+        "split_240_declared_legs",
+        "network_208_all_LL",
+        "network_208_balanced_LN",
+        "network_208_mixed",
+        "three_phase_balanced",
+        "unsupported",
+        null
+       ]
+      },
+      "declarations": {
+       "type": "object",
+       "properties": {
+        "unityPF": {
+         "type": "object",
+         "properties": {
+          "value": {
+           "type": [
+            "boolean",
+            "null"
+           ]
+          },
+          "provenance": {
+           "$ref": "#/$defs/provenance"
+          }
+         },
+         "required": [
+          "value"
+         ],
+         "additionalProperties": false
+        },
+        "balancedLN": {
+         "type": "object",
+         "properties": {
+          "value": {
+           "type": [
+            "boolean",
+            "null"
+           ]
+          },
+          "provenance": {
+           "$ref": "#/$defs/provenance"
+          }
+         },
+         "required": [
+          "value"
+         ],
+         "additionalProperties": false
+        },
+        "balanced3ph": {
+         "type": "object",
+         "properties": {
+          "value": {
+           "type": [
+            "boolean",
+            "null"
+           ]
+          },
+          "provenance": {
+           "$ref": "#/$defs/provenance"
+          }
+         },
+         "required": [
+          "value"
+         ],
+         "additionalProperties": false
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "kind",
+      "declarations"
+     ],
+     "additionalProperties": false
+    },
+    "method": {
+     "type": "object",
+     "properties": {
+      "selected": {
+       "enum": [
+        "opt_220_82",
+        "existing_220_83",
+        "measured_220_87",
+        "standard_part_III",
+        "multifamily_220_84",
+        null
+       ]
+      },
+      "guideRecommendation": {
+       "enum": [
+        "opt_220_82",
+        "existing_220_83",
+        "measured_220_87",
+        "standard_part_III",
+        "multifamily_220_84",
+        null
+       ]
+      },
+      "selectionSource": {
+       "enum": [
+        "guide",
+        "manual",
+        "legacy",
+        null
+       ]
+      },
+      "guideAnswers": {
+       "type": "object",
+       "properties": {
+        "houseFeeder": {
+         "enum": [
+          "yes100",
+          "no100",
+          null
+         ]
+        },
+        "aptFeeder": {
+         "enum": [
+          "yes100",
+          "no100",
+          null
+         ]
+        },
+        "houseState": {
+         "enum": [
+          "new",
+          "existing",
+          "meter",
+          null
+         ]
+        },
+        "bldgCooking": {
+         "enum": [
+          "yesall",
+          "noall",
+          null
+         ]
+        }
+       },
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "selected",
+      "guideRecommendation",
+      "selectionSource",
+      "guideAnswers"
+     ],
+     "additionalProperties": false
+    },
+    "dwelling": {
+     "type": "object",
+     "properties": {
+      "floorAreaFt2": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "smallApplianceCircuits": {
+       "type": [
+        "integer",
+        "null"
+       ]
+      },
+      "laundryCircuits": {
+       "type": [
+        "integer",
+        "null"
+       ]
+      },
+      "nycAcCircuitCount": {
+       "type": [
+        "integer",
+        "null"
+       ]
+      },
+      "existingDwelling": {
+       "type": [
+        "boolean",
+        "null"
+       ]
+      }
+     },
+     "required": [
+      "floorAreaFt2",
+      "smallApplianceCircuits",
+      "laundryCircuits",
+      "nycAcCircuitCount",
+      "existingDwelling"
+     ],
+     "additionalProperties": false
+    },
+    "loads": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/load"
+     }
+    },
+    "hvac": {
+     "type": "object",
+     "properties": {
+      "arrangement": {
+       "enum": [
+        "none",
+        "ac_only",
+        "heat_pump_no_supplemental",
+        "heat_pump_with_supplemental",
+        "electric_space_heat",
+        "thermal_storage",
+        "mixed_unknown",
+        null
+       ]
+      },
+      "supplementalInterlocked": {
+       "type": "object",
+       "properties": {
+        "value": {
+         "type": [
+          "boolean",
+          "null"
+         ]
+        },
+        "provenance": {
+         "$ref": "#/$defs/provenance"
+        }
+       },
+       "required": [
+        "value"
+       ],
+       "additionalProperties": false
+      },
+      "installingAdditionalHvac": {
+       "type": "object",
+       "properties": {
+        "value": {
+         "type": [
+          "boolean",
+          "null"
+         ]
+        },
+        "provenance": {
+         "$ref": "#/$defs/provenance"
+        }
+       },
+       "required": [
+        "value"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "arrangement",
+      "supplementalInterlocked",
+      "installingAdditionalHvac"
+     ],
+     "additionalProperties": false
+    },
+    "measurement": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/measurement"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "multifamily": {
+     "type": "object",
+     "properties": {
+      "unitCount": {
+       "type": [
+        "integer",
+        "null"
+       ]
+      },
+      "unitsIdentical": {
+       "type": [
+        "boolean",
+        "null"
+       ]
+      },
+      "unitGroups": {
+       "type": "array"
+      },
+      "allUnitsElectricCooking": {
+       "type": "object",
+       "properties": {
+        "value": {
+         "type": [
+          "boolean",
+          "null"
+         ]
+        },
+        "provenance": {
+         "$ref": "#/$defs/provenance"
+        }
+       },
+       "required": [
+        "value"
+       ],
+       "additionalProperties": false
+      },
+      "allUnitsElectricHeatOrAc": {
+       "type": "object",
+       "properties": {
+        "value": {
+         "type": [
+          "boolean",
+          "null"
+         ]
+        },
+        "provenance": {
+         "$ref": "#/$defs/provenance"
+        }
+       },
+       "required": [
+        "value"
+       ],
+       "additionalProperties": false
+      },
+      "singleFeederPerUnit": {
+       "type": "object",
+       "properties": {
+        "value": {
+         "type": [
+          "boolean",
+          "null"
+         ]
+        },
+        "provenance": {
+         "$ref": "#/$defs/provenance"
+        }
+       },
+       "required": [
+        "value"
+       ],
+       "additionalProperties": false
+      },
+      "houseLoads": {
+       "type": "object",
+       "properties": {
+        "mode": {
+         "enum": [
+          "part_III",
+          "entered_va",
+          null
+         ]
+        },
+        "va": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "items": {
+         "type": "array"
+        }
+       },
+       "required": [
+        "mode",
+        "va",
+        "items"
+       ],
+       "additionalProperties": false
+      }
+     },
+     "required": [
+      "unitCount",
+      "unitsIdentical",
+      "unitGroups",
+      "allUnitsElectricCooking",
+      "allUnitsElectricHeatOrAc",
+      "singleFeederPerUnit",
+      "houseLoads"
+     ],
+     "additionalProperties": false
+    },
+    "migration": {
+     "anyOf": [
+      {
+       "$ref": "#/$defs/migration"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "optional82": {
+     "$ref": "#/$defs/optional82"
+    }
+   },
+   "required": [
+    "dwelling",
+    "hvac",
+    "loadModel",
+    "loads",
+    "measurement",
+    "method",
+    "migration",
+    "multifamily",
+    "occupancy",
+    "optional82",
+    "purpose",
+    "ruleBasis",
+    "schemaVersion",
+    "supply"
+   ],
+   "additionalProperties": false
+  },
+  "RequestEnvelope": {
+   "type": "object",
+   "properties": {
+    "snapshot": {
+     "$ref": "#/$defs/LoadCalcInput"
+    },
+    "parseErrors": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/parseError"
+     }
+    },
+    "profileId": {
+     "enum": [
+      "A_measured_87_core"
+     ]
+    }
+   },
+   "required": [
+    "snapshot",
+    "parseErrors",
+    "profileId"
+   ],
+   "additionalProperties": false,
+   "$comment": "R-R1-05 parser boundary: the adapter parses DOM strings into typed fields; anything it cannot parse stays null in the snapshot and is reported in parseErrors. The engine is a pure function of the envelope."
+  },
+  "LoadCalcResult": {
+   "type": "object",
+   "properties": {
+    "schemaVersion": {
+     "const": "3.3.0"
+    },
+    "ruleBasis": {
+     "$ref": "#/$defs/ruleBasis"
+    },
+    "profileId": {
+     "enum": [
+      "B82_core1"
+     ]
+    },
+    "status": {
+     "enum": [
+      "EMPTY",
+      "UNSUPPORTED_SCOPE",
+      "BLOCKED_PENDING_RULE",
+      "INVALID_INPUT",
+      "INCOMPLETE_INPUT",
+      "UNQUALIFIED_METHOD",
+      "PARTIAL",
+      "COMPLETE"
+     ]
+    },
+    "problems": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/problem"
+     }
+    },
+    "loadsCoverage": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/coverageEntry82"
+     }
+    },
+    "demand": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "status",
+      "unit",
+      "totalVA",
+      "totalExactE4",
+      "totalOnConductorA",
+      "partialSubtotalVA",
+      "lines"
+     ],
+     "properties": {
+      "status": {
+       "enum": [
+        "complete",
+        "partial_diagnostic",
+        "not_computed"
+       ]
+      },
+      "unit": {
+       "const": "VA"
+      },
+      "totalVA": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "totalExactE4": {
+       "type": [
+        "integer",
+        "null"
+       ]
+      },
+      "totalOnConductorA": {
+       "type": "null"
+      },
+      "partialSubtotalVA": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "$ref": "#/$defs/demandLine"
+       }
+      }
+     }
+    },
+    "current": {
+     "type": "object",
+     "properties": {
+      "status": {
+       "enum": [
+        "computed",
+        "not_computed"
+       ]
+      },
+      "model": {
+       "enum": [
+        "split_240_balanced_LN",
+        null
+       ]
+      },
+      "formula": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "assumptions": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      },
+      "perConductorA": {
+       "type": [
+        "object",
+        "null"
+       ],
+       "properties": {
+        "L1": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "L2": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "L3": {
+         "type": [
+          "number",
+          "null"
+         ]
+        }
+       },
+       "additionalProperties": false
+      },
+      "lineA": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "neutralA": {
+       "type": "null"
+      },
+      "note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "status",
+      "model",
+      "formula",
+      "assumptions",
+      "perConductorA",
+      "lineA",
+      "neutralA",
+      "note"
+     ],
+     "additionalProperties": false,
+     "allOf": [
+      {
+       "if": {
+        "properties": {
+         "status": {
+          "const": "computed"
+         }
+        }
+       },
+       "then": {
+        "properties": {
+         "lineA": {
+          "type": "number",
+          "minimum": 0
+         },
+         "model": {
+          "type": "string"
+         },
+         "perConductorA": {
+          "type": "object"
+         }
+        }
+       }
+      },
+      {
+       "if": {
+        "properties": {
+         "status": {
+          "const": "not_computed"
+         }
+        }
+       },
+       "then": {
+        "properties": {
+         "lineA": {
+          "type": "null"
+         },
+         "perConductorA": {
+          "type": "null"
+         }
+        }
+       }
+      }
+     ]
+    },
+    "existingCapacity": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "status",
+      "comparisonKind",
+      "policy",
+      "ruleRef",
+      "blockingCode",
+      "comparisons",
+      "boundOutcome"
+     ],
+     "properties": {
+      "status": {
+       "const": "not_assessed"
+      },
+      "comparisonKind": {
+       "type": "null"
+      },
+      "policy": {
+       "type": "null"
+      },
+      "ruleRef": {
+       "type": "null"
+      },
+      "blockingCode": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "comparisons": {
+       "type": "array",
+       "maxItems": 0
+      },
+      "boundOutcome": {
+       "type": "null"
+      }
+     }
+    },
+    "requiredCapacity": {
+     "type": "object",
+     "properties": {
+      "status": {
+       "const": "not_assessed"
+      },
+      "note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "status",
+      "note"
+     ],
+     "additionalProperties": false,
+     "$comment": "R-R1-04C: no automatic Wire Sizer handoff in profile A; the actual consumer takes amperes (load/continuousLoad or continuousLoadA/noncontinuousLoadA)"
+    },
+    "rating": {
+     "type": "object",
+     "properties": {
+      "status": {
+       "const": "not_assessed"
+      },
+      "note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "status",
+      "note"
+     ],
+     "additionalProperties": false
+    },
+    "diagnostics": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "operative",
+      "generalConnectedVA",
+      "generalDemandVA",
+      "hvacGoverningLine",
+      "hvacCandidatesVA"
+     ],
+     "properties": {
+      "operative": {
+       "const": false
+      },
+      "generalConnectedVA": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "generalDemandVA": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "hvacGoverningLine": {
+       "type": [
+        "string",
+        "null"
+       ]
+      },
+      "hvacCandidatesVA": {
+       "type": "object"
+      }
+     }
+    },
+    "display": {
+     "type": "object",
+     "properties": {
+      "precision": {
+       "type": "object",
+       "properties": {
+        "amps": {
+         "type": "integer",
+         "minimum": 0
+        },
+        "va": {
+         "type": "integer",
+         "minimum": 0
+        }
+       },
+       "required": [
+        "amps",
+        "va"
+       ],
+       "additionalProperties": false
+      },
+      "rounding": {
+       "const": "half_away_from_zero"
+      },
+      "strings": {
+       "type": "object",
+       "additionalProperties": {
+        "type": "string"
+       }
+      },
+      "feedsComparison": {
+       "const": false
+      }
+     },
+     "required": [
+      "precision",
+      "rounding",
+      "strings",
+      "feedsComparison"
+     ],
+     "additionalProperties": false
+    },
+    "presentation": {
+     "type": "object",
+     "properties": {
+      "topologyLabel": {
+       "type": "string"
+      },
+      "showPerConductor": {
+       "type": "boolean"
+      },
+      "polesLabel": {
+       "enum": [
+        "2-pole",
+        "3-pole",
+        null
+       ]
+      },
+      "finalResultHeading": {
+       "type": "boolean",
+       "$comment": "true iff status COMPLETE (demand complete); it is NOT a verdict"
+      },
+      "verdictLabel": {
+       "enum": [
+        "adequate",
+        "inadequate",
+        "not_assessed",
+        null
+       ],
+       "$comment": "mirrors existingCapacity.status on COMPLETE; null otherwise"
+      }
+     },
+     "required": [
+      "topologyLabel",
+      "showPerConductor",
+      "polesLabel",
+      "finalResultHeading",
+      "verdictLabel"
+     ],
+     "additionalProperties": false
+    },
+    "references": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "ruleRef": {
+        "type": "string"
+       },
+       "amended": {
+        "type": "boolean"
+       },
+       "href": {
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "required": [
+       "ruleRef",
+       "amended",
+       "href"
+      ],
+      "additionalProperties": false
+     }
+    }
+   },
+   "required": [
+    "schemaVersion",
+    "ruleBasis",
+    "profileId",
+    "status",
+    "problems",
+    "loadsCoverage",
+    "demand",
+    "current",
+    "existingCapacity",
+    "requiredCapacity",
+    "rating",
+    "diagnostics",
+    "display",
+    "presentation",
+    "references"
+   ],
+   "additionalProperties": false
+  },
+  "inclusionBasis": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "basisId",
+    "category",
+    "quantity"
+   ],
+   "properties": {
+    "basisId": {
+     "type": "string",
+     "minLength": 1
+    },
+    "category": {
+     "enum": [
+      "range",
+      "oven",
+      "cooktop",
+      "dryer",
+      "water_heater",
+      "dishwasher",
+      "appliance_fixed_other",
+      "motor",
+      "ac",
+      "heat_pump_compressor",
+      "heat_pump_supplemental",
+      "electric_space_heat",
+      "thermal_storage_heat",
+      "evse",
+      "other",
+      null
+     ]
+    },
+    "quantity": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
+  },
+  "inclusion82": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "predicate",
+    "answer",
+    "basis"
+   ],
+   "properties": {
+    "predicate": {
+     "enum": [
+      "b3c_dryer_not_on_counted_laundry_circuit",
+      "b3a_fixed_or_specific_circuit"
+     ]
+    },
+    "answer": {
+     "enum": [
+      "not_on_counted_laundry_circuit",
+      "on_counted_laundry_circuit",
+      "fixed_or_permanently_connected",
+      "specific_circuit",
+      "on_counted_b2_circuit",
+      "none_of_these",
+      null
+     ]
+    },
+    "basis": {
+     "oneOf": [
+      {
+       "$ref": "#/$defs/inclusionBasis"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "allOf": [
+    {
+     "if": {
+      "properties": {
+       "answer": {
+        "type": "string"
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "basis": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "coverageBasis": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "basisId",
+    "category",
+    "quantity",
+    "rating"
+   ],
+   "properties": {
+    "basisId": {
+     "type": "string",
+     "minLength": 1
+    },
+    "category": {
+     "enum": [
+      "range",
+      "oven",
+      "cooktop",
+      "dryer",
+      "water_heater",
+      "dishwasher",
+      "appliance_fixed_other",
+      "motor",
+      "ac",
+      "heat_pump_compressor",
+      "heat_pump_supplemental",
+      "electric_space_heat",
+      "thermal_storage_heat",
+      "evse",
+      "other",
+      null
+     ]
+    },
+    "quantity": {
+     "type": "integer",
+     "minimum": 1
+    },
+    "rating": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "kind",
+      "value"
+     ],
+     "properties": {
+      "kind": {
+       "enum": [
+        "va",
+        "w",
+        "amps_at_volts",
+        "hp"
+       ]
+      },
+      "value": {
+       "type": "number"
+      }
+     }
+    }
+   }
+  },
+  "ratingCoverage82": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "value",
+    "basis"
+   ],
+   "properties": {
+    "value": {
+     "type": [
+      "boolean",
+      "null"
+     ]
+    },
+    "basis": {
+     "oneOf": [
+      {
+       "$ref": "#/$defs/coverageBasis"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "allOf": [
+    {
+     "if": {
+      "properties": {
+       "value": {
+        "type": "boolean"
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "basis": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "inventoryMember": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "id",
+    "basisId",
+    "category",
+    "quantity"
+   ],
+   "properties": {
+    "id": {
+     "type": "string",
+     "minLength": 1
+    },
+    "basisId": {
+     "type": "string",
+     "minLength": 1
+    },
+    "category": {
+     "enum": [
+      "range",
+      "oven",
+      "cooktop",
+      "dryer",
+      "water_heater",
+      "dishwasher",
+      "appliance_fixed_other",
+      "motor",
+      "ac",
+      "heat_pump_compressor",
+      "heat_pump_supplemental",
+      "electric_space_heat",
+      "thermal_storage_heat",
+      "evse",
+      "other",
+      null
+     ]
+    },
+    "quantity": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
+  },
+  "inventoryComplete": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "value",
+    "provenance",
+    "basis"
+   ],
+   "properties": {
+    "value": {
+     "type": [
+      "boolean",
+      "null"
+     ]
+    },
+    "provenance": {
+     "$ref": "#/$defs/provenance"
+    },
+    "basis": {
+     "oneOf": [
+      {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "members"
+       ],
+       "properties": {
+        "members": {
+         "type": "array",
+         "items": {
+          "$ref": "#/$defs/inventoryMember"
+         }
+        }
+       }
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "allOf": [
+    {
+     "if": {
+      "properties": {
+       "value": {
+        "type": "boolean"
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "basis": {
+        "type": "object"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "declaredNumber": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "value",
+    "provenance"
+   ],
+   "properties": {
+    "value": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "provenance": {
+     "$ref": "#/$defs/provenance"
+    }
+   }
+  },
+  "optional82": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "singleSupplySet",
+    "conductorAmpacityA",
+    "nycAcCentralExceptionAttested",
+    "laundryExceptionAttested",
+    "inventoryComplete"
+   ],
+   "properties": {
+    "singleSupplySet": {
+     "$ref": "#/$defs/declaredBool82"
+    },
+    "conductorAmpacityA": {
+     "$ref": "#/$defs/declaredNumber"
+    },
+    "nycAcCentralExceptionAttested": {
+     "$ref": "#/$defs/declaredBool82"
+    },
+    "laundryExceptionAttested": {
+     "$ref": "#/$defs/declaredBool82"
+    },
+    "inventoryComplete": {
+     "$ref": "#/$defs/inventoryComplete"
+    }
+   }
+  },
+  "context": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "importedFrom",
+    "methodConfirmedAfterImport"
+   ],
+   "properties": {
+    "importedFrom": {
+     "oneOf": [
+      {
+       "type": "object",
+       "additionalProperties": false,
+       "required": [
+        "lcv",
+        "profileId",
+        "schemaVersion"
+       ],
+       "properties": {
+        "lcv": {
+         "type": "integer",
+         "minimum": 1
+        },
+        "profileId": {
+         "type": "string"
+        },
+        "schemaVersion": {
+         "type": "string"
+        }
+       }
+      },
+      {
+       "type": "null"
+      }
+     ]
+    },
+    "methodConfirmedAfterImport": {
+     "type": "boolean"
+    }
+   }
+  },
+  "RequestV2": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "apiVersion",
+    "profileId",
+    "context",
+    "parseErrors",
+    "snapshot"
+   ],
+   "properties": {
+    "apiVersion": {
+     "const": 2
+    },
+    "profileId": {
+     "enum": [
+      "AB82_core1"
+     ]
+    },
+    "context": {
+     "$ref": "#/$defs/context"
+    },
+    "parseErrors": {
+     "type": "array",
+     "items": {
+      "$ref": "#/$defs/parseError"
+     }
+    },
+    "snapshot": {
+     "$ref": "#/$defs/LoadCalcInput"
+    }
+   }
+  },
+  "binding": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "kind",
+    "path"
+   ],
+   "properties": {
+    "kind": {
+     "enum": [
+      "va",
+      "area",
+      "count",
+      "control"
+     ]
+    },
+    "path": {
+     "type": "string"
+    },
+    "loadId": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "ratingValue": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "quantity": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "value": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "controlUnits": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   }
+  },
+  "coverageEntry82": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "loadId",
+    "coverage",
+    "ruleRef",
+    "reason",
+    "viaAggregate",
+    "candidate",
+    "governing",
+    "connectedVA",
+    "demandVA",
+    "demandFactorScope"
+   ],
+   "properties": {
+    "loadId": {
+     "type": "string"
+    },
+    "coverage": {
+     "enum": [
+      "counted",
+      "counted_via_aggregate",
+      "considered_not_governing",
+      "not_applicable_by_rule",
+      "unresolved"
+     ]
+    },
+    "ruleRef": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "reason": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "viaAggregate": {
+     "type": "boolean"
+    },
+    "candidate": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "governing": {
+     "type": [
+      "boolean",
+      "null"
+     ]
+    },
+    "connectedVA": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "demandVA": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "demandFactorScope": {
+     "enum": [
+      "aggregate_220_82_B",
+      "candidate_percent",
+      null
+     ]
+    }
+   }
+  },
+  "declaredBool82": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "value",
+    "provenance"
+   ],
+   "properties": {
+    "value": {
+     "type": [
+      "boolean",
+      "null"
+     ]
+    },
+    "provenance": {
+     "$ref": "#/$defs/provenance"
+    }
+   },
+   "$comment": "82-only declaration: provenance.source is required (SPEC-R2 \u00a72.3 'provenance: required'; PREMISES-R1 \u00a74A). The shared declaredBool keeps A's optional-provenance shape."
+  }
+ },
+ "oneOf": [
+  {
+   "$ref": "#/$defs/RequestV2"
+  },
+  {
+   "$ref": "#/$defs/LoadCalcResult"
+  }
+ ]
+}

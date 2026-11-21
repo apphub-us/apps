@@ -1,0 +1,3336 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://empirecode.app/schemas/ec-calc-2/a3/load-calc-v3.2.1.json",
+  "title": "Empire Code Load Calc — contract v3.2 r2.1 closure (EC-CALC-2 / A3) — specification only, no engine exists",
+  "$comment": "Rule basis NEC 2020 + NYC 2025 amendments. Validation layers: (1) strict JSON ingress, (2) this schema (structure + simple state couplings), (3) semantic input rules (problem codes), (4) contract invariant checker (contract_invariants_r2.py). JSON Schema does not prove load formulas.",
+  "$defs": {
+    "ruleBasis": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "const": "NYCEC-2025"
+        },
+        "base": {
+          "const": "NEC-2020"
+        },
+        "amendments": {
+          "const": "NYC-2025"
+        }
+      },
+      "required": [
+        "code",
+        "base",
+        "amendments"
+      ],
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "enum": [
+            "utility_data",
+            "recording_report",
+            "designer_declaration",
+            "legacy_record",
+            "other"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "declaredBool": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "quantity": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "enum": [
+            "VA",
+            "kVA",
+            "kW",
+            "A",
+            "V",
+            "dimensionless"
+          ]
+        }
+      },
+      "required": [
+        "value",
+        "unit"
+      ],
+      "additionalProperties": false
+    },
+    "rating": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "va",
+            "w",
+            "amps_at_volts",
+            "hp"
+          ]
+        },
+        "value": {
+          "type": "number"
+        },
+        "volts": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "additionalProperties": false,
+      "$comment": "only kind='va' is computable; other kinds are accepted structurally so the engine reports UNSUPPORTED_RATING_KIND deterministically"
+    },
+    "coversEntry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "range",
+            "oven",
+            "cooktop",
+            "dryer",
+            "water_heater",
+            "dishwasher",
+            "appliance_fixed_other",
+            "motor",
+            "ac",
+            "heat_pump_compressor",
+            "heat_pump_supplemental",
+            "electric_space_heat",
+            "thermal_storage_heat",
+            "evse",
+            "other",
+            null
+          ]
+        },
+        "classification": {
+          "enum": [
+            "confirmed",
+            "required"
+          ]
+        },
+        "rating": {
+          "$ref": "#/$defs/rating"
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "existing",
+            "new",
+            null
+          ]
+        },
+        "continuous": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "connection": {
+          "enum": [
+            "LL",
+            "LN",
+            "3PH",
+            null
+          ]
+        },
+        "leg": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3",
+            null
+          ]
+        },
+        "separatelyControlledUnits": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "alms": {
+          "type": "object",
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "maxLoadVA": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "present"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "classification",
+        "rating",
+        "quantity",
+        "status",
+        "continuous",
+        "connection",
+        "leg",
+        "separatelyControlledUnits",
+        "alms"
+      ],
+      "additionalProperties": false,
+      "$comment": "basis-relevant projection of a covered load; label and legacy are descriptive-only and excluded"
+    },
+    "legacyItem": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "va": {
+          "type": "number"
+        },
+        "category": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "va",
+        "category"
+      ],
+      "additionalProperties": false
+    },
+    "load": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string"
+        },
+        "legacy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/legacyItem"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "category": {
+          "enum": [
+            "range",
+            "oven",
+            "cooktop",
+            "dryer",
+            "water_heater",
+            "dishwasher",
+            "appliance_fixed_other",
+            "motor",
+            "ac",
+            "heat_pump_compressor",
+            "heat_pump_supplemental",
+            "electric_space_heat",
+            "thermal_storage_heat",
+            "evse",
+            "other",
+            null
+          ]
+        },
+        "classification": {
+          "enum": [
+            "confirmed",
+            "required"
+          ]
+        },
+        "rating": {
+          "$ref": "#/$defs/rating"
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "existing",
+            "new",
+            null
+          ]
+        },
+        "continuous": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "connection": {
+          "enum": [
+            "LL",
+            "LN",
+            "3PH",
+            null
+          ]
+        },
+        "leg": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3",
+            null
+          ]
+        },
+        "separatelyControlledUnits": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "alms": {
+          "type": "object",
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "maxLoadVA": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "present"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "classification",
+        "rating",
+        "quantity",
+        "status",
+        "continuous",
+        "connection",
+        "leg"
+      ],
+      "additionalProperties": false
+    },
+    "newLoadBasis": {
+      "type": "object",
+      "properties": {
+        "method": {
+          "enum": [
+            "opt_220_82",
+            "existing_220_83",
+            "measured_220_87",
+            "standard_part_III",
+            "multifamily_220_84",
+            "other_stated",
+            null
+          ]
+        },
+        "ruleRefs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "demandFactorsApplied": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "continuousFactorApplied": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "establishedForThisComparison": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "calculatedBy": {
+          "enum": [
+            "designer",
+            "engineer",
+            "contractor",
+            "other",
+            null
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "method",
+        "ruleRefs",
+        "demandFactorsApplied",
+        "continuousFactorApplied",
+        "establishedForThisComparison",
+        "calculatedBy"
+      ],
+      "additionalProperties": false,
+      "$comment": "R-R1-04A: the tool applies no factor to precalculatedVA. An exact capacity verdict requires establishedForThisComparison=true (attestation that every applicable demand/continuous treatment is already inside the value); otherwise NEWLOAD_BASIS_UNQUALIFIED -> existingCapacity.not_assessed"
+    },
+    "newLoad": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "none",
+            "precalculated",
+            "from_loads",
+            null
+          ]
+        },
+        "precalculated": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "va": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "$comment": "R-R2-03: null = empty/unparsable entry"
+                },
+                "connection": {
+                  "enum": [
+                    "LL",
+                    "LN",
+                    "3PH",
+                    null
+                  ]
+                },
+                "leg": {
+                  "enum": [
+                    "L1",
+                    "L2",
+                    "L3",
+                    null
+                  ]
+                },
+                "continuous": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "basis": {
+                  "$ref": "#/$defs/newLoadBasis"
+                },
+                "covers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "coversSnapshot": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "$ref": "#/$defs/coversEntry"
+                  },
+                  "$comment": "R-R2-02: canonical projection of the covered loads at entry time — sorted by id (codepoint order), basis-relevant fields only; compared as canonical JSON (sorted keys, no whitespace); any difference => AGGREGATE_STALE"
+                }
+              },
+              "required": [
+                "va",
+                "connection",
+                "leg",
+                "continuous",
+                "basis",
+                "covers",
+                "coversSnapshot"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "mode",
+        "precalculated"
+      ],
+      "additionalProperties": false,
+      "$comment": "R-R1-04B/R-R2-02 coverage: mode=none is valid only when no retained load has status=new; precalculated lists the new loads it covers (covers[], no duplicates) and stores coversSnapshot (canonical projection) so any basis-relevant edit is detected (AGGREGATE_STALE)"
+    },
+    "measurement": {
+      "type": "object",
+      "properties": {
+        "basis": {
+          "enum": [
+            "annual_max_demand",
+            "30d_recording_exception",
+            null
+          ]
+        },
+        "reading": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "$comment": "R-R2-03: null = empty/unparsable form entry (adapter also reports parseErrors); never coerced to 0, never a previous value"
+            },
+            "unit": {
+              "enum": [
+                "VA",
+                "kVA",
+                "kW",
+                "A"
+              ]
+            }
+          },
+          "required": [
+            "value",
+            "unit"
+          ],
+          "additionalProperties": false
+        },
+        "readingsPerConductor": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "L1": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "L2": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "L3": {
+              "type": [
+                "number",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "readingScope": {
+          "enum": [
+            "highest_loaded_conductor",
+            "per_conductor",
+            "total_apparent_power",
+            null
+          ],
+          "$comment": "R-R1-03: what the reading represents; 'highest_loaded_conductor' means a single conductor value, never a total"
+        },
+        "powerFactor": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "annualDataAvailable": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "provenance": {
+              "$ref": "#/$defs/provenance"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "periodMonths": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "periodDays": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "intervalMinutes": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "metric": {
+          "enum": [
+            "highest_avg_kw_15min",
+            "max_demand_kw",
+            "max_demand_kva",
+            "other",
+            null
+          ]
+        },
+        "continuousRecording": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "provenance": {
+              "$ref": "#/$defs/provenance"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "instrument": {
+          "enum": [
+            "recording_ammeter",
+            "power_meter",
+            "utility_demand_meter",
+            "other",
+            null
+          ]
+        },
+        "connectedTo": {
+          "enum": [
+            "highest_loaded_conductor",
+            "each_conductor",
+            "unknown",
+            null
+          ]
+        },
+        "basedOnInitialLoading": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "provenance": {
+              "$ref": "#/$defs/provenance"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "recordedWhileOccupied": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "provenance": {
+              "$ref": "#/$defs/provenance"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "includesLargerOfHeatingOrCooling": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "provenance": {
+              "$ref": "#/$defs/provenance"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "includesPeriodicSeasonalLoads": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "provenance": {
+              "$ref": "#/$defs/provenance"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "hasRenewableEnergySystem": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "provenance": {
+              "$ref": "#/$defs/provenance"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "hasPeakLoadShaving": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "provenance": {
+              "$ref": "#/$defs/provenance"
+            }
+          },
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "existing": {
+          "type": "object",
+          "properties": {
+            "serviceRatingA": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "feederAmpacityA": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "ocpdA": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "feederOcpPer240_4": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "provenance": {
+                  "$ref": "#/$defs/provenance"
+                }
+              },
+              "required": [
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "serviceOverloadPer230_90": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "provenance": {
+                  "$ref": "#/$defs/provenance"
+                }
+              },
+              "required": [
+                "value"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "newLoad": {
+          "$ref": "#/$defs/newLoad"
+        }
+      },
+      "required": [
+        "basis",
+        "reading",
+        "readingScope",
+        "newLoad"
+      ],
+      "additionalProperties": false
+    },
+    "migrationTransform": {
+      "type": "object",
+      "properties": {
+        "itemId": {
+          "type": "string"
+        },
+        "legacy": {
+          "$ref": "#/$defs/legacyItem"
+        },
+        "target": {
+          "enum": [
+            "loads",
+            "dwelling.laundryCircuits",
+            "dwelling.nycAcCircuitCount",
+            "none"
+          ]
+        },
+        "targetId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "contribution": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "applied",
+            "unresolved"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "NOT_FINITE",
+            "OUT_OF_RANGE",
+            "NOT_INTEGER",
+            "UNKNOWN_ENUM",
+            "LEGACY_AMBIGUOUS",
+            "UNSUPPORTED_RATING_KIND",
+            "MISSING_FIELD",
+            "QUALIFICATION_UNKNOWN",
+            "QUALIFICATION_FAILED",
+            "CLASSIFICATION_REQUIRED",
+            "SCOPE_UNSUPPORTED",
+            "CAPABILITY_DISABLED",
+            "RULE_PENDING",
+            "LOAD_UNRESOLVED",
+            "MODEL_UNSUPPORTED",
+            "MODEL_DECLARATION_MISSING",
+            "SUPPLY_INCONSISTENT",
+            "LEG_INVALID",
+            "CONNECTION_INVALID",
+            "ASSOCIATION_UNKNOWN",
+            "NEWLOAD_BASIS_UNQUALIFIED",
+            "NEWLOAD_MODE_NONE_WITH_NEW_LOADS",
+            "NOT_COVERED_BY_AGGREGATE",
+            "AGGREGATE_STALE",
+            "COVERS_UNKNOWN_LOAD",
+            "DUPLICATE_ID",
+            "LEGACY_LAUNDRY_MERGED",
+            "PARSE_REJECTED",
+            null
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "itemId",
+        "legacy",
+        "target",
+        "targetId",
+        "contribution",
+        "status",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "migration": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "const": 1
+        },
+        "savePolicy": {
+          "const": "save_as_copy"
+        },
+        "sourceRecord": {
+          "type": "object",
+          "properties": {
+            "method": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "voltage": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "scope": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sqFt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "appliances": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "hvac": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "ev": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lcMeterVA": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lcNumUnits": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "lcHouseLoads": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "$comment": "the raw v1 Favorites record, verbatim strings, kept whole"
+        },
+        "transforms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/migrationTransform"
+          }
+        },
+        "unresolvedItems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/migrationTransform"
+          }
+        },
+        "fieldMap": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "$comment": "legacy field -> v3.2 path or null (kept raw only)"
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "from",
+        "savePolicy",
+        "sourceRecord",
+        "transforms",
+        "unresolvedItems",
+        "fieldMap"
+      ],
+      "additionalProperties": false
+    },
+    "LoadCalcInput": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "3.2.1"
+        },
+        "ruleBasis": {
+          "$ref": "#/$defs/ruleBasis"
+        },
+        "purpose": {
+          "enum": [
+            "service",
+            "feeder",
+            null
+          ]
+        },
+        "occupancy": {
+          "enum": [
+            "dwelling_unit_house",
+            "dwelling_unit_apartment",
+            "multifamily_building",
+            "nondwelling",
+            null
+          ]
+        },
+        "supply": {
+          "type": "object",
+          "properties": {
+            "topology": {
+              "enum": [
+                "1ph_2w_120",
+                "1ph_2w_240",
+                "1ph_3w_120_240",
+                "1ph_3w_120_208_network",
+                "3ph_4w_208Y_120",
+                "3ph_4w_480Y_277",
+                "3ph_3w_480_delta",
+                "3ph_3w_240_delta",
+                "3ph_4w_240_delta_highleg",
+                "other",
+                null
+              ]
+            },
+            "vLineToLine": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "vLineToNeutral": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "phases": {
+              "enum": [
+                1,
+                3,
+                null
+              ]
+            },
+            "wires": {
+              "enum": [
+                2,
+                3,
+                4,
+                null
+              ]
+            }
+          },
+          "required": [
+            "topology",
+            "vLineToLine",
+            "vLineToNeutral",
+            "phases",
+            "wires"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "topology": {
+                    "const": "1ph_2w_120"
+                  }
+                },
+                "required": [
+                  "topology"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "vLineToLine": {
+                    "const": 120
+                  },
+                  "vLineToNeutral": {
+                    "const": 120
+                  },
+                  "phases": {
+                    "const": 1
+                  },
+                  "wires": {
+                    "const": 2
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "topology": {
+                    "const": "1ph_2w_240"
+                  }
+                },
+                "required": [
+                  "topology"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "vLineToLine": {
+                    "const": 240
+                  },
+                  "vLineToNeutral": {
+                    "type": "null"
+                  },
+                  "phases": {
+                    "const": 1
+                  },
+                  "wires": {
+                    "const": 2
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "topology": {
+                    "const": "1ph_3w_120_240"
+                  }
+                },
+                "required": [
+                  "topology"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "vLineToLine": {
+                    "const": 240
+                  },
+                  "vLineToNeutral": {
+                    "const": 120
+                  },
+                  "phases": {
+                    "const": 1
+                  },
+                  "wires": {
+                    "const": 3
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "topology": {
+                    "const": "1ph_3w_120_208_network"
+                  }
+                },
+                "required": [
+                  "topology"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "vLineToLine": {
+                    "const": 208
+                  },
+                  "vLineToNeutral": {
+                    "const": 120
+                  },
+                  "phases": {
+                    "const": 1
+                  },
+                  "wires": {
+                    "const": 3
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "topology": {
+                    "const": "3ph_4w_208Y_120"
+                  }
+                },
+                "required": [
+                  "topology"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "vLineToLine": {
+                    "const": 208
+                  },
+                  "vLineToNeutral": {
+                    "const": 120
+                  },
+                  "phases": {
+                    "const": 3
+                  },
+                  "wires": {
+                    "const": 4
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "topology": {
+                    "const": "3ph_4w_480Y_277"
+                  }
+                },
+                "required": [
+                  "topology"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "vLineToLine": {
+                    "const": 480
+                  },
+                  "vLineToNeutral": {
+                    "const": 277
+                  },
+                  "phases": {
+                    "const": 3
+                  },
+                  "wires": {
+                    "const": 4
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "topology": {
+                    "const": "3ph_3w_480_delta"
+                  }
+                },
+                "required": [
+                  "topology"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "vLineToLine": {
+                    "const": 480
+                  },
+                  "vLineToNeutral": {
+                    "type": "null"
+                  },
+                  "phases": {
+                    "const": 3
+                  },
+                  "wires": {
+                    "const": 3
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "topology": {
+                    "const": "3ph_3w_240_delta"
+                  }
+                },
+                "required": [
+                  "topology"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "vLineToLine": {
+                    "const": 240
+                  },
+                  "vLineToNeutral": {
+                    "type": "null"
+                  },
+                  "phases": {
+                    "const": 3
+                  },
+                  "wires": {
+                    "const": 3
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "topology": {
+                    "const": "3ph_4w_240_delta_highleg"
+                  }
+                },
+                "required": [
+                  "topology"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "vLineToLine": {
+                    "const": 240
+                  },
+                  "vLineToNeutral": {
+                    "const": 120
+                  },
+                  "phases": {
+                    "const": 3
+                  },
+                  "wires": {
+                    "const": 4
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "topology": {
+                    "enum": [
+                      "other",
+                      null
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "vLineToLine": {
+                    "type": "null"
+                  },
+                  "vLineToNeutral": {
+                    "type": "null"
+                  },
+                  "phases": {
+                    "type": "null"
+                  },
+                  "wires": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "loadModel": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "enum": [
+                "single_2w",
+                "split_240_all_LL",
+                "split_240_balanced_LN",
+                "split_240_declared_legs",
+                "network_208_all_LL",
+                "network_208_balanced_LN",
+                "network_208_mixed",
+                "three_phase_balanced",
+                "unsupported",
+                null
+              ]
+            },
+            "declarations": {
+              "type": "object",
+              "properties": {
+                "unityPF": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "provenance": {
+                      "$ref": "#/$defs/provenance"
+                    }
+                  },
+                  "required": [
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
+                "balancedLN": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "provenance": {
+                      "$ref": "#/$defs/provenance"
+                    }
+                  },
+                  "required": [
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
+                "balanced3ph": {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "provenance": {
+                      "$ref": "#/$defs/provenance"
+                    }
+                  },
+                  "required": [
+                    "value"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "kind",
+            "declarations"
+          ],
+          "additionalProperties": false
+        },
+        "method": {
+          "type": "object",
+          "properties": {
+            "selected": {
+              "enum": [
+                "opt_220_82",
+                "existing_220_83",
+                "measured_220_87",
+                "standard_part_III",
+                "multifamily_220_84",
+                null
+              ]
+            },
+            "guideRecommendation": {
+              "enum": [
+                "opt_220_82",
+                "existing_220_83",
+                "measured_220_87",
+                "standard_part_III",
+                "multifamily_220_84",
+                null
+              ]
+            },
+            "selectionSource": {
+              "enum": [
+                "guide",
+                "manual",
+                "legacy",
+                null
+              ]
+            },
+            "guideAnswers": {
+              "type": "object",
+              "properties": {
+                "houseFeeder": {
+                  "enum": [
+                    "yes100",
+                    "no100",
+                    null
+                  ]
+                },
+                "aptFeeder": {
+                  "enum": [
+                    "yes100",
+                    "no100",
+                    null
+                  ]
+                },
+                "houseState": {
+                  "enum": [
+                    "new",
+                    "existing",
+                    "meter",
+                    null
+                  ]
+                },
+                "bldgCooking": {
+                  "enum": [
+                    "yesall",
+                    "noall",
+                    null
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "selected",
+            "guideRecommendation",
+            "selectionSource",
+            "guideAnswers"
+          ],
+          "additionalProperties": false
+        },
+        "dwelling": {
+          "type": "object",
+          "properties": {
+            "floorAreaFt2": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "smallApplianceCircuits": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "laundryCircuits": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "nycAcCircuitCount": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "existingDwelling": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "floorAreaFt2",
+            "smallApplianceCircuits",
+            "laundryCircuits",
+            "nycAcCircuitCount",
+            "existingDwelling"
+          ],
+          "additionalProperties": false
+        },
+        "loads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/load"
+          }
+        },
+        "hvac": {
+          "type": "object",
+          "properties": {
+            "arrangement": {
+              "enum": [
+                "none",
+                "ac_only",
+                "heat_pump_no_supplemental",
+                "heat_pump_with_supplemental",
+                "electric_space_heat",
+                "thermal_storage",
+                "mixed_unknown",
+                null
+              ]
+            },
+            "supplementalInterlocked": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "provenance": {
+                  "$ref": "#/$defs/provenance"
+                }
+              },
+              "required": [
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "installingAdditionalHvac": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "provenance": {
+                  "$ref": "#/$defs/provenance"
+                }
+              },
+              "required": [
+                "value"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "arrangement",
+            "supplementalInterlocked",
+            "installingAdditionalHvac"
+          ],
+          "additionalProperties": false
+        },
+        "measurement": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/measurement"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "multifamily": {
+          "type": "object",
+          "properties": {
+            "unitCount": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "unitsIdentical": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "unitGroups": {
+              "type": "array"
+            },
+            "allUnitsElectricCooking": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "provenance": {
+                  "$ref": "#/$defs/provenance"
+                }
+              },
+              "required": [
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "allUnitsElectricHeatOrAc": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "provenance": {
+                  "$ref": "#/$defs/provenance"
+                }
+              },
+              "required": [
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "singleFeederPerUnit": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "provenance": {
+                  "$ref": "#/$defs/provenance"
+                }
+              },
+              "required": [
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "houseLoads": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "part_III",
+                    "entered_va",
+                    null
+                  ]
+                },
+                "va": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "items": {
+                  "type": "array"
+                }
+              },
+              "required": [
+                "mode",
+                "va",
+                "items"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "unitCount",
+            "unitsIdentical",
+            "unitGroups",
+            "allUnitsElectricCooking",
+            "allUnitsElectricHeatOrAc",
+            "singleFeederPerUnit",
+            "houseLoads"
+          ],
+          "additionalProperties": false
+        },
+        "migration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/migration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "ruleBasis",
+        "purpose",
+        "occupancy",
+        "supply",
+        "loadModel",
+        "method",
+        "dwelling",
+        "loads",
+        "hvac",
+        "measurement",
+        "multifamily",
+        "migration"
+      ],
+      "additionalProperties": false
+    },
+    "parseError": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "raw": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "code": {
+          "enum": [
+            "NOT_FINITE",
+            "NOT_INTEGER",
+            "OUT_OF_RANGE",
+            "UNKNOWN_ENUM",
+            "MISSING_FIELD",
+            "PARSE_REJECTED"
+          ]
+        }
+      },
+      "required": [
+        "field",
+        "raw",
+        "code"
+      ],
+      "additionalProperties": false
+    },
+    "RequestEnvelope": {
+      "type": "object",
+      "properties": {
+        "snapshot": {
+          "$ref": "#/$defs/LoadCalcInput"
+        },
+        "parseErrors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/parseError"
+          }
+        },
+        "profileId": {
+          "enum": [
+            "A_measured_87_core"
+          ]
+        }
+      },
+      "required": [
+        "snapshot",
+        "parseErrors",
+        "profileId"
+      ],
+      "additionalProperties": false,
+      "$comment": "R-R1-05 parser boundary: the adapter parses DOM strings into typed fields; anything it cannot parse stays null in the snapshot and is reported in parseErrors. The engine is a pure function of the envelope."
+    },
+    "problem": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "enum": [
+            "NOT_FINITE",
+            "OUT_OF_RANGE",
+            "NOT_INTEGER",
+            "UNKNOWN_ENUM",
+            "LEGACY_AMBIGUOUS",
+            "UNSUPPORTED_RATING_KIND",
+            "MISSING_FIELD",
+            "QUALIFICATION_UNKNOWN",
+            "QUALIFICATION_FAILED",
+            "CLASSIFICATION_REQUIRED",
+            "SCOPE_UNSUPPORTED",
+            "CAPABILITY_DISABLED",
+            "RULE_PENDING",
+            "LOAD_UNRESOLVED",
+            "MODEL_UNSUPPORTED",
+            "MODEL_DECLARATION_MISSING",
+            "SUPPLY_INCONSISTENT",
+            "LEG_INVALID",
+            "CONNECTION_INVALID",
+            "ASSOCIATION_UNKNOWN",
+            "NEWLOAD_BASIS_UNQUALIFIED",
+            "NEWLOAD_MODE_NONE_WITH_NEW_LOADS",
+            "NOT_COVERED_BY_AGGREGATE",
+            "AGGREGATE_STALE",
+            "COVERS_UNKNOWN_LOAD",
+            "DUPLICATE_ID",
+            "LEGACY_LAUNDRY_MERGED",
+            "PARSE_REJECTED"
+          ]
+        },
+        "field": {
+          "type": "string"
+        },
+        "layer": {
+          "enum": [
+            "input",
+            "demand",
+            "current",
+            "capacity"
+          ]
+        },
+        "source": {
+          "enum": [
+            "parser",
+            "engine",
+            "migration"
+          ]
+        },
+        "ruleRef": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "field",
+        "layer",
+        "source",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "lineOperand": {
+      "type": "object",
+      "properties": {
+        "ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "quantity": {
+          "$ref": "#/$defs/quantity"
+        }
+      },
+      "required": [
+        "ref",
+        "quantity"
+      ],
+      "additionalProperties": false
+    },
+    "demandLine": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "op": {
+          "enum": [
+            "identity",
+            "multiply",
+            "divide_by_voltage",
+            "divide_by_sqrt3_voltage",
+            "sum",
+            "convert_unit"
+          ]
+        },
+        "operands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/lineOperand"
+          },
+          "minItems": 1
+        },
+        "factor": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "divisorV": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "powerFactor": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "conductor": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3",
+            null
+          ]
+        },
+        "result": {
+          "$ref": "#/$defs/quantity"
+        },
+        "ruleRef": {
+          "type": "string"
+        },
+        "amended": {
+          "type": "boolean"
+        },
+        "ruleStatus": {
+          "enum": [
+            "verified",
+            "pending",
+            "user_supplied"
+          ]
+        },
+        "loadIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "op",
+        "operands",
+        "factor",
+        "divisorV",
+        "powerFactor",
+        "conductor",
+        "result",
+        "ruleRef",
+        "amended",
+        "ruleStatus",
+        "loadIds"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "const": "multiply"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "factor": {
+                "type": "number"
+              },
+              "divisorV": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "const": "divide_by_voltage"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "divisorV": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "factor": {
+                "type": "null"
+              },
+              "result": {
+                "properties": {
+                  "unit": {
+                    "const": "A"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "const": "divide_by_sqrt3_voltage"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "divisorV": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "factor": {
+                "type": "null"
+              },
+              "result": {
+                "properties": {
+                  "unit": {
+                    "const": "A"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "const": "sum"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "factor": {
+                "type": "null"
+              },
+              "divisorV": {
+                "type": "null"
+              },
+              "operands": {
+                "minItems": 2
+              }
+            }
+          }
+        }
+      ],
+      "$comment": "R-R1-02/R-R2-01: every line is a typed equation checked EXACTLY (IEEE double, declared order) by contract_invariants_r21.py: identity; multiply result=operand*factor; divide_by_voltage result(A)=operand(VA)/divisorV; divide_by_sqrt3_voltage result(A)=operand(VA)/(sqrt3*divisorV); sum; convert_unit kVA->VA x1000, kW->VA (x1000)/powerFactor. divisorV is always a supply voltage taken from the envelope"
+    },
+    "comparison": {
+      "type": "object",
+      "properties": {
+        "conductor": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3",
+            null
+          ]
+        },
+        "unit": {
+          "const": "A"
+        },
+        "demandValueRaw": {
+          "type": "number",
+          "minimum": 0
+        },
+        "ratingValue": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "ratingSource": {
+          "enum": [
+            "serviceRatingA",
+            "feederAmpacityA"
+          ]
+        },
+        "satisfied": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "conductor",
+        "unit",
+        "demandValueRaw",
+        "ratingValue",
+        "ratingSource",
+        "satisfied"
+      ],
+      "additionalProperties": false
+    },
+    "LoadCalcResult": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "3.2.1"
+        },
+        "ruleBasis": {
+          "$ref": "#/$defs/ruleBasis"
+        },
+        "profileId": {
+          "enum": [
+            "A_measured_87_core"
+          ]
+        },
+        "status": {
+          "enum": [
+            "EMPTY",
+            "UNSUPPORTED_SCOPE",
+            "BLOCKED_PENDING_RULE",
+            "INVALID_INPUT",
+            "INCOMPLETE_INPUT",
+            "UNQUALIFIED_METHOD",
+            "PARTIAL",
+            "COMPLETE"
+          ]
+        },
+        "problems": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/problem"
+          }
+        },
+        "loadsCoverage": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "loadId": {
+                "type": "string"
+              },
+              "coverage": {
+                "enum": [
+                  "counted",
+                  "counted_via_aggregate",
+                  "considered_not_governing",
+                  "not_applicable_by_rule",
+                  "unresolved"
+                ]
+              },
+              "ruleRef": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reason": {
+                "enum": [
+                  "NOT_FINITE",
+                  "OUT_OF_RANGE",
+                  "NOT_INTEGER",
+                  "UNKNOWN_ENUM",
+                  "LEGACY_AMBIGUOUS",
+                  "UNSUPPORTED_RATING_KIND",
+                  "MISSING_FIELD",
+                  "QUALIFICATION_UNKNOWN",
+                  "QUALIFICATION_FAILED",
+                  "CLASSIFICATION_REQUIRED",
+                  "SCOPE_UNSUPPORTED",
+                  "CAPABILITY_DISABLED",
+                  "RULE_PENDING",
+                  "LOAD_UNRESOLVED",
+                  "MODEL_UNSUPPORTED",
+                  "MODEL_DECLARATION_MISSING",
+                  "SUPPLY_INCONSISTENT",
+                  "LEG_INVALID",
+                  "CONNECTION_INVALID",
+                  "ASSOCIATION_UNKNOWN",
+                  "NEWLOAD_BASIS_UNQUALIFIED",
+                  "NEWLOAD_MODE_NONE_WITH_NEW_LOADS",
+                  "NOT_COVERED_BY_AGGREGATE",
+                  "AGGREGATE_STALE",
+                  "COVERS_UNKNOWN_LOAD",
+                  "DUPLICATE_ID",
+                  "LEGACY_LAUNDRY_MERGED",
+                  "PARSE_REJECTED",
+                  null
+                ]
+              },
+              "viaAggregate": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "loadId",
+              "coverage",
+              "ruleRef",
+              "reason",
+              "viaAggregate"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "demand": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "complete",
+                "partial_diagnostic",
+                "not_computed"
+              ]
+            },
+            "unit": {
+              "enum": [
+                "VA",
+                "A"
+              ]
+            },
+            "totalVA": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "totalOnConductorA": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "partialSubtotalVA": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "lines": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/demandLine"
+              }
+            }
+          },
+          "required": [
+            "status",
+            "unit",
+            "totalVA",
+            "totalOnConductorA",
+            "partialSubtotalVA",
+            "lines"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "complete"
+                  },
+                  "unit": {
+                    "const": "VA"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "totalVA": {
+                    "type": "number"
+                  },
+                  "totalOnConductorA": {
+                    "type": "null"
+                  },
+                  "partialSubtotalVA": {
+                    "type": "null"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "complete"
+                  },
+                  "unit": {
+                    "const": "A"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "totalOnConductorA": {
+                    "type": "number"
+                  },
+                  "totalVA": {
+                    "type": "null"
+                  },
+                  "partialSubtotalVA": {
+                    "type": "null"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "partial_diagnostic"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "totalVA": {
+                    "type": "null"
+                  },
+                  "totalOnConductorA": {
+                    "type": "null"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "not_computed"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "totalVA": {
+                    "type": "null"
+                  },
+                  "totalOnConductorA": {
+                    "type": "null"
+                  },
+                  "partialSubtotalVA": {
+                    "type": "null"
+                  },
+                  "lines": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "complete"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "lines": {
+                    "items": {
+                      "properties": {
+                        "ruleStatus": {
+                          "not": {
+                            "const": "pending"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "current": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "computed",
+                "not_computed"
+              ]
+            },
+            "model": {
+              "enum": [
+                "single_2w",
+                "split_240_all_LL",
+                "split_240_balanced_LN",
+                "split_240_declared_legs",
+                "network_208_all_LL",
+                "network_208_balanced_LN",
+                "network_208_mixed",
+                "three_phase_balanced",
+                "unsupported",
+                null
+              ]
+            },
+            "formula": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "assumptions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "perConductorA": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "properties": {
+                "L1": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "L2": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "L3": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              },
+              "additionalProperties": false
+            },
+            "lineA": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "neutralA": {
+              "type": "null"
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "model",
+            "formula",
+            "assumptions",
+            "perConductorA",
+            "lineA",
+            "neutralA",
+            "note"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "computed"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "lineA": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "perConductorA": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "not_computed"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "lineA": {
+                    "type": "null"
+                  },
+                  "perConductorA": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "existingCapacity": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "enum": [
+                "adequate",
+                "inadequate",
+                "not_assessed"
+              ]
+            },
+            "comparisonKind": {
+              "enum": [
+                "exact",
+                "upper_bound",
+                null
+              ]
+            },
+            "policy": {
+              "const": "raw_conservative"
+            },
+            "ruleRef": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "blockingCode": {
+              "enum": [
+                "NOT_FINITE",
+                "OUT_OF_RANGE",
+                "NOT_INTEGER",
+                "UNKNOWN_ENUM",
+                "LEGACY_AMBIGUOUS",
+                "UNSUPPORTED_RATING_KIND",
+                "MISSING_FIELD",
+                "QUALIFICATION_UNKNOWN",
+                "QUALIFICATION_FAILED",
+                "CLASSIFICATION_REQUIRED",
+                "SCOPE_UNSUPPORTED",
+                "CAPABILITY_DISABLED",
+                "RULE_PENDING",
+                "LOAD_UNRESOLVED",
+                "MODEL_UNSUPPORTED",
+                "MODEL_DECLARATION_MISSING",
+                "SUPPLY_INCONSISTENT",
+                "LEG_INVALID",
+                "CONNECTION_INVALID",
+                "ASSOCIATION_UNKNOWN",
+                "NEWLOAD_BASIS_UNQUALIFIED",
+                "NEWLOAD_MODE_NONE_WITH_NEW_LOADS",
+                "NOT_COVERED_BY_AGGREGATE",
+                "AGGREGATE_STALE",
+                "COVERS_UNKNOWN_LOAD",
+                "DUPLICATE_ID",
+                "LEGACY_LAUNDRY_MERGED",
+                "PARSE_REJECTED",
+                null
+              ]
+            },
+            "comparisons": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/comparison"
+              }
+            },
+            "boundOutcome": {
+              "enum": [
+                "bound_satisfied",
+                "bound_exceeded",
+                null
+              ]
+            }
+          },
+          "required": [
+            "status",
+            "comparisonKind",
+            "policy",
+            "ruleRef",
+            "blockingCode",
+            "comparisons",
+            "boundOutcome"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "adequate",
+                      "inadequate"
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "comparisonKind": {
+                    "const": "exact"
+                  },
+                  "comparisons": {
+                    "minItems": 1
+                  },
+                  "blockingCode": {
+                    "type": "null"
+                  },
+                  "boundOutcome": {
+                    "type": "null"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "adequate"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "comparisons": {
+                    "items": {
+                      "properties": {
+                        "satisfied": {
+                          "const": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "inadequate"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "comparisons": {
+                    "contains": {
+                      "properties": {
+                        "satisfied": {
+                          "const": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "status": {
+                    "const": "not_assessed"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "comparisons": {
+                    "maxItems": 0
+                  },
+                  "boundOutcome": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          ],
+          "$comment": "R-R1-01/03: verdicts compare RAW values (policy raw_conservative); adequate/inadequate only with comparisonKind=exact; upper_bound screening (if ever enabled) reports boundOutcome and never a verdict"
+        },
+        "requiredCapacity": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "not_assessed"
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "note"
+          ],
+          "additionalProperties": false,
+          "$comment": "R-R1-04C: no automatic Wire Sizer handoff in profile A; the actual consumer takes amperes (load/continuousLoad or continuousLoadA/noncontinuousLoadA)"
+        },
+        "rating": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "not_assessed"
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "status",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "diagnostics": {
+          "type": "object",
+          "properties": {
+            "operative": {
+              "const": false
+            },
+            "existingComponentVA": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "existingComponentAOnConductor": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "newLoadTermVA": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "continuityOfNewLoadKnown": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "upperBoundScreening": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "upper_bound"
+                },
+                "envelopeA": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "ratingValue": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "boundOutcome": {
+                  "enum": [
+                    "bound_satisfied",
+                    "bound_exceeded",
+                    null
+                  ]
+                },
+                "assumptions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "operative"
+          ],
+          "additionalProperties": false
+        },
+        "display": {
+          "type": "object",
+          "properties": {
+            "precision": {
+              "type": "object",
+              "properties": {
+                "amps": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "va": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "amps",
+                "va"
+              ],
+              "additionalProperties": false
+            },
+            "rounding": {
+              "const": "half_away_from_zero"
+            },
+            "strings": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "feedsComparison": {
+              "const": false
+            }
+          },
+          "required": [
+            "precision",
+            "rounding",
+            "strings",
+            "feedsComparison"
+          ],
+          "additionalProperties": false
+        },
+        "presentation": {
+          "type": "object",
+          "properties": {
+            "topologyLabel": {
+              "type": "string"
+            },
+            "showPerConductor": {
+              "type": "boolean"
+            },
+            "polesLabel": {
+              "enum": [
+                "2-pole",
+                "3-pole",
+                null
+              ]
+            },
+            "finalResultHeading": {
+              "type": "boolean",
+              "$comment": "true iff status COMPLETE (demand complete); it is NOT a verdict"
+            },
+            "verdictLabel": {
+              "enum": [
+                "adequate",
+                "inadequate",
+                "not_assessed",
+                null
+              ],
+              "$comment": "mirrors existingCapacity.status on COMPLETE; null otherwise"
+            }
+          },
+          "required": [
+            "topologyLabel",
+            "showPerConductor",
+            "polesLabel",
+            "finalResultHeading",
+            "verdictLabel"
+          ],
+          "additionalProperties": false
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ruleRef": {
+                "type": "string"
+              },
+              "amended": {
+                "type": "boolean"
+              },
+              "href": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "ruleRef",
+              "amended",
+              "href"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "ruleBasis",
+        "profileId",
+        "status",
+        "problems",
+        "loadsCoverage",
+        "demand",
+        "current",
+        "existingCapacity",
+        "requiredCapacity",
+        "rating",
+        "diagnostics",
+        "display",
+        "presentation",
+        "references"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "COMPLETE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "presentation": {
+                "properties": {
+                  "finalResultHeading": {
+                    "const": true
+                  },
+                  "verdictLabel": {
+                    "enum": [
+                      "adequate",
+                      "inadequate",
+                      "not_assessed"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "not": {
+                  "const": "COMPLETE"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "presentation": {
+                "properties": {
+                  "finalResultHeading": {
+                    "const": false
+                  },
+                  "verdictLabel": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "existingCapacity": {
+                "properties": {
+                  "status": {
+                    "const": "adequate"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "presentation": {
+                "properties": {
+                  "verdictLabel": {
+                    "const": "adequate"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "existingCapacity": {
+                "properties": {
+                  "status": {
+                    "const": "inadequate"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "presentation": {
+                "properties": {
+                  "verdictLabel": {
+                    "const": "inadequate"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "COMPLETE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "demand": {
+                "properties": {
+                  "status": {
+                    "const": "complete"
+                  }
+                }
+              },
+              "loadsCoverage": {
+                "items": {
+                  "properties": {
+                    "coverage": {
+                      "not": {
+                        "const": "unresolved"
+                      }
+                    }
+                  }
+                }
+              },
+              "problems": {
+                "items": {
+                  "properties": {
+                    "code": {
+                      "not": {
+                        "enum": [
+                          "LOAD_UNRESOLVED",
+                          "RULE_PENDING",
+                          "CAPABILITY_DISABLED",
+                          "SCOPE_UNSUPPORTED"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "PARTIAL"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "demand": {
+                "properties": {
+                  "status": {
+                    "const": "partial_diagnostic"
+                  }
+                }
+              },
+              "current": {
+                "properties": {
+                  "status": {
+                    "const": "not_computed"
+                  }
+                }
+              },
+              "existingCapacity": {
+                "properties": {
+                  "status": {
+                    "const": "not_assessed"
+                  }
+                }
+              },
+              "loadsCoverage": {
+                "contains": {
+                  "properties": {
+                    "coverage": {
+                      "const": "unresolved"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "EMPTY",
+                  "UNSUPPORTED_SCOPE",
+                  "BLOCKED_PENDING_RULE",
+                  "INVALID_INPUT",
+                  "INCOMPLETE_INPUT",
+                  "UNQUALIFIED_METHOD"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "demand": {
+                "properties": {
+                  "status": {
+                    "const": "not_computed"
+                  }
+                }
+              },
+              "current": {
+                "properties": {
+                  "status": {
+                    "const": "not_computed"
+                  }
+                }
+              },
+              "existingCapacity": {
+                "properties": {
+                  "status": {
+                    "const": "not_assessed"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "existingCapacity": {
+                "properties": {
+                  "status": {
+                    "enum": [
+                      "adequate",
+                      "inadequate"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "COMPLETE"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "current": {
+                "properties": {
+                  "status": {
+                    "const": "computed"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "demand": {
+                "properties": {
+                  "status": {
+                    "const": "complete"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/LoadCalcInput"
+    },
+    {
+      "$ref": "#/$defs/RequestEnvelope"
+    },
+    {
+      "$ref": "#/$defs/LoadCalcResult"
+    }
+  ]
+}

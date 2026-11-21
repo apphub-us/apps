@@ -1,0 +1,65 @@
+{
+  "application": "Empire Code",
+  "build": "PRIVATE-PILOT-3",
+  "publishedDate": "2026-11-21",
+  "sourceContentPin": "ab6d3aa893ddf3fcebc278039c8185e23f7afbefc1a6b7b611a34e6022574bda",
+  "entryUrl": "https://empirecode.app/",
+  "directAppUrl": "https://empire-code-private-pilot.szczepan-msg.workers.dev/",
+  "sourceTag": "private-pilot-3",
+  "sourceBranch": "release/private-pilot-3",
+  "developmentBranch": "develop",
+  "pagesBranch": "main",
+  "cloudVersion": "47f5e0df-a4a6-4347-b78f-498f91379da3",
+  "originalPrivateCandidatePin": "da1e02413abdc65f5fc4a581875f10dd409f248656a43326ee948a8e67dd8955",
+  "browserShellPin": "986db4f5927c0faedc51aae1f7cf2a42ce4c167aabe5dab5d3f574b493399fc5",
+  "runtimeSourcesUnchanged": true,
+  "privateDeploymentConfigPublished": false,
+  "publicationChanges": [
+    "Pages entry and fixed redirect",
+    "Public deployment template",
+    "Reproducible package scripts and docs",
+    "Four optional test baseline paths made portable"
+  ],
+  "currentChecks": {
+    "unitPass": 101,
+    "unitFail": 0,
+    "unitSkip": 0,
+    "buildMatchesDeployed": true,
+    "coreModulesMatchRuntime": true,
+    "entryEngines": [
+      "Chrome",
+      "WebKit"
+    ],
+    "entryCases": [
+      "fresh isolated profile",
+      "existing original service worker"
+    ],
+    "entryChecks": 34,
+    "realProviderCalls": 0,
+    "ownerProfileAccessed": false
+  },
+  "priorApplicationChecks": {
+    "browserScenarios": 38,
+    "source": "PRIVATE-PILOT-3 acceptance",
+    "audio": "Synthetic WebAudio through actual MediaRecorder, controlled model responses",
+    "realSpeechRecognitionAccepted": false,
+    "physicalIphoneAccepted": false
+  },
+  "referenceCore": {
+    "files": 228,
+    "legacyWhisperPayloadFilesExcluded": 12,
+    "licensesRetained": true,
+    "fullCoreTestsRerunForPublication": false
+  },
+  "codingModel": {
+    "model": "claude-fable-5-2",
+    "effort": "high",
+    "actualExecutionVerified": true
+  },
+  "storage": "Per browser and device. Access login is not cloud sync. Jobs .ecjob export/restore; conversations export separately.",
+  "nextMilestones": [
+    "Conversational notes through original job history",
+    "Conversational measurements through original measurement contracts",
+    "Source-grounded CodeChat"
+  ]
+}

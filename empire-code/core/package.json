@@ -1,0 +1,17 @@
+{
+  "name": "empire-code-calc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deterministic NEC/NYCEC calculation core for Empire Code. Pure functions, no DOM, no network.",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:verbose": "node --test --test-reporter=spec test/*.test.js",
+    "build": "node tools/build-calc.js",
+    "build:check": "node tools/build-calc.js --check",
+    "verify": "npm test && npm run build:check"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

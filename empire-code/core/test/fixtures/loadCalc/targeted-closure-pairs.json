@@ -1,0 +1,3935 @@
+[
+  {
+    "id": "AMP_ORPHAN_NEW_TERM",
+    "base": "T-N-16",
+    "classification": "negative",
+    "explanation": "n_L1 correctly contains 3600/120=30 A, but t_L1 ignores it and returns 125 instead of 155 A, changing inadequate to adequate. L2 remains 25 A. Original input declares unityPF=true.",
+    "envelopeValid": true,
+    "resultValid": true,
+    "invariantPass": true,
+    "rejected": false,
+    "envelopeErrors": [],
+    "schemaErrors": [],
+    "violations": [],
+    "shownDemand": 125.0,
+    "shownVerdict": "adequate",
+    "envelope": {
+      "snapshot": {
+        "schemaVersion": "3.2.1",
+        "ruleBasis": {
+          "code": "NYCEC-2025",
+          "base": "NEC-2020",
+          "amendments": "NYC-2025"
+        },
+        "purpose": "service",
+        "occupancy": "dwelling_unit_house",
+        "supply": {
+          "topology": "1ph_3w_120_240",
+          "vLineToLine": 240,
+          "vLineToNeutral": 120,
+          "phases": 1,
+          "wires": 3
+        },
+        "loadModel": {
+          "kind": "split_240_declared_legs",
+          "declarations": {
+            "unityPF": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          }
+        },
+        "method": {
+          "selected": "measured_220_87",
+          "guideRecommendation": null,
+          "selectionSource": "manual",
+          "guideAnswers": {}
+        },
+        "dwelling": {
+          "floorAreaFt2": null,
+          "smallApplianceCircuits": null,
+          "laundryCircuits": null,
+          "nycAcCircuitCount": null,
+          "existingDwelling": null
+        },
+        "loads": [],
+        "hvac": {
+          "arrangement": null,
+          "supplementalInterlocked": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "installingAdditionalHvac": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          }
+        },
+        "measurement": {
+          "basis": "30d_recording_exception",
+          "reading": {
+            "value": 100,
+            "unit": "A"
+          },
+          "readingsPerConductor": {
+            "L1": 100,
+            "L2": 20,
+            "L3": null
+          },
+          "readingScope": "per_conductor",
+          "powerFactor": null,
+          "annualDataAvailable": {
+            "value": false,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "periodMonths": null,
+          "periodDays": 30,
+          "intervalMinutes": 15,
+          "metric": "highest_avg_kw_15min",
+          "continuousRecording": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "instrument": "power_meter",
+          "connectedTo": "each_conductor",
+          "basedOnInitialLoading": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "recordedWhileOccupied": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesLargerOfHeatingOrCooling": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesPeriodicSeasonalLoads": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "hasRenewableEnergySystem": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "hasPeakLoadShaving": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "existing": {
+            "serviceRatingA": 150,
+            "feederAmpacityA": null,
+            "ocpdA": null,
+            "feederOcpPer240_4": {
+              "value": null,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            },
+            "serviceOverloadPer230_90": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          },
+          "newLoad": {
+            "mode": "precalculated",
+            "precalculated": {
+              "va": 3600,
+              "connection": "LN",
+              "leg": "L1",
+              "continuous": false,
+              "basis": {
+                "method": "other_stated",
+                "ruleRefs": [],
+                "demandFactorsApplied": true,
+                "continuousFactorApplied": null,
+                "establishedForThisComparison": true,
+                "calculatedBy": "designer",
+                "provenance": {
+                  "source": "designer_declaration",
+                  "note": null
+                },
+                "note": null
+              },
+              "covers": [],
+              "coversSnapshot": []
+            }
+          }
+        },
+        "multifamily": {
+          "unitCount": null,
+          "unitsIdentical": null,
+          "unitGroups": [],
+          "allUnitsElectricCooking": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "allUnitsElectricHeatOrAc": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "singleFeederPerUnit": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "houseLoads": {
+            "mode": null,
+            "va": null,
+            "items": []
+          }
+        },
+        "migration": null
+      },
+      "parseErrors": [],
+      "profileId": "A_measured_87_core"
+    },
+    "result": {
+      "schemaVersion": "3.2.1",
+      "ruleBasis": {
+        "code": "NYCEC-2025",
+        "base": "NEC-2020",
+        "amendments": "NYC-2025"
+      },
+      "profileId": "A_measured_87_core",
+      "status": "COMPLETE",
+      "problems": [],
+      "loadsCoverage": [],
+      "demand": {
+        "status": "complete",
+        "unit": "A",
+        "totalVA": null,
+        "totalOnConductorA": 125.0,
+        "partialSubtotalVA": null,
+        "lines": [
+          {
+            "id": "e_L1",
+            "label": "Existing maximum demand x 125 % on L1",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 100,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": 1.25,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 125.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "e_L2",
+            "label": "Existing maximum demand x 125 % on L2",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 20,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": 1.25,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L2",
+            "result": {
+              "value": 25.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "n_L1",
+            "label": "New L-N load 3600 VA / 120 V on L1",
+            "op": "divide_by_voltage",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 3600,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": 120,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 30.0,
+              "unit": "A"
+            },
+            "ruleRef": "user-supplied",
+            "amended": false,
+            "ruleStatus": "user_supplied",
+            "loadIds": []
+          },
+          {
+            "id": "t_L1",
+            "label": "Total on L1",
+            "op": "identity",
+            "operands": [
+              {
+                "ref": "e_L1",
+                "quantity": {
+                  "value": 125.0,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 125.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "governing",
+            "label": "Governing conductor total (L1)",
+            "op": "identity",
+            "operands": [
+              {
+                "ref": "t_L1",
+                "quantity": {
+                  "value": 125.0,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 125.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          }
+        ]
+      },
+      "current": {
+        "status": "not_computed",
+        "model": null,
+        "formula": null,
+        "assumptions": [],
+        "perConductorA": null,
+        "lineA": null,
+        "neutralA": null,
+        "note": "Neutral not calculated (220.61 not implemented)."
+      },
+      "existingCapacity": {
+        "status": "adequate",
+        "comparisonKind": "exact",
+        "policy": "raw_conservative",
+        "ruleRef": "220.87(2)",
+        "blockingCode": null,
+        "comparisons": [
+          {
+            "conductor": "L1",
+            "unit": "A",
+            "demandValueRaw": 125.0,
+            "ratingValue": 150,
+            "ratingSource": "serviceRatingA",
+            "satisfied": true
+          },
+          {
+            "conductor": "L2",
+            "unit": "A",
+            "demandValueRaw": 25.0,
+            "ratingValue": 150,
+            "ratingSource": "serviceRatingA",
+            "satisfied": true
+          }
+        ],
+        "boundOutcome": null
+      },
+      "requiredCapacity": {
+        "status": "not_assessed",
+        "note": "No automatic Wire Sizer handoff in profile A (actual consumer takes amperes load/continuousLoad or continuousLoadA/noncontinuousLoadA); future adapter needs its own approved contract."
+      },
+      "rating": {
+        "status": "not_assessed",
+        "note": "Automatic rating not assessed in profile A; 600 A remains a proposed future product ceiling only, not a NEC limit."
+      },
+      "diagnostics": {
+        "operative": false,
+        "existingComponentVA": null,
+        "existingComponentAOnConductor": 125.0,
+        "newLoadTermVA": 3600,
+        "continuityOfNewLoadKnown": false,
+        "upperBoundScreening": null
+      },
+      "display": {
+        "precision": {
+          "amps": 1,
+          "va": 0
+        },
+        "rounding": "half_away_from_zero",
+        "strings": {
+          "totalOnConductorA": "125.0 A",
+          "L1": "125.0 A",
+          "L2": "25.0 A"
+        },
+        "feedsComparison": false
+      },
+      "presentation": {
+        "topologyLabel": "120/240 V, 1-ph, 3-wire",
+        "showPerConductor": true,
+        "polesLabel": "2-pole",
+        "finalResultHeading": true,
+        "verdictLabel": "adequate"
+      },
+      "references": [
+        {
+          "ruleRef": "220.87",
+          "amended": true,
+          "href": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "AMP_WRONG_GOVERNING_AND_MISSING_COMPARISON",
+    "base": "T-N-16",
+    "classification": "negative",
+    "explanation": "All original per-conductor calculations stay correct (L1=155 A, L2=25 A); governing selects L2, the failing L1 comparison is omitted and the result claims adequate.",
+    "envelopeValid": true,
+    "resultValid": true,
+    "invariantPass": true,
+    "rejected": false,
+    "envelopeErrors": [],
+    "schemaErrors": [],
+    "violations": [],
+    "shownDemand": 25.0,
+    "shownVerdict": "adequate",
+    "envelope": {
+      "snapshot": {
+        "schemaVersion": "3.2.1",
+        "ruleBasis": {
+          "code": "NYCEC-2025",
+          "base": "NEC-2020",
+          "amendments": "NYC-2025"
+        },
+        "purpose": "service",
+        "occupancy": "dwelling_unit_house",
+        "supply": {
+          "topology": "1ph_3w_120_240",
+          "vLineToLine": 240,
+          "vLineToNeutral": 120,
+          "phases": 1,
+          "wires": 3
+        },
+        "loadModel": {
+          "kind": "split_240_declared_legs",
+          "declarations": {
+            "unityPF": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          }
+        },
+        "method": {
+          "selected": "measured_220_87",
+          "guideRecommendation": null,
+          "selectionSource": "manual",
+          "guideAnswers": {}
+        },
+        "dwelling": {
+          "floorAreaFt2": null,
+          "smallApplianceCircuits": null,
+          "laundryCircuits": null,
+          "nycAcCircuitCount": null,
+          "existingDwelling": null
+        },
+        "loads": [],
+        "hvac": {
+          "arrangement": null,
+          "supplementalInterlocked": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "installingAdditionalHvac": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          }
+        },
+        "measurement": {
+          "basis": "30d_recording_exception",
+          "reading": {
+            "value": 100,
+            "unit": "A"
+          },
+          "readingsPerConductor": {
+            "L1": 100,
+            "L2": 20,
+            "L3": null
+          },
+          "readingScope": "per_conductor",
+          "powerFactor": null,
+          "annualDataAvailable": {
+            "value": false,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "periodMonths": null,
+          "periodDays": 30,
+          "intervalMinutes": 15,
+          "metric": "highest_avg_kw_15min",
+          "continuousRecording": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "instrument": "power_meter",
+          "connectedTo": "each_conductor",
+          "basedOnInitialLoading": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "recordedWhileOccupied": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesLargerOfHeatingOrCooling": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesPeriodicSeasonalLoads": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "hasRenewableEnergySystem": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "hasPeakLoadShaving": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "existing": {
+            "serviceRatingA": 150,
+            "feederAmpacityA": null,
+            "ocpdA": null,
+            "feederOcpPer240_4": {
+              "value": null,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            },
+            "serviceOverloadPer230_90": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          },
+          "newLoad": {
+            "mode": "precalculated",
+            "precalculated": {
+              "va": 3600,
+              "connection": "LN",
+              "leg": "L1",
+              "continuous": false,
+              "basis": {
+                "method": "other_stated",
+                "ruleRefs": [],
+                "demandFactorsApplied": true,
+                "continuousFactorApplied": null,
+                "establishedForThisComparison": true,
+                "calculatedBy": "designer",
+                "provenance": {
+                  "source": "designer_declaration",
+                  "note": null
+                },
+                "note": null
+              },
+              "covers": [],
+              "coversSnapshot": []
+            }
+          }
+        },
+        "multifamily": {
+          "unitCount": null,
+          "unitsIdentical": null,
+          "unitGroups": [],
+          "allUnitsElectricCooking": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "allUnitsElectricHeatOrAc": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "singleFeederPerUnit": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "houseLoads": {
+            "mode": null,
+            "va": null,
+            "items": []
+          }
+        },
+        "migration": null
+      },
+      "parseErrors": [],
+      "profileId": "A_measured_87_core"
+    },
+    "result": {
+      "schemaVersion": "3.2.1",
+      "ruleBasis": {
+        "code": "NYCEC-2025",
+        "base": "NEC-2020",
+        "amendments": "NYC-2025"
+      },
+      "profileId": "A_measured_87_core",
+      "status": "COMPLETE",
+      "problems": [],
+      "loadsCoverage": [],
+      "demand": {
+        "status": "complete",
+        "unit": "A",
+        "totalVA": null,
+        "totalOnConductorA": 25.0,
+        "partialSubtotalVA": null,
+        "lines": [
+          {
+            "id": "e_L1",
+            "label": "Existing maximum demand x 125 % on L1",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 100,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": 1.25,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 125.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "e_L2",
+            "label": "Existing maximum demand x 125 % on L2",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 20,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": 1.25,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L2",
+            "result": {
+              "value": 25.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "n_L1",
+            "label": "New L-N load 3600 VA / 120 V on L1",
+            "op": "divide_by_voltage",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 3600,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": 120,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 30.0,
+              "unit": "A"
+            },
+            "ruleRef": "user-supplied",
+            "amended": false,
+            "ruleStatus": "user_supplied",
+            "loadIds": []
+          },
+          {
+            "id": "t_L1",
+            "label": "Total on L1",
+            "op": "sum",
+            "operands": [
+              {
+                "ref": "e_L1",
+                "quantity": {
+                  "value": 125.0,
+                  "unit": "A"
+                }
+              },
+              {
+                "ref": "n_L1",
+                "quantity": {
+                  "value": 30.0,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 155.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "governing",
+            "label": "Governing conductor total (L2)",
+            "op": "identity",
+            "operands": [
+              {
+                "ref": "e_L2",
+                "quantity": {
+                  "value": 25.0,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L2",
+            "result": {
+              "value": 25.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          }
+        ]
+      },
+      "current": {
+        "status": "not_computed",
+        "model": null,
+        "formula": null,
+        "assumptions": [],
+        "perConductorA": null,
+        "lineA": null,
+        "neutralA": null,
+        "note": "Neutral not calculated (220.61 not implemented)."
+      },
+      "existingCapacity": {
+        "status": "adequate",
+        "comparisonKind": "exact",
+        "policy": "raw_conservative",
+        "ruleRef": "220.87(2)",
+        "blockingCode": null,
+        "comparisons": [
+          {
+            "conductor": "L2",
+            "unit": "A",
+            "demandValueRaw": 25.0,
+            "ratingValue": 150,
+            "ratingSource": "serviceRatingA",
+            "satisfied": true
+          }
+        ],
+        "boundOutcome": null
+      },
+      "requiredCapacity": {
+        "status": "not_assessed",
+        "note": "No automatic Wire Sizer handoff in profile A (actual consumer takes amperes load/continuousLoad or continuousLoadA/noncontinuousLoadA); future adapter needs its own approved contract."
+      },
+      "rating": {
+        "status": "not_assessed",
+        "note": "Automatic rating not assessed in profile A; 600 A remains a proposed future product ceiling only, not a NEC limit."
+      },
+      "diagnostics": {
+        "operative": false,
+        "existingComponentVA": null,
+        "existingComponentAOnConductor": 125.0,
+        "newLoadTermVA": 3600,
+        "continuityOfNewLoadKnown": false,
+        "upperBoundScreening": null
+      },
+      "display": {
+        "precision": {
+          "amps": 1,
+          "va": 0
+        },
+        "rounding": "half_away_from_zero",
+        "strings": {
+          "totalOnConductorA": "25.0 A",
+          "L1": "155.0 A",
+          "L2": "25.0 A"
+        },
+        "feedsComparison": false
+      },
+      "presentation": {
+        "topologyLabel": "120/240 V, 1-ph, 3-wire",
+        "showPerConductor": true,
+        "polesLabel": "2-pole",
+        "finalResultHeading": true,
+        "verdictLabel": "adequate"
+      },
+      "references": [
+        {
+          "ruleRef": "220.87",
+          "amended": true,
+          "href": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "AMP_TERM_ASSOCIATION_NOT_CONNECTED_TO_TOTAL",
+    "base": "T-N-16",
+    "classification": "negative",
+    "explanation": "Precalculated new term now belongs to L2 and its conductor label says L2, but t_L1 still includes that term and reports 155 A/inadequate rather than L1=125, L2=55.",
+    "envelopeValid": true,
+    "resultValid": true,
+    "invariantPass": true,
+    "rejected": false,
+    "envelopeErrors": [],
+    "schemaErrors": [],
+    "violations": [],
+    "shownDemand": 155.0,
+    "shownVerdict": "inadequate",
+    "envelope": {
+      "snapshot": {
+        "schemaVersion": "3.2.1",
+        "ruleBasis": {
+          "code": "NYCEC-2025",
+          "base": "NEC-2020",
+          "amendments": "NYC-2025"
+        },
+        "purpose": "service",
+        "occupancy": "dwelling_unit_house",
+        "supply": {
+          "topology": "1ph_3w_120_240",
+          "vLineToLine": 240,
+          "vLineToNeutral": 120,
+          "phases": 1,
+          "wires": 3
+        },
+        "loadModel": {
+          "kind": "split_240_declared_legs",
+          "declarations": {
+            "unityPF": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          }
+        },
+        "method": {
+          "selected": "measured_220_87",
+          "guideRecommendation": null,
+          "selectionSource": "manual",
+          "guideAnswers": {}
+        },
+        "dwelling": {
+          "floorAreaFt2": null,
+          "smallApplianceCircuits": null,
+          "laundryCircuits": null,
+          "nycAcCircuitCount": null,
+          "existingDwelling": null
+        },
+        "loads": [],
+        "hvac": {
+          "arrangement": null,
+          "supplementalInterlocked": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "installingAdditionalHvac": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          }
+        },
+        "measurement": {
+          "basis": "30d_recording_exception",
+          "reading": {
+            "value": 100,
+            "unit": "A"
+          },
+          "readingsPerConductor": {
+            "L1": 100,
+            "L2": 20,
+            "L3": null
+          },
+          "readingScope": "per_conductor",
+          "powerFactor": null,
+          "annualDataAvailable": {
+            "value": false,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "periodMonths": null,
+          "periodDays": 30,
+          "intervalMinutes": 15,
+          "metric": "highest_avg_kw_15min",
+          "continuousRecording": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "instrument": "power_meter",
+          "connectedTo": "each_conductor",
+          "basedOnInitialLoading": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "recordedWhileOccupied": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesLargerOfHeatingOrCooling": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesPeriodicSeasonalLoads": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "hasRenewableEnergySystem": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "hasPeakLoadShaving": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "existing": {
+            "serviceRatingA": 150,
+            "feederAmpacityA": null,
+            "ocpdA": null,
+            "feederOcpPer240_4": {
+              "value": null,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            },
+            "serviceOverloadPer230_90": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          },
+          "newLoad": {
+            "mode": "precalculated",
+            "precalculated": {
+              "va": 3600,
+              "connection": "LN",
+              "leg": "L2",
+              "continuous": false,
+              "basis": {
+                "method": "other_stated",
+                "ruleRefs": [],
+                "demandFactorsApplied": true,
+                "continuousFactorApplied": null,
+                "establishedForThisComparison": true,
+                "calculatedBy": "designer",
+                "provenance": {
+                  "source": "designer_declaration",
+                  "note": null
+                },
+                "note": null
+              },
+              "covers": [],
+              "coversSnapshot": []
+            }
+          }
+        },
+        "multifamily": {
+          "unitCount": null,
+          "unitsIdentical": null,
+          "unitGroups": [],
+          "allUnitsElectricCooking": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "allUnitsElectricHeatOrAc": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "singleFeederPerUnit": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "houseLoads": {
+            "mode": null,
+            "va": null,
+            "items": []
+          }
+        },
+        "migration": null
+      },
+      "parseErrors": [],
+      "profileId": "A_measured_87_core"
+    },
+    "result": {
+      "schemaVersion": "3.2.1",
+      "ruleBasis": {
+        "code": "NYCEC-2025",
+        "base": "NEC-2020",
+        "amendments": "NYC-2025"
+      },
+      "profileId": "A_measured_87_core",
+      "status": "COMPLETE",
+      "problems": [],
+      "loadsCoverage": [],
+      "demand": {
+        "status": "complete",
+        "unit": "A",
+        "totalVA": null,
+        "totalOnConductorA": 155.0,
+        "partialSubtotalVA": null,
+        "lines": [
+          {
+            "id": "e_L1",
+            "label": "Existing maximum demand x 125 % on L1",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 100,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": 1.25,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 125.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "e_L2",
+            "label": "Existing maximum demand x 125 % on L2",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 20,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": 1.25,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L2",
+            "result": {
+              "value": 25.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "n_L1",
+            "label": "New L-N load 3600 VA / 120 V on L1",
+            "op": "divide_by_voltage",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 3600,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": 120,
+            "powerFactor": null,
+            "conductor": "L2",
+            "result": {
+              "value": 30.0,
+              "unit": "A"
+            },
+            "ruleRef": "user-supplied",
+            "amended": false,
+            "ruleStatus": "user_supplied",
+            "loadIds": []
+          },
+          {
+            "id": "t_L1",
+            "label": "Total on L1",
+            "op": "sum",
+            "operands": [
+              {
+                "ref": "e_L1",
+                "quantity": {
+                  "value": 125.0,
+                  "unit": "A"
+                }
+              },
+              {
+                "ref": "n_L1",
+                "quantity": {
+                  "value": 30.0,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 155.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "governing",
+            "label": "Governing conductor total (L1)",
+            "op": "identity",
+            "operands": [
+              {
+                "ref": "t_L1",
+                "quantity": {
+                  "value": 155.0,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 155.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          }
+        ]
+      },
+      "current": {
+        "status": "not_computed",
+        "model": null,
+        "formula": null,
+        "assumptions": [],
+        "perConductorA": null,
+        "lineA": null,
+        "neutralA": null,
+        "note": "Neutral not calculated (220.61 not implemented)."
+      },
+      "existingCapacity": {
+        "status": "inadequate",
+        "comparisonKind": "exact",
+        "policy": "raw_conservative",
+        "ruleRef": "220.87(2)",
+        "blockingCode": null,
+        "comparisons": [
+          {
+            "conductor": "L1",
+            "unit": "A",
+            "demandValueRaw": 155.0,
+            "ratingValue": 150,
+            "ratingSource": "serviceRatingA",
+            "satisfied": false
+          },
+          {
+            "conductor": "L2",
+            "unit": "A",
+            "demandValueRaw": 25.0,
+            "ratingValue": 150,
+            "ratingSource": "serviceRatingA",
+            "satisfied": true
+          }
+        ],
+        "boundOutcome": null
+      },
+      "requiredCapacity": {
+        "status": "not_assessed",
+        "note": "No automatic Wire Sizer handoff in profile A (actual consumer takes amperes load/continuousLoad or continuousLoadA/noncontinuousLoadA); future adapter needs its own approved contract."
+      },
+      "rating": {
+        "status": "not_assessed",
+        "note": "Automatic rating not assessed in profile A; 600 A remains a proposed future product ceiling only, not a NEC limit."
+      },
+      "diagnostics": {
+        "operative": false,
+        "existingComponentVA": null,
+        "existingComponentAOnConductor": 125.0,
+        "newLoadTermVA": 3600,
+        "continuityOfNewLoadKnown": false,
+        "upperBoundScreening": null
+      },
+      "display": {
+        "precision": {
+          "amps": 1,
+          "va": 0
+        },
+        "rounding": "half_away_from_zero",
+        "strings": {
+          "totalOnConductorA": "155.0 A",
+          "L1": "155.0 A",
+          "L2": "25.0 A"
+        },
+        "feedsComparison": false
+      },
+      "presentation": {
+        "topologyLabel": "120/240 V, 1-ph, 3-wire",
+        "showPerConductor": true,
+        "polesLabel": "2-pole",
+        "finalResultHeading": true,
+        "verdictLabel": "inadequate"
+      },
+      "references": [
+        {
+          "ruleRef": "220.87",
+          "amended": true,
+          "href": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "CONTROL_WRONG_FACTOR_REJECTED",
+    "base": "T-N-17",
+    "classification": "negative",
+    "explanation": "Positive rejection control: wrong existing multiplier.",
+    "envelopeValid": true,
+    "resultValid": true,
+    "invariantPass": false,
+    "rejected": true,
+    "envelopeErrors": [],
+    "schemaErrors": [],
+    "violations": [
+      "I-03 multiply mismatch in e_measured",
+      "I-14 existing line e_measured not bound to the envelope reading 100 A x 1.25"
+    ],
+    "shownDemand": 155.0,
+    "shownVerdict": "inadequate",
+    "envelope": {
+      "snapshot": {
+        "schemaVersion": "3.2.1",
+        "ruleBasis": {
+          "code": "NYCEC-2025",
+          "base": "NEC-2020",
+          "amendments": "NYC-2025"
+        },
+        "purpose": "service",
+        "occupancy": "dwelling_unit_house",
+        "supply": {
+          "topology": "1ph_3w_120_240",
+          "vLineToLine": 240,
+          "vLineToNeutral": 120,
+          "phases": 1,
+          "wires": 3
+        },
+        "loadModel": {
+          "kind": "split_240_all_LL",
+          "declarations": {}
+        },
+        "method": {
+          "selected": "measured_220_87",
+          "guideRecommendation": null,
+          "selectionSource": "manual",
+          "guideAnswers": {}
+        },
+        "dwelling": {
+          "floorAreaFt2": null,
+          "smallApplianceCircuits": null,
+          "laundryCircuits": null,
+          "nycAcCircuitCount": null,
+          "existingDwelling": null
+        },
+        "loads": [],
+        "hvac": {
+          "arrangement": null,
+          "supplementalInterlocked": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "installingAdditionalHvac": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          }
+        },
+        "measurement": {
+          "basis": "30d_recording_exception",
+          "reading": {
+            "value": 100,
+            "unit": "A"
+          },
+          "readingsPerConductor": null,
+          "readingScope": "highest_loaded_conductor",
+          "powerFactor": null,
+          "annualDataAvailable": {
+            "value": false,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "periodMonths": null,
+          "periodDays": 30,
+          "intervalMinutes": 15,
+          "metric": "highest_avg_kw_15min",
+          "continuousRecording": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "instrument": "power_meter",
+          "connectedTo": "highest_loaded_conductor",
+          "basedOnInitialLoading": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "recordedWhileOccupied": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesLargerOfHeatingOrCooling": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesPeriodicSeasonalLoads": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "hasRenewableEnergySystem": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "hasPeakLoadShaving": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "existing": {
+            "serviceRatingA": 150,
+            "feederAmpacityA": null,
+            "ocpdA": null,
+            "feederOcpPer240_4": {
+              "value": null,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            },
+            "serviceOverloadPer230_90": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          },
+          "newLoad": {
+            "mode": "precalculated",
+            "precalculated": {
+              "va": 7200,
+              "connection": "LL",
+              "leg": null,
+              "continuous": false,
+              "basis": {
+                "method": "other_stated",
+                "ruleRefs": [],
+                "demandFactorsApplied": true,
+                "continuousFactorApplied": null,
+                "establishedForThisComparison": true,
+                "calculatedBy": "designer",
+                "provenance": {
+                  "source": "designer_declaration",
+                  "note": null
+                },
+                "note": null
+              },
+              "covers": [],
+              "coversSnapshot": []
+            }
+          }
+        },
+        "multifamily": {
+          "unitCount": null,
+          "unitsIdentical": null,
+          "unitGroups": [],
+          "allUnitsElectricCooking": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "allUnitsElectricHeatOrAc": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "singleFeederPerUnit": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "houseLoads": {
+            "mode": null,
+            "va": null,
+            "items": []
+          }
+        },
+        "migration": null
+      },
+      "parseErrors": [],
+      "profileId": "A_measured_87_core"
+    },
+    "result": {
+      "schemaVersion": "3.2.1",
+      "ruleBasis": {
+        "code": "NYCEC-2025",
+        "base": "NEC-2020",
+        "amendments": "NYC-2025"
+      },
+      "profileId": "A_measured_87_core",
+      "status": "COMPLETE",
+      "problems": [],
+      "loadsCoverage": [],
+      "demand": {
+        "status": "complete",
+        "unit": "A",
+        "totalVA": null,
+        "totalOnConductorA": 155.0,
+        "partialSubtotalVA": null,
+        "lines": [
+          {
+            "id": "e_measured",
+            "label": "Existing maximum demand x 125 % on measured",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 100,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": 1.0,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 125.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "n_LL",
+            "label": "New L-L load 7200 VA / 240 V (split-phase: adds equally to both conductors)",
+            "op": "divide_by_voltage",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 7200,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": 240,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 30.0,
+              "unit": "A"
+            },
+            "ruleRef": "user-supplied",
+            "amended": false,
+            "ruleStatus": "user_supplied",
+            "loadIds": []
+          },
+          {
+            "id": "t_measured",
+            "label": "Total on measured",
+            "op": "sum",
+            "operands": [
+              {
+                "ref": "e_measured",
+                "quantity": {
+                  "value": 125.0,
+                  "unit": "A"
+                }
+              },
+              {
+                "ref": "n_LL",
+                "quantity": {
+                  "value": 30.0,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 155.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "governing",
+            "label": "Governing conductor total (measured)",
+            "op": "identity",
+            "operands": [
+              {
+                "ref": "t_measured",
+                "quantity": {
+                  "value": 155.0,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 155.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          }
+        ]
+      },
+      "current": {
+        "status": "not_computed",
+        "model": null,
+        "formula": null,
+        "assumptions": [],
+        "perConductorA": null,
+        "lineA": null,
+        "neutralA": null,
+        "note": "Neutral not calculated (220.61 not implemented)."
+      },
+      "existingCapacity": {
+        "status": "inadequate",
+        "comparisonKind": "exact",
+        "policy": "raw_conservative",
+        "ruleRef": "220.87(2)",
+        "blockingCode": null,
+        "comparisons": [
+          {
+            "conductor": null,
+            "unit": "A",
+            "demandValueRaw": 155.0,
+            "ratingValue": 150,
+            "ratingSource": "serviceRatingA",
+            "satisfied": false
+          }
+        ],
+        "boundOutcome": null
+      },
+      "requiredCapacity": {
+        "status": "not_assessed",
+        "note": "No automatic Wire Sizer handoff in profile A (actual consumer takes amperes load/continuousLoad or continuousLoadA/noncontinuousLoadA); future adapter needs its own approved contract."
+      },
+      "rating": {
+        "status": "not_assessed",
+        "note": "Automatic rating not assessed in profile A; 600 A remains a proposed future product ceiling only, not a NEC limit."
+      },
+      "diagnostics": {
+        "operative": false,
+        "existingComponentVA": null,
+        "existingComponentAOnConductor": 125.0,
+        "newLoadTermVA": 7200,
+        "continuityOfNewLoadKnown": false,
+        "upperBoundScreening": null
+      },
+      "display": {
+        "precision": {
+          "amps": 1,
+          "va": 0
+        },
+        "rounding": "half_away_from_zero",
+        "strings": {
+          "totalOnConductorA": "155.0 A",
+          "measured": "155.0 A"
+        },
+        "feedsComparison": false
+      },
+      "presentation": {
+        "topologyLabel": "120/240 V, 1-ph, 3-wire",
+        "showPerConductor": true,
+        "polesLabel": "2-pole",
+        "finalResultHeading": true,
+        "verdictLabel": "inadequate"
+      },
+      "references": [
+        {
+          "ruleRef": "220.87",
+          "amended": true,
+          "href": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "VA_NEW_TERM_COUNTED_TWICE",
+    "base": "T-N-13",
+    "classification": "negative",
+    "explanation": "total has refs existing125,newTerm,newTerm. Set-based validation loses multiplicity; 50000+5000+5000=60000 is not the contract sum of 55000.",
+    "envelopeValid": true,
+    "resultValid": true,
+    "invariantPass": true,
+    "rejected": false,
+    "envelopeErrors": [],
+    "schemaErrors": [],
+    "violations": [],
+    "shownDemand": 60000.0,
+    "shownVerdict": "inadequate",
+    "envelope": {
+      "snapshot": {
+        "schemaVersion": "3.2.1",
+        "ruleBasis": {
+          "code": "NYCEC-2025",
+          "base": "NEC-2020",
+          "amendments": "NYC-2025"
+        },
+        "purpose": "service",
+        "occupancy": "dwelling_unit_house",
+        "supply": {
+          "topology": "1ph_3w_120_240",
+          "vLineToLine": 240,
+          "vLineToNeutral": 120,
+          "phases": 1,
+          "wires": 3
+        },
+        "loadModel": {
+          "kind": "split_240_all_LL",
+          "declarations": {}
+        },
+        "method": {
+          "selected": "measured_220_87",
+          "guideRecommendation": null,
+          "selectionSource": "manual",
+          "guideAnswers": {}
+        },
+        "dwelling": {
+          "floorAreaFt2": null,
+          "smallApplianceCircuits": null,
+          "laundryCircuits": null,
+          "nycAcCircuitCount": null,
+          "existingDwelling": null
+        },
+        "loads": [],
+        "hvac": {
+          "arrangement": null,
+          "supplementalInterlocked": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "installingAdditionalHvac": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          }
+        },
+        "measurement": {
+          "basis": "annual_max_demand",
+          "reading": {
+            "value": 40000,
+            "unit": "VA"
+          },
+          "readingsPerConductor": null,
+          "readingScope": "total_apparent_power",
+          "powerFactor": null,
+          "annualDataAvailable": {
+            "value": true,
+            "provenance": {
+              "source": "utility_data",
+              "note": null
+            }
+          },
+          "periodMonths": 12,
+          "periodDays": null,
+          "intervalMinutes": null,
+          "metric": "other",
+          "continuousRecording": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "instrument": "utility_demand_meter",
+          "connectedTo": "each_conductor",
+          "basedOnInitialLoading": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "recordedWhileOccupied": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "includesLargerOfHeatingOrCooling": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "includesPeriodicSeasonalLoads": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "hasRenewableEnergySystem": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "hasPeakLoadShaving": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "existing": {
+            "serviceRatingA": 225,
+            "feederAmpacityA": null,
+            "ocpdA": null,
+            "feederOcpPer240_4": {
+              "value": null,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            },
+            "serviceOverloadPer230_90": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          },
+          "newLoad": {
+            "mode": "precalculated",
+            "precalculated": {
+              "va": 5000,
+              "connection": "LL",
+              "leg": null,
+              "continuous": false,
+              "basis": {
+                "method": "opt_220_82",
+                "ruleRefs": [],
+                "demandFactorsApplied": true,
+                "continuousFactorApplied": true,
+                "establishedForThisComparison": true,
+                "calculatedBy": "engineer",
+                "provenance": {
+                  "source": "designer_declaration",
+                  "note": "new-load term established for this 220.87(2) comparison"
+                },
+                "note": "new-load term established for this 220.87(2) comparison"
+              },
+              "covers": [],
+              "coversSnapshot": []
+            }
+          }
+        },
+        "multifamily": {
+          "unitCount": null,
+          "unitsIdentical": null,
+          "unitGroups": [],
+          "allUnitsElectricCooking": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "allUnitsElectricHeatOrAc": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "singleFeederPerUnit": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "houseLoads": {
+            "mode": null,
+            "va": null,
+            "items": []
+          }
+        },
+        "migration": null
+      },
+      "parseErrors": [],
+      "profileId": "A_measured_87_core"
+    },
+    "result": {
+      "schemaVersion": "3.2.1",
+      "ruleBasis": {
+        "code": "NYCEC-2025",
+        "base": "NEC-2020",
+        "amendments": "NYC-2025"
+      },
+      "profileId": "A_measured_87_core",
+      "status": "COMPLETE",
+      "problems": [],
+      "loadsCoverage": [],
+      "demand": {
+        "status": "complete",
+        "unit": "VA",
+        "totalVA": 60000.0,
+        "totalOnConductorA": null,
+        "partialSubtotalVA": null,
+        "lines": [
+          {
+            "id": "existing125",
+            "label": "Existing maximum demand x 125 %",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 40000,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": 1.25,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 50000.0,
+              "unit": "VA"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "newTerm",
+            "label": "New load term (user-supplied, precalculated; no factor applied by the tool)",
+            "op": "identity",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 5000,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 5000,
+              "unit": "VA"
+            },
+            "ruleRef": "user-supplied",
+            "amended": false,
+            "ruleStatus": "user_supplied",
+            "loadIds": []
+          },
+          {
+            "id": "total",
+            "label": "Total for the 220.87(2) comparison",
+            "op": "sum",
+            "operands": [
+              {
+                "ref": "existing125",
+                "quantity": {
+                  "value": 50000.0,
+                  "unit": "VA"
+                }
+              },
+              {
+                "ref": "newTerm",
+                "quantity": {
+                  "value": 5000,
+                  "unit": "VA"
+                }
+              },
+              {
+                "ref": "newTerm",
+                "quantity": {
+                  "value": 5000,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 60000.0,
+              "unit": "VA"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          }
+        ]
+      },
+      "current": {
+        "status": "computed",
+        "model": "split_240_all_LL",
+        "formula": "I = VA / 240",
+        "assumptions": [
+          "all loads line-to-line"
+        ],
+        "perConductorA": {
+          "L1": 250.0,
+          "L2": 250.0,
+          "L3": null
+        },
+        "lineA": 250.0,
+        "neutralA": null,
+        "note": "Neutral not calculated (220.61 not implemented)."
+      },
+      "existingCapacity": {
+        "status": "inadequate",
+        "comparisonKind": "exact",
+        "policy": "raw_conservative",
+        "ruleRef": "220.87(2)",
+        "blockingCode": null,
+        "comparisons": [
+          {
+            "conductor": null,
+            "unit": "A",
+            "demandValueRaw": 250.0,
+            "ratingValue": 225,
+            "ratingSource": "serviceRatingA",
+            "satisfied": false
+          }
+        ],
+        "boundOutcome": null
+      },
+      "requiredCapacity": {
+        "status": "not_assessed",
+        "note": "No automatic Wire Sizer handoff in profile A (actual consumer takes amperes load/continuousLoad or continuousLoadA/noncontinuousLoadA); future adapter needs its own approved contract."
+      },
+      "rating": {
+        "status": "not_assessed",
+        "note": "Automatic rating not assessed in profile A; 600 A remains a proposed future product ceiling only, not a NEC limit."
+      },
+      "diagnostics": {
+        "operative": false,
+        "existingComponentVA": 50000.0,
+        "existingComponentAOnConductor": null,
+        "newLoadTermVA": 5000,
+        "continuityOfNewLoadKnown": false,
+        "upperBoundScreening": null
+      },
+      "display": {
+        "precision": {
+          "amps": 1,
+          "va": 0
+        },
+        "rounding": "half_away_from_zero",
+        "strings": {
+          "totalVA": "60,000 VA",
+          "lineA": "250.0 A",
+          "existingComponentVA": "50,000 VA"
+        },
+        "feedsComparison": false
+      },
+      "presentation": {
+        "topologyLabel": "120/240 V, 1-ph, 3-wire",
+        "showPerConductor": true,
+        "polesLabel": "2-pole",
+        "finalResultHeading": true,
+        "verdictLabel": "inadequate"
+      },
+      "references": [
+        {
+          "ruleRef": "220.87",
+          "amended": true,
+          "href": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "CONTROL_T-N-17",
+    "base": "T-N-17",
+    "classification": "positive",
+    "explanation": "Unmodified delivered expected pair.",
+    "envelopeValid": true,
+    "resultValid": true,
+    "invariantPass": true,
+    "rejected": false,
+    "envelopeErrors": [],
+    "schemaErrors": [],
+    "violations": [],
+    "shownDemand": 155.0,
+    "shownVerdict": "inadequate",
+    "envelope": {
+      "snapshot": {
+        "schemaVersion": "3.2.1",
+        "ruleBasis": {
+          "code": "NYCEC-2025",
+          "base": "NEC-2020",
+          "amendments": "NYC-2025"
+        },
+        "purpose": "service",
+        "occupancy": "dwelling_unit_house",
+        "supply": {
+          "topology": "1ph_3w_120_240",
+          "vLineToLine": 240,
+          "vLineToNeutral": 120,
+          "phases": 1,
+          "wires": 3
+        },
+        "loadModel": {
+          "kind": "split_240_all_LL",
+          "declarations": {}
+        },
+        "method": {
+          "selected": "measured_220_87",
+          "guideRecommendation": null,
+          "selectionSource": "manual",
+          "guideAnswers": {}
+        },
+        "dwelling": {
+          "floorAreaFt2": null,
+          "smallApplianceCircuits": null,
+          "laundryCircuits": null,
+          "nycAcCircuitCount": null,
+          "existingDwelling": null
+        },
+        "loads": [],
+        "hvac": {
+          "arrangement": null,
+          "supplementalInterlocked": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "installingAdditionalHvac": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          }
+        },
+        "measurement": {
+          "basis": "30d_recording_exception",
+          "reading": {
+            "value": 100,
+            "unit": "A"
+          },
+          "readingsPerConductor": null,
+          "readingScope": "highest_loaded_conductor",
+          "powerFactor": null,
+          "annualDataAvailable": {
+            "value": false,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "periodMonths": null,
+          "periodDays": 30,
+          "intervalMinutes": 15,
+          "metric": "highest_avg_kw_15min",
+          "continuousRecording": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "instrument": "power_meter",
+          "connectedTo": "highest_loaded_conductor",
+          "basedOnInitialLoading": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "recordedWhileOccupied": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesLargerOfHeatingOrCooling": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesPeriodicSeasonalLoads": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "hasRenewableEnergySystem": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "hasPeakLoadShaving": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "existing": {
+            "serviceRatingA": 150,
+            "feederAmpacityA": null,
+            "ocpdA": null,
+            "feederOcpPer240_4": {
+              "value": null,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            },
+            "serviceOverloadPer230_90": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          },
+          "newLoad": {
+            "mode": "precalculated",
+            "precalculated": {
+              "va": 7200,
+              "connection": "LL",
+              "leg": null,
+              "continuous": false,
+              "basis": {
+                "method": "other_stated",
+                "ruleRefs": [],
+                "demandFactorsApplied": true,
+                "continuousFactorApplied": null,
+                "establishedForThisComparison": true,
+                "calculatedBy": "designer",
+                "provenance": {
+                  "source": "designer_declaration",
+                  "note": null
+                },
+                "note": null
+              },
+              "covers": [],
+              "coversSnapshot": []
+            }
+          }
+        },
+        "multifamily": {
+          "unitCount": null,
+          "unitsIdentical": null,
+          "unitGroups": [],
+          "allUnitsElectricCooking": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "allUnitsElectricHeatOrAc": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "singleFeederPerUnit": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "houseLoads": {
+            "mode": null,
+            "va": null,
+            "items": []
+          }
+        },
+        "migration": null
+      },
+      "parseErrors": [],
+      "profileId": "A_measured_87_core"
+    },
+    "result": {
+      "schemaVersion": "3.2.1",
+      "ruleBasis": {
+        "code": "NYCEC-2025",
+        "base": "NEC-2020",
+        "amendments": "NYC-2025"
+      },
+      "profileId": "A_measured_87_core",
+      "status": "COMPLETE",
+      "problems": [],
+      "loadsCoverage": [],
+      "demand": {
+        "status": "complete",
+        "unit": "A",
+        "totalVA": null,
+        "totalOnConductorA": 155.0,
+        "partialSubtotalVA": null,
+        "lines": [
+          {
+            "id": "e_measured",
+            "label": "Existing maximum demand x 125 % on measured",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 100,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": 1.25,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 125.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "n_LL",
+            "label": "New L-L load 7200 VA / 240 V (split-phase: adds equally to both conductors)",
+            "op": "divide_by_voltage",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 7200,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": 240,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 30.0,
+              "unit": "A"
+            },
+            "ruleRef": "user-supplied",
+            "amended": false,
+            "ruleStatus": "user_supplied",
+            "loadIds": []
+          },
+          {
+            "id": "t_measured",
+            "label": "Total on measured",
+            "op": "sum",
+            "operands": [
+              {
+                "ref": "e_measured",
+                "quantity": {
+                  "value": 125.0,
+                  "unit": "A"
+                }
+              },
+              {
+                "ref": "n_LL",
+                "quantity": {
+                  "value": 30.0,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 155.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "governing",
+            "label": "Governing conductor total (measured)",
+            "op": "identity",
+            "operands": [
+              {
+                "ref": "t_measured",
+                "quantity": {
+                  "value": 155.0,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 155.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          }
+        ]
+      },
+      "current": {
+        "status": "not_computed",
+        "model": null,
+        "formula": null,
+        "assumptions": [],
+        "perConductorA": null,
+        "lineA": null,
+        "neutralA": null,
+        "note": "Neutral not calculated (220.61 not implemented)."
+      },
+      "existingCapacity": {
+        "status": "inadequate",
+        "comparisonKind": "exact",
+        "policy": "raw_conservative",
+        "ruleRef": "220.87(2)",
+        "blockingCode": null,
+        "comparisons": [
+          {
+            "conductor": null,
+            "unit": "A",
+            "demandValueRaw": 155.0,
+            "ratingValue": 150,
+            "ratingSource": "serviceRatingA",
+            "satisfied": false
+          }
+        ],
+        "boundOutcome": null
+      },
+      "requiredCapacity": {
+        "status": "not_assessed",
+        "note": "No automatic Wire Sizer handoff in profile A (actual consumer takes amperes load/continuousLoad or continuousLoadA/noncontinuousLoadA); future adapter needs its own approved contract."
+      },
+      "rating": {
+        "status": "not_assessed",
+        "note": "Automatic rating not assessed in profile A; 600 A remains a proposed future product ceiling only, not a NEC limit."
+      },
+      "diagnostics": {
+        "operative": false,
+        "existingComponentVA": null,
+        "existingComponentAOnConductor": 125.0,
+        "newLoadTermVA": 7200,
+        "continuityOfNewLoadKnown": false,
+        "upperBoundScreening": null
+      },
+      "display": {
+        "precision": {
+          "amps": 1,
+          "va": 0
+        },
+        "rounding": "half_away_from_zero",
+        "strings": {
+          "totalOnConductorA": "155.0 A",
+          "measured": "155.0 A"
+        },
+        "feedsComparison": false
+      },
+      "presentation": {
+        "topologyLabel": "120/240 V, 1-ph, 3-wire",
+        "showPerConductor": true,
+        "polesLabel": "2-pole",
+        "finalResultHeading": true,
+        "verdictLabel": "inadequate"
+      },
+      "references": [
+        {
+          "ruleRef": "220.87",
+          "amended": true,
+          "href": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "CONTROL_T-N-16",
+    "base": "T-N-16",
+    "classification": "positive",
+    "explanation": "Unmodified delivered expected pair.",
+    "envelopeValid": true,
+    "resultValid": true,
+    "invariantPass": true,
+    "rejected": false,
+    "envelopeErrors": [],
+    "schemaErrors": [],
+    "violations": [],
+    "shownDemand": 155.0,
+    "shownVerdict": "inadequate",
+    "envelope": {
+      "snapshot": {
+        "schemaVersion": "3.2.1",
+        "ruleBasis": {
+          "code": "NYCEC-2025",
+          "base": "NEC-2020",
+          "amendments": "NYC-2025"
+        },
+        "purpose": "service",
+        "occupancy": "dwelling_unit_house",
+        "supply": {
+          "topology": "1ph_3w_120_240",
+          "vLineToLine": 240,
+          "vLineToNeutral": 120,
+          "phases": 1,
+          "wires": 3
+        },
+        "loadModel": {
+          "kind": "split_240_declared_legs",
+          "declarations": {
+            "unityPF": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          }
+        },
+        "method": {
+          "selected": "measured_220_87",
+          "guideRecommendation": null,
+          "selectionSource": "manual",
+          "guideAnswers": {}
+        },
+        "dwelling": {
+          "floorAreaFt2": null,
+          "smallApplianceCircuits": null,
+          "laundryCircuits": null,
+          "nycAcCircuitCount": null,
+          "existingDwelling": null
+        },
+        "loads": [],
+        "hvac": {
+          "arrangement": null,
+          "supplementalInterlocked": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "installingAdditionalHvac": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          }
+        },
+        "measurement": {
+          "basis": "30d_recording_exception",
+          "reading": {
+            "value": 100,
+            "unit": "A"
+          },
+          "readingsPerConductor": {
+            "L1": 100,
+            "L2": 20,
+            "L3": null
+          },
+          "readingScope": "per_conductor",
+          "powerFactor": null,
+          "annualDataAvailable": {
+            "value": false,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "periodMonths": null,
+          "periodDays": 30,
+          "intervalMinutes": 15,
+          "metric": "highest_avg_kw_15min",
+          "continuousRecording": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "instrument": "power_meter",
+          "connectedTo": "each_conductor",
+          "basedOnInitialLoading": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "recordedWhileOccupied": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesLargerOfHeatingOrCooling": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesPeriodicSeasonalLoads": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "hasRenewableEnergySystem": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "hasPeakLoadShaving": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "existing": {
+            "serviceRatingA": 150,
+            "feederAmpacityA": null,
+            "ocpdA": null,
+            "feederOcpPer240_4": {
+              "value": null,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            },
+            "serviceOverloadPer230_90": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          },
+          "newLoad": {
+            "mode": "precalculated",
+            "precalculated": {
+              "va": 3600,
+              "connection": "LN",
+              "leg": "L1",
+              "continuous": false,
+              "basis": {
+                "method": "other_stated",
+                "ruleRefs": [],
+                "demandFactorsApplied": true,
+                "continuousFactorApplied": null,
+                "establishedForThisComparison": true,
+                "calculatedBy": "designer",
+                "provenance": {
+                  "source": "designer_declaration",
+                  "note": null
+                },
+                "note": null
+              },
+              "covers": [],
+              "coversSnapshot": []
+            }
+          }
+        },
+        "multifamily": {
+          "unitCount": null,
+          "unitsIdentical": null,
+          "unitGroups": [],
+          "allUnitsElectricCooking": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "allUnitsElectricHeatOrAc": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "singleFeederPerUnit": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "houseLoads": {
+            "mode": null,
+            "va": null,
+            "items": []
+          }
+        },
+        "migration": null
+      },
+      "parseErrors": [],
+      "profileId": "A_measured_87_core"
+    },
+    "result": {
+      "schemaVersion": "3.2.1",
+      "ruleBasis": {
+        "code": "NYCEC-2025",
+        "base": "NEC-2020",
+        "amendments": "NYC-2025"
+      },
+      "profileId": "A_measured_87_core",
+      "status": "COMPLETE",
+      "problems": [],
+      "loadsCoverage": [],
+      "demand": {
+        "status": "complete",
+        "unit": "A",
+        "totalVA": null,
+        "totalOnConductorA": 155.0,
+        "partialSubtotalVA": null,
+        "lines": [
+          {
+            "id": "e_L1",
+            "label": "Existing maximum demand x 125 % on L1",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 100,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": 1.25,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 125.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "e_L2",
+            "label": "Existing maximum demand x 125 % on L2",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 20,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": 1.25,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L2",
+            "result": {
+              "value": 25.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "n_L1",
+            "label": "New L-N load 3600 VA / 120 V on L1",
+            "op": "divide_by_voltage",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 3600,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": 120,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 30.0,
+              "unit": "A"
+            },
+            "ruleRef": "user-supplied",
+            "amended": false,
+            "ruleStatus": "user_supplied",
+            "loadIds": []
+          },
+          {
+            "id": "t_L1",
+            "label": "Total on L1",
+            "op": "sum",
+            "operands": [
+              {
+                "ref": "e_L1",
+                "quantity": {
+                  "value": 125.0,
+                  "unit": "A"
+                }
+              },
+              {
+                "ref": "n_L1",
+                "quantity": {
+                  "value": 30.0,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 155.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "governing",
+            "label": "Governing conductor total (L1)",
+            "op": "identity",
+            "operands": [
+              {
+                "ref": "t_L1",
+                "quantity": {
+                  "value": 155.0,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": "L1",
+            "result": {
+              "value": 155.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          }
+        ]
+      },
+      "current": {
+        "status": "not_computed",
+        "model": null,
+        "formula": null,
+        "assumptions": [],
+        "perConductorA": null,
+        "lineA": null,
+        "neutralA": null,
+        "note": "Neutral not calculated (220.61 not implemented)."
+      },
+      "existingCapacity": {
+        "status": "inadequate",
+        "comparisonKind": "exact",
+        "policy": "raw_conservative",
+        "ruleRef": "220.87(2)",
+        "blockingCode": null,
+        "comparisons": [
+          {
+            "conductor": "L1",
+            "unit": "A",
+            "demandValueRaw": 155.0,
+            "ratingValue": 150,
+            "ratingSource": "serviceRatingA",
+            "satisfied": false
+          },
+          {
+            "conductor": "L2",
+            "unit": "A",
+            "demandValueRaw": 25.0,
+            "ratingValue": 150,
+            "ratingSource": "serviceRatingA",
+            "satisfied": true
+          }
+        ],
+        "boundOutcome": null
+      },
+      "requiredCapacity": {
+        "status": "not_assessed",
+        "note": "No automatic Wire Sizer handoff in profile A (actual consumer takes amperes load/continuousLoad or continuousLoadA/noncontinuousLoadA); future adapter needs its own approved contract."
+      },
+      "rating": {
+        "status": "not_assessed",
+        "note": "Automatic rating not assessed in profile A; 600 A remains a proposed future product ceiling only, not a NEC limit."
+      },
+      "diagnostics": {
+        "operative": false,
+        "existingComponentVA": null,
+        "existingComponentAOnConductor": 125.0,
+        "newLoadTermVA": 3600,
+        "continuityOfNewLoadKnown": false,
+        "upperBoundScreening": null
+      },
+      "display": {
+        "precision": {
+          "amps": 1,
+          "va": 0
+        },
+        "rounding": "half_away_from_zero",
+        "strings": {
+          "totalOnConductorA": "155.0 A",
+          "L1": "155.0 A",
+          "L2": "25.0 A"
+        },
+        "feedsComparison": false
+      },
+      "presentation": {
+        "topologyLabel": "120/240 V, 1-ph, 3-wire",
+        "showPerConductor": true,
+        "polesLabel": "2-pole",
+        "finalResultHeading": true,
+        "verdictLabel": "inadequate"
+      },
+      "references": [
+        {
+          "ruleRef": "220.87",
+          "amended": true,
+          "href": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "CONTROL_T-N-13",
+    "base": "T-N-13",
+    "classification": "positive",
+    "explanation": "Unmodified delivered expected pair.",
+    "envelopeValid": true,
+    "resultValid": true,
+    "invariantPass": true,
+    "rejected": false,
+    "envelopeErrors": [],
+    "schemaErrors": [],
+    "violations": [],
+    "shownDemand": 55000.0,
+    "shownVerdict": "inadequate",
+    "envelope": {
+      "snapshot": {
+        "schemaVersion": "3.2.1",
+        "ruleBasis": {
+          "code": "NYCEC-2025",
+          "base": "NEC-2020",
+          "amendments": "NYC-2025"
+        },
+        "purpose": "service",
+        "occupancy": "dwelling_unit_house",
+        "supply": {
+          "topology": "1ph_3w_120_240",
+          "vLineToLine": 240,
+          "vLineToNeutral": 120,
+          "phases": 1,
+          "wires": 3
+        },
+        "loadModel": {
+          "kind": "split_240_all_LL",
+          "declarations": {}
+        },
+        "method": {
+          "selected": "measured_220_87",
+          "guideRecommendation": null,
+          "selectionSource": "manual",
+          "guideAnswers": {}
+        },
+        "dwelling": {
+          "floorAreaFt2": null,
+          "smallApplianceCircuits": null,
+          "laundryCircuits": null,
+          "nycAcCircuitCount": null,
+          "existingDwelling": null
+        },
+        "loads": [],
+        "hvac": {
+          "arrangement": null,
+          "supplementalInterlocked": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "installingAdditionalHvac": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          }
+        },
+        "measurement": {
+          "basis": "annual_max_demand",
+          "reading": {
+            "value": 40000,
+            "unit": "VA"
+          },
+          "readingsPerConductor": null,
+          "readingScope": "total_apparent_power",
+          "powerFactor": null,
+          "annualDataAvailable": {
+            "value": true,
+            "provenance": {
+              "source": "utility_data",
+              "note": null
+            }
+          },
+          "periodMonths": 12,
+          "periodDays": null,
+          "intervalMinutes": null,
+          "metric": "other",
+          "continuousRecording": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "instrument": "utility_demand_meter",
+          "connectedTo": "each_conductor",
+          "basedOnInitialLoading": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "recordedWhileOccupied": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "includesLargerOfHeatingOrCooling": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "includesPeriodicSeasonalLoads": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "hasRenewableEnergySystem": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "hasPeakLoadShaving": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "existing": {
+            "serviceRatingA": 225,
+            "feederAmpacityA": null,
+            "ocpdA": null,
+            "feederOcpPer240_4": {
+              "value": null,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            },
+            "serviceOverloadPer230_90": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          },
+          "newLoad": {
+            "mode": "precalculated",
+            "precalculated": {
+              "va": 5000,
+              "connection": "LL",
+              "leg": null,
+              "continuous": false,
+              "basis": {
+                "method": "opt_220_82",
+                "ruleRefs": [],
+                "demandFactorsApplied": true,
+                "continuousFactorApplied": true,
+                "establishedForThisComparison": true,
+                "calculatedBy": "engineer",
+                "provenance": {
+                  "source": "designer_declaration",
+                  "note": "new-load term established for this 220.87(2) comparison"
+                },
+                "note": "new-load term established for this 220.87(2) comparison"
+              },
+              "covers": [],
+              "coversSnapshot": []
+            }
+          }
+        },
+        "multifamily": {
+          "unitCount": null,
+          "unitsIdentical": null,
+          "unitGroups": [],
+          "allUnitsElectricCooking": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "allUnitsElectricHeatOrAc": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "singleFeederPerUnit": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "houseLoads": {
+            "mode": null,
+            "va": null,
+            "items": []
+          }
+        },
+        "migration": null
+      },
+      "parseErrors": [],
+      "profileId": "A_measured_87_core"
+    },
+    "result": {
+      "schemaVersion": "3.2.1",
+      "ruleBasis": {
+        "code": "NYCEC-2025",
+        "base": "NEC-2020",
+        "amendments": "NYC-2025"
+      },
+      "profileId": "A_measured_87_core",
+      "status": "COMPLETE",
+      "problems": [],
+      "loadsCoverage": [],
+      "demand": {
+        "status": "complete",
+        "unit": "VA",
+        "totalVA": 55000.0,
+        "totalOnConductorA": null,
+        "partialSubtotalVA": null,
+        "lines": [
+          {
+            "id": "existing125",
+            "label": "Existing maximum demand x 125 %",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 40000,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": 1.25,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 50000.0,
+              "unit": "VA"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "newTerm",
+            "label": "New load term (user-supplied, precalculated; no factor applied by the tool)",
+            "op": "identity",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 5000,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 5000,
+              "unit": "VA"
+            },
+            "ruleRef": "user-supplied",
+            "amended": false,
+            "ruleStatus": "user_supplied",
+            "loadIds": []
+          },
+          {
+            "id": "total",
+            "label": "Total for the 220.87(2) comparison",
+            "op": "sum",
+            "operands": [
+              {
+                "ref": "existing125",
+                "quantity": {
+                  "value": 50000.0,
+                  "unit": "VA"
+                }
+              },
+              {
+                "ref": "newTerm",
+                "quantity": {
+                  "value": 5000,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 55000.0,
+              "unit": "VA"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          }
+        ]
+      },
+      "current": {
+        "status": "computed",
+        "model": "split_240_all_LL",
+        "formula": "I = VA / 240",
+        "assumptions": [
+          "all loads line-to-line"
+        ],
+        "perConductorA": {
+          "L1": 229.16666666666666,
+          "L2": 229.16666666666666,
+          "L3": null
+        },
+        "lineA": 229.16666666666666,
+        "neutralA": null,
+        "note": "Neutral not calculated (220.61 not implemented)."
+      },
+      "existingCapacity": {
+        "status": "inadequate",
+        "comparisonKind": "exact",
+        "policy": "raw_conservative",
+        "ruleRef": "220.87(2)",
+        "blockingCode": null,
+        "comparisons": [
+          {
+            "conductor": null,
+            "unit": "A",
+            "demandValueRaw": 229.16666666666666,
+            "ratingValue": 225,
+            "ratingSource": "serviceRatingA",
+            "satisfied": false
+          }
+        ],
+        "boundOutcome": null
+      },
+      "requiredCapacity": {
+        "status": "not_assessed",
+        "note": "No automatic Wire Sizer handoff in profile A (actual consumer takes amperes load/continuousLoad or continuousLoadA/noncontinuousLoadA); future adapter needs its own approved contract."
+      },
+      "rating": {
+        "status": "not_assessed",
+        "note": "Automatic rating not assessed in profile A; 600 A remains a proposed future product ceiling only, not a NEC limit."
+      },
+      "diagnostics": {
+        "operative": false,
+        "existingComponentVA": 50000.0,
+        "existingComponentAOnConductor": null,
+        "newLoadTermVA": 5000,
+        "continuityOfNewLoadKnown": false,
+        "upperBoundScreening": null
+      },
+      "display": {
+        "precision": {
+          "amps": 1,
+          "va": 0
+        },
+        "rounding": "half_away_from_zero",
+        "strings": {
+          "totalVA": "55,000 VA",
+          "lineA": "229.2 A",
+          "existingComponentVA": "50,000 VA"
+        },
+        "feedsComparison": false
+      },
+      "presentation": {
+        "topologyLabel": "120/240 V, 1-ph, 3-wire",
+        "showPerConductor": true,
+        "polesLabel": "2-pole",
+        "finalResultHeading": true,
+        "verdictLabel": "inadequate"
+      },
+      "references": [
+        {
+          "ruleRef": "220.87",
+          "amended": true,
+          "href": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "CONTROL_T-N-30",
+    "base": "T-N-30",
+    "classification": "positive",
+    "explanation": "Unmodified delivered expected pair.",
+    "envelopeValid": true,
+    "resultValid": true,
+    "invariantPass": true,
+    "rejected": false,
+    "envelopeErrors": [],
+    "schemaErrors": [],
+    "violations": [],
+    "shownDemand": 144.98520162579473,
+    "shownVerdict": "adequate",
+    "envelope": {
+      "snapshot": {
+        "schemaVersion": "3.2.1",
+        "ruleBasis": {
+          "code": "NYCEC-2025",
+          "base": "NEC-2020",
+          "amendments": "NYC-2025"
+        },
+        "purpose": "service",
+        "occupancy": "dwelling_unit_house",
+        "supply": {
+          "topology": "3ph_4w_208Y_120",
+          "vLineToLine": 208,
+          "vLineToNeutral": 120,
+          "phases": 3,
+          "wires": 4
+        },
+        "loadModel": {
+          "kind": "three_phase_balanced",
+          "declarations": {
+            "balanced3ph": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          }
+        },
+        "method": {
+          "selected": "measured_220_87",
+          "guideRecommendation": null,
+          "selectionSource": "manual",
+          "guideAnswers": {}
+        },
+        "dwelling": {
+          "floorAreaFt2": null,
+          "smallApplianceCircuits": null,
+          "laundryCircuits": null,
+          "nycAcCircuitCount": null,
+          "existingDwelling": null
+        },
+        "loads": [],
+        "hvac": {
+          "arrangement": null,
+          "supplementalInterlocked": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "installingAdditionalHvac": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          }
+        },
+        "measurement": {
+          "basis": "30d_recording_exception",
+          "reading": {
+            "value": 100,
+            "unit": "A"
+          },
+          "readingsPerConductor": null,
+          "readingScope": "highest_loaded_conductor",
+          "powerFactor": null,
+          "annualDataAvailable": {
+            "value": false,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "periodMonths": null,
+          "periodDays": 30,
+          "intervalMinutes": 15,
+          "metric": "highest_avg_kw_15min",
+          "continuousRecording": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "instrument": "power_meter",
+          "connectedTo": "highest_loaded_conductor",
+          "basedOnInitialLoading": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "recordedWhileOccupied": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesLargerOfHeatingOrCooling": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "includesPeriodicSeasonalLoads": {
+            "value": true,
+            "provenance": {
+              "source": "recording_report",
+              "note": null
+            }
+          },
+          "hasRenewableEnergySystem": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "hasPeakLoadShaving": {
+            "value": false,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "existing": {
+            "serviceRatingA": 150,
+            "feederAmpacityA": null,
+            "ocpdA": null,
+            "feederOcpPer240_4": {
+              "value": null,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            },
+            "serviceOverloadPer230_90": {
+              "value": true,
+              "provenance": {
+                "source": "designer_declaration",
+                "note": null
+              }
+            }
+          },
+          "newLoad": {
+            "mode": "precalculated",
+            "precalculated": {
+              "va": 7200,
+              "connection": "3PH",
+              "leg": null,
+              "continuous": false,
+              "basis": {
+                "method": "other_stated",
+                "ruleRefs": [],
+                "demandFactorsApplied": true,
+                "continuousFactorApplied": null,
+                "establishedForThisComparison": true,
+                "calculatedBy": "designer",
+                "provenance": {
+                  "source": "designer_declaration",
+                  "note": null
+                },
+                "note": null
+              },
+              "covers": [],
+              "coversSnapshot": []
+            }
+          }
+        },
+        "multifamily": {
+          "unitCount": null,
+          "unitsIdentical": null,
+          "unitGroups": [],
+          "allUnitsElectricCooking": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "allUnitsElectricHeatOrAc": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "singleFeederPerUnit": {
+            "value": null,
+            "provenance": {
+              "source": "designer_declaration",
+              "note": null
+            }
+          },
+          "houseLoads": {
+            "mode": null,
+            "va": null,
+            "items": []
+          }
+        },
+        "migration": null
+      },
+      "parseErrors": [],
+      "profileId": "A_measured_87_core"
+    },
+    "result": {
+      "schemaVersion": "3.2.1",
+      "ruleBasis": {
+        "code": "NYCEC-2025",
+        "base": "NEC-2020",
+        "amendments": "NYC-2025"
+      },
+      "profileId": "A_measured_87_core",
+      "status": "COMPLETE",
+      "problems": [],
+      "loadsCoverage": [],
+      "demand": {
+        "status": "complete",
+        "unit": "A",
+        "totalVA": null,
+        "totalOnConductorA": 144.98520162579473,
+        "partialSubtotalVA": null,
+        "lines": [
+          {
+            "id": "e_measured",
+            "label": "Existing maximum demand x 125 % on measured",
+            "op": "multiply",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 100,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": 1.25,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 125.0,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "n_3PH",
+            "label": "New balanced 3-phase load 7200 VA / (sqrt3 x 208 V) (adds equally to every conductor)",
+            "op": "divide_by_sqrt3_voltage",
+            "operands": [
+              {
+                "ref": null,
+                "quantity": {
+                  "value": 7200,
+                  "unit": "VA"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": 208,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 19.98520162579474,
+              "unit": "A"
+            },
+            "ruleRef": "user-supplied",
+            "amended": false,
+            "ruleStatus": "user_supplied",
+            "loadIds": []
+          },
+          {
+            "id": "t_measured",
+            "label": "Total on measured",
+            "op": "sum",
+            "operands": [
+              {
+                "ref": "e_measured",
+                "quantity": {
+                  "value": 125.0,
+                  "unit": "A"
+                }
+              },
+              {
+                "ref": "n_3PH",
+                "quantity": {
+                  "value": 19.98520162579474,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 144.98520162579473,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          },
+          {
+            "id": "governing",
+            "label": "Governing conductor total (measured)",
+            "op": "identity",
+            "operands": [
+              {
+                "ref": "t_measured",
+                "quantity": {
+                  "value": 144.98520162579473,
+                  "unit": "A"
+                }
+              }
+            ],
+            "factor": null,
+            "divisorV": null,
+            "powerFactor": null,
+            "conductor": null,
+            "result": {
+              "value": 144.98520162579473,
+              "unit": "A"
+            },
+            "ruleRef": "220.87(2)",
+            "amended": true,
+            "ruleStatus": "verified",
+            "loadIds": []
+          }
+        ]
+      },
+      "current": {
+        "status": "not_computed",
+        "model": null,
+        "formula": null,
+        "assumptions": [],
+        "perConductorA": null,
+        "lineA": null,
+        "neutralA": null,
+        "note": "Neutral not calculated (220.61 not implemented)."
+      },
+      "existingCapacity": {
+        "status": "adequate",
+        "comparisonKind": "exact",
+        "policy": "raw_conservative",
+        "ruleRef": "220.87(2)",
+        "blockingCode": null,
+        "comparisons": [
+          {
+            "conductor": null,
+            "unit": "A",
+            "demandValueRaw": 144.98520162579473,
+            "ratingValue": 150,
+            "ratingSource": "serviceRatingA",
+            "satisfied": true
+          }
+        ],
+        "boundOutcome": null
+      },
+      "requiredCapacity": {
+        "status": "not_assessed",
+        "note": "No automatic Wire Sizer handoff in profile A (actual consumer takes amperes load/continuousLoad or continuousLoadA/noncontinuousLoadA); future adapter needs its own approved contract."
+      },
+      "rating": {
+        "status": "not_assessed",
+        "note": "Automatic rating not assessed in profile A; 600 A remains a proposed future product ceiling only, not a NEC limit."
+      },
+      "diagnostics": {
+        "operative": false,
+        "existingComponentVA": null,
+        "existingComponentAOnConductor": 125.0,
+        "newLoadTermVA": 7200,
+        "continuityOfNewLoadKnown": false,
+        "upperBoundScreening": null
+      },
+      "display": {
+        "precision": {
+          "amps": 1,
+          "va": 0
+        },
+        "rounding": "half_away_from_zero",
+        "strings": {
+          "totalOnConductorA": "145.0 A",
+          "measured": "145.0 A"
+        },
+        "feedsComparison": false
+      },
+      "presentation": {
+        "topologyLabel": "208Y/120 V, 3-ph, 4-wire",
+        "showPerConductor": true,
+        "polesLabel": "3-pole",
+        "finalResultHeading": true,
+        "verdictLabel": "adequate"
+      },
+      "references": [
+        {
+          "ruleRef": "220.87",
+          "amended": true,
+          "href": null
+        }
+      ]
+    }
+  }
+]

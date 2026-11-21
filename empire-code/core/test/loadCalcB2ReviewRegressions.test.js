@@ -1,0 +1,36 @@
+'use strict';
+/** Independent reviewer's B2 regression tests (review/review-regressions.test.cjs of the B2 review handoff), integrated unchanged in B2-r1 except for the ROOT line. Delivered B2: 23 / 7 pass / 16 fail. B2-r1: 23 / 23.
+ * Actual shipped adapter/core + author's DOM/storage stub.
+ * B2_REVIEW_ROOT=/absolute/path/to/project node --test review-regressions.test.cjs
+ * No source writes/network/installation. This is NOT real-browser persisted reload.
+ */
+const path = require('node:path'); const assert = require('node:assert/strict');
+const {test,describe} = require('node:test');
+const ROOT = path.join(__dirname,'..'); // integrated into the B2-r1 tree (reviewer original: process.env.B2_REVIEW_ROOT || path.join(__dirname,'candidate'))
+const {buildHarness} = require(path.join(ROOT,'test/helpers/loadCalcDom'));
+function annual(h) { h.api.lcInit(); for(const [id,v] of [['lcOccupancy','dwelling_unit_house'],['lcMethod','measured_220_87'],['lcTopology','1ph_3w_120_240'],['lcModel','split_240_all_LL'],['lcBasis','annual_max_demand'],['lcReadingValue','40000'],['lcAnnualData','yes'],['lcPeriodMonths','12'],['lcServiceRatingA','225'],['lcServiceOverload','yes'],['lcNewLoadMode','none']])h.set(id,v); }
+function add(h){h.$('lcPresetName').value='0';h.$('lcAddLoad').dispatch('click');}
+function loadExisting(h){add(h);const e=h.$('lcLoads').querySelectorAll('select')[2];e.value='existing';e.dispatch('change');}
+function quantity(h,v){const e=h.$('lcLoads').querySelectorAll('input[type=number]')[1];e.value=v;e.dispatch('input');}
+function restoreRow(h,payload,id=999){const store=JSON.stringify({lc:[{id,name:'synthetic record',vals:payload}],vd:[{id:7,name:'other',vals:{amps:'10'}}]});h.store.data=store;h.api.favRender('lc');h.$('lc-fav-list').querySelector('.fav-item').dispatch('click');return store;}
+function unchangedDraftExceptFault(before,after){for(const k of ['snapshot','fieldErrors','loadErrors'])assert.deepEqual(after[k],before[k],k+' changed on rejected restore');}
+describe('B2 reviewer — positive controls and optional blanks',()=>{
+ test('annual valid model remains complete and adequate',()=>{const h=buildHarness();annual(h);assert.equal(h.state().result.status,'COMPLETE');assert.equal(h.state().result.existingCapacity.status,'adequate');});
+ test('missing REQUIRED annual period is still incomplete (control)',()=>{const h=buildHarness();annual(h);h.set('lcPeriodMonths','');assert.equal(h.state().result.status,'INCOMPLETE_INPUT');assert.equal(h.state().result.demand.totalVA,null);});
+ for(const id of ['lcServiceRatingA','lcOcpdA'])test('clear optional '+id+' preserves independently computable demand',()=>{const h=buildHarness();annual(h);h.set(id,'225');h.set(id,'');const s=h.state();assert.equal(s.result.status,'COMPLETE');assert.equal(s.result.demand.totalVA,50000);if(id==='lcServiceRatingA')assert.equal(s.result.existingCapacity.status,'not_assessed');});
+ test('quota failure preserves existing storage (control)',()=>{const h=buildHarness({storage:'{"lc":[],"vd":[{"id":7}]}' });annual(h);const old=h.store.data;h.store.failNextSet=new Error('simulated quota');assert.equal(h.api.lcFavSave(),false);assert.equal(h.store.data,old);assert.equal(h.state().fault.kind,'storage');});
+});
+describe('B2 reviewer — shared collection integrity',()=>{
+ for(const value of [{record:{name:'recoverable',values:123}},'recoverable text',5])test('non-array lc collection preserved: '+typeof value,()=>{const seed=JSON.stringify({lc:value,vd:[{id:1,name:'other'}]});const h=buildHarness({storage:seed});annual(h);assert.equal(h.api.lcFavSave(),false,'must not silently replace a present malformed lc collection');assert.equal(h.store.data,seed);assert.equal(h.state().fault.kind,'storage');});
+ test('absent lc key is safe to create (control)',()=>{const seed={vd:[{id:1}],custom:{v:2}};const h=buildHarness({storage:JSON.stringify(seed)});annual(h);assert.equal(h.api.lcFavSave(),true);const out=JSON.parse(h.store.data);assert.deepEqual(out.vd,seed.vd);assert.deepEqual(out.custom,seed.custom);assert.equal(out.lc.length,1);});
+ test('root malformed JSON is preserved (control)',()=>{const h=buildHarness({storage:'{broken'});annual(h);assert.equal(h.api.lcFavSave(),false);assert.equal(h.store.data,'{broken');});
+});
+describe('B2 reviewer — saved error transport must not be silently normalized',()=>{
+ for(const [kind,bad] of [['array',[]],['string','bad-map'],['null',null],['number',5]]) for(const field of ['fieldErrors','loadErrors'])test(field+' '+kind+' is rejected atomically',()=>{const h=buildHarness();annual(h);loadExisting(h);quantity(h,'');const before=h.state(),p=h.api.lcFavPayload();p[field]=bad;const store=restoreRow(h,p);assert.equal(h.state().fault?.kind,'restore');assert.equal(h.store.data,store);unchangedDraftExceptFault(before,h.state());});
+ test('valid saved raw load error still blocks after row restore (control)',()=>{const h=buildHarness();annual(h);loadExisting(h);quantity(h,'');const before=h.state(),p=h.api.lcFavPayload();restoreRow(h,p);assert.equal(h.state().fault,null);assert.equal(h.state().result.status,before.result.status);assert.deepEqual(h.state().loadErrors,before.loadErrors);});
+ test('unknown payload version rejects without changing draft (control)',()=>{const h=buildHarness();annual(h);const before=h.state(),p=h.api.lcFavPayload();p.lcv=99;restoreRow(h,p);assert.equal(h.state().fault?.kind,'restore');unchangedDraftExceptFault(before,h.state());});
+ for(const value of ['0','-1']) test('invalid quantity '+value+' is either explicitly unsaved or fully recoverable',()=>{const h=buildHarness();annual(h);loadExisting(h);quantity(h,value);const before=h.state();const ok=h.api.lcFavSave();if(!ok){assert.deepEqual(h.state().snapshot,before.snapshot);return;}const h2=buildHarness({storage:h.store.data});h2.api.lcInit();h2.$('lc-fav-list').querySelector('.fav-item').dispatch('click');assert.equal(h2.state().fault,null,'Save reported success but its own payload cannot be restored');assert.deepEqual(h2.state().snapshot,before.snapshot);assert.deepEqual(h2.state().loadErrors,before.loadErrors);assert.deepEqual(h2.state().fieldErrors,before.fieldErrors);});
+});
+describe('B2 reviewer — stored ids are data, including __proto__',()=>{
+ test('__proto__ id neither writes Object.prototype nor loses draft error on serialization',()=>{const h=buildHarness();annual(h);loadExisting(h);const p=h.api.lcFavPayload();p.snapshot.loads[0].id='__proto__';restoreRow(h,p);const before=Object.getOwnPropertyDescriptors(Object.prototype);let after,payload,errorState;try{quantity(h,'');after=Object.getOwnPropertyDescriptors(Object.prototype);payload=h.api.lcFavPayload();errorState=h.state().parseErrors;}finally{for(const k of Reflect.ownKeys(Object.prototype))if(!Object.hasOwn(before,k))delete Object.prototype[k];for(const k of Reflect.ownKeys(before))Object.defineProperty(Object.prototype,k,before[k]);}assert.deepEqual(Reflect.ownKeys(after),Reflect.ownKeys(before),'error map mutated the global Object.prototype');assert.ok(errorState.some(e=>e.field==='loads[0].quantity'));assert.ok(Object.hasOwn(payload.loadErrors,'__proto__'),'raw load error must survive as an own entry, not prototype state');});
+});
