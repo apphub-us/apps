@@ -8,7 +8,9 @@ const KEY_FORMAT=/^sk-[A-Za-z0-9_-]{20,}$/;
 const NOT_CONFIGURED='Rozmowa AI nie jest jeszcze skonfigurowana na serwerze. Szkic bez zmian.';
 const FIELD_NAMES=['name','quantity','unit','specification','notes','review'];
 const nullableString={type:['string','null']};
-const fieldProperties={name:nullableString,quantity:nullableString,unit:{enum:['pcs','ft','m','in','cm','mm','roll','set',null]},specification:nullableString,notes:nullableString,review:{anyOf:[{type:'array',items:{type:'string'}},{type:'null'}]}};
+// EC-08: the unit enumeration is the shared definition the contract re-exports (core/src/jobs/materialQuantity.js), so the
+// model schema, the proposal contract, Jobs and the handoff cannot drift apart. null = unknown / field not changed.
+const fieldProperties={name:nullableString,quantity:nullableString,unit:{enum:[...C.UNITS,null]},specification:nullableString,notes:nullableString,review:{anyOf:[{type:'array',items:{type:'string'}},{type:'null'}]}};
 export const SCHEMA={type:'object',additionalProperties:false,required:['scope','reply','question','operations'],properties:{scope:{enum:['materials','out_of_scope']},reply:{type:'string'},question:{type:'string'},operations:{type:'array',items:{type:'object',additionalProperties:false,required:['op','id','changed_fields','fields','source_quote'],properties:{op:{enum:['add','update','remove']},id:{type:'string'},changed_fields:{type:'array',items:{enum:FIELD_NAMES}},source_quote:{type:'string'},fields:{type:'object',additionalProperties:false,required:FIELD_NAMES,properties:fieldProperties}}}}}};
 // `safe` marks messages written here, which are the only error texts the Worker may show to the client.
 const err=(code,message,status=422)=>Object.assign(new Error(message),{code,status,safe:true});
@@ -88,7 +90,7 @@ export function createProvider({request,prompt}={}){
  async function transcribe(bytes,mime,{signal}={}){
   const{type,ext}=checkAudio(bytes,mime);
   const form=new FormData();form.set('model',SPEECH_MODEL);form.set('file',new Blob([bytes],{type}),'speech.'+ext);form.set('response_format','json');
-  form.append('languages[]','pl');form.append('languages[]','en');form.set('prompt','An electrician in New York dictating a material note, mixing Polish and English. Preserve the spoken languages, numbers, uncertainty, corrections and units. Do not translate or complete the list.');
+  form.append('languages[]','pl');form.append('languages[]','en');form.set('prompt','An electrician in New York dictating calculation requests, job notes, field measurements and material lists, mixing Polish and English. Preserve the spoken languages, numbers, uncertainty, corrections and units exactly as spoken. Do not translate, convert or complete anything.');
   for(const term of ['EMT','THHN','AWG','breaker','bushing'])form.append('keywords[]',term);
   const r=await request('/audio/transcriptions',{form,signal});if(!r||typeof r.text!=='string'||!r.text.trim()||r.text.length>3000)throw err('TRANSCRIPT','Nie udało się otrzymać czytelnej transkrypcji. Szkic bez zmian.');
   return{text:r.text.trim(),model:SPEECH_MODEL};

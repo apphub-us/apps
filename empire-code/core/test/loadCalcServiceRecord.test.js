@@ -221,14 +221,41 @@ describe('Creation verifies the captured pair; read never reruns current engines
     assert.equal(text(r), before);
   });
 
-  test('the source fingerprint identifies exactly the nine unchanged source files, not the new record module', () => {
+  // EC-AUDIT-FIX-1: the nine files changed for the preliminary-qualification work, so the pin names their CURRENT
+  // bytes (it is recomputed from the files below, never trusted from a literal alone). The literal is the value the
+  // coordinator computed independently; the previous producer survives only inside records saved before this revision.
+  test('the source fingerprint identifies exactly the nine current calculation source files, not the record module', () => {
     const expected = ['loadCalc', 'loadCalcFacade', 'loadCalcInput', 'loadCalcInputV2', 'loadCalcOpt82', 'loadCalcServiceSizing', 'loadCalcState', 'loadCalcStateV2', 'loadCalcStorageV2'].map((n) => 'src/calc/' + n + '.js').sort();
     assert.deepEqual(Record.CALCULATION_SOURCE_FILES, expected);
     const pairs = expected.map((f) => [f, crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, f))).digest('hex')]);
     const pin = crypto.createHash('sha256').update(JSON.stringify(pairs), 'utf8').digest('hex');
     assert.equal(pin, Record.PRODUCER.calculationSourcePin);
+    assert.equal(Record.PRODUCER.calculationSourcePin, 'ca231858042fcca62f871495bf281f3262e61ad5d86be755a6ea0795c7171699');
+    assert.deepEqual(Object.keys(Record.PRODUCER), ['applicationRevision', 'sourceBaselinePin', 'calculationSourcePin', 'recordContractRevision']);
+    assert.equal(Record.PRODUCER.applicationRevision, 'EC-AUDIT-FIX-1');
+    assert.equal(Record.PRODUCER.recordContractRevision, 1); assert.equal(Record.RECORD_VERSION, 1);
     assert.equal(Record.PRODUCER.sourceBaselinePin, 'd168fa3b6be018ec2560a3cfbd3a5347b17d6d802926a1b5b4f85b2fbe3b6ab7');
     assert.equal(Object.isFrozen(Record.PRODUCER), true); assert.equal(Object.isFrozen(Record.CALCULATION_SOURCE_FILES), true);
+  });
+
+  test('a record saved by the previous producer (LC-SERVICE-RESULT-STORE-1 pins) still opens byte-exactly and is never restamped', () => {
+    // The producer block every record carried before EC-AUDIT-FIX-1 changed the calculation sources.
+    const PREVIOUS = { applicationRevision: 'LC-SERVICE-RESULT-STORE-1', sourceBaselinePin: 'd168fa3b6be018ec2560a3cfbd3a5347b17d6d802926a1b5b4f85b2fbe3b6ab7', calculationSourcePin: '40a7de48e3c0ede97210bacb6e40b3e7e3fb0a5fdf9fd26f7d1cfe21f0709ebe', recordContractRevision: 1 };
+    assert.notEqual(PREVIOUS.calculationSourcePin, Record.PRODUCER.calculationSourcePin, 'the current pin really differs from the historical one');
+    assert.notEqual(PREVIOUS.applicationRevision, Record.PRODUCER.applicationRevision);
+    for (const design of [null, (d) => { d.conductor.sizingPath = 'dwelling_83pct_310_12'; }, (d) => { d.conductor.ambientTempC = '12,5'; }]) {
+      const saved = makeRecord(design ? { design } : undefined); saved.producer = copy(PREVIOUS);
+      const before = text(saved);
+      assert.deepEqual(Record.validateStoredRecord(saved), [], 'no current pin is required to read');
+      const read = ok(Record.readStoredRecord(saved)); const parsed = ok(Record.parseStoredRecord(before));
+      assert.deepEqual(read.producer, PREVIOUS); assert.deepEqual(parsed.producer, PREVIOUS);
+      assert.equal(text(read), before, 'the saved record is returned unchanged'); assert.equal(text(parsed), before);
+      assert.equal(text(saved), before, 'reading never mutates the stored object');
+      assert.notEqual(read, saved, 'an independent copy'); assert.notEqual(read.producer, saved.producer);
+    }
+    // only a NEW record carries the current producer
+    assert.deepEqual(makeRecord().producer, Record.PRODUCER);
+    assert.equal(text(Record.PRODUCER), text({ applicationRevision: 'EC-AUDIT-FIX-1', sourceBaselinePin: PREVIOUS.sourceBaselinePin, calculationSourcePin: 'ca231858042fcca62f871495bf281f3262e61ad5d86be755a6ea0795c7171699', recordContractRevision: 1 }));
   });
 });
 

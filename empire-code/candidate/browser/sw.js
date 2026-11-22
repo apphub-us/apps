@@ -57,6 +57,15 @@ async function install(){
 self.addEventListener('install',e=>e.waitUntil(install().then(()=>self.skipWaiting())));
 // Older caches are deliberately left in place.
 self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+// The one message this worker understands: a window of this origin asks which shell version the worker carries. The answer (the pin)
+// goes only to the port supplied with the question. This worker never tells a page to reload or navigate, never skips waiting,
+// claims clients or touches a cache because of a message, and ignores every other message, sender and shape.
+self.addEventListener('message',e=>{
+ const d=e.data,from=e.source,port=e.ports&&e.ports[0];
+ if(!port||!d||typeof d!=='object'||Array.isArray(d)||Object.keys(d).length!==1||d.type!=='empire-shell-version')return;
+ if(e.origin!==ORIGIN||!from||from.type!=='window'||typeof from.url!=='string'||!from.url.startsWith(ORIGIN+'/'))return;
+ try{port.postMessage({type:'empire-shell-version',pin:PIN});}catch{}
+});
 
 // Known shell paths are answered from the complete cache of this pin only, keyed by the manifest pathname (a query string
 // never selects or creates an entry). There is no network-first mixing and no lookup in other caches.

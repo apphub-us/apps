@@ -206,11 +206,18 @@ async function main() {
     const del = kitchen && kitchen.querySelector('.fav-delete');
     if (del) del.click();                                          // delete only
     const stored = JSON.parse(localStorage.getItem('sparky_favorites')).cf;
-    const after = stored.length, renderable = stored.filter((f) => f && typeof f === 'object').length;
-    return { loaded: window.__ecLoaded, before, after, renderable, rowsNow: document.querySelectorAll('#cf-fav-list .fav-item').length };
+    // EC-03 / EC-05 (EC-AUDIT-FIX-1): the seeded list holds entries the app cannot read (a preset whose name is the number 12,
+    // and null). Favorites is therefore in a recovery state: readable presets are listed and can be loaded, Delete is REFUSED
+    // and no stored entry is removed until the user exports / resets. The earlier expectation ("delete removes exactly one",
+    // every object row rendered) described the pre-fix behaviour that rewrote the store around unreadable entries.
+    const after = stored.length, readable = stored.filter((f) => f && typeof f === 'object' && typeof f.name === 'string' && f.vals && typeof f.vals === 'object' && !Array.isArray(f.vals)).length;
+    return { loaded: window.__ecLoaded, before, after, readable, rowsNow: document.querySelectorAll('#cf-fav-list .fav-item').length, status: document.querySelectorAll('#cf-fav-list .fav-status').length };
   });
+  await page.waitForTimeout(150);   // the refusal is delivered asynchronously (lock); re-read storage after it has settled
+  favOps.settled = await page.evaluate(() => ({ stored: JSON.parse(localStorage.getItem('sparky_favorites')).cf.length, rows: document.querySelectorAll('#cf-fav-list .fav-item').length, text: (document.getElementById('cf-fav-list') || {}).textContent || '' }));
   check('FAVORITES: load applies the preset values', JSON.stringify(favOps.loaded) === JSON.stringify([['cf', { a: 3 }]]), JSON.stringify(favOps.loaded));
-  check('FAVORITES: delete removes exactly one preset and does NOT also load it', favOps.before - favOps.after === 1 && favOps.loaded.length === 1 && favOps.rowsNow === favOps.renderable, JSON.stringify(favOps));
+  check('FAVORITES: only the readable presets are listed and the recovery status is shown', favOps.rowsNow === favOps.readable && favOps.status === 1, JSON.stringify(favOps));
+  check('FAVORITES: Delete in a recovery state removes NOTHING, says so, and does NOT also load the preset', favOps.before - favOps.after === 0 && favOps.settled.stored === favOps.before && favOps.settled.rows === favOps.readable && favOps.loaded.length === 1 && /Not deleted/.test(favOps.settled.text), JSON.stringify(favOps));
   // malformed id: load must be inert, not executable
   const malformed = await page.evaluate(() => { window.__ecLoaded = []; const r = [...document.querySelectorAll('#cf-fav-list .fav-item')].find((x) => x.textContent.includes("O'Brien")); if (r) r.click(); return window.__ecLoaded; });
   check('FAVORITES: a malformed string id loads by value (or not at all) — never executes', (await exec()) === 0 && (malformed.length === 0 || JSON.stringify(malformed[0]) === JSON.stringify(['cf', { a: 2 }])));

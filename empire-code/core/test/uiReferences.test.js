@@ -120,18 +120,52 @@ describe('UI-REFS — Load Calc: two separate targets for an amended reference, 
   });
 });
 
-describe('UI-REFS — necLink route: one prepared question, exactly one send', () => {
-  test('two activations inside the 150 ms window send once; the question is the source-aware one; legacy string and explicit opts both work', async () => {
-    const sends = []; const input = { value: '' };
-    const doc = { querySelectorAll: () => [], getElementById: (id) => (id === 'userInput' ? input : { classList: { add() {}, remove() {} } }) };
-    const src = editions + fnBody('necRefInfo') + fnBody('necQuestion') + 'var necLinkPending = false;\n' + fnBody('necLink') + '; return necLink;';
-    const necLink = new Function('document', 'sendMessage', src)(doc, () => sends.push(input.value));   // eslint-disable-line no-new-func
-    necLink('NYCEC 334.12 — NM Cable'); necLink('NEC 314.16 — Box Fill');
-    await new Promise((r) => setTimeout(r, 220));
-    assert.strictEqual(sends.length, 1); assert.ok(/^Explain the NYCEC 2025 .* amendment to NEC Section 334\.12 — NM Cable/.test(sends[0]), sends[0]);
-    necLink('NEC 314.16 — Box Fill', { source: 'nec', section: '314.16', title: 'Box Fill' });
-    await new Promise((r) => setTimeout(r, 220));
-    assert.strictEqual(sends.length, 2); assert.ok(/^Explain NEC 2020 .* Section 314\.16 — Box Fill in detail/.test(sends[1]));
+describe('UI-REFS — necLink route (EC-02): a reference opens the source panel, never AI Chat or a key prompt', () => {
+  // Was: "one prepared question, exactly one send". That route switched to the legacy chat and, with no stored provider
+  // key, ended in the "API Key Required" modal with no exit (audit E08/C1A–C1B). The SHIPPED necLink / ecSourceOpen /
+  // ecSourceClose run here; reaching sendMessage, the network, the chat input, the chat panel or the key modal fails.
+  test('legacy string and explicit opts open the panel with the exact citation and official links; Close returns focus; nothing else is touched', () => {
+    const touched = []; let doc = null;
+    const mk = (tag) => ({ tagName: tag, nodeType: 1, tabIndex: -1, children: [], style: {}, attrs: {}, textContent: '', focused: 0, appendChild(c) { this.children.push(c); return c; }, removeChild(c) { this.children.splice(this.children.indexOf(c), 1); return c; }, get firstChild() { return this.children[0] || null; }, focus() { this.focused++; doc.activeElement = this; }, setAttribute(k, v) { this.attrs[k] = String(v); }, hasAttribute(k) { return Object.hasOwn(this.attrs, k); } });
+    const byId = { ecSourcePanel: mk('div'), ecSourceBody: mk('div'), ecSourceTitle: mk('h2'), ecSourceClose: mk('button') };
+    doc = { activeElement: null, body: mk('body'), createElement: mk, contains: () => true, getElementById: (id) => { if (!byId[id]) { touched.push(id); return null; } return byId[id]; } };
+    const moves = []; const history = { state: null, pushState(s) { moves.push(s); this.state = s; }, back() { moves.push('back'); this.state = null; } };
+    const src = editions + fnBody('necRefInfo') + fnBody('necLink') + 'var EC_SOURCE = { open: false, returnTo: null, pushed: false };' + fnBody('ecSourceOpen') + fnBody('ecSourceClose') + '; return { necLink, ecSourceClose };';
+    const api = new Function('document', 'EC', 'history', 'sendMessage', 'fetch', src)(doc, { codeSources: require('../src/refs/codeSources') }, history, () => { throw new Error('sendMessage reached'); }, () => { throw new Error('network reached'); });   // eslint-disable-line no-new-func
+    const trigger = mk('span');
+    api.necLink('NYCEC 210.19(A) and 215.2(A)(1) — NYC mandatory 5% total voltage drop limit', undefined, trigger);
+    assert.strictEqual(byId.ecSourcePanel.style.display, 'flex');
+    assert.strictEqual(byId.ecSourceTitle.textContent, 'NYCEC 2025 amendment — NEC 210.19(A) and 215.2(A)(1)');
+    const text = byId.ecSourceBody.children.map((c) => c.textContent).join('\n');
+    assert.ok(/New York City amendment to NEC 2020 210\.19\(A\) and 215\.2\(A\)\(1\)\./.test(text), text);
+    assert.ok(/Cited in this app for: NYC mandatory 5% total voltage drop limit/.test(text) && /not included in Empire Code/.test(text) && /no explanation is generated/.test(text));
+    const links = byId.ecSourceBody.children.filter((c) => c.tagName === 'a');
+    assert.ok(links.length === 3 && links.every((a) => /^https:\/\/www\.(nyc\.gov|nfpa\.org)\//.test(a.href) && a.target === '_blank' && a.rel === 'noopener noreferrer'), JSON.stringify(links.map((a) => a.href)));
+    assert.strictEqual(links[0].href, 'https://www.nyc.gov/site/buildings/codes/electrical-code.page', 'a NYCEC reference lists the NYC source first');
+    assert.deepStrictEqual(touched, [], 'the chat input, chat panel and key modal are never looked up'); assert.strictEqual(byId.ecSourceClose.focused, 1, 'focus moves into the dialog');
+    api.necLink('NEC 314.16 — Box Fill', { source: 'nec', section: '314.16', title: 'Box Fill' }, mk('span'));   // a second reference while open replaces the content
+    assert.strictEqual(byId.ecSourceTitle.textContent, 'NEC 2020 — Section 314.16'); assert.strictEqual(moves.length, 1, 'still one history entry');
+    assert.ok(byId.ecSourceBody.children.every((c) => !/215\.2/.test(c.textContent)), 'the earlier reference is not left in the panel');
+    api.ecSourceClose();
+    assert.strictEqual(byId.ecSourcePanel.style.display, 'none'); assert.strictEqual(trigger.focused, 1, 'focus returns to the reference that opened the panel');
+    assert.deepStrictEqual(moves, [{ ecSourcePanel: true }, 'back'], 'the panel history entry is unwound, nothing else');
+    api.ecSourceClose(); assert.strictEqual(moves.length, 2, 'closing twice is a no-op');
+  });
+  test('static inventory, both shipped pages: no reference route reaches the legacy chat, provider or key prompt; the panel is an accessible dialog; hosted entry points are guarded', () => {
+    for (const name of ['necLink', 'ecSourceOpen', 'ecSourceClose', 'installRefDelegation']) assert.ok(!/sendMessage|userInput|apiModal|panel-chat|necQuestion|switchTab|fetch\(|localStorage/.test(fnBody(name)), name);
+    const hosted = path.join(__dirname, '..', '..', 'candidate', 'browser', 'workspace', 'mobile.html');
+    for (const file of [path.join(__dirname, '..', 'mobile.html'), hosted].filter((f) => fs.existsSync(f))) {
+      const page = fs.readFileSync(file, 'utf8');
+      assert.ok(/<div class="modal-overlay" id="ecSourcePanel" style="display:none;z-index:10000" role="dialog" aria-modal="true" aria-labelledby="ecSourceTitle" aria-describedby="ecSourceBody">/.test(page), file);
+      assert.ok(page.includes('<button class="modal-btn" type="button" id="ecSourceClose" onclick="ecSourceClose()">CLOSE</button>'), file);
+      assert.ok(!page.includes('necLinkPending') && !/input\.value = necQuestion\(/.test(page), file + ': the chat hand-off is removed from the reference route');
+      assert.strictEqual((page.match(/\bnecQuestion\(/g) || []).length, 2, file + ': necQuestion is only its own definition and its internal edition fallback — nothing calls it');
+      assert.ok(page.includes("if (!API_KEY) { if (window.ecHostBridge) return;"), file + ': the hosted build never opens the key prompt');
+      assert.ok(page.includes("if (window.ecHostBridge) { ecSourceOpen(necRefInfo(String(item.codeRef.code) + ' ' + String(item.codeRef.section)), document.activeElement); return; }"), file + ': hosted Pull Box code references open the source panel');
+      assert.ok(page.includes("if (window.ecHostBridge) return;   // EC-02: a hosted tap is never routed into the legacy chat / key prompt"), file + ': hosted outlet cards do not open the legacy chat');
+      assert.ok(page.includes('id="apiModalCancel" onclick="ecApiModalClose()"'), file + ': the legacy key prompt can be dismissed');
+      assert.ok(/ev\.key === 'Escape'[\s\S]{0,200}ecSourceClose\(\)/.test(page) && /addEventListener\('popstate', function \(\) \{ if \(EC_SOURCE\.open\) ecSourceClose\(true\); \}\)/.test(page), file + ': Escape and Back close the panel');
+    }
   });
 });
 

@@ -10,7 +10,7 @@ export {PilotBudget} from './budget.mjs';
 const CSP="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; worker-src 'self'; frame-src 'self' blob:; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 const FRAME_CSP="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; worker-src 'self'; frame-src 'self' blob:; img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'self'";
 const COMMON={'Content-Security-Policy':CSP,'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Permissions-Policy':'microphone=(self), camera=()','Cache-Control':'no-store'};
-const BUDGET_NAME='owner-pilot-v1',TALK_LIMIT=80000,AUDIO_LIMIT=8*1024*1024;
+const BUDGET_NAME='owner-pilot-v1',TALK_LIMIT=80000,ASSIST_LIMIT=200000,AUDIO_LIMIT=8*1024*1024;
 const AUDIO_MIME=/^(?:audio\/(?:webm|mp4|wav|x-wav)|video\/(?:webm|mp4))(?:;|$)/;
 const GENERIC='Operacja nie powiodła się. Szkic bez zmian; brak automatycznej ponownej próby.';
 const DENIED={
@@ -63,13 +63,16 @@ function ownAsset(assets,path){
  return entry&&typeof entry.base64==='string'&&typeof entry.mime==='string'&&typeof entry.sha256==='string'&&/^[0-9a-f]{64}$/.test(entry.sha256)?entry:null;
 }
 
-// Tests construct a worker with fixture assets and a provider factory. The deployed default export below is built
-// with no arguments, so production always uses the generated modules and the real provider; no request, header or
+// Tests construct a worker with fixture assets and provider factories. The deployed default export below is built
+// with no arguments, so production always uses the generated modules and the real providers; no request, header or
 // environment value can select another identity source, asset set or provider.
 export function createWorker(deps){
  const custom=deps&&typeof deps==='object'?deps:{};
  const loadAssets=custom.assets?async()=>({ASSETS:custom.assets,BUILD:custom.build}):()=>import('./assets.generated.mjs');
  const providerFactory=typeof custom.providerFactory==='function'?custom.providerFactory:createCloudProvider;
+ // The assistant module graph (calculator registry, job contracts) is loaded only by an /api/assist call, after the
+ // gate, so the existing routes neither load it nor depend on it.
+ const assistantProviderFactory=typeof custom.assistantProviderFactory==='function'?custom.assistantProviderFactory:async env=>(await import('./assistant-provider.mjs')).createCloudAssistantProvider(env);
  const decoded=new Map();
 
  async function session(env,email,build){
@@ -81,7 +84,10 @@ export function createWorker(deps){
    return shape(true,granted.remaining,granted.token,null);
   }catch{return shape(false,0,null,'BUDGET_UNAVAILABLE');}
  }
- async function operate(request,env,email,talk){
+ // mode: 'talk' (unchanged /api/talk), 'transcribe' (unchanged /api/transcribe) or 'assist' (protocol ec.assist v1).
+ // All three share the token, request id, budget lease, single provider call, abort signal and safe-error handling.
+ async function operate(request,env,email,mode){
+  const talk=mode==='talk',assist=mode==='assist';
   let bytes;
   try{
    if(!hasKey(env))throw fail(503,'Rozmowa AI nie jest jeszcze skonfigurowana na serwerze. Szkic bez zmian.','AI_NOT_CONFIGURED');
@@ -90,10 +96,17 @@ export function createWorker(deps){
    const id=request.headers.get('x-ec-request-id');
    if(!id||!/^[a-zA-Z0-9-]{8,80}$/.test(id))throw fail(400,'Brak identyfikatora operacji.');
    const mime=request.headers.get('content-type')||'';
-   const provider=await providerFactory(env);
+   const provider=await(assist?assistantProviderFactory:providerFactory)(env);
    // All local validation happens here, before any budget is reserved.
-   let input;
-   if(talk){
+   let input,checked;
+   if(assist){
+    if(!mime.startsWith('application/json'))throw fail(415,'Wymagany JSON.');
+    const raw=await readLimited(request,ASSIST_LIMIT);
+    // Negative zero is read as zero so that every fingerprint is stable across the JSON round trip of the answer.
+    try{input=JSON.parse(new TextDecoder('utf-8',{ignoreBOM:true}).decode(raw),(k,v)=>Object.is(v,-0)?0:v);}catch{throw fail(400,'Nieprawidłowe dane rozmowy.');}
+    if(!input||typeof input!=='object'||Array.isArray(input)||input.requestId!==id)throw fail(400,'Nieprawidłowe zapytanie asystenta. Niczego nie wysłano.','ASSIST_REQUEST');
+    checked=provider.checkAssist(input);
+   }else if(talk){
     if(!mime.startsWith('application/json'))throw fail(415,'Wymagany JSON.');
     const raw=await readLimited(request,TALK_LIMIT);
     try{input=JSON.parse(new TextDecoder('utf-8',{ignoreBOM:true}).decode(raw));}catch{throw fail(400,'Nieprawidłowe dane rozmowy.');}
@@ -110,7 +123,7 @@ export function createWorker(deps){
    if(begun.ok!==true||typeof begun.lease!=='string')throw Object.hasOwn(DENIED,begun.code)?fail(...DENIED[begun.code]):fail(503,'Licznik pilotażu jest niedostępny. Niczego nie wysłano.','BUDGET_UNAVAILABLE');
    // Reserved: exactly one provider call, no retry. The attempt stays counted whatever happens; only the lease is released.
    let result;
-   try{result=talk?await provider.run(input.state,input.text,{signal:request.signal}):await provider.transcribe(bytes,mime,{signal:request.signal});}
+   try{result=assist?await provider.assist(checked,{signal:request.signal}):talk?await provider.run(input.state,input.text,{signal:request.signal}):await provider.transcribe(bytes,mime,{signal:request.signal});}
    finally{try{await budget(env,'/finish',{principalHash,requestId:id,lease:begun.lease});}catch{}}
    return json(200,talk?{...result,requestId:id,baseRevision:input.state.revision}:{...result,requestId:id});
   }catch(e){
@@ -130,7 +143,7 @@ export function createWorker(deps){
   if(allowed&&(!read||path.startsWith('/api/')))allowed=(site===null||site==='same-origin')&&(read||sent===known);
   if(!allowed)return json(403,{error:'Niedozwolone pochodzenie żądania.'});
   if(path==='/_auth')return method==='GET'?new Response(null,{status:303,headers:{...COMMON,Location:'/'}}):notAllowed('GET');
-  if(path==='/api/talk'||path==='/api/transcribe')return method==='POST'?operate(request,env,email,path==='/api/talk'):notAllowed('POST');
+  if(path==='/api/talk'||path==='/api/transcribe'||path==='/api/assist')return method==='POST'?operate(request,env,email,path.slice(5)):notAllowed('POST');
   const{ASSETS,BUILD}=await loadAssets();
   if(path==='/api/session')return method==='GET'?session(env,email,BUILD):notAllowed('GET');
   const entry=ownAsset(ASSETS,path);

@@ -185,7 +185,8 @@ function selectConductor(input) {
         dvd = calculateVoltageDrop({
           amps: totalActualLoadA, feet, voltage, phase, material, size,
         });
-        dvdOK = dvd.ok && dvd.percentDrop <= maxVoltDropPercent;
+        // EC-13: the limit is judged on the unrounded percentage (see the main path below).
+        dvdOK = dvd.ok && dvd.percentDropExact <= maxVoltDropPercent;
       }
       evaluated.push({
         size,
@@ -279,7 +280,12 @@ function selectConductor(input) {
       vd = calculateVoltageDrop({
         amps: totalActualLoadA, feet, voltage, phase, material, size,
       });
-      vdOK = vd.ok && vd.percentDrop <= maxVoltDropPercent;
+      // EC-13: compare the UNROUNDED percentage with the limit. percentDrop is
+      // rounded to three decimals for display, so 3.0003999…% used to be
+      // accepted as "3.000 <= 3". Exactly at the limit and below still pass;
+      // anything above it fails. The reported voltDropPercent stays the
+      // rounded display value — rounding formats, it never decides.
+      vdOK = vd.ok && vd.percentDropExact <= maxVoltDropPercent;
     }
 
     const passes = ampacityOK && ocpdOK && vdOK;

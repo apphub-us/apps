@@ -39,7 +39,7 @@ async function load(api,onLine=true){
   addEventListener(t,f){win[t]=f;},fetch:async(url,init={})=>{calls.push({url:String(url),init});return api(String(url),init);}};
  sandbox.window=sandbox;
  const ctx=vm.createContext(sandbox);
- for(const f of ['handoff-session.js','conversation-bank.js','draft-recovery.js','ui.js'])vm.runInContext(read(f),ctx,{filename:f});
+ for(const f of ['handoff-session.js','assistant-session.js','conversation-bank.js','draft-recovery.js','ui.js'])vm.runInContext(read(f),ctx,{filename:f});
  await settle();
  return {els,calls,local,session,win,navigator,recorders,run:code=>vm.runInContext(code,ctx),token:()=>vm.runInContext('token',ctx),dump:()=>local.dump()+session.dump(),
   count:url=>calls.filter(c=>c.url===url).length,sent:url=>calls.filter(c=>c.url===url),
@@ -68,24 +68,24 @@ test('voice independent: recorder constructor failure releases every acquired tr
 });
 test('voice independent: duplicate queued stop and late chunks generate at most one transcribe and one talk',async()=>{
  const phrase='Dwa metal bushings trzy czwarte';const p=await load(routes([()=>json(sessionBody())],(url,init)=>url==='/api/transcribe'?json({requestId:init.headers['X-EC-Request-Id'],text:phrase}):json({code:'API_SERVICE',error:'Synthetic controlled provider outage'},503)));
- await p.els.mic.onclick();const r=p.recorders[0];r.stop();await r.finish();await r.finish();await settle();assert.equal(p.count('/api/transcribe'),1);assert.equal(p.count('/api/talk'),1);assert.equal(p.els.input.value,phrase);assert.ok(p.local.dump().includes(phrase));assert.equal(p.run('audioBusy'),false);
+ await p.els.mic.onclick();const r=p.recorders[0];r.stop();await r.finish();await r.finish();await settle();assert.equal(p.count('/api/transcribe'),1);assert.equal(p.count('/api/assist'),1);assert.equal(p.els.input.value,phrase);assert.ok(p.local.dump().includes(phrase));assert.equal(p.run('audioBusy'),false);
 });
 test('voice independent: mismatched and malformed transcripts never replace field or invoke model',async()=>{
  for(const bad of ['mismatch','oversize','empty','null']){
   const p=await load(routes([()=>json(sessionBody())],(url,init)=>json({requestId:bad==='mismatch'?'wrong':init.headers['X-EC-Request-Id'],text:bad==='oversize'?'a'.repeat(3001):bad==='empty'?'   ':bad==='null'?null:'test'})));
-  await p.els.mic.onclick();const r=p.recorders[0];r.stop();await r.finish();await settle();assert.equal(p.count('/api/transcribe'),1,bad);assert.equal(p.count('/api/talk'),0,bad);assert.equal(p.els.input.value,'',bad);assert.equal(p.els.status.className,'error',bad);assert.equal(p.run('audioBusy'),false,bad);
+  await p.els.mic.onclick();const r=p.recorders[0];r.stop();await r.finish();await settle();assert.equal(p.count('/api/transcribe'),1,bad);assert.equal(p.count('/api/assist'),0,bad);assert.equal(p.els.input.value,'',bad);assert.equal(p.els.status.className,'error',bad);assert.equal(p.run('audioBusy'),false,bad);
  }
 });
 test('voice independent: delayed transcript does not overwrite newly entered text or another context',async()=>{
  for(const mode of ['field','context']){
   let complete;const p=await load(routes([()=>json(sessionBody())],(url,init)=>new Promise(r=>{complete=()=>r(json({requestId:init.headers['X-EC-Request-Id'],text:'Old spoken phrase'}));})));
   await p.els.mic.onclick();const r=p.recorders[0];r.stop();const finished=r.finish();await settle();assert.ok(complete);
-  if(mode==='context')await p.run('hostExclusive(()=>openNewContext(null))');p.els.input.value='New text survives';const id=p.run('activeContextId');complete();await finished;await settle();assert.equal(p.els.input.value,'New text survives',mode);assert.equal(p.run('activeContextId'),id,mode);assert.equal(p.count('/api/talk'),0,mode);
+  if(mode==='context')await p.run('hostExclusive(()=>openNewContext(null))');p.els.input.value='New text survives';const id=p.run('activeContextId');complete();await finished;await settle();assert.equal(p.els.input.value,'New text survives',mode);assert.equal(p.run('activeContextId'),id,mode);assert.equal(p.count('/api/assist'),0,mode);
  }
 });
 test('voice independent: failure to save transcript keeps it in field and sends no model request',async()=>{
- const p=await load(routes([()=>json(sessionBody())],(url,init)=>json({requestId:init.headers['X-EC-Request-Id'],text:'Transcript retained after quota'})));await p.els.mic.onclick();const r=p.recorders[0];p.local.setItem=()=>{throw Object.assign(Error('Synthetic quota'),{name:'QuotaExceededError'});};r.stop();await r.finish();await settle();assert.equal(p.count('/api/transcribe'),1);assert.equal(p.count('/api/talk'),0);assert.equal(p.els.input.value,'Transcript retained after quota');assert.equal(p.run('state.history.length'),0);
+ const p=await load(routes([()=>json(sessionBody())],(url,init)=>json({requestId:init.headers['X-EC-Request-Id'],text:'Transcript retained after quota'})));await p.els.mic.onclick();const r=p.recorders[0];p.local.setItem=()=>{throw Object.assign(Error('Synthetic quota'),{name:'QuotaExceededError'});};r.stop();await r.finish();await settle();assert.equal(p.count('/api/transcribe'),1);assert.equal(p.count('/api/assist'),0);assert.equal(p.els.input.value,'Transcript retained after quota');assert.equal(p.run('state.history.length'),0);
 });
 test('voice independent: natural track end stops actual recorder once and no hidden microphone survives',async()=>{
- const p=await load(routes([()=>json(sessionBody())],(url,init)=>json({requestId:init.headers['X-EC-Request-Id'],text:''}))),x=seenStream();p.navigator.mediaDevices.getUserMedia=async()=>x.stream;await p.els.mic.onclick();const r=p.recorders[0];let stopped=0;const stop=r.stop.bind(r);r.stop=()=>{stopped++;stop();};x.track.onended();assert.equal(stopped,1);x.track.onended();assert.equal(stopped,1);await r.finish();await settle();assert.equal(x.track.stops,1);assert.equal(p.count('/api/transcribe'),1);assert.equal(p.count('/api/talk'),0);
+ const p=await load(routes([()=>json(sessionBody())],(url,init)=>json({requestId:init.headers['X-EC-Request-Id'],text:''}))),x=seenStream();p.navigator.mediaDevices.getUserMedia=async()=>x.stream;await p.els.mic.onclick();const r=p.recorders[0];let stopped=0;const stop=r.stop.bind(r);r.stop=()=>{stopped++;stop();};x.track.onended();assert.equal(stopped,1);x.track.onended();assert.equal(stopped,1);await r.finish();await settle();assert.equal(x.track.stops,1);assert.equal(p.count('/api/transcribe'),1);assert.equal(p.count('/api/assist'),0);
 });

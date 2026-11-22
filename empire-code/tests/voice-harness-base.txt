@@ -39,7 +39,7 @@ async function load(api,onLine=true){
   addEventListener(t,f){win[t]=f;},fetch:async(url,init={})=>{calls.push({url:String(url),init});return api(String(url),init);}};
  sandbox.window=sandbox;
  const ctx=vm.createContext(sandbox);
- for(const f of ['handoff-session.js','conversation-bank.js','draft-recovery.js','ui.js'])vm.runInContext(read(f),ctx,{filename:f});
+ for(const f of ['handoff-session.js','assistant-session.js','conversation-bank.js','draft-recovery.js','ui.js'])vm.runInContext(read(f),ctx,{filename:f});
  await settle();
  return {els,calls,local,session,win,navigator,recorders,run:code=>vm.runInContext(code,ctx),token:()=>vm.runInContext('token',ctx),dump:()=>local.dump()+session.dump(),
   count:url=>calls.filter(c=>c.url===url).length,sent:url=>calls.filter(c=>c.url===url),

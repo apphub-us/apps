@@ -42,19 +42,78 @@ function gecSize(serviceSize, serviceMaterial = 'cu') {
   return { ok: false, reason: 'NO_ROW' };
 }
 
-/** 250.66(A)(B)(C) — permitted reductions by electrode type. */
-const ELECTRODE_CAP = { rod: '6', ufer: '4', ring: '2' };
-function gecWithElectrodeCap(serviceSize, serviceMaterial, electrode) {
-  const base = gecSize(serviceSize, serviceMaterial);
-  if (!base.ok) return base;
-  const cap = ELECTRODE_CAP[electrode];
-  if (!cap) return { ...base, capApplied: false, finalCopper: base.copper };
+/** 250.66(A)(B) — fixed permitted reductions by electrode type. */
+const ELECTRODE_CAP = { rod: '6', ufer: '4' };
+const ELECTRODES = ['water', 'rod', 'ufer', 'ring'];
+
+/**
+ * EC-01 — ground ring, 250.66(C).
+ *
+ * The reduction for a ground ring depends on the ring conductor that is actually
+ * installed. Earlier revisions hardcoded "#2" as if it were a property of every
+ * ring. That was an undisclosed assumption, so the condition is now an explicit
+ * FACT the caller must state. Scope is deliberately narrow and conservative:
+ *
+ *   CONFIRMED_CU_2AWG_SOLE  the ring is confirmed as #2 AWG copper AND the sized
+ *                           GEC portion is the sole connection to that ring ->
+ *                           the existing reduction (not larger than #2 Cu) applies.
+ *   UNKNOWN (the default)   nothing confirmed -> no reduction and NO final size.
+ *   OTHER                   larger / different / unverified ring, or not the sole
+ *                           connection -> unsupported, NO final size.
+ *
+ * This is not a generalized "min(table, any ring conductor)" rule: the final
+ * NEC 2020 text of 250.66(C) has not been verified for this project, so every
+ * ring other than the confirmed #2 Cu case stays unsupported until the source is
+ * closed. For an unresolved ring the Table 250.66 row is still returned, but only
+ * as a reference (`copper` / `aluminum`); `finalCopper` is null and `resolved`
+ * is false so no caller can present it as a result.
+ */
+const GROUND_RING = Object.freeze({
+  UNKNOWN: 'unknown',
+  CONFIRMED_CU_2AWG_SOLE: 'cu_2awg_sole',
+  OTHER: 'other',
+});
+const GROUND_RING_VALUES = Object.freeze(Object.values(GROUND_RING));
+const GROUND_RING_CONFIRMED_SIZE = '2';
+const ringValue = (groundRing) => (groundRing === undefined || groundRing === null ? GROUND_RING.UNKNOWN : groundRing);
+
+function capped(base, cap) {
   const capBeneficial = GND_CM[cap] < GND_CM[base.copper];
   return {
     ...base,
+    capSize: cap,
     capApplied: capBeneficial,
     finalCopper: capBeneficial ? cap : base.copper,
+    resolved: true,
+    condition: null,
   };
+}
+function gecWithElectrodeCap(serviceSize, serviceMaterial, electrode, groundRing) {
+  const base = gecSize(serviceSize, serviceMaterial);
+  if (!base.ok) return base;
+  if (electrode === 'ring') {
+    const ring = ringValue(groundRing);
+    if (!GROUND_RING_VALUES.includes(ring)) {
+      return { ok: false, reason: 'INVALID_GROUND_RING', field: 'groundRing', groundRing };
+    }
+    if (ring !== GROUND_RING.CONFIRMED_CU_2AWG_SOLE) {
+      return {
+        ...base,
+        capSize: null,
+        capApplied: false,
+        finalCopper: null,
+        resolved: false,
+        condition: {
+          field: 'groundRing',
+          code: ring === GROUND_RING.UNKNOWN ? 'GROUND_RING_UNCONFIRMED' : 'GROUND_RING_UNSUPPORTED',
+        },
+      };
+    }
+    return capped(base, GROUND_RING_CONFIRMED_SIZE);
+  }
+  const cap = ELECTRODE_CAP[electrode];
+  if (!cap) return { ...base, capSize: null, capApplied: false, finalCopper: base.copper, resolved: true, condition: null };
+  return capped(base, cap);
 }
 const CAP_REFERENCE = {
   rod: 'NEC 250.66(A)', ufer: 'NEC 250.66(B)', ring: 'NEC 250.66(C)',
@@ -77,11 +136,14 @@ const CAP_REFERENCE = {
  * @param {string} input.serviceSize         largest service conductor (GEC basis)
  * @param {string} input.serviceMaterial     'cu' | 'al'
  * @param {string} input.electrode           'water' | 'rod' | 'ufer' | 'ring'
+ * @param {string} [input.groundRing]        only read when electrode is 'ring':
+ *                                           'unknown' (default) | 'cu_2awg_sole' | 'other'
+ *                                           — see GROUND_RING. Never assumed.
  */
 function calculateGrounding(input) {
   const {
     ocpdRating, egcMaterial = 'cu', requiredPhaseSize, installedPhaseSize,
-    serviceSize, serviceMaterial = 'cu', electrode = 'water',
+    serviceSize, serviceMaterial = 'cu', electrode = 'water', groundRing,
   } = input || {};
 
   if (typeof ocpdRating !== 'number' || !Number.isFinite(ocpdRating) || ocpdRating <= 0) {
@@ -93,8 +155,11 @@ function calculateGrounding(input) {
   if (serviceMaterial !== 'cu' && serviceMaterial !== 'al') {
     return { ok: false, reason: 'INVALID_MATERIAL', field: 'serviceMaterial', material: serviceMaterial };
   }
-  if (electrode !== 'water' && !ELECTRODE_CAP[electrode]) {
+  if (!ELECTRODES.includes(electrode)) {
     return { ok: false, reason: 'INVALID_ELECTRODE', electrode };
+  }
+  if (electrode === 'ring' && !GROUND_RING_VALUES.includes(ringValue(groundRing))) {
+    return { ok: false, reason: 'INVALID_GROUND_RING', field: 'groundRing', groundRing };
   }
   for (const [field, size] of [['requiredPhaseSize', requiredPhaseSize],
     ['installedPhaseSize', installedPhaseSize], ['serviceSize', serviceSize]]) {
@@ -103,10 +168,9 @@ function calculateGrounding(input) {
 
   const egc = egcUpsized(ocpdRating, requiredPhaseSize, installedPhaseSize, egcMaterial);
   if (!egc.ok) return egc;               // OCPD_ABOVE_TABLE, field-tagged sizes
-  const gec = gecWithElectrodeCap(serviceSize, serviceMaterial, electrode);
+  const gec = gecWithElectrodeCap(serviceSize, serviceMaterial, electrode, groundRing);
   if (!gec.ok) return gec;
 
-  const capSize = ELECTRODE_CAP[electrode] || null;
   return {
     ok: true,
     egc: {
@@ -134,10 +198,17 @@ function calculateGrounding(input) {
       copper: gec.copper,
       aluminum: gec.aluminum,
       electrode,
-      capSize,
+      // EC-01: the stated ring fact (null for every other electrode) and whether
+      // a final size exists. `copper` / `aluminum` above are ALWAYS the plain
+      // Table 250.66 row; when `resolved` is false they are a reference only and
+      // `finalCopper` is null — never a result.
+      groundRing: electrode === 'ring' ? ringValue(groundRing) : null,
+      capSize: gec.capSize,
       capReference: CAP_REFERENCE[electrode] || null,
       capApplied: gec.capApplied,
       finalCopper: gec.finalCopper,
+      resolved: gec.resolved,
+      condition: gec.condition,
     },
   };
 }
@@ -145,5 +216,6 @@ function calculateGrounding(input) {
 const round3 = (n) => Math.round(n * 1000) / 1000;
 module.exports = {
   egcSize, egcUpsized, gecSize, gecWithElectrodeCap, ELECTRODE_CAP,
+  GROUND_RING, GROUND_RING_CONFIRMED_SIZE,
   calculateGrounding,
 };

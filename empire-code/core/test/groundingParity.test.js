@@ -74,6 +74,11 @@ function engineDecision(input) {
     serviceSize: input.svc,
     serviceMaterial: input.sMat,
     electrode: input.elec,
+    // EC-01: legacy production applied the ring cap as if EVERY ring were #2 Cu.
+    // That implicit premise is now an explicit input, so parity with the legacy
+    // decision exists only for the one case legacy actually modelled: a confirmed
+    // #2 AWG copper ring. The unconfirmed default is asserted separately below.
+    groundRing: input.elec === 'ring' ? 'cu_2awg_sole' : undefined,
   });
 }
 
@@ -143,6 +148,23 @@ describe('Grounding migration parity — legacy production decision vs shared en
           compareCase({ ...EGC_DEFAULT, svc, sMat, elec },
             `${svc}/${sMat}/${elec}`);
         }
+      }
+    }
+  });
+
+  test('EC-01 intended divergence: without the stated ring fact the engine gives NO final size where legacy silently capped at #2', () => {
+    for (const svc of GND_SIZES) {
+      for (const sMat of ['cu', 'al']) {
+        const legacy = legacyDecision({ ...EGC_DEFAULT, svc, sMat, elec: 'ring' });
+        const eng = calculateGrounding({
+          ocpdRating: 100, egcMaterial: 'cu', requiredPhaseSize: '3/0', installedPhaseSize: '3/0',
+          serviceSize: svc, serviceMaterial: sMat, electrode: 'ring',
+        });
+        assert.strictEqual(legacy.capped, '2', 'legacy defect shape: the hardcoded ring cap');
+        assert.strictEqual(eng.gec.copper, legacy.gecCu, `${svc}/${sMat} table row unchanged`);
+        assert.strictEqual(eng.gec.finalCopper, null, `${svc}/${sMat} no final size`);
+        assert.strictEqual(eng.gec.capApplied, false, `${svc}/${sMat} no reduction`);
+        assert.strictEqual(eng.gec.capSize, null, `${svc}/${sMat} no invented cap`);
       }
     }
   });

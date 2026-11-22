@@ -71,17 +71,49 @@ describe('B2 PERSISTENCE — versioned payload and legacy distinction', () => {
     assert.deepStrictEqual(after.snapshot, before.snapshot); assert.deepStrictEqual(after.fieldErrors, before.fieldErrors); assert.deepStrictEqual(after.loadErrors, before.loadErrors); assert.deepStrictEqual(after.result, before.result);
     assert.strictEqual(after.sourceFavId, 77, 'ledger L-6: an lcv-3 record restores its stored sourceFavId verbatim (the old lcv-2 null rule is not resurrected)'); assert.deepStrictEqual(after.context, before.context); assert.strictEqual(h2.$('lcMethod').value, 'measured_220_87'); assert.strictEqual(h2.$('lcOccupancy').value, 'dwelling_unit_house');
   });
-  test('T-S-39 storage-level: legacy load, no write-back; Save appends a new lcv-2 record; original record, null entries, unknown types and unknown properties are preserved byte-for-byte', () => {
+  // EC-AUDIT-FIX-1 (final regression triage): T-S-39 was one test on a fixture that mixed two things — a valid legacy preset with
+  // unknown types / unknown properties, and list entries no version can read (`null`, a bare string). Under the accepted Favorites
+  // boundary (core/src/storage/favoritesStore.js: only `absent` and `ok` are writable) those two have different outcomes, so they
+  // are two tests now. Neither weakens the other: the valid legacy store keeps its full preservation + append contract, and the
+  // malformed store must stay byte-identical with the save refused. The legacy preset is READABLE in both.
+  test('T-S-39 storage-level (valid legacy store): legacy load, no write-back; Save appends a new lcv-3 record; the original record, unknown types and unknown properties are preserved, no schema migration of the stored legacy record', () => {
     const legacy = H.clone(H.caseById('T-S-22c').legacyRecord);
+    const store = { zzUnknownType: [{ name: 'x', vals: { a: 1 }, id: 5 }], vd: [{ name: 'VD', vals: { amps: '1' }, id: 1, extra: 'keep' }], lc: [{ name: 'AC outlets', vals: legacy, id: 1002, note: 'user-added property' }] };
+    const seed = JSON.stringify(store);
+    const h = buildHarness({ storage: seed, promptAnswer: 'copy' }); h.api.lcInit();
+    assert.deepStrictEqual(h.EC.favoritesStore.inspect(JSON.parse(seed)), [], 'fixture precondition: unknown types and unknown row properties do not make a store unwritable');
+    h.api.favLoad('lc', 1002); assert.strictEqual(h.store.data, seed, 'loading a legacy preset writes nothing back'); assert.strictEqual(h.state().snapshot.dwelling.nycAcCircuitCount, 2); assert.strictEqual(h.state().sourceFavId, 1002);
+    assert.strictEqual(h.api.lcFavSave(), true);
+    const after = JSON.parse(h.store.data);
+    assert.deepStrictEqual(after.zzUnknownType, store.zzUnknownType); assert.deepStrictEqual(after.vd, store.vd); assert.deepStrictEqual(after.lc.slice(0, 1), store.lc);
+    // member for member AND in the stored key order: the legacy record is not migrated, re-ordered or stripped of its unknown property
+    assert.strictEqual(JSON.stringify(after.lc[0]), JSON.stringify(store.lc[0])); assert.strictEqual(JSON.stringify(after.vd), JSON.stringify(store.vd)); assert.strictEqual(JSON.stringify(after.zzUnknownType), JSON.stringify(store.zzUnknownType));
+    assert.ok(!Object.prototype.hasOwnProperty.call(after.lc[0].vals, 'lcv'), 'the stored legacy record is still legacy'); assert.strictEqual(after.lc[0].note, 'user-added property');
+    assert.strictEqual(after.lc.length, 2); assert.strictEqual(after.lc[1].vals.lcv, 3); assert.strictEqual(after.lc[1].vals.sourceFavId, 1002); assert.deepStrictEqual(h.EC.loadCalcInputV2.downConvertToA({ snapshot: after.lc[1].vals.snapshot, parseErrors: [] }).snapshot, H.caseById('T-S-22c').migratedSnapshot);
+    assert.strictEqual(after.lc.filter((f) => f && typeof f === 'object' && f.vals && f.vals.lcv === 3).length, 1, 'only the new record has the new payload');
+  });
+  test('T-S-39 storage-level (malformed list entries): the valid legacy preset beside a null entry and a bare string still loads with no write-back; Save is refused before the prompt and the stored bytes — null entries, unknown types, unknown properties — stay exactly as they were', () => {
+    const legacy = H.clone(H.caseById('T-S-22c').legacyRecord);
+    // The exact former T-S-39 fixture.
     const store = { zzUnknownType: [{ name: 'x', vals: { a: 1 }, id: 5 }], vd: [{ name: 'VD', vals: { amps: '1' }, id: 1, extra: 'keep' }], lc: [null, { name: 'AC outlets', vals: legacy, id: 1002, note: 'user-added property' }, 'not-an-object'] };
     const seed = JSON.stringify(store);
     const h = buildHarness({ storage: seed, promptAnswer: 'copy' }); h.api.lcInit();
-    h.api.favLoad('lc', 1002); assert.strictEqual(h.store.data, seed); assert.strictEqual(h.state().snapshot.dwelling.nycAcCircuitCount, 2); assert.strictEqual(h.state().sourceFavId, 1002);
-    assert.strictEqual(h.api.lcFavSave(), true);
-    const after = JSON.parse(h.store.data);
-    assert.deepStrictEqual(after.zzUnknownType, store.zzUnknownType); assert.deepStrictEqual(after.vd, store.vd); assert.deepStrictEqual(after.lc.slice(0, 3), store.lc);
-    assert.strictEqual(after.lc.length, 4); assert.strictEqual(after.lc[3].vals.lcv, 3); assert.strictEqual(after.lc[3].vals.sourceFavId, 1002); assert.deepStrictEqual(h.EC.loadCalcInputV2.downConvertToA({ snapshot: after.lc[3].vals.snapshot, parseErrors: [] }).snapshot, H.caseById('T-S-22c').migratedSnapshot);
-    assert.strictEqual(after.lc.filter((f) => f && typeof f === 'object' && f.vals && f.vals.lcv === 3).length, 1, 'only the new record has the new payload');
+    const problems = h.EC.favoritesStore.inspect(JSON.parse(seed));
+    assert.strictEqual(problems.length, 1, 'fixture precondition: one structural problem, in the lc list only'); assert.ok(/"lc" presets collection contains 2 entries this version cannot read/.test(problems[0]), problems[0]);
+    // Readability of the valid legacy preset is NOT lost in the recovery state.
+    h.api.favLoad('lc', 1002); assert.strictEqual(h.store.data, seed, 'loading writes nothing back'); assert.strictEqual(h.state().snapshot.dwelling.nycAcCircuitCount, 2); assert.strictEqual(h.state().sourceFavId, 1002);
+    const loaded = JSON.stringify(h.state().snapshot); const prompts = h.prompts.calls.length; const sets = h.store.sets;
+    // Appending would mean rewriting a list this version cannot fully read: refused, nothing repaired or dropped.
+    assert.strictEqual(h.api.lcFavSave(), false, 'not reported as saved');
+    assert.strictEqual(h.prompts.calls.length, prompts, 'no name is asked for a preset that cannot be stored');
+    assert.strictEqual(h.store.sets, sets, 'no storage write was attempted'); assert.strictEqual(h.store.data, seed, 'byte-for-byte: the null entry, the bare string, the unknown type and the unknown properties are all still stored');
+    const fault = h.state().fault; assert.strictEqual(fault && fault.kind, 'storage');
+    assert.ok(/unexpected format, so this preset was not saved/.test(fault.message), fault.message); assert.ok(/"lc" presets collection contains 2 entries this version cannot read/.test(fault.message), fault.message);
+    assert.ok(/Nothing was written and nothing was replaced/.test(fault.message), fault.message); assert.ok(/Export raw data/.test(fault.message) && /Reset Favorites/.test(fault.message), 'the recovery actions are named: ' + fault.message);
+    assert.strictEqual(JSON.stringify(h.state().snapshot), loaded, 'the loaded legacy draft is still on screen'); assert.strictEqual(h.state().sourceFavId, 1002);
+    const read = h.EC.favoritesStore.read({ getItem: () => h.store.data });
+    assert.strictEqual(read.state, 'unsupported'); assert.strictEqual(read.raw, seed, 'the raw value offered for export is the stored value');
+    assert.deepStrictEqual(h.EC.favoritesStore.rows(read, 'lc').map((r) => r.id), [1002], 'the valid legacy preset is still listed; the two unreadable entries are not presented as presets');
   });
   test('a legacy list is never dropped or repaired: LegacyRecordError leaves the store, the list and the draft untouched; deleting an unrelated record still works once', () => {
     const seed = JSON.stringify({ lc: [{ name: 'Bad', vals: { method: 'optional', voltage: '240', scope: 'house', sqFt: '1500', appliances: '[', hvac: '[]', ev: '[]' }, id: 1 }, { name: 'Good', vals: H.caseById('T-S-04').legacyRecord, id: 2 }] });

@@ -5,6 +5,9 @@
  const read=id=>lcJobCall('read',[id]);
  const store=()=>batch||(batch=EC.jobVoiceBatch.createBatchStore(indexedDB,{crypto,locks:navigator.locks,readJob:read}));
  const hasDraft=()=>!!(LC_JOB.editor||lcMeasHasDraft()||lcMatHasDraft()||lcPhotoHasDraft()||LC_ARC.busy||LC_RESTORE.busy);
+ // Stage 5: a note or one measurement reviewed in the conversation (docs/conversation-job-actions.md). The adapter writes through
+ // the original job-card and measurement stores only; this hook adds no store and no write path of its own.
+ const actions=()=>{const a=EC.jobConversationActions;if(!a)throw Error('Ta wersja lokalnych narzędzi nie zawiera zapisu notatek i pomiarów z rozmowy.');return a;};
  window.ecHostBridge={
   ready:true,list:()=>lcJobCall('list',[]),read,
   create:fields=>lcJobCall('create',[own(fields),[]]),
@@ -15,6 +18,13 @@
   material:(jobId,id)=>lcMatStore().read(jobId,id),
   prepareEdit:input=>EC.conversationMaterialEdit.prepare(own(input),{crypto}),
   commitEdit:(plan,source,confirmation)=>EC.conversationMaterialEdit.commit(own(plan),own(source),own(confirmation),{crypto,indexedDB,readJob:read}),
+  prepareAction:input=>actions().prepare(own(input),{crypto}),
+  pendingAction:plan=>actions().pendingReceipt(own(plan)),
+  // persistPending: the parent's check that the exact pending plan is durably stored; it must resolve exactly true or nothing is written.
+  commitAction:(plan,input,confirmation,persistPending)=>actions().commit(own(plan),own(input),own(confirmation),{crypto,indexedDB,locks:navigator.locks,persistPending}),
+  reconcileAction:receipt=>actions().reconcile(own(receipt),{crypto,indexedDB}),
+  // The quantity / unit pairs of the original measurement model, for the review form (read-only copy).
+  measurementUnits:()=>own(EC.jobMeasurement.UNITS),
   async show(view,id){
    if(view==='jobs'){ecJobsOpen();if(id&&(!LC_JOB.current||LC_JOB.current.head.jobId!==id)){if(!await lcJobOpen(id))return false;}if(LC_JOB.current){await lcMatRefresh();}return true;}
    if(view==='tools'){switchTab('home',document.getElementById('mnav-home'));return true;}

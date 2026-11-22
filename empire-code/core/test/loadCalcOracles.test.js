@@ -87,8 +87,31 @@ describe('INTEGRATION — B2 registers and injects the accepted core (supersedes
     // ledger L-16 (executed in LC-22082-B0-UI-INTEGRATION-1-R1 / U1): the three A modules keep positions 11-13; the five accepted 220.82 / V2 modules follow them in dependency order; exactly 19 in total
     assert.deepStrictEqual(ids.slice(11, 14), [['loadCalcState', 'calc/loadCalcState.js'], ['loadCalcInput', 'calc/loadCalcInput.js'], ['loadCalc', 'calc/loadCalc.js']]);
     // LC-SERVICE-UI-1: module 20 (the unchanged R2 service sizing prototype) is registered after its dependencies; the explicit list replaces the former count of 19
-    assert.deepStrictEqual(ids.slice(14), [['loadCalcInputV2', 'calc/loadCalcInputV2.js'], ['loadCalcOpt82', 'calc/loadCalcOpt82.js'], ['loadCalcFacade', 'calc/loadCalcFacade.js'], ['loadCalcStateV2', 'calc/loadCalcStateV2.js'], ['loadCalcStorageV2', 'calc/loadCalcStorageV2.js'], ['loadCalcServiceSizing', 'calc/loadCalcServiceSizing.js'], ['loadCalcServiceRecord', 'calc/loadCalcServiceRecord.js'], ['jobCard', 'jobs/jobCard.js'], ['jobCardStore', 'jobs/jobCardStore.js'], ['jobMeasurement', 'jobs/jobMeasurement.js'], ['jobMeasurementStore', 'jobs/jobMeasurementStore.js'], ['jobMaterial', 'jobs/jobMaterial.js'], ['jobMaterialStore', 'jobs/jobMaterialStore.js'], ['jobPhoto', 'jobs/jobPhoto.js'], ['jobPhotoFile', 'jobs/jobPhotoFile.js'], ['jobPhotoStore', 'jobs/jobPhotoStore.js'], ['jobArchive', 'jobs/jobArchive.js'], ['jobArchiveFile', 'jobs/jobArchiveFile.js'], ['jobArchiveSource', 'jobs/jobArchiveSource.js'], ['jobRestore', 'jobs/jobRestore.js'], ['jobRestoreStore', 'jobs/jobRestoreStore.js'], ['jobVoiceMaterials', 'jobs/jobVoiceMaterials.js'], ['jobVoiceIntent', 'jobs/jobVoiceIntent.js'], ['jobVoiceBatch', 'jobs/jobVoiceBatch.js'], /* CONVERTER-WH-1: appended last, no dependencies */ ['batteryRuntime', 'calc/batteryRuntime.js']]);
-    assert.strictEqual(ids.length, 39); assert.strictEqual(ids[0][0], 'tables'); assert.strictEqual(ids[10][0], 'pullBoxLayout');
+    // EC-AUDIT-FIX-1: the exact public list after the authorized audit stages — still an explicit, ordered, complete list
+    // (never a minimum count or a loose "includes"). Entries without a comment are the OLD BASELINE, in their unchanged
+    // relative order; each NEW PUBLIC MODULE of the audit is marked with the stage that registered it and the dependency
+    // reason for its position (tools/build-calc.js is the single source of that order).
+    assert.deepStrictEqual(ids.slice(14), [
+      // old baseline: the five accepted 220.82 / V2 modules, service sizing, service record
+      ['loadCalcInputV2', 'calc/loadCalcInputV2.js'], ['loadCalcOpt82', 'calc/loadCalcOpt82.js'], ['loadCalcFacade', 'calc/loadCalcFacade.js'], ['loadCalcStateV2', 'calc/loadCalcStateV2.js'], ['loadCalcStorageV2', 'calc/loadCalcStorageV2.js'], ['loadCalcServiceSizing', 'calc/loadCalcServiceSizing.js'], ['loadCalcServiceRecord', 'calc/loadCalcServiceRecord.js'],
+      // old baseline: job card + measurement models and stores
+      ['jobCard', 'jobs/jobCard.js'], ['jobCardStore', 'jobs/jobCardStore.js'], ['jobMeasurement', 'jobs/jobMeasurement.js'], ['jobMeasurementStore', 'jobs/jobMeasurementStore.js'],
+      // NEW (EC-AUDIT-FIX-1 stage 3, EC-08): the one shared unit / quantity definition, BEFORE its first user jobMaterial
+      ['materialQuantity', 'jobs/materialQuantity.js'],
+      // old baseline: materials, photos, archive, restore, voice
+      ['jobMaterial', 'jobs/jobMaterial.js'], ['jobMaterialStore', 'jobs/jobMaterialStore.js'], ['jobPhoto', 'jobs/jobPhoto.js'], ['jobPhotoFile', 'jobs/jobPhotoFile.js'], ['jobPhotoStore', 'jobs/jobPhotoStore.js'], ['jobArchive', 'jobs/jobArchive.js'], ['jobArchiveFile', 'jobs/jobArchiveFile.js'], ['jobArchiveSource', 'jobs/jobArchiveSource.js'], ['jobRestore', 'jobs/jobRestore.js'], ['jobRestoreStore', 'jobs/jobRestoreStore.js'], ['jobVoiceMaterials', 'jobs/jobVoiceMaterials.js'], ['jobVoiceIntent', 'jobs/jobVoiceIntent.js'], ['jobVoiceBatch', 'jobs/jobVoiceBatch.js'],
+      // NEW (EC-AUDIT-FIX-1 stage 5): conversation -> job actions, AFTER jobVoiceBatch and after the job-card / measurement models and stores it requires
+      ['jobConversationActions', 'jobs/jobConversationActions.js'],
+      // NEW (EC-AUDIT-FIX-1, EC-03 / EC-05, EC-02): Favorites storage boundary + code-source registry, no dependencies
+      ['favoritesStore', 'storage/favoritesStore.js'], ['codeSources', 'refs/codeSources.js'],
+      // old baseline (CONVERTER-WH-1): Wh battery runtime, no dependencies
+      ['batteryRuntime', 'calc/batteryRuntime.js'],
+      // NEW (EC-AUDIT-FIX-1 stage 5): the conversational calculator registry, LAST because it requires batteryRuntime and the engines above
+      ['conversationTools', 'calc/conversationTools.js'],
+    ]);
+    // 44 = 11 existing + 3 A modules + the 30 listed above (the former count of 39 predates the audit modules)
+    assert.strictEqual(ids.length, 44); assert.strictEqual(ids[0][0], 'tables'); assert.strictEqual(ids[10][0], 'pullBoxLayout');
+    assert.strictEqual(new Set(ids.map((m) => m[0])).size, 44, 'every public module id is registered exactly once');
     const app = fs.readFileSync(path.join(ROOT, 'mobile.html'), 'utf8');
     for (const f of RUNTIME) assert.ok(app.includes('  // ---- ' + f + ' ----'), 'generated block for ' + f);
   });

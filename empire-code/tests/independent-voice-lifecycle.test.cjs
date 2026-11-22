@@ -39,7 +39,7 @@ async function load(api,onLine=true){
   addEventListener(t,f){win[t]=f;},fetch:async(url,init={})=>{calls.push({url:String(url),init});return api(String(url),init);}};
  sandbox.window=sandbox;
  const ctx=vm.createContext(sandbox);
- for(const f of ['handoff-session.js','conversation-bank.js','draft-recovery.js','ui.js'])vm.runInContext(read(f),ctx,{filename:f});
+ for(const f of ['handoff-session.js','assistant-session.js','conversation-bank.js','draft-recovery.js','ui.js'])vm.runInContext(read(f),ctx,{filename:f});
  await settle();
  return {els,calls,local,session,win,navigator,recorders,run:code=>vm.runInContext(code,ctx),token:()=>vm.runInContext('token',ctx),dump:()=>local.dump()+session.dump(),
   count:url=>calls.filter(c=>c.url===url).length,sent:url=>calls.filter(c=>c.url===url),
@@ -65,5 +65,5 @@ test('independent voice: oversized stale chunk cannot cancel a later recording',
  const p=await load(routes([()=>json(sessionBody())],noPost));await p.els.mic.onclick();const old=p.recorders[0];await p.cancel();await p.els.mic.onclick();old.ondataavailable?.({data:new Blob([new Uint8Array(8*1024*1024+1)])});await settle();assert.equal(p.run('recording'),true);assert.equal(p.recorders[1].state,'recording');assert.equal(p.count('/api/transcribe'),0);p.run('cancelAudio()');
 });
 test('independent voice: whitespace-only transcript is not a successful dictation',async()=>{
- const p=await load(routes([()=>json(sessionBody())],(url,init)=>url==='/api/transcribe'?json({requestId:init.headers['X-EC-Request-Id'],text:'  '+String.fromCharCode(10)+'  '}):noPost(url)));await p.els.mic.onclick();p.recorders[0].stop();await p.recorders[0].finish();await settle();assert.equal(p.count('/api/transcribe'),1);assert.equal(p.count('/api/talk'),0);assert.equal(p.els.input.value,'');assert.equal(p.els.status.className,'error');
+ const p=await load(routes([()=>json(sessionBody())],(url,init)=>url==='/api/transcribe'?json({requestId:init.headers['X-EC-Request-Id'],text:'  '+String.fromCharCode(10)+'  '}):noPost(url)));await p.els.mic.onclick();p.recorders[0].stop();await p.recorders[0].finish();await settle();assert.equal(p.count('/api/transcribe'),1);assert.equal(p.count('/api/assist'),0);assert.equal(p.els.input.value,'');assert.equal(p.els.status.className,'error');
 });

@@ -1,21 +1,41 @@
 {
-  "build": "PRIVATE-PILOT-4",
-  "shellPin": "8660858492a3dc2ba62234120c1e6f58d6a744cde59ab0e9d4ec015a20f1d5b4",
-  "cacheName": "empire-private-shell-v1-8660858492a3dc2ba62234120c1e6f58d6a744cde59ab0e9d4ec015a20f1d5b4",
+  "build": "PRIVATE-PILOT-5",
+  "shellPin": "2054947a987a29cfd179aa419f38dbcba2abf93c256f62f749be6be3924022ff",
+  "cacheName": "empire-private-shell-v1-2054947a987a29cfd179aa419f38dbcba2abf93c256f62f749be6be3924022ff",
   "baselineFileSha256": "0e245eb65dea0f88a61455f25408e46b56d04f8b9f6b843f8c62570d2f2f28a6",
   "changedAllowed": [
+    "conversation-bank.js",
+    "draft-recovery.js",
+    "handoff-session.js",
     "index.html",
+    "material-edit-host.js",
+    "style.css",
     "sw.js",
     "ui.js",
+    "workspace-host.js",
+    "workspace/handoff.js",
+    "workspace/host-core.js",
+    "workspace/material-edit.js",
     "workspace/mobile.html"
+  ],
+  "addedAssets": [
+    "assistant-session.js",
+    "workspace/assistant-bridge.js"
   ],
   "sources": [
     {
+      "path": "assistant-session.js",
+      "bytes": 26091,
+      "sha256": "5e0f798a947960525260fcb93f60f1e6c5cb5c367e2e9f877b6c99f09dded296",
+      "baselineSha256": null,
+      "status": "added"
+    },
+    {
       "path": "conversation-bank.js",
-      "bytes": 18182,
-      "sha256": "606cef5b398f308ac92ff07fdd6fd31f67272a0c93aaaa0bbbf15dd5eac243f5",
+      "bytes": 49321,
+      "sha256": "3708147993c199dccce25bf0702542f957cffe2cbb363e5b9382c01072350ad3",
       "baselineSha256": "606cef5b398f308ac92ff07fdd6fd31f67272a0c93aaaa0bbbf15dd5eac243f5",
-      "status": "baseline"
+      "status": "changed"
     },
     {
       "path": "draft-recovery.js",
@@ -33,8 +53,8 @@
     },
     {
       "path": "index.html",
-      "bytes": 5989,
-      "sha256": "55cfe329ea106e3584ac5adf708535d87430a2039be8b987f0ac9de1af80e53c",
+      "bytes": 10327,
+      "sha256": "f029ba36d3ffd32e02d6346ff8c8201b693c50ef3954a881251b7e7781dda678",
       "baselineSha256": "bf1ec4b7f87e10b548a47649a2ec8f42aff844945a45c5f9386318aaf9cba258",
       "status": "changed"
     },
@@ -47,38 +67,45 @@
     },
     {
       "path": "style.css",
-      "bytes": 7512,
-      "sha256": "3d3cf9a7140a98b958e0eb122e9895847def383ea759a7d72a035781fe7e00d9",
+      "bytes": 10963,
+      "sha256": "b4299db01404060140ab55258f775b2fcb4d6cade7b1e147d6cd3615d9a9b7e0",
       "baselineSha256": "3d3cf9a7140a98b958e0eb122e9895847def383ea759a7d72a035781fe7e00d9",
-      "status": "baseline"
+      "status": "changed"
     },
     {
       "path": "sw.js",
-      "bytes": 5174,
-      "sha256": "d7fe72ff80bcc0d6dcd8e028470348278f23a5dd0eee23423952f85182494edf",
+      "bytes": 5955,
+      "sha256": "6f1f944b56b43b07a1c29e44ae706a30f057fd11f3264e45641c2365ff86691c",
       "baselineSha256": "0d40e150eed1f7204f4503ea5624a81c43ecb27096ec0cb47857a221db87e002",
       "status": "changed"
     },
     {
       "path": "ui.js",
-      "bytes": 52926,
-      "sha256": "b6e407d6ce3dcbc583b21f208976651d3863cd6cf126b81b1899f2f891340244",
+      "bytes": 105234,
+      "sha256": "67f85f5997562d85319140a6d2111a18309448f71915c81dc39aae33fe868409",
       "baselineSha256": "e5df76f3d765392af7a9f6fcbfd418283f16a796aae258e3083208416c2a88e6",
       "status": "changed"
     },
     {
       "path": "workspace-host.js",
-      "bytes": 27864,
-      "sha256": "b6b2aa04bc97a9ff6d3aa9866a2d74ebc8ef0123bc45019cfe1e03e74e2bb374",
+      "bytes": 83246,
+      "sha256": "726048835db467875369827077297b9206fbce977261b0203440a83d609f832e",
       "baselineSha256": "b6b2aa04bc97a9ff6d3aa9866a2d74ebc8ef0123bc45019cfe1e03e74e2bb374",
-      "status": "baseline"
+      "status": "changed"
+    },
+    {
+      "path": "workspace/assistant-bridge.js",
+      "bytes": 73271,
+      "sha256": "47574e29fe67f0b724ba74af8f41e1d2557ec81eda89396e9d077ad1645c706e",
+      "baselineSha256": null,
+      "status": "added"
     },
     {
       "path": "workspace/handoff.js",
-      "bytes": 9430,
-      "sha256": "62293a307b813ea879563e8febf6726ecafc86439fabdd0fa439323f94fb5fc7",
+      "bytes": 10179,
+      "sha256": "4da3f52835e38e03d4357c3ded508a61fb625370e196c3a089c9d072a05d8e81",
       "baselineSha256": "62293a307b813ea879563e8febf6726ecafc86439fabdd0fa439323f94fb5fc7",
-      "status": "baseline"
+      "status": "changed"
     },
     {
       "path": "workspace/host-core.css",
@@ -89,10 +116,10 @@
     },
     {
       "path": "workspace/host-core.js",
-      "bytes": 2062,
-      "sha256": "8bc3495b3d194155a091996ef28606c1b95c2f7ddf7e0c0e5bf4c381c6e2c419",
+      "bytes": 3139,
+      "sha256": "ac65c32abb487b0c2525b7009684633af59ff3c6298781124bca29f3c92822c3",
       "baselineSha256": "8bc3495b3d194155a091996ef28606c1b95c2f7ddf7e0c0e5bf4c381c6e2c419",
-      "status": "baseline"
+      "status": "changed"
     },
     {
       "path": "workspace/icon-192.png",
@@ -124,15 +151,15 @@
     },
     {
       "path": "workspace/material-edit.js",
-      "bytes": 9732,
-      "sha256": "f12527c72928abdd6965689b123c3d57a4f8fdc806b7b3af8ef24ae7f8f2f257",
+      "bytes": 10632,
+      "sha256": "bf5c86666874b09a0c00e83373f2c95505a010c76d665c1053233a1a4600a304",
       "baselineSha256": "f12527c72928abdd6965689b123c3d57a4f8fdc806b7b3af8ef24ae7f8f2f257",
-      "status": "baseline"
+      "status": "changed"
     },
     {
       "path": "workspace/mobile.html",
-      "bytes": 1714237,
-      "sha256": "13bc2ffbaeb35bf5cc185e8f9a04cb19eba3df2fe4c7d241599b29669ffdd444",
+      "bytes": 2037787,
+      "sha256": "f4524150ae88409f22a46151d41e229b1edfd9503d91944c04f391487deb186e",
       "baselineSha256": "0350f9a4835a985b5ce6a3d2ca683bb3f0294c02d534cfe6ca681ffdce145e5b",
       "status": "changed"
     }
@@ -140,15 +167,21 @@
   "served": [
     {
       "url": "/",
-      "bytes": 5989,
+      "bytes": 10327,
       "mime": "text/html; charset=utf-8",
-      "sha256": "55cfe329ea106e3584ac5adf708535d87430a2039be8b987f0ac9de1af80e53c"
+      "sha256": "f029ba36d3ffd32e02d6346ff8c8201b693c50ef3954a881251b7e7781dda678"
+    },
+    {
+      "url": "/assistant-session.js",
+      "bytes": 26091,
+      "mime": "text/javascript; charset=utf-8",
+      "sha256": "5e0f798a947960525260fcb93f60f1e6c5cb5c367e2e9f877b6c99f09dded296"
     },
     {
       "url": "/conversation-bank.js",
-      "bytes": 18182,
+      "bytes": 49321,
       "mime": "text/javascript; charset=utf-8",
-      "sha256": "606cef5b398f308ac92ff07fdd6fd31f67272a0c93aaaa0bbbf15dd5eac243f5"
+      "sha256": "3708147993c199dccce25bf0702542f957cffe2cbb363e5b9382c01072350ad3"
     },
     {
       "url": "/draft-recovery.js",
@@ -164,9 +197,9 @@
     },
     {
       "url": "/index.html",
-      "bytes": 5989,
+      "bytes": 10327,
       "mime": "text/html; charset=utf-8",
-      "sha256": "55cfe329ea106e3584ac5adf708535d87430a2039be8b987f0ac9de1af80e53c"
+      "sha256": "f029ba36d3ffd32e02d6346ff8c8201b693c50ef3954a881251b7e7781dda678"
     },
     {
       "url": "/material-edit-host.js",
@@ -176,33 +209,39 @@
     },
     {
       "url": "/style.css",
-      "bytes": 7512,
+      "bytes": 10963,
       "mime": "text/css; charset=utf-8",
-      "sha256": "3d3cf9a7140a98b958e0eb122e9895847def383ea759a7d72a035781fe7e00d9"
+      "sha256": "b4299db01404060140ab55258f775b2fcb4d6cade7b1e147d6cd3615d9a9b7e0"
     },
     {
       "url": "/sw.js",
-      "bytes": 7715,
+      "bytes": 8801,
       "mime": "text/javascript; charset=utf-8",
-      "sha256": "49cd0b46a0932644bb432ff83bf31ad86ec8e63c118b14a56ea3776b1be78616"
+      "sha256": "4024d4ca678f55c78938dcba1196dd8e8f57fd29278d083317e1e34073642baf"
     },
     {
       "url": "/ui.js",
-      "bytes": 52926,
+      "bytes": 105234,
       "mime": "text/javascript; charset=utf-8",
-      "sha256": "b6e407d6ce3dcbc583b21f208976651d3863cd6cf126b81b1899f2f891340244"
+      "sha256": "67f85f5997562d85319140a6d2111a18309448f71915c81dc39aae33fe868409"
     },
     {
       "url": "/workspace-host.js",
-      "bytes": 27864,
+      "bytes": 83246,
       "mime": "text/javascript; charset=utf-8",
-      "sha256": "b6b2aa04bc97a9ff6d3aa9866a2d74ebc8ef0123bc45019cfe1e03e74e2bb374"
+      "sha256": "726048835db467875369827077297b9206fbce977261b0203440a83d609f832e"
+    },
+    {
+      "url": "/workspace/assistant-bridge.js",
+      "bytes": 73271,
+      "mime": "text/javascript; charset=utf-8",
+      "sha256": "47574e29fe67f0b724ba74af8f41e1d2557ec81eda89396e9d077ad1645c706e"
     },
     {
       "url": "/workspace/handoff.js",
-      "bytes": 9430,
+      "bytes": 10179,
       "mime": "text/javascript; charset=utf-8",
-      "sha256": "62293a307b813ea879563e8febf6726ecafc86439fabdd0fa439323f94fb5fc7"
+      "sha256": "4da3f52835e38e03d4357c3ded508a61fb625370e196c3a089c9d072a05d8e81"
     },
     {
       "url": "/workspace/host-core.css",
@@ -212,9 +251,9 @@
     },
     {
       "url": "/workspace/host-core.js",
-      "bytes": 2062,
+      "bytes": 3139,
       "mime": "text/javascript; charset=utf-8",
-      "sha256": "8bc3495b3d194155a091996ef28606c1b95c2f7ddf7e0c0e5bf4c381c6e2c419"
+      "sha256": "ac65c32abb487b0c2525b7009684633af59ff3c6298781124bca29f3c92822c3"
     },
     {
       "url": "/workspace/icon-192.png",
@@ -242,26 +281,31 @@
     },
     {
       "url": "/workspace/material-edit.js",
-      "bytes": 9732,
+      "bytes": 10632,
       "mime": "text/javascript; charset=utf-8",
-      "sha256": "f12527c72928abdd6965689b123c3d57a4f8fdc806b7b3af8ef24ae7f8f2f257"
+      "sha256": "bf5c86666874b09a0c00e83373f2c95505a010c76d665c1053233a1a4600a304"
     },
     {
       "url": "/workspace/mobile.html",
-      "bytes": 1714237,
+      "bytes": 2037787,
       "mime": "text/html; charset=utf-8",
-      "sha256": "13bc2ffbaeb35bf5cc185e8f9a04cb19eba3df2fe4c7d241599b29669ffdd444"
+      "sha256": "f4524150ae88409f22a46151d41e229b1edfd9503d91944c04f391487deb186e"
     }
   ],
   "shell": [
     {
       "url": "/",
-      "sha256": "55cfe329ea106e3584ac5adf708535d87430a2039be8b987f0ac9de1af80e53c",
+      "sha256": "f029ba36d3ffd32e02d6346ff8c8201b693c50ef3954a881251b7e7781dda678",
       "mime": "text/html; charset=utf-8"
     },
     {
+      "url": "/assistant-session.js",
+      "sha256": "5e0f798a947960525260fcb93f60f1e6c5cb5c367e2e9f877b6c99f09dded296",
+      "mime": "text/javascript; charset=utf-8"
+    },
+    {
       "url": "/conversation-bank.js",
-      "sha256": "606cef5b398f308ac92ff07fdd6fd31f67272a0c93aaaa0bbbf15dd5eac243f5",
+      "sha256": "3708147993c199dccce25bf0702542f957cffe2cbb363e5b9382c01072350ad3",
       "mime": "text/javascript; charset=utf-8"
     },
     {
@@ -276,7 +320,7 @@
     },
     {
       "url": "/index.html",
-      "sha256": "55cfe329ea106e3584ac5adf708535d87430a2039be8b987f0ac9de1af80e53c",
+      "sha256": "f029ba36d3ffd32e02d6346ff8c8201b693c50ef3954a881251b7e7781dda678",
       "mime": "text/html; charset=utf-8"
     },
     {
@@ -286,22 +330,27 @@
     },
     {
       "url": "/style.css",
-      "sha256": "3d3cf9a7140a98b958e0eb122e9895847def383ea759a7d72a035781fe7e00d9",
+      "sha256": "b4299db01404060140ab55258f775b2fcb4d6cade7b1e147d6cd3615d9a9b7e0",
       "mime": "text/css; charset=utf-8"
     },
     {
       "url": "/ui.js",
-      "sha256": "b6e407d6ce3dcbc583b21f208976651d3863cd6cf126b81b1899f2f891340244",
+      "sha256": "67f85f5997562d85319140a6d2111a18309448f71915c81dc39aae33fe868409",
       "mime": "text/javascript; charset=utf-8"
     },
     {
       "url": "/workspace-host.js",
-      "sha256": "b6b2aa04bc97a9ff6d3aa9866a2d74ebc8ef0123bc45019cfe1e03e74e2bb374",
+      "sha256": "726048835db467875369827077297b9206fbce977261b0203440a83d609f832e",
+      "mime": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "/workspace/assistant-bridge.js",
+      "sha256": "47574e29fe67f0b724ba74af8f41e1d2557ec81eda89396e9d077ad1645c706e",
       "mime": "text/javascript; charset=utf-8"
     },
     {
       "url": "/workspace/handoff.js",
-      "sha256": "62293a307b813ea879563e8febf6726ecafc86439fabdd0fa439323f94fb5fc7",
+      "sha256": "4da3f52835e38e03d4357c3ded508a61fb625370e196c3a089c9d072a05d8e81",
       "mime": "text/javascript; charset=utf-8"
     },
     {
@@ -311,7 +360,7 @@
     },
     {
       "url": "/workspace/host-core.js",
-      "sha256": "8bc3495b3d194155a091996ef28606c1b95c2f7ddf7e0c0e5bf4c381c6e2c419",
+      "sha256": "ac65c32abb487b0c2525b7009684633af59ff3c6298781124bca29f3c92822c3",
       "mime": "text/javascript; charset=utf-8"
     },
     {
@@ -336,18 +385,18 @@
     },
     {
       "url": "/workspace/material-edit.js",
-      "sha256": "f12527c72928abdd6965689b123c3d57a4f8fdc806b7b3af8ef24ae7f8f2f257",
+      "sha256": "bf5c86666874b09a0c00e83373f2c95505a010c76d665c1053233a1a4600a304",
       "mime": "text/javascript; charset=utf-8"
     },
     {
       "url": "/workspace/mobile.html",
-      "sha256": "13bc2ffbaeb35bf5cc185e8f9a04cb19eba3df2fe4c7d241599b29669ffdd444",
+      "sha256": "f4524150ae88409f22a46151d41e229b1edfd9503d91944c04f391487deb186e",
       "mime": "text/html; charset=utf-8"
     }
   ],
   "serviceWorker": {
-    "templateSha256": "d7fe72ff80bcc0d6dcd8e028470348278f23a5dd0eee23423952f85182494edf",
-    "generatedSha256": "49cd0b46a0932644bb432ff83bf31ad86ec8e63c118b14a56ea3776b1be78616"
+    "templateSha256": "6f1f944b56b43b07a1c29e44ae706a30f057fd11f3264e45641c2365ff86691c",
+    "generatedSha256": "4024d4ca678f55c78938dcba1196dd8e8f57fd29278d083317e1e34073642baf"
   },
   "prompt": {
     "source": "input/online-prompt.txt",
@@ -356,11 +405,11 @@
   "outputs": [
     {
       "path": "candidate/server/assets.generated.mjs",
-      "sha256": "dfa96c153d3d6eef8e99da3c6becca9609bb2faaa37f7a290bab532eef5ff446"
+      "sha256": "2496dabfa3590c93b94145957b47f611a330e86f5e34f6e3047298268af0b878"
     },
     {
       "path": "candidate/server/prompt.generated.mjs",
-      "sha256": "24205149fc37131aa2497055a959320e2ffc34238a174d925a2b0cf1d4f88007"
+      "sha256": "64c917761fe3cebc86106efb2c85e1094dc9356ba725e887d1826dc47cb25f03"
     }
   ]
 }

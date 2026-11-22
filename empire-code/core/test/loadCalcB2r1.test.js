@@ -134,10 +134,12 @@ describe('B2-r1 R-B2-03 — a present malformed lc collection is never replaced'
     }
   });
   test('controls: absent lc is created; an array is appended; quota failure and root-JSON corruption stay explicit and non-destructive', () => {
-    const seed = JSON.stringify({ vd: [{ id: 1 }], custom: { v: 2 } });
-    const h = buildHarness({ storage: seed, promptAnswer: 'x' }); annual(h); assert.strictEqual(h.api.lcFavSave(), true); const out = JSON.parse(h.store.data); assert.deepStrictEqual(out.vd, [{ id: 1 }]); assert.deepStrictEqual(out.custom, { v: 2 }); assert.strictEqual(out.lc.length, 1);
+    // EC-03 (stage 3): Save goes through EC.favoritesStore, which refuses to rewrite a store holding an unreadable row in ANY
+    // list. The control rows are therefore readable presets; the refusal for unreadable rows has its own test (stage3Favorites).
+    const seed = JSON.stringify({ vd: [{ id: 1, name: 'VD', vals: {} }], custom: { v: 2 } });
+    const h = buildHarness({ storage: seed, promptAnswer: 'x' }); annual(h); assert.strictEqual(h.api.lcFavSave(), true); const out = JSON.parse(h.store.data); assert.deepStrictEqual(out.vd, [{ id: 1, name: 'VD', vals: {} }]); assert.deepStrictEqual(out.custom, { v: 2 }); assert.strictEqual(out.lc.length, 1);
     assert.strictEqual(h.api.lcFavSave(), true); assert.strictEqual(JSON.parse(h.store.data).lc.length, 2);
-    const q = buildHarness({ storage: '{"lc":[],"vd":[{"id":7}]}', promptAnswer: 'x' }); annual(q); q.store.failNextSet = new Error('quota'); assert.strictEqual(q.api.lcFavSave(), false); assert.strictEqual(q.store.data, '{"lc":[],"vd":[{"id":7}]}');
+    const q = buildHarness({ storage: '{"lc":[],"vd":[{"id":7,"name":"v","vals":{}}]}', promptAnswer: 'x' }); annual(q); q.store.failNextSet = new Error('quota'); assert.strictEqual(q.api.lcFavSave(), false); assert.strictEqual(q.store.data, '{"lc":[],"vd":[{"id":7,"name":"v","vals":{}}]}');
     const b = buildHarness({ storage: '{broken', promptAnswer: 'x' }); annual(b); assert.strictEqual(b.api.lcFavSave(), false); assert.strictEqual(b.store.data, '{broken');
   });
 });

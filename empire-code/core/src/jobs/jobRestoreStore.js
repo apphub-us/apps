@@ -7,7 +7,78 @@ const Restore = require('./jobRestore.js');
 const Archive = require('./jobArchive.js');
 const Source = require('./jobArchiveSource.js');
 const Media = require('./jobPhotoFile.js');
+const Photo = require('./jobPhoto.js');
+const PhotoStore = require('./jobPhotoStore.js');
 const fail = (code, message, extra) => Object.assign({ ok: false, code, problems: [message] }, extra || {});
+const PHOTO_DB = 'empire_code_photos';
+const countable = n => Number.isSafeInteger(n) && n >= 0;
+/** EC-04: what this archive would add to the photo database — validated file metadata only, safe integers only. */
+function incomingPhotos(plan) {
+  const stores = plan.records[PHOTO_DB];
+  let bytes = 0;
+  for (const a of stores.assets) {
+    const file = Photo.validateFile(a.file);
+    if (!file.ok || a.jobId !== plan.jobId) return fail('CORRUPT', 'An archived original photo has invalid metadata. Nothing was restored.');
+    bytes += file.file.bytes;
+    if (!countable(bytes)) return fail('LIMIT', 'Archived photo sizes cannot be counted safely. Nothing was restored.');
+  }
+  if (stores.revisions.some(r => !r || r.jobId !== plan.jobId)) return fail('CORRUPT', 'An archived photo revision belongs to another job. Nothing was restored.');
+  return { ok: true, jobId: plan.jobId, photos: stores.assets.length, bytes, rows: stores.revisions.length };
+}
+/** An archive with no originals AND no photo history rows adds nothing to the photo database, so it cannot
+ * raise any total the ledger guards; its restore is not coupled to the state of unrelated stored photos. */
+const addsNoPhotoData = incoming => incoming.photos === 0 && incoming.rows === 0;
+/**
+ * EC-04: photo capacity ledger, evaluated INSIDE the caller's assets+revisions transaction.
+ *
+ * jobPhotoStore.load() refuses every later list/read/create once the photo database exceeds the shared
+ * limits in jobPhoto.js (global and per job; excluded photos, every job and every history row count).
+ * A restore that only counted records could therefore commit data that locks the whole photo collection,
+ * including photos of jobs that existed before. This ledger applies the SAME shared constants to
+ * existing + incoming totals, reads existing sizes only from asset metadata validated by the photo
+ * store's own assetRead(), and refuses when any existing original cannot be validated — an unverifiable
+ * total is never treated as free capacity. Limits are read at call time from the shared module.
+ * `done` runs only when the archive fits; every refusal aborts the transaction it runs in.
+ */
+function photoCapacity(tx, ctx, incoming, done) {
+  const assets = tx.objectStore('assets'), revisions = tx.objectStore('revisions');
+  let photos = 0, bytes = 0, jobPhotos = 0, jobBytes = 0, rows, jobRows, ready = 0;
+  function check() {
+    if (++ready !== 3) return;
+    const need = [
+      ['total original photos', photos + incoming.photos, Photo.MAX_TOTAL_PHOTOS],
+      ['total original-photo bytes', bytes + incoming.bytes, Photo.MAX_TOTAL_BYTES],
+      ['photos in this job', jobPhotos + incoming.photos, Photo.MAX_PHOTOS],
+      ['photo bytes in this job', jobBytes + incoming.bytes, Photo.MAX_JOB_BYTES],
+      ['total photo history rows', rows + incoming.rows, Photo.MAX_TOTAL_ROWS],
+      ['photo history rows in this job', jobRows + incoming.rows, Photo.MAX_JOB_ROWS],
+    ];
+    if (![photos, bytes, jobPhotos, jobBytes, rows, jobRows].every(countable) || !need.every(([, total, limit]) => countable(total) && countable(limit))) {
+      ctx.abort(fail('CORRUPT', 'Existing photo storage cannot be counted safely, so capacity cannot be verified. Nothing was restored.')); return;
+    }
+    for (const [label, total, limit] of need) {
+      if (total > limit) {
+        ctx.abort(fail('LIMIT', 'Restoring this archive would exceed the supported photo capacity (' + label + ': ' + total + ' of ' + limit + '). Photos already stored, including excluded ones and other jobs, count toward the limit.', { capacity: { label, total, limit } }));
+        return;
+      }
+    }
+    done();
+  }
+  ctx.request(revisions.count(), n => { rows = n; check(); });
+  ctx.request(revisions.index('byJobId').count(incoming.jobId), n => { jobRows = n; check(); });
+  ctx.request(assets.openCursor(), cursor => {
+    if (!cursor) { check(); return; }
+    const read = PhotoStore.assetRead(cursor.value);
+    if (!read.ok || read.asset.photoId !== cursor.primaryKey) {
+      ctx.abort(fail('CORRUPT', 'An existing original-photo record has invalid or unreadable metadata, so photo capacity cannot be verified. Nothing was restored and existing records were not changed.'));
+      return;
+    }
+    photos++; bytes += read.asset.file.bytes;
+    if (read.asset.jobId === incoming.jobId) { jobPhotos++; jobBytes += read.asset.file.bytes; }
+    if (!countable(bytes)) { ctx.abort(fail('CORRUPT', 'Existing photo sizes cannot be counted safely. Nothing was restored.')); return; }
+    cursor.continue();
+  });
+}
 const DB = 'empire_code_restore_operations', OP = 'operations', VERSION = 1;
 const ORDER = ['empire_code_measurements', 'empire_code_materials', 'empire_code_photos', 'empire_code_jobs'];
 const KEY = { jobs: 'jobId', jobRevisions: 'revisionId', revisions: 'revisionId', assets: 'photoId' };
@@ -91,7 +162,7 @@ function createRestoreStore(indexedDB, localStorage, options = {}) {
     return r.ok ? { ok: true, rows: r.value } : r;
   }
   function storage() { try { if (!localStorage || !localStorage.getItem || !localStorage.setItem || !localStorage.removeItem) throw Error(); return true; } catch (_) { return false; } }
-  async function keysAbsent(dbs, plan) {
+  async function keysAbsent(dbs, plan, incoming) {
     for (const [name, stores] of Object.entries(plan.records)) {
       const r = await transact(dbs[name], Object.keys(stores), 'readonly', (tx, ctx) => {
         let waiting = 0;
@@ -106,9 +177,18 @@ function createRestoreStore(indexedDB, localStorage, options = {}) {
       });
       if (!r.ok) return r;
       // Existing stores can be at their global application limits.
+      if (name === PHOTO_DB) {
+        // EC-04 preflight: refuse BEFORE the journal and before any write when existing + incoming photo
+        // data would exceed the shared photo limits. It is repeated inside the write transaction (addRows),
+        // because an ordinary photo upload does not take the restore lock and can commit after this read.
+        // Skipped only for an archive that brings no original and no photo history row (see addsNoPhotoData).
+        if (addsNoPhotoData(incoming)) continue;
+        const fits = await transact(dbs[name], ['assets', 'revisions'], 'readonly', (tx, ctx) => photoCapacity(tx, ctx, incoming, () => ctx.done(true)));
+        if (!fits.ok) return fits;
+        continue;
+      }
       for (const [s, entries] of Object.entries(stores)) {
-        const max = name === 'empire_code_photos' ? s === 'assets' ? 500 : 10000 :
-          name === 'empire_code_jobs' ? s === 'jobs' ? 500 : 500000 : 50000;
+        const max = name === 'empire_code_jobs' ? s === 'jobs' ? 500 : 500000 : 50000;
         const count = await transact(dbs[name], [s], 'readonly', (tx,ctx) => ctx.request(tx.objectStore(s).count(), n => ctx.done(n)));
         if (!count.ok) return count;
         if (count.value + entries.length > max) return fail('LIMIT', 'The target browser store lacks supported capacity: ' + name + '/' + s + '.');
@@ -120,10 +200,16 @@ function createRestoreStore(indexedDB, localStorage, options = {}) {
     }
     return { ok: true };
   }
-  async function addRows(db, stores) {
+  async function addRows(db, stores, incoming) {
     return transact(db, Object.keys(stores), 'readwrite', (tx, ctx) => {
-      for (const [name, entries] of Object.entries(stores)) for (const row of entries) ctx.request(tx.objectStore(name).add(row), () => {});
-      ctx.done(true);
+      const add = () => {
+        for (const [name, entries] of Object.entries(stores)) for (const row of entries) ctx.request(tx.objectStore(name).add(row), () => {});
+        ctx.done(true);
+      };
+      // EC-04: for the photo database the capacity ledger is re-read in THIS readwrite transaction and the
+      // adds are issued only from its completion callback, so the check and the writes are one atomic unit:
+      // a photo committed by another tab after the preflight is counted, and a refusal aborts with no row added.
+      if (incoming) photoCapacity(tx, ctx, incoming, add); else add();
     });
   }
   async function removeRows(db, stores) {
@@ -191,6 +277,7 @@ function createRestoreStore(indexedDB, localStorage, options = {}) {
       const verified = await Media.verify(a.blob, a.file, crypto);
       if (!verified.ok) return verified;
     }
+    const incoming = incomingPhotos(plan); if (!incoming.ok) return incoming;
     // Web Locks coordinate multiple tabs using this restore implementation.
     if (!options.locks || typeof options.locks.request !== 'function') return fail('LOCK_UNAVAILABLE', 'This browser does not provide a cross-tab restore lock. No live records were written.');
     return options.locks.request('empire-code-restore-v1', { mode:'exclusive', ifAvailable:true }, async lock => {
@@ -200,7 +287,7 @@ function createRestoreStore(indexedDB, localStorage, options = {}) {
       try {
         const p = await pendingIn(dbs[DB]); if (!p.ok) return p;
         if (p.rows.length) return fail('RECOVERY_REQUIRED', 'An interrupted restore is recorded. Run Recover interrupted restore before importing anything else.');
-        const available = await keysAbsent(dbs, plan); if (!available.ok) return available;
+        const available = await keysAbsent(dbs, plan, incoming); if (!available.ok) return available;
         const marker = snapshot(plan);
         const staged = await transact(dbs[DB], [OP], 'readwrite', (tx,ctx) => { ctx.request(tx.objectStore(OP).add(marker), () => {}); ctx.done(true); });
         if (!staged.ok) return staged;
@@ -211,7 +298,7 @@ function createRestoreStore(indexedDB, localStorage, options = {}) {
             localStorage.setItem(e.key, e.raw);
           }
           if (!failure) for (const name of ORDER) {
-            const result = await addRows(dbs[name], plan.records[name]);
+            const result = await addRows(dbs[name], plan.records[name], name === PHOTO_DB && !addsNoPhotoData(incoming) ? incoming : null);
             if (!result.ok) { failure = result; break; }
             if (typeof options.step === 'function') await options.step(name);
           }

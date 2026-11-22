@@ -93,6 +93,10 @@ const MODULES = [
   { id: 'jobCardStore', file: 'jobs/jobCardStore.js' },
   { id: 'jobMeasurement', file: 'jobs/jobMeasurement.js' },
   { id: 'jobMeasurementStore', file: 'jobs/jobMeasurementStore.js' },
+  // EC-AUDIT-FIX-1 (EC-08): the one shared unit / quantity definition, before its first user. jobMaterial.js
+  // requires './materialQuantity.js' (the shim strips './' and '.js'); the hosted handoff reads the same object as
+  // EC.materialQuantity, and the server contract require()s the same file, so no layer keeps its own unit list.
+  { id: 'materialQuantity', file: 'jobs/materialQuantity.js' },
   { id: 'jobMaterial', file: 'jobs/jobMaterial.js' },
   { id: 'jobMaterialStore', file: 'jobs/jobMaterialStore.js' },
   { id: 'jobPhoto', file: 'jobs/jobPhoto.js' },
@@ -106,8 +110,24 @@ const MODULES = [
   { id: 'jobVoiceMaterials', file: 'jobs/jobVoiceMaterials.js' },
   { id: 'jobVoiceIntent', file: 'jobs/jobVoiceIntent.js' },
   { id: 'jobVoiceBatch', file: 'jobs/jobVoiceBatch.js' },
+  // EC-AUDIT-FIX-1 (STAGE5): conversation -> job actions (one appended note / one measurement). Its four
+  // require() statements are './jobCard.js', './jobCardStore.js', './jobMeasurement.js' and
+  // './jobMeasurementStore.js' (the shim strips './' and '.js'), all registered above: the adapter writes only
+  // through the ORIGINAL job-card and measurement models/stores of this bundle and carries no copy of them.
+  { id: 'jobConversationActions', file: 'jobs/jobConversationActions.js' },
+  // EC-AUDIT-FIX-1 (EC-03 / EC-05, EC-02): the Favorites storage boundary and the static code-source registry.
+  // No dependencies. They ship in this block so core/mobile.html and the hosted workspace copy run the exact
+  // bytes the Node tests require(); the pages keep only thin presentation code.
+  { id: 'favoritesStore', file: 'storage/favoritesStore.js' },
+  { id: 'codeSources', file: 'refs/codeSources.js' },
   // CONVERTER-WH-1: Wh battery / power-station runtime. No dependencies; the Converter tab only reads its result.
   { id: 'batteryRuntime', file: 'calc/batteryRuntime.js' },
+  // EC-AUDIT-FIX-1 (STAGE5): the conversational calculator registry, last because it requires batteryRuntime.
+  // Its twelve require() statements are './tables', './batteryRuntime', './ampacity', './voltageDrop',
+  // './wireSizing', './conduitFill', './boxFill', './motor', './grounding', './pullBox', './loadCalcFacade.js'
+  // and './loadCalcServiceSizing.js' — every one an id registered above, resolved by the shim without an alias.
+  // The registry only calls those engines; no formula or table is embedded a second time.
+  { id: 'conversationTools', file: 'calc/conversationTools.js' },
 ];
 
 function readModule(mod) {

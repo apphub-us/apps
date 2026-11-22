@@ -3,8 +3,11 @@
 const KIND = 'empire-code.material-revision';
 const VERSION = 1;
 const PRODUCER = Object.freeze({ applicationRevision: 'LC-JOB-MATERIALS-1', recordContractRevision: 1 });
-const UNITS = Object.freeze(['pcs', 'box', 'pack', 'roll', 'set', 'ft', 'in', 'm', 'cm', 'mm']);
-const COUNT_UNITS = Object.freeze(['pcs', 'box', 'pack', 'roll', 'set']);
+// EC-08: units and the whole-count rule come from the one shared definition (materialQuantity.js), which the
+// server proposal contract and the conversation handoff use too. UNITS / COUNT_UNITS stay exported from here.
+const Quantity = require('./materialQuantity.js');
+const UNITS = Quantity.UNITS;
+const COUNT_UNITS = Quantity.COUNT_UNITS;
 const STATUSES = Object.freeze(['not_recorded', 'needed', 'ordered', 'on_site', 'used', 'not_needed']);
 const FIELDS = Object.freeze(['label', 'specification', 'quantityText', 'unit', 'status', 'location', 'supplier', 'notes']);
 const ID = /^mat1_[0-9a-f]{32}$/;
@@ -51,10 +54,9 @@ function validateFields(fields) {
   }
   text('label', 160, true, true); text('specification', 1000, false, false);
   text('location', 500, false, false); text('supplier', 200, false, true); text('notes', 4000, false, false);
-  if (typeof fields.unit !== 'string' || !UNITS.includes(fields.unit)) problems.push('Choose a unit; quantities are never converted automatically.');
-  const quantity = typeof fields.quantityText === 'string' ? fields.quantityText.trim() : '';
-  if (typeof fields.quantityText !== 'string' || fields.quantityText.length > 64 || !/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(quantity) || !/[1-9]/.test(quantity)) problems.push('Enter a positive decimal quantity with a dot, without signs, thousands separators or exponent notation. Use Not needed rather than a zero quantity for an item you no longer need.');
-  else if (COUNT_UNITS.includes(fields.unit) && quantity.includes('.') && /[1-9]/.test(quantity.split('.')[1])) problems.push('Pieces, boxes, packs, rolls and sets require a whole-number quantity. Length units allow fractions.');
+  if (!Quantity.isUnit(fields.unit)) problems.push('Choose a unit; quantities are never converted automatically.');
+  if (!Quantity.isJobQuantityText(fields.quantityText)) problems.push('Enter a positive decimal quantity with a dot, without signs, thousands separators or exponent notation. Use Not needed rather than a zero quantity for an item you no longer need.');
+  else if (Quantity.fractionalCount(fields.quantityText, fields.unit)) problems.push(Quantity.WHOLE_COUNT_MESSAGE);
   if (typeof fields.status !== 'string' || !STATUSES.includes(fields.status)) problems.push('Choose a supported material status or Not recorded.');
   return problems.length ? fail('VALIDATION', problems) : { ok: true, fields: copy(fields) };
 }

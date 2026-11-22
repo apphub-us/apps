@@ -65,7 +65,13 @@ describe('B2-r1.1 R-B2R1-01 — atomic refusal at the Favorites boundary', () =>
     h.set('lcReadingValue', '40000'); assert.strictEqual(h.state().fault, null); assert.strictEqual(h.state().result.status, 'COMPLETE', 'the previous draft is fully usable afterwards');
   });
   test('Save with an internally duplicated draft is refused before the prompt and before any write; the draft, raw errors and store are unchanged; a valid draft still saves', () => {
-    const h = ready({ storage: JSON.stringify({ lc: [{ id: 1, name: 'keep', vals: { method: 'optional', voltage: '240', scope: 'house', sqFt: '1', appliances: '[]', hvac: '[]', ev: '[]' } }], vd: [{ id: 2 }] }) });
+    // EC-AUDIT-FIX-1 (final regression triage): the unrelated "vd" row is now a genuinely valid preset ({ id, name, vals }). The former
+    // fixture `vd: [{ id: 2 }]` is an entry the Favorites boundary cannot read, so the whole store is in its recovery state and EVERY
+    // save is refused at the store check — the duplicate-draft branch below was then never reached and the positive control could
+    // not save. That fail-closed refusal is kept and demanded separately in the next test, with the old fixture bytes.
+    const kept = { lc: [{ id: 1, name: 'keep', vals: { method: 'optional', voltage: '240', scope: 'house', sqFt: '1', appliances: '[]', hvac: '[]', ev: '[]' } }], vd: [{ id: 2, name: 'Other calculator', vals: { amps: '3' } }] };
+    const h = ready({ storage: JSON.stringify(kept) });
+    assert.deepStrictEqual(h.EC.favoritesStore.inspect(JSON.parse(h.store.data)), [], 'fixture precondition: the store is writable, so a refusal below can only come from the draft');
     const store = h.store.data; const p = withSecond(h, 'first', 'first');
     h.api.LC.snapshot = p.snapshot; h.api.lcUpdate();   // simulated internal corruption (no form path produces it)
     const before = h.state(); const prompts = h.prompts.calls.length; const sets = h.store.sets;
@@ -74,6 +80,34 @@ describe('B2-r1.1 R-B2R1-01 — atomic refusal at the Favorites boundary', () =>
     assert.strictEqual(h.state().fault.kind, 'storage'); assert.ok(/could not restore it: snapshot\.loads: id "first" is repeated/.test(h.state().fault.message), h.state().fault.message);
     assert.deepStrictEqual(h.state().snapshot, before.snapshot); assert.strictEqual(h.state().snapshot.loads.length, 2, 'nothing merged or dropped');
     h.api.lcReset(); h.set('lcOccupancy', 'nondwelling'); assert.strictEqual(h.api.lcFavSave(), true); assert.strictEqual(JSON.parse(h.store.data).lc.length, 2, 'a valid draft still appends a new record');
+    const after = JSON.parse(h.store.data);
+    assert.strictEqual(JSON.stringify(after.lc[0]), JSON.stringify(kept.lc[0]), 'the existing Load Calc preset is kept as it was'); assert.strictEqual(JSON.stringify(after.vd), JSON.stringify(kept.vd), 'the unrelated preset of another calculator is kept as it was');
+    assert.strictEqual(after.lc[1].vals.lcv, 3, 'the appended record is the new payload');
+  });
+  test('Save into a store whose OTHER collection holds an entry this version cannot read is refused before the prompt: stored bytes identical, zero writes, no silent overwrite, recovery named; the draft is intact (EC-AUDIT-FIX-1 fail-closed Favorites)', () => {
+    // The exact former fixture of the test above: `vd: [{ id: 2 }]` has no name and no vals.
+    const seed = JSON.stringify({ lc: [{ id: 1, name: 'keep', vals: { method: 'optional', voltage: '240', scope: 'house', sqFt: '1', appliances: '[]', hvac: '[]', ev: '[]' } }], vd: [{ id: 2 }] });
+    const h = ready({ storage: seed });
+    const problems = h.EC.favoritesStore.inspect(JSON.parse(seed));
+    assert.strictEqual(problems.length, 1, 'fixture precondition: exactly one structural problem'); assert.ok(/"vd" presets collection contains 1 entry this version cannot read/.test(problems[0]), problems[0]);
+    // A VALID draft (ready() ends COMPLETE): the refusal is caused by the store alone, not by the draft.
+    const p = withSecond(h, 'first', 'first');   // built from the clean draft; used only by the last step
+    const before = h.state(); const prompts = h.prompts.calls.length; const sets = h.store.sets;
+    let saved; assert.doesNotThrow(() => { saved = h.api.lcFavSave(); }); assert.strictEqual(saved, false, 'not reported as saved');
+    assert.strictEqual(h.prompts.calls.length, prompts, 'nobody is asked to name a preset that cannot be stored');
+    assert.strictEqual(h.store.sets, sets, 'no storage write was attempted'); assert.strictEqual(h.store.data, seed, 'the stored bytes are exactly the bytes before: nothing repaired, dropped or overwritten');
+    const fault = h.state().fault; assert.strictEqual(fault && fault.kind, 'storage');
+    assert.ok(/unexpected format, so this preset was not saved/.test(fault.message), fault.message); assert.ok(/"vd" presets collection contains 1 entry this version cannot read/.test(fault.message), fault.message);
+    assert.ok(/Nothing was written and nothing was replaced/.test(fault.message), fault.message); assert.ok(/Export raw data/.test(fault.message) && /Reset Favorites/.test(fault.message), 'the recovery actions are named: ' + fault.message);
+    assert.deepStrictEqual(h.state().snapshot, before.snapshot, 'the draft on screen is unchanged');
+    // The readable preset is still readable in the recovery state; the unreadable entry is still in the raw value.
+    const read = h.EC.favoritesStore.read({ getItem: () => h.store.data });
+    assert.strictEqual(read.state, 'unsupported'); assert.strictEqual(read.usable, false); assert.strictEqual(read.raw, seed, 'the raw value offered for export is the stored value');
+    assert.deepStrictEqual(h.EC.favoritesStore.rows(read, 'lc').map((r) => r.id), [1]); assert.deepStrictEqual(h.EC.favoritesStore.rows(read, 'vd'), [], 'the unreadable entry is not presented as a preset');
+    // An internally duplicated draft on the same store is refused as well, still with zero prompts and zero writes.
+    h.api.LC.snapshot = p.snapshot; h.api.lcUpdate();
+    assert.strictEqual(h.api.lcFavSave(), false); assert.strictEqual(h.prompts.calls.length, prompts); assert.strictEqual(h.store.sets, sets); assert.strictEqual(h.store.data, seed);
+    assert.strictEqual(h.state().snapshot.loads.length, 2, 'nothing merged or dropped');
   });
 });
 

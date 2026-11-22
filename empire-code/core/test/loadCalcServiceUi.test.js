@@ -2,9 +2,10 @@
 /**
  * LC-SERVICE-UI-1 — SERVICE SIZING — DESIGN PREVIEW panel (docs/load-calc-service-ui-1.md).
  *
- * Runs the shipped adapter (test/helpers/loadCalcDom.js) against the REAL generated EC block — which now carries the
- * unchanged R2 module as module 20 — with real control events. Every rendered engineering value is compared with the
- * R2 source module called directly (require('../src/calc/loadCalcServiceSizing.js')) on the exact request the adapter
+ * Runs the shipped adapter (test/helpers/loadCalcDom.js) against the REAL generated EC block — which carries the
+ * service sizing module as module 20 (R2 as first shipped; since EC-AUDIT-FIX-1 the pinned current source, see the
+ * pin test below) — with real control events. Every rendered engineering value is compared with the
+ * source module called directly (require('../src/calc/loadCalcServiceSizing.js')) on the exact request the adapter
  * transported; expected table facts are hand-written literals from docs/load-calc-service-sizing-1.md §3/§4, never read
  * back from the module's tables. Storage is synthetic only.
  */
@@ -61,10 +62,29 @@ function assertMatchesDirect(h) {
 }
 
 describe('LC-SERVICE-UI-1 — bundle registration and exact parity', () => {
-  test('module 20 is registered after its dependencies and embedded verbatim; the source is the pinned R2 bytes; the bundled API is the real one', () => {
+  test('module 20 is registered after its dependencies and embedded verbatim; the source is the pinned current bytes (next test); the bundled API is the real one', () => {
     const builder = fs.readFileSync(path.join(ROOT, 'tools', 'build-calc.js'), 'utf8');
-    const ids = [...builder.matchAll(/\{ id: '([A-Za-z0-9]+)', file: '([^']+)' \}/g)].map((m) => m[1]);
-    assert.strictEqual(ids.length, 39); assert.strictEqual(ids[38], 'batteryRuntime'); /* CONVERTER-WH-1: one module appended after the 38 */ assert.strictEqual(ids[19], 'loadCalcServiceSizing'); assert.strictEqual(ids[20], 'loadCalcServiceRecord'); assert.strictEqual(ids[21], 'jobCard'); assert.strictEqual(ids[22], 'jobCardStore');
+    const entries = [...builder.matchAll(/\{ id: '([A-Za-z0-9]+)', file: '([^']+)' \}/g)].map((m) => [m[1], m[2]]);
+    const ids = entries.map((x) => x[0]);
+    // EC-AUDIT-FIX-1: the explicit list is 44 modules. The former count of 41 was already stale by one (stage 3 inserted
+    // materialQuantity before jobMaterial); stage 5 adds jobConversationActions after jobVoiceBatch and conversationTools
+    // after batteryRuntime. Hand-written, in order — the builder never scans a directory, and neither does this list.
+    const EXPECTED = ['tables', 'ampacity', 'voltageDrop', 'conduitFill', 'boxFill', 'motor', 'grounding', 'wireSizing', 'pullBox', 'pullBoxEntryGeometry', 'pullBoxLayout',
+      'loadCalcState', 'loadCalcInput', 'loadCalc', 'loadCalcInputV2', 'loadCalcOpt82', 'loadCalcFacade', 'loadCalcStateV2', 'loadCalcStorageV2', 'loadCalcServiceSizing', 'loadCalcServiceRecord',
+      'jobCard', 'jobCardStore', 'jobMeasurement', 'jobMeasurementStore', 'materialQuantity', 'jobMaterial', 'jobMaterialStore', 'jobPhoto', 'jobPhotoFile', 'jobPhotoStore',
+      'jobArchive', 'jobArchiveFile', 'jobArchiveSource', 'jobRestore', 'jobRestoreStore', 'jobVoiceMaterials', 'jobVoiceIntent', 'jobVoiceBatch', 'jobConversationActions',
+      'favoritesStore', 'codeSources', 'batteryRuntime', 'conversationTools'];
+    assert.strictEqual(EXPECTED.length, 44); assert.strictEqual(ids.length, 44); assert.deepStrictEqual(ids, EXPECTED); assert.strictEqual(new Set(ids).size, 44, 'no id is registered twice');
+    assert.deepStrictEqual(require('../tools/build-calc.js').MODULES.map((m) => [m.id, m.file]), entries, 'the exported list is the list written in the file');
+    // the original base indices are untouched: everything up to jobMeasurementStore keeps its position
+    assert.strictEqual(ids[19], 'loadCalcServiceSizing'); assert.strictEqual(ids[20], 'loadCalcServiceRecord'); assert.strictEqual(ids[21], 'jobCard'); assert.strictEqual(ids[22], 'jobCardStore');
+    assert.deepStrictEqual(ids.slice(23, 27), ['jobMeasurement', 'jobMeasurementStore', 'materialQuantity', 'jobMaterial'], 'stage 3: the shared unit module sits directly before its first user');
+    assert.deepStrictEqual(entries.slice(38, 40), [['jobVoiceBatch', 'jobs/jobVoiceBatch.js'], ['jobConversationActions', 'jobs/jobConversationActions.js']], 'stage 5 job adapter directly after jobVoiceBatch');
+    assert.deepStrictEqual(ids.slice(40, 42), ['favoritesStore', 'codeSources']); /* EC-AUDIT-FIX-1: two dependency-free modules */
+    assert.deepStrictEqual(entries.slice(42), [['batteryRuntime', 'calc/batteryRuntime.js'], ['conversationTools', 'calc/conversationTools.js']], 'stage 5 registry last, directly after batteryRuntime (CONVERTER-WH-1)');
+    // each stage 5 module follows every module it require()s (dependency lists read from the two sources)
+    for (const dep of ['jobCard', 'jobCardStore', 'jobMeasurement', 'jobMeasurementStore']) assert.ok(ids.indexOf(dep) >= 0 && ids.indexOf(dep) < 39, 'jobConversationActions after ' + dep);
+    for (const dep of ['tables', 'batteryRuntime', 'ampacity', 'voltageDrop', 'wireSizing', 'conduitFill', 'boxFill', 'motor', 'grounding', 'pullBox', 'loadCalcFacade', 'loadCalcServiceSizing']) assert.ok(ids.indexOf(dep) >= 0 && ids.indexOf(dep) < 43, 'conversationTools after ' + dep);
     assert.ok(ids.indexOf('loadCalcFacade') < 19 && ids.indexOf('loadCalcInputV2') < 19, 'after both dependencies');
     const raw = fs.readFileSync(path.join(ROOT, 'src', 'calc', 'loadCalcServiceSizing.js'));
     const s = html.indexOf('<!-- EC-CALC:START'); const e = html.indexOf('<!-- EC-CALC:END -->'); const block = html.slice(s, e);
@@ -77,9 +97,13 @@ describe('LC-SERVICE-UI-1 — bundle registration and exact parity', () => {
     assert.deepStrictEqual(EC.loadCalcServiceSizing.STANDARD_RATINGS_SUBSET, S.STANDARD_RATINGS_SUBSET);
     assert.deepStrictEqual(EC.loadCalcServiceSizing.SAFETY_FLAGS, S.SAFETY_FLAGS);
   });
-  test('the R2 source module, its R2 test and its doc are byte-identical to baseline 150', () => {
-    // pins from the coordinator's BASELINE.json (baseline 150, 309470aa…357e)
-    const pins = { 'src/calc/loadCalcServiceSizing.js': 'cbd1bd57795444a9837967580d7e56425c064efa275a6ec56341c67da068b847', 'test/loadCalcServiceSizing.test.js': 'd0aa9952f60710279a6a2d2549f89595c65002bc19ef15e7b7e0d10d00dfd58c', 'docs/load-calc-service-sizing-1.md': '80db6dd4b34fe8d696e15f0815013365212da6c0edc84706f176e9e3d47905ce' };
+  test('the service sizing source is the pinned EC-AUDIT-FIX-1 bytes; its R2 test and its doc are byte-identical to baseline 150', () => {
+    // EC-AUDIT-FIX-1 changed src/calc/loadCalcServiceSizing.js on purpose (preliminary qualification), so this one pin
+    // is the coordinator's independently computed SHA-256 of the CURRENT file; the R2 value it replaces was
+    // cbd1bd57…b847 (baseline 150). The other two pins are still the historical ones from the coordinator's
+    // BASELINE.json (baseline 150, 309470aa…357e): the R2 test and the R2 doc were not edited. The previous test keeps
+    // proving that the bundle body equals these exact source bytes.
+    const pins = { 'src/calc/loadCalcServiceSizing.js': '4f4d04b13ff4167d615dd2d8967cf368976aeb38d0f8346ca74074bbb9c2f88a', 'test/loadCalcServiceSizing.test.js': 'd0aa9952f60710279a6a2d2549f89595c65002bc19ef15e7b7e0d10d00dfd58c', 'docs/load-calc-service-sizing-1.md': '80db6dd4b34fe8d696e15f0815013365212da6c0edc84706f176e9e3d47905ce' };
     for (const [rel, pin] of Object.entries(pins)) assert.strictEqual(crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, rel))).digest('hex'), pin, rel);
   });
 });

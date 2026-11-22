@@ -38,7 +38,7 @@ async function load(api,onLine=true){
   addEventListener(t,f){win[t]=f;},fetch:async(url,init={})=>{calls.push({url:String(url),init});return api(String(url),init);}};
  sandbox.window=sandbox;
  const ctx=vm.createContext(sandbox);
- for(const f of ['handoff-session.js','conversation-bank.js','draft-recovery.js','ui.js'])vm.runInContext(read(f),ctx,{filename:f});
+ for(const f of ['handoff-session.js','assistant-session.js','conversation-bank.js','draft-recovery.js','ui.js'])vm.runInContext(read(f),ctx,{filename:f});
  await settle();
  return {els,calls,local,session,win,navigator,run:code=>vm.runInContext(code,ctx),token:()=>vm.runInContext('token',ctx),dump:()=>local.dump()+session.dump(),
   count:url=>calls.filter(c=>c.url===url).length,sent:url=>calls.filter(c=>c.url===url),
@@ -55,8 +55,8 @@ const noLeak=(p,note)=>assert.ok(!/<html|sk-fixture|login-page/.test(p.els.statu
 
 
 test('independent audio: loss of token while recording produces zero transcription posts',async()=>{
- const p=await load(routes([()=>json(sessionBody())],noPost));await p.els.mic.onclick();await settle();assert.equal(p.run('recording'),true);p.run('token=null;controls()');await p.els.mic.onclick();await settle();assert.equal(p.count('/api/transcribe'),0);assert.equal(p.count('/api/talk'),0);assert.equal(p.count('/api/session'),1);assert.equal(p.run('audioBusy'),false);assert.match(p.els.status.textContent,/nie.*zapis|nie.*przepis/i);
+ const p=await load(routes([()=>json(sessionBody())],noPost));await p.els.mic.onclick();await settle();assert.equal(p.run('recording'),true);p.run('token=null;controls()');await p.els.mic.onclick();await settle();assert.equal(p.count('/api/transcribe'),0);assert.equal(p.count('/api/assist'),0);assert.equal(p.count('/api/session'),1);assert.equal(p.run('audioBusy'),false);assert.match(p.els.status.textContent,/nie.*zapis|nie.*przepis/i);
 });
 test('independent audio: Access rejection does not falsely claim that spoken text was saved',async()=>{
- const p=await load(routes([()=>json(sessionBody())],url=>url==='/api/transcribe'?json({error:'Forbidden'},403):noPost(url)));await p.speak();assert.equal(p.count('/api/transcribe'),1);assert.equal(p.count('/api/talk'),0);assert.equal(p.token(),null);assert.equal(p.els.input.value,'');assert.equal(p.els.relogin.hidden,false);assert.match(p.els.status.textContent,/nagran|wypowied/i);assert.ok(!/tekst pozostaje w polu/i.test(p.els.status.textContent));
+ const p=await load(routes([()=>json(sessionBody())],url=>url==='/api/transcribe'?json({error:'Forbidden'},403):noPost(url)));await p.speak();assert.equal(p.count('/api/transcribe'),1);assert.equal(p.count('/api/assist'),0);assert.equal(p.token(),null);assert.equal(p.els.input.value,'');assert.equal(p.els.relogin.hidden,false);assert.match(p.els.status.textContent,/nagran|wypowied/i);assert.ok(!/tekst pozostaje w polu/i.test(p.els.status.textContent));
 });

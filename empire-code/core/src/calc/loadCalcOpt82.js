@@ -17,6 +17,11 @@
  *
  * Source/capability constants are engine-owned (§4E of the CORE-1 instruction). Nothing in a request
  * can change them. A TEST-ONLY factory exists for hypothetical pending-source fixtures.
+ *
+ * STAGE4 (docs/stage4-qualification-contract.md): evaluatePreliminary82(envelope82) is a SEPARATE explicit route for a new design
+ * whose 220.82(A) conductor ampacity is a well-formed unknown. It runs the same stages with that single condition recorded as
+ * deferred, and returns a different result kind ('B82_PRELIMINARY_NEW_DESIGN') that is never an ordinary COMPLETE result.
+ * evaluate82 and its output contract are unchanged: an unknown ampacity is still INCOMPLETE_INPUT / QUALIFICATION_UNKNOWN there.
  */
 const V2 = require('./loadCalcInputV2.js');
 const A = require('./loadCalc.js');
@@ -48,6 +53,18 @@ const NOTE_NEUTRAL = A.NOTE_NEUTRAL;
 const NOTE_REQUIRED_CAPACITY = 'No automatic Wire Sizer handoff in profile B82_core1; a future adapter needs its own approved contract.';
 const NOTE_RATING = 'Automatic rating not assessed in profile B82_core1.';
 const TOPOLOGY_LABEL = Object.assign({}, A.TOPOLOGY_LABEL, { '1ph_3w_120_208_network': '120/208 V, 1-ph, 3-wire (network)' });
+/** 220.82(A) software gate of this engine (conductor ampacity >= 100 A). One constant for the ordinary gate and the preliminary deferral text. */
+const CONDUCTOR_AMPACITY_GATE_A = 100;
+// ── STAGE4 preliminary new-design route (docs/stage4-qualification-contract.md) ──
+// A DIFFERENT result kind produced by evaluatePreliminary82: never status COMPLETE, never the ordinary LoadCalcResult shape.
+const PRELIMINARY_KIND = 'B82_PRELIMINARY_NEW_DESIGN';
+const PRELIMINARY_CONTRACT_REVISION = 1;
+const PRELIMINARY_STATUS = Object.freeze({ PENDING: 'PRELIMINARY_QUALIFICATION_PENDING', BLOCKED: 'PRELIMINARY_BLOCKED', NOT_APPLICABLE: 'PRELIMINARY_NOT_APPLICABLE' });
+const DEFERRED_CONDUCTOR_AMPACITY_CODE = 'CONDUCTOR_AMPACITY_QUALIFICATION_DEFERRED';
+const deferredConductorAmpacity = () => ({
+  code: DEFERRED_CONDUCTOR_AMPACITY_CODE, deferredEngineCode: 'QUALIFICATION_UNKNOWN', field: 'optional82.conductorAmpacityA', layer: 'input', source: 'engine', ruleRef: '220.82(A)', gateMinA: CONDUCTOR_AMPACITY_GATE_A,
+  message: `${DEFERRED_CONDUCTOR_AMPACITY_CODE} at optional82.conductorAmpacityA (220.82(A) conductor ampacity is unknown and deferred on the preliminary new-design route; the method qualification is NOT established until a declared ampacity >= ${CONDUCTOR_AMPACITY_GATE_A} A passes the ordinary calculation)`,
+});
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const codePointCompare = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
@@ -148,8 +165,10 @@ function stage1(ctx) {
   if (!parsed.has('optional82.singleSupplySet')) { const v = s.optional82.singleSupplySet.value; if (v === null) add(ctx, 'QUALIFICATION_UNKNOWN', 'optional82.singleSupplySet', 'input', { ruleRef: '220.82(A)' }); else if (v === false) add(ctx, 'QUALIFICATION_FAILED', 'optional82.singleSupplySet', 'input', { ruleRef: '220.82(A)' }); }
   if (!parsed.has('optional82.conductorAmpacityA.value')) {
     const v = s.optional82.conductorAmpacityA.value;
-    if (v === null) add(ctx, 'QUALIFICATION_UNKNOWN', 'optional82.conductorAmpacityA', 'input', { ruleRef: '220.82(A)' });
-    else { const enc = V2.encodeE4(v); if (!enc.ok) add(ctx, enc.code, 'optional82.conductorAmpacityA.value', 'input'); else if (enc.e4 < 100 * V2.E4) add(ctx, 'QUALIFICATION_FAILED', 'optional82.conductorAmpacityA', 'input', { ruleRef: '220.82(A)' }); }
+    // STAGE4: the ONLY deferrable condition. It is deferred solely on the explicit preliminary route (ctx.deferConductorAmpacity === true)
+    // and solely for a well-formed unknown (null with no parser error on the field); it is recorded, never answered or replaced by a number.
+    if (v === null) { if (ctx.deferConductorAmpacity === true) ctx.deferred.push(deferredConductorAmpacity()); else add(ctx, 'QUALIFICATION_UNKNOWN', 'optional82.conductorAmpacityA', 'input', { ruleRef: '220.82(A)' }); }
+    else { const enc = V2.encodeE4(v); if (!enc.ok) add(ctx, enc.code, 'optional82.conductorAmpacityA.value', 'input'); else if (enc.e4 < CONDUCTOR_AMPACITY_GATE_A * V2.E4) add(ctx, 'QUALIFICATION_FAILED', 'optional82.conductorAmpacityA', 'input', { ruleRef: '220.82(A)' }); }
   }
   // dwelling inputs
   const d = s.dwelling;
@@ -332,10 +351,16 @@ function stage3(ctx) {
   return { status: 'computed', model: kind, formula: 'I = VA / 240', assumptions: ['balancedLN declared'], perConductorA: { L1: I, L2: I, L3: null }, lineA: I, neutralA: null, note: NOTE_NEUTRAL };
 }
 
-function evaluateWith(envelope, ruleStatus) {
+/**
+ * The one engine run shared by the ordinary evaluator and the STAGE4 preliminary route: same stage 1 checks, same stage 2/3
+ * arithmetic, same result construction. `deferConductorAmpacity` is an internal boolean set only by preliminaryWith (never read
+ * from a request); with `false` this is exactly the accepted evaluator. Returns { result, deferred } — `deferred` is always
+ * empty on the ordinary route.
+ */
+function runEngine(envelope, ruleStatus, deferConductorAmpacity) {
   V2.assertEnvelope82(envelope);
   const s = envelope.snapshot;
-  const ctx = { s, parseErrors: envelope.parseErrors, context: envelope.context, ruleStatus, problems: [], coverage: null, demand: null, diag: null, strings: {}, family: null };
+  const ctx = { s, parseErrors: envelope.parseErrors, context: envelope.context, ruleStatus, problems: [], coverage: null, demand: null, diag: null, strings: {}, family: null, deferConductorAmpacity: deferConductorAmpacity === true, deferred: [] };
   stage1(ctx);
   const r = rankOf(ctx.problems);
   let current;
@@ -356,7 +381,7 @@ function evaluateWith(envelope, ruleStatus) {
   const topo = s.supply.topology; const poles = topo === '1ph_3w_120_240' || topo === '1ph_3w_120_208_network' ? '2-pole' : (topo && topo.startsWith('3ph')) ? '3-pole' : null;
   const references = [{ ruleRef: '220.82', amended: false, href: null }];
   if (s.dwelling.nycAcCircuitCount !== null && s.dwelling.nycAcCircuitCount > 0) references.push({ ruleRef: '220.14(N)', amended: true, href: null });
-  return {
+  const result = {
     schemaVersion: V2.SCHEMA_VERSION_V2, ruleBasis: { code: 'NYCEC-2025', base: 'NEC-2020', amendments: 'NYC-2025' }, profileId: PROFILE_82.id, status,
     problems: ctx.problems, loadsCoverage: ctx.coverage, demand: ctx.demand, current,
     existingCapacity: { status: 'not_assessed', comparisonKind: null, policy: null, ruleRef: null, blockingCode: capBlock, comparisons: [], boundOutcome: null },
@@ -366,10 +391,64 @@ function evaluateWith(envelope, ruleStatus) {
     presentation: { topologyLabel: topo !== null && Object.prototype.hasOwnProperty.call(TOPOLOGY_LABEL, topo) ? TOPOLOGY_LABEL[topo] : '', showPerConductor: topo === '1ph_3w_120_240' || topo === '1ph_3w_120_208_network', polesLabel: poles, finalResultHeading: complete, verdictLabel: complete ? 'not_assessed' : null },   // '' for null/other as in the accepted A presentation contract
     references,
   };
+  return { result, deferred: ctx.deferred };
 }
+function evaluateWith(envelope, ruleStatus) { return runEngine(envelope, ruleStatus, false).result; }
 
 /** Production evaluator: frozen engine-owned constants. */
 function evaluate82(envelope) { return evaluateWith(envelope, PROFILE_82.ruleStatus); }
+
+const deepFreeze = (v) => { if (v && typeof v === 'object' && !Object.isFrozen(v)) { Object.freeze(v); for (const k of Object.keys(v)) deepFreeze(v[k]); } return v; };
+const PRELIMINARY_NEXT = Object.freeze({
+  PENDING: { code: 'ESTABLISH_CONDUCTOR_AMPACITY', field: 'optional82.conductorAmpacityA', message: `Preliminary only. Establish and declare the 220.82(A) conductor ampacity (>= ${CONDUCTOR_AMPACITY_GATE_A} A, with documented conditions), then run the ordinary calculation; the ordinary result — not this one — is the calculated load.` },
+  BLOCKED: { code: 'RESOLVE_BLOCKERS', field: null, message: 'Resolve every listed problem first. Only a well-formed unknown conductor ampacity can be deferred; no other input, scope, source, inventory or HVAC condition is deferred.' },
+  NOT_APPLICABLE: { code: 'USE_ORDINARY_CALCULATION', field: 'optional82.conductorAmpacityA', message: 'A conductor ampacity value is already present in this request. The preliminary route never defers, replaces or re-interprets an existing value; use the ordinary calculation.' },
+});
+/**
+ * STAGE4 preliminary evaluation (docs/stage4-qualification-contract.md). Result kind PRELIMINARY_KIND:
+ *   PRELIMINARY_QUALIFICATION_PENDING — every ordinary stage-1 check passed EXCEPT the well-formed unknown conductor ampacity,
+ *     and stage 2 resolved every load; `demand`/`current` are the same stage 2/3 outputs the ordinary evaluator builds.
+ *   PRELIMINARY_BLOCKED — any other problem (parser error incl. a malformed raw ampacity, scope, capability, pending source rule,
+ *     single set, inventory, HVAC, unresolved load coverage …). `blockingStatus` names the ordinary refusal class.
+ *   PRELIMINARY_NOT_APPLICABLE — the request already carries an ampacity value (valid or not); nothing is deferred or evaluated.
+ * No ampacity number is injected to reach these outputs, and the result is never an ordinary COMPLETE LoadCalcResult:
+ * it has no `existingCapacity`/`requiredCapacity`/`rating` blocks, `ordinaryResult` is false and the heading/verdict are withheld.
+ */
+function preliminaryWith(envelope, ruleStatus) {
+  V2.assertEnvelope82(envelope);
+  const s = envelope.snapshot; const declared = s.optional82.conductorAmpacityA.value;
+  const head = { kind: PRELIMINARY_KIND, preliminaryContractRevision: PRELIMINARY_CONTRACT_REVISION, schemaVersion: V2.SCHEMA_VERSION_V2, ruleBasis: { code: 'NYCEC-2025', base: 'NEC-2020', amendments: 'NYC-2025' }, profileId: PROFILE_82.id };
+  const flags = { ordinaryResult: false, qualificationEstablished: false, operative: false };
+  const noCurrent = () => ({ status: 'not_computed', model: null, formula: null, assumptions: [], perConductorA: null, lineA: null, neutralA: null, note: NOTE_NEUTRAL });
+  const topo = s.supply.topology;
+  if (declared !== null) {
+    const problem = { code: 'PRELIMINARY_NOT_APPLICABLE', field: 'optional82.conductorAmpacityA', layer: 'input', source: 'engine', ruleRef: '220.82(A)', message: 'PRELIMINARY_NOT_APPLICABLE at optional82.conductorAmpacityA (a conductor ampacity value is present; the preliminary route exists only for a well-formed unknown and never replaces an existing value)' };
+    return deepFreeze(Object.assign({}, head, { status: PRELIMINARY_STATUS.NOT_APPLICABLE, blockingStatus: null }, flags, {
+      deferred: [], problems: [problem], loadsCoverage: [],
+      demand: { status: 'not_computed', unit: 'VA', totalVA: null, totalExactE4: null, totalOnConductorA: null, partialSubtotalVA: null, lines: [] }, current: noCurrent(),
+      diagnostics: { operative: false, generalConnectedVA: null, generalDemandVA: null, hvacGoverningLine: null, hvacCandidatesVA: {} },
+      display: { precision: { amps: 1, va: 0 }, rounding: 'half_away_from_zero', strings: {}, feedsComparison: false },
+      presentation: { topologyLabel: topo !== null && Object.prototype.hasOwnProperty.call(TOPOLOGY_LABEL, topo) ? TOPOLOGY_LABEL[topo] : '', showPerConductor: false, polesLabel: null, finalResultHeading: false, verdictLabel: null },
+      references: [{ ruleRef: '220.82', amended: false, href: null }], nextAction: PRELIMINARY_NEXT.NOT_APPLICABLE,
+    }));
+  }
+  const { result: r, deferred } = runEngine(envelope, ruleStatus, true);
+  // Pending = the shared run found nothing else (its internal family is the complete one). With a null value that family is
+  // reachable ONLY through the one recorded deferral: a parser error on the ampacity field skips the deferral branch and is an
+  // ordinary blocking problem. Anything else is an engine fault and is thrown, never surfaced as a result.
+  const pending = r.status === 'COMPLETE';
+  if (pending && !(r.demand.status === 'complete' && deferred.length === 1 && deferred[0].code === DEFERRED_CONDUCTOR_AMPACITY_CODE)) throw new RangeError('unreachable: a preliminary pending result requires exactly the one deferred conductor-ampacity condition');
+  const blockingStatus = pending ? null : r.status;
+  return deepFreeze(Object.assign({}, head, { status: pending ? PRELIMINARY_STATUS.PENDING : PRELIMINARY_STATUS.BLOCKED, blockingStatus }, flags, {
+    deferred: pending ? deferred : [], problems: r.problems, loadsCoverage: r.loadsCoverage,
+    demand: r.demand, current: pending ? r.current : noCurrent(), diagnostics: r.diagnostics,
+    display: { precision: r.display.precision, rounding: r.display.rounding, strings: pending || r.status === 'PARTIAL' ? r.display.strings : {}, feedsComparison: false },
+    presentation: Object.assign({}, r.presentation, { finalResultHeading: false, verdictLabel: null }),
+    references: r.references, nextAction: pending ? PRELIMINARY_NEXT.PENDING : PRELIMINARY_NEXT.BLOCKED,
+  }));
+}
+/** Production preliminary evaluator: the same frozen engine-owned rule constants as evaluate82. */
+function evaluatePreliminary82(envelope) { return preliminaryWith(envelope, PROFILE_82.ruleStatus); }
 
 /**
  * TEST-ONLY (non-escalating): build an evaluator in which one or both of the rules that are `verified` in the production
@@ -378,18 +457,30 @@ function evaluate82(envelope) { return evaluateWith(envelope, PROFILE_82.ruleSta
  * reachable from any request field and is not used by the facade. The same contract is validated by tools/contract_invariants_82.py.
  */
 const TEST_ONLY_PENDING_KEYS = Object.freeze(['220.82', 'S-11a']);
+function testOnlyPendingRuleStatus(pendingConfig) {
+  const merged = Object.assign({}, RULE_STATUS_DEFAULT);
+  for (const k of Object.keys(pendingConfig || {})) {
+    if (!TEST_ONLY_PENDING_KEYS.includes(k)) throw new Error(`test configuration may only make ${TEST_ONLY_PENDING_KEYS.join('/')} pending; got ${k}`);
+    if (pendingConfig[k] !== 'pending') throw new Error(`test configuration value must be 'pending' (never an escalation to verified); got ${pendingConfig[k]}`);
+    merged[k] = 'pending';
+  }
+  return Object.freeze(merged);
+}
 const TEST_ONLY = Object.freeze({
   PENDING_KEYS: TEST_ONLY_PENDING_KEYS,
   createPendingSourceEvaluator(pendingConfig) {
-    const merged = Object.assign({}, RULE_STATUS_DEFAULT);
-    for (const k of Object.keys(pendingConfig || {})) {
-      if (!TEST_ONLY_PENDING_KEYS.includes(k)) throw new Error(`test configuration may only make ${TEST_ONLY_PENDING_KEYS.join('/')} pending; got ${k}`);
-      if (pendingConfig[k] !== 'pending') throw new Error(`test configuration value must be 'pending' (never an escalation to verified); got ${pendingConfig[k]}`);
-      merged[k] = 'pending';
-    }
-    const frozen = Object.freeze(merged);
+    const frozen = testOnlyPendingRuleStatus(pendingConfig);
     return (envelope) => evaluateWith(envelope, frozen);
+  },
+  /** STAGE4: the same non-escalating pending-source configuration applied to the preliminary route (a pending source rule stays a blocker there). */
+  createPendingSourcePreliminaryEvaluator(pendingConfig) {
+    const frozen = testOnlyPendingRuleStatus(pendingConfig);
+    return (envelope) => preliminaryWith(envelope, frozen);
   },
 });
 
-module.exports = { evaluate82, PROFILE_82, RULE_STATUS_DEFAULT, TEST_ONLY, NOTE_REQUIRED_CAPACITY, NOTE_RATING, TOPOLOGY_LABEL_82: TOPOLOGY_LABEL, INVALID_CODES, INCOMPLETE_CODES, PREDICATE_BY_CATEGORY };
+module.exports = {
+  evaluate82, PROFILE_82, RULE_STATUS_DEFAULT, TEST_ONLY, NOTE_REQUIRED_CAPACITY, NOTE_RATING, TOPOLOGY_LABEL_82: TOPOLOGY_LABEL, INVALID_CODES, INCOMPLETE_CODES, PREDICATE_BY_CATEGORY,
+  // STAGE4 preliminary new-design route (a separate result kind; the ordinary evaluator and its outputs are unchanged)
+  evaluatePreliminary82, PRELIMINARY_KIND, PRELIMINARY_STATUS, PRELIMINARY_CONTRACT_REVISION, DEFERRED_CONDUCTOR_AMPACITY_CODE, CONDUCTOR_AMPACITY_GATE_A,
+};

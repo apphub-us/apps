@@ -137,10 +137,18 @@ describe('E. transaction negatives — corrupt root, non-array LC collection, mi
     // SIMULATED security failure on read
     const k = buildHarness({ promptAnswer: 'r' }); k.api.lcInit(); driveB0(k); const realGet = k.EC; void realGet;
     const seed = JSON.stringify({ lc: [{ id: 1, name: 'row', vals: { lcv: 2, profileId: 'A_measured_87_core', snapshot: {}, fieldErrors: {}, loadErrors: {}, sourceFavId: null }, extra: 'keep' }, 'not-an-object', null], vd: [{ id: 2, name: 'v', vals: { amps: '2' } }] });
-    k.store.data = seed; k.api.favRender('lc'); assert.strictEqual(k.api.lcFavSave(), true); const all = JSON.parse(k.store.data);
-    assert.deepStrictEqual(all.lc.slice(0, 3), JSON.parse(seed).lc, 'malformed-but-retained rows, null entries and unknown properties are untouched'); assert.deepStrictEqual(all.vd, JSON.parse(seed).vd); assert.strictEqual(all.lc.length, 4); assert.strictEqual(all.lc[3].vals.lcv, 3);
+    // EC-03 (stage 3): Save now goes through EC.favoritesStore. This list holds entries the app cannot read ('not-an-object',
+    // null), so Favorites is in recovery: Save is refused before the prompt and not one stored byte changes. (The old
+    // assertion expected a 4th record to be appended around the unreadable entries.)
+    k.store.data = seed; k.api.favRender('lc'); assert.strictEqual(k.api.lcFavSave(), false); assert.strictEqual(k.store.data, seed, 'save refused: stored bytes are exactly preserved'); assert.strictEqual(k.store.sets, 0); assert.strictEqual(k.prompts.calls.length, 0); assert.ok(/unexpected format/.test(k.state().fault.message)); const all = JSON.parse(k.store.data);
+    assert.deepStrictEqual(all.lc.slice(0, 3), JSON.parse(seed).lc, 'malformed-but-retained rows, null entries and unknown properties are untouched'); assert.deepStrictEqual(all.vd, JSON.parse(seed).vd); assert.strictEqual(all.lc.length, 3, 'nothing was appended to a store that needs recovery');
     clickRow(k, 0); assert.strictEqual(k.state().fault.kind, 'restore'); assert.strictEqual(k.store.data, JSON.stringify(all), 'a failed restore of the malformed row writes nothing');
-    k.api.favDelete('lc', 1); assert.strictEqual(JSON.parse(k.store.data).lc.length, 3, 'an unrelated delete still works once');
+    // EC-03 (audit E07/FAV-02): this list holds entries the app cannot read ('not-an-object', null). The old assertion
+    // expected Delete to rewrite the whole store around them ("lc.length 3"). Favorites is now in recovery for such a
+    // store: Delete is refused and not one stored byte changes until the user exports / resets.
+    const beforeDelete = k.store.data; const setsBefore = k.store.sets; k.api.favDelete('lc', 1);
+    assert.strictEqual(k.store.data, beforeDelete, 'delete refused: stored bytes are exactly preserved'); assert.strictEqual(k.store.sets, setsBefore, 'no write was attempted');
+    assert.strictEqual(k.$('lc-fav-list').querySelectorAll('.fav-status').length, 1, 'the recovery status is shown beside the list');
   });
   test('two saves get distinct ids even in the same millisecond; every save appends (never in-place upgrade, never bulk conversion of old rows)', () => {
     const old = H.caseById('T-S-04c').legacyRecord;

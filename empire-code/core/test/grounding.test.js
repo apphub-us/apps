@@ -124,12 +124,17 @@ describe('Grounding migration — boundary and structured-result contracts', () 
   });
 
   test('electrode caps: every cap value, beneficial and no-benefit directions', () => {
-    assert.deepStrictEqual(ELECTRODE_CAP, { rod: '6', ufer: '4', ring: '2' });
-    // 500 kcmil Cu service -> 1/0 Cu: all three caps beneficial.
+    // EC-01 (audit E08/G1): this assertion used to pin { rod, ufer, ring: '2' } and so
+    // certified the defect — a ring cap applied without the ring ever being stated.
+    // Only the two FIXED caps are constants now; the ring is an explicit input (below).
+    assert.deepStrictEqual(ELECTRODE_CAP, { rod: '6', ufer: '4' });
+    // 500 kcmil Cu service -> 1/0 Cu: both fixed caps beneficial.
     for (const [elec, capSize] of Object.entries(ELECTRODE_CAP)) {
       const r = calculateGrounding({ ...base, serviceSize: '500', electrode: elec });
       assert.strictEqual(r.gec.capApplied, true, elec);
       assert.strictEqual(r.gec.finalCopper, capSize, elec);
+      assert.strictEqual(r.gec.resolved, true, elec);
+      assert.strictEqual(r.gec.groundRing, null, elec + ': no ring fact outside the ring electrode');
       assert.ok(r.gec.capReference.includes('250.66'), elec);
     }
     // #14 service -> #8 Cu: rod cap (#6) is LARGER, no benefit, table stands.
@@ -141,6 +146,95 @@ describe('Grounding migration — boundary and structured-result contracts', () 
     assert.strictEqual(water.gec.capSize, null);
     assert.strictEqual(water.gec.capApplied, false);
     assert.strictEqual(water.gec.finalCopper, '1/0');
+  });
+
+  describe('EC-01 — ground ring: the reduction needs an explicitly stated ring', () => {
+    const { GROUND_RING, GROUND_RING_CONFIRMED_SIZE, gecWithElectrodeCap: cap } = require('../src/calc/grounding');
+    const ring = (extra) => calculateGrounding({ ...base, serviceSize: '500', electrode: 'ring', ...extra });
+
+    test('audit case G1: 500 kcmil Cu + "Ground ring only" with NO stated ring gives no reduction and no final size', () => {
+      // Independent reference: Table 250.66, copper service over 350 through 600 kcmil -> 1/0 Cu GEC.
+      for (const input of [{}, { groundRing: undefined }, { groundRing: null }, { groundRing: 'unknown' }]) {
+        const r = ring(input);
+        assert.strictEqual(r.ok, true, JSON.stringify(input));
+        assert.strictEqual(r.gec.copper, '1/0', 'the table row is still reported, as a reference');
+        assert.strictEqual(r.gec.finalCopper, null, 'no final size without the ring fact');
+        assert.strictEqual(r.gec.capApplied, false);
+        assert.strictEqual(r.gec.capSize, null, 'no cap value is invented');
+        assert.strictEqual(r.gec.resolved, false);
+        assert.deepStrictEqual(r.gec.condition, { field: 'groundRing', code: 'GROUND_RING_UNCONFIRMED' });
+        assert.strictEqual(r.gec.groundRing, 'unknown');
+        assert.notStrictEqual(r.gec.finalCopper, '2', 'the old silent #2 must never come back');
+      }
+    });
+
+    test('a larger / different / unverified ring is unsupported: never #2, never the table value presented as final', () => {
+      const r = ring({ groundRing: GROUND_RING.OTHER });
+      assert.strictEqual(r.ok, true);
+      assert.strictEqual(r.gec.finalCopper, null);
+      assert.strictEqual(r.gec.capApplied, false);
+      assert.strictEqual(r.gec.resolved, false);
+      assert.deepStrictEqual(r.gec.condition, { field: 'groundRing', code: 'GROUND_RING_UNSUPPORTED' });
+      assert.strictEqual(r.gec.copper, '1/0');
+      assert.strictEqual(r.gec.aluminum, '3/0');
+    });
+
+    test('explicitly confirmed #2 AWG copper ring, sole connection: the existing reduction applies', () => {
+      assert.strictEqual(GROUND_RING_CONFIRMED_SIZE, '2');
+      const r = ring({ groundRing: GROUND_RING.CONFIRMED_CU_2AWG_SOLE });
+      assert.strictEqual(r.gec.copper, '1/0');
+      assert.strictEqual(r.gec.capSize, '2');
+      assert.strictEqual(r.gec.capApplied, true);
+      assert.strictEqual(r.gec.finalCopper, '2');
+      assert.strictEqual(r.gec.resolved, true);
+      assert.strictEqual(r.gec.condition, null);
+      assert.strictEqual(r.gec.capReference, 'NEC 250.66(C)');
+    });
+
+    test('confirmed #2 ring on a small service: the table already asks for less, so #8 stays #8', () => {
+      const r = calculateGrounding({ ...base, serviceSize: '14', electrode: 'ring', groundRing: 'cu_2awg_sole' });
+      assert.strictEqual(r.gec.copper, '8');
+      assert.strictEqual(r.gec.capApplied, false);
+      assert.strictEqual(r.gec.finalCopper, '8');
+      assert.strictEqual(r.gec.resolved, true);
+    });
+
+    test('every service size: an unconfirmed or unsupported ring never resolves, a confirmed one never exceeds the table row', () => {
+      for (const svc of GND_SIZES) for (const mat of ['cu', 'al']) {
+        const table = calculateGrounding({ ...base, serviceSize: svc, serviceMaterial: mat }).gec.copper;
+        for (const g of ['unknown', 'other']) {
+          const r = calculateGrounding({ ...base, serviceSize: svc, serviceMaterial: mat, electrode: 'ring', groundRing: g });
+          assert.strictEqual(r.gec.finalCopper, null, `${svc}/${mat}/${g}`);
+          assert.strictEqual(r.gec.copper, table, `${svc}/${mat}/${g} reference row`);
+        }
+        const ok = calculateGrounding({ ...base, serviceSize: svc, serviceMaterial: mat, electrode: 'ring', groundRing: 'cu_2awg_sole' });
+        assert.ok(GND_CM[ok.gec.finalCopper] <= GND_CM[table], `${svc}/${mat} confirmed ring is never larger than the table`);
+        assert.ok(GND_CM[ok.gec.finalCopper] <= GND_CM['2'] || ok.gec.finalCopper === table, `${svc}/${mat}`);
+      }
+    });
+
+    test('an invalid ring value is refused with the field named; the ring input is ignored for other electrodes', () => {
+      for (const bad of ['2', '4/0', 'yes', true, 2, {}]) {
+        const r = ring({ groundRing: bad });
+        assert.strictEqual(r.ok, false, String(bad));
+        assert.strictEqual(r.reason, 'INVALID_GROUND_RING');
+        assert.strictEqual(r.field, 'groundRing');
+      }
+      assert.strictEqual(cap('500', 'cu', 'ring', 'banana').reason, 'INVALID_GROUND_RING');
+      assert.strictEqual(cap('500', 'cu', 'ring').finalCopper, null, 'the direct helper has no silent default either');
+      // rod / ufer / water are untouched by any ring value, valid or not
+      for (const g of [undefined, 'unknown', 'cu_2awg_sole', 'other', 'banana']) {
+        assert.strictEqual(calculateGrounding({ ...base, serviceSize: '500', electrode: 'rod', groundRing: g }).gec.finalCopper, '6');
+        assert.strictEqual(calculateGrounding({ ...base, serviceSize: '500', electrode: 'ufer', groundRing: g }).gec.finalCopper, '4');
+        assert.strictEqual(calculateGrounding({ ...base, serviceSize: '500', electrode: 'water', groundRing: g }).gec.finalCopper, '1/0');
+      }
+    });
+
+    test('the EGC section is independent of the ring fact', () => {
+      const a = ring({}); const b = ring({ groundRing: 'cu_2awg_sole' }); const c = calculateGrounding({ ...base, serviceSize: '500' });
+      assert.deepStrictEqual(a.egc, c.egc);
+      assert.deepStrictEqual(b.egc, c.egc);
+    });
   });
 
   test('250.122(B) boundaries: exact CM, between sizes, reversed, unmeetable', () => {

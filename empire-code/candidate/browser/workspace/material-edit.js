@@ -1,6 +1,8 @@
 'use strict';
 // Single linked-material correction. The original append-only store owns commit/conflict checks.
-(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory;else root.EC.conversationMaterialEdit=factory(root.EC.jobMaterial,root.EC.jobMaterialStore,root.EC.jobCard);})(typeof window==='object'?window:globalThis,function(M,Store,J){
+// EC-08: units and the whole-count rule are the one shared definition (EC.materialQuantity, core/src/jobs/
+// materialQuantity.js), passed in as the fourth factory argument; no unit list is kept here.
+(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory;else root.EC.conversationMaterialEdit=factory(root.EC.jobMaterial,root.EC.jobMaterialStore,root.EC.jobCard,root.EC.materialQuantity);})(typeof window==='object'?window:globalThis,function(M,Store,J,Q){
  const copy=x=>JSON.parse(JSON.stringify(x));
  const exact=(x,k)=>x&&typeof x==='object'&&!Array.isArray(x)&&Object.keys(x).length===k.length&&k.every(n=>Object.hasOwn(x,n));
  const canonical=x=>x===null||typeof x!=='object'?JSON.stringify(x):Array.isArray(x)?'['+x.map(canonical).join(',')+']':'{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+canonical(x[k])).join(',')+'}';
@@ -13,8 +15,13 @@
   const x=copy(input),i=x.item,r=x.receipt;
   if(!/^conv1_[a-f0-9]{32}$/.test(x.sourceId)||!Number.isSafeInteger(x.sourceRevision)||x.sourceRevision<0||x.sourceRevision>100||!utc(x.sourceSavedAt)||!utc(x.reviewedAt)||typeof x.acknowledged!=='boolean'||typeof x.rebase!=='boolean')return fail('INVALID','Nieprawidłowa wersja szkicu.');
   if(!exact(i,['id','name','quantity','unit','specification','notes','review'])||!/^i\d{4}$/.test(i.id)||!text(i.name,120,true)||!text(i.specification,500)||!text(i.notes,600)||!Array.isArray(i.review)||i.review.length>8||!i.review.every(s=>text(s,220,true)))return fail('INVALID','Nieprawidłowa pozycja rozmowy.');
-  if(i.quantity===null||i.unit===null)return fail('INCOMPLETE','Brakuje ilości lub jednostki. Zapisany materiał pozostał bez zmian.');
-  if(!['pcs','ft','m','in','cm','mm','roll','set'].includes(i.unit)||typeof i.quantity!=='string'||!/^\d{1,7}(?:\.\d{1,4})?$/.test(i.quantity)||Number(i.quantity)<=0)return fail('INVALID','Nieprawidłowa ilość lub jednostka.');
+  // Same reading rules as the handoff: malformed is INVALID, unknown is INCOMPLETE, and a fractional count kept from a
+  // draft saved before EC-08 (0.5 roll) is readable but must be corrected by the user. Nothing is rounded or converted.
+  if(!Q||typeof Q.inspectDraft!=='function')return fail('UNAVAILABLE','Wspólna definicja jednostek materiałów jest niedostępna. Niczego nie zapisano.');
+  const q=Q.inspectDraft(i.quantity,i.unit);
+  if(!q.readable)return fail('INVALID','Nieprawidłowa ilość lub jednostka.');
+  if(!q.complete)return fail('INCOMPLETE','Brakuje ilości lub jednostki. Zapisany materiał pozostał bez zmian.');
+  if(q.correctionRequired)return fail('QUANTITY_CORRECTION','Pozycja '+i.id+' ('+i.quantity+' '+i.unit+') wymaga poprawy ilości: sztuki, pudełka, paczki, rolki i komplety to liczba całkowita, ułamek jest dozwolony tylko dla długości. Popraw ilość w rozmowie na liczbę całkowitą albo podaj długość. Niczego nie zaokrąglono ani nie zapisano; zapisany materiał pozostał bez zmian.');
   if(i.review.length&&!x.acknowledged)return fail('REVIEW_REQUIRED','Najpierw sprawdź niepewności tej pozycji.');
   if(!exact(r,['jobId','itemId','materialId','revisionId'])||r.itemId!==i.id||!M.JOB_ID.test(r.jobId)||!M.ID.test(r.materialId)||!M.REV_ID.test(r.revisionId))return fail('INVALID','Brak poprawnego powiązania materiału.');
   if(!exact(x.job,['head','revision'])||!J.readHead(x.job.head).ok||!J.readRevision(x.job.revision).ok||x.job.head.jobId!==r.jobId||x.job.revision.jobId!==r.jobId||x.job.head.currentRevisionId!==x.job.revision.revisionId||x.job.head.revisionNumber!==x.job.revision.revisionNumber)return fail('JOB_CHANGED','Robota została zmieniona lub jest niedostępna.');

@@ -141,7 +141,7 @@ function buildHarness(opts) {
   // EC-UI-LAYOUT-REFS-1: the shared source-aware reference layer (used by the adapter) and its delegated handler run verbatim too
   const editions = (html.match(/var EC_NEC_EDITION = '[^']+', EC_NYCEC_EDITION = '[^']+';/) || [''])[0];
   const refLayer = editions + '\n' + ['necRefInfo', 'necQuestion', 'refAttr', 'refSpanHtml', 'refSpanFromText', 'refSpanNode'].map(fnBody).join('\n') + '\n(' + fnBody('installRefDelegation') + ')();\n';
-  const src = refLayer + adapterSource() + "\nvar FAV_KEY = 'sparky_favorites';\n" + ['favGetAll', 'favSaveAll', 'favGetValues', 'favSetValues', 'favGetLabel', 'favSave', 'favLoad', 'favDelete', 'favRender'].map(fnBody).join('\n')
+  const src = refLayer + adapterSource() + "\nvar FAV_KEY = 'sparky_favorites';\n" + ['favState', 'favStorage', 'favEnv', 'favRead', 'favGetAll', 'favRefresh', 'favSettle', 'favExport', 'favRetry', 'favReset', 'favStatusNode', 'favGetValues', 'favSetValues', 'favGetLabel', 'favSave', 'favLoad', 'favDelete', 'favRender'].map(fnBody).join('\n')
     + '\nexports.api = { lcDraft, lcTxn, lcAllocLoadId, lcAllocBasisId, lcConfirmMethodAfterImport, lcLegacyContract, LC_FIELDS_LCV2, LC_LOAD_SUBFIELDS_LCV2, LC_CAPABILITY_PROFILE, LC_STORE_VERSION, lcInit, lcUpdate, lcReset, lcExportState, lcFavSave, lcFavRestore, lcFavPayload, lcFavLabel, lcFavValidatePayload, lcFieldActive, lcCalculate, LC_CALC, favGetValues, favSetValues, favGetLabel, favLoad, favDelete, favRender, favGetAll, favSave, lcGuideRecommendation, lcRevealedConductors, lcModelOptions, LC: LC, LC_SVC: LC_SVC, lcSvcAssess, lcSvcDesignObject, LC_RECORD_PREFIX, lcRecordRefresh, lcRecordOpen, lcRecordClose, lcRecordSave, LC_JOB, lcJobNew, lcJobOpen, lcJobRefresh, lcJobSave, lcJobHistory, lcJobHistorical, lcJobLatest, lcJobDiscard, lcJobOpenResult, LC_MEAS, lcMeasRefresh, lcMeasEdit, lcMeasSave, lcMeasOpen, LC_MAT, lcMatRefresh, lcMatEdit, lcMatSave, lcMatOpen, LC_PHOTO, lcPhotoRefresh, lcPhotoEdit, lcPhotoSave, lcPhotoChoose, lcPhotoOpen, lcPhotoOpenOriginal, lcPhotoCloseView, lcPhotoRelease, LC_ARC, lcArcExport, lcArcOpenFile, lcArcCancel, lcArcClear, lcArcRender, LC_RESTORE, lcRestoreRun, lcRestoreRecover, lcRestoreReady };';   // B2-r1: + lcFavValidatePayload, lcFieldActive (exposure only); LC-SERVICE-UI-1: + LC_SVC, lcSvcAssess, lcSvcDesignObject (exposure only)
   const exp = {};
   const necCallsFull = []; const win = {};
@@ -151,8 +151,41 @@ function buildHarness(opts) {
   // LC-JOB-CARD-1: native or simulated IDB is injected only when explicitly requested.
   if (Object.hasOwn(o, 'indexedDB')) win.indexedDB = o.indexedDB;
   // necLink transport stub: records the reference, the explicit opts and the REAL prepared question (necQuestion + necRefInfo are the shipped functions)
-  new Function('document', 'window', 'EC', 'necLink', 'localStorage', 'prompt', 'exports', src + '\nexports.refs = { necRefInfo, necQuestion, refSpanHtml, refSpanFromText };')(dom.document, win, EC, function (ref, opts) { necCalls.push(ref); necCallsFull.push({ ref, opts: opts || null, question: exp.refs ? exp.refs.necQuestion(exp.refs.necRefInfo(ref, opts)) : null }); }, st.localStorage, (msg, def) => { prompts.calls.push([msg, def]); return typeof prompts.answer === 'function' ? prompts.answer(msg, def) : prompts.answer; }, exp);   // eslint-disable-line no-new-func
+  // EC-03: Favorites mutations require a Web Locks manager. This stand-in grants the lock and runs the callback
+  // immediately, so the shipped critical section (fresh read, validation, write, read-back) executes inside the call
+  // and the long-standing synchronous assertions on the stored bytes stay meaningful. `o.locks: null` removes it.
+  const lockLog = { ran: 0, last: undefined };
+  const favNavigator = { locks: o.locks === undefined ? { request: (name, opts, cb) => { try { const out = cb({ name }); lockLog.ran++; lockLog.last = out; return Promise.resolve(out); } catch (e) { return Promise.reject(e); } } } : o.locks };
+  // EC-03 (Load Calc, stage 3): the shipped lcFavSave() now saves through EC.favoritesStore.add and returns a
+  // Promise<boolean>. With the immediate lock stand-in above, the store's whole critical section has already run
+  // when add() returns, so for THAT case only add() hands back an already-settled thenable whose then() runs its
+  // callback at once: the shipped lcFavSave continuation (status, fault, list refresh) then also completes inside
+  // the call, and the long-standing synchronous Load Calc assertions keep describing the shipped behaviour. Nothing
+  // of the shipped code is replaced. A test that passes its own `locks` gets the store and lcFavSave untouched
+  // (real Promises); api.lcFavSaveAsync is always the unwrapped shipped function.
+  const settled = (value) => ({ __ecSettled: true, value, then(onOk) { let next; try { next = typeof onOk === 'function' ? onOk(value) : value; } catch (e) { return Promise.reject(e); } return next && next.__ecSettled ? next : settled(next); } });
+  if (o.locks === undefined && EC.favoritesStore) {
+    const baseStore = EC.favoritesStore;
+    const add = (env, type, row) => { const before = lockLog.ran; const pending = baseStore.add(env, type, row); return lockLog.ran === before + 1 && lockLog.last && typeof lockLog.last.ok === 'boolean' ? settled(lockLog.last) : pending; };
+    EC = Object.assign({}, EC, { favoritesStore: Object.assign({}, baseStore, { add }) });
+  }
+  new Function('navigator', 'confirm', 'document', 'window', 'EC', 'necLink', 'localStorage', 'prompt', 'exports', src +'\nexports.refs = { necRefInfo, necQuestion, refSpanHtml, refSpanFromText };')(favNavigator, () => (typeof o.confirmAnswer === 'function' ? o.confirmAnswer() : o.confirmAnswer === true), dom.document, win, EC, function (ref, opts) { necCalls.push(ref); necCallsFull.push({ ref, opts: opts || null, question: exp.refs ? exp.refs.necQuestion(exp.refs.necRefInfo(ref, opts)) : null }); }, st.localStorage, (msg, def) => { prompts.calls.push([msg, def]); return typeof prompts.answer === 'function' ? prompts.answer(msg, def) : prompts.answer; }, exp);   // eslint-disable-line no-new-func
   const api = exp.api;
+  // api.lcFavSaveAsync: the shipped function as shipped (Promise<boolean>). api.lcFavSave: the same call, with the
+  // outcome read back synchronously where the stand-in lock made it synchronous (see above). When the shipped
+  // function returned before taking the lock (refused store, unsaveable draft, cancelled prompt) its effects are
+  // complete and it resolves false; that is still verified — a different value fails the run loudly.
+  const shippedSave = api.lcFavSave;
+  api.lcFavSaveAsync = shippedSave;
+  api.lcFavSave = (...args) => {
+    const before = lockLog.ran; const out = shippedSave(...args);
+    if (out && out.__ecSettled) return out.value;
+    if (o.locks === undefined && lockLog.ran === before && out && typeof out.then === 'function') {
+      out.then((v) => { if (v !== false) throw new Error('harness: lcFavSave resolved ' + String(v) + ' without taking the Favorites lock'); });
+      return false;
+    }
+    return out;
+  };
   const $ = (id) => dom.byId[id];
   const set = (id, value, evt) => { const el = $(id); if (!el) throw new Error('no element ' + id); el.value = value; el.validity.badInput = false; el.dispatch(evt || (el.tagName === 'SELECT' ? 'change' : 'input')); };
   const state = () => api.lcExportState();

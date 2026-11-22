@@ -22,7 +22,7 @@ async function load(api,onLine=true){
   addEventListener(t,f){win[t]=f;},fetch:async(url,init={})=>{calls.push({url:String(url),init});return api(String(url),init);}};
  sandbox.window=sandbox;
  const ctx=vm.createContext(sandbox);
- for(const f of ['handoff-session.js','conversation-bank.js','draft-recovery.js','ui.js'])vm.runInContext(read(f),ctx,{filename:f});
+ for(const f of ['handoff-session.js','assistant-session.js','conversation-bank.js','draft-recovery.js','ui.js'])vm.runInContext(read(f),ctx,{filename:f});
  await settle();
  const page={els,calls,local,session,win,navigator,run:code=>vm.runInContext(code,ctx),token:()=>vm.runInContext('token',ctx),dump:()=>local.dump()+session.dump(),
   submit:async()=>{els.composer.listeners.submit({preventDefault(){}});await settle();},
@@ -41,20 +41,20 @@ const phrase='Synthetic material note only — żadnych danych robót';
 for(const [code,http] of [['API_AUTH',401],['API_ACCESS',403],['API_QUOTA',429]])test('independent: '+code+' is an upstream problem, never Cloudflare login',async()=>{
  const p=await load(url=>url==='/api/session'?json(GOOD):json({code,error:'Synthetic provider diagnosis: '+code},http));
  await p.type(phrase);const before=p.run('JSON.stringify(state)');await p.submit();
- assert.equal(p.els.relogin.hidden,true);assert.equal(p.run('JSON.stringify(state)'),before);assert.equal(p.els.input.value,phrase);assert.equal(p.calls.filter(c=>c.url==='/api/talk').length,1);assert.equal(p.calls.filter(c=>c.url==='/api/session').length,1);assert.match(p.els.status.textContent,new RegExp(code));
+ assert.equal(p.els.relogin.hidden,true);assert.equal(p.run('JSON.stringify(state)'),before);assert.equal(p.els.input.value,phrase);assert.equal(p.calls.filter(c=>c.url==='/api/assist').length,1);assert.equal(p.calls.filter(c=>c.url==='/api/session').length,1);assert.match(p.els.status.textContent,new RegExp(code));
 });
 test('independent: a real Access denial clears stale session and disables AI, retaining text',async()=>{
- const p=await load(url=>url==='/api/session'?json(GOOD):json({error:'Forbidden'},403));await p.type(phrase);await p.submit();assert.equal(p.token(),null);assert.equal(p.els.send.disabled,true);assert.equal(p.els.mic.disabled,true);assert.equal(p.els.relogin.hidden,false);assert.equal(p.els.input.value,phrase);await p.submit();assert.equal(p.calls.filter(c=>c.url==='/api/talk').length,1);
+ const p=await load(url=>url==='/api/session'?json(GOOD):json({error:'Forbidden'},403));await p.type(phrase);await p.submit();assert.equal(p.token(),null);assert.equal(p.els.send.disabled,true);assert.equal(p.els.mic.disabled,true);assert.equal(p.els.relogin.hidden,false);assert.equal(p.els.input.value,phrase);await p.submit();assert.equal(p.calls.filter(c=>c.url==='/api/assist').length,1);
 });
 test('independent: non-JSON login HTML never leaves an enabled stale session',async()=>{
  const p=await load(url=>url==='/api/session'?json(GOOD):notJson());await p.type(phrase);await p.submit();assert.equal(p.token(),null);assert.equal(p.els.send.disabled,true);assert.equal(p.els.input.value,phrase);assert.ok(!p.els.status.textContent.includes('<html'));assert.equal(p.els.relogin.hidden,false);
 });
 test('independent: rejected session renews with one free GET and never repeats the original AI request',async()=>{
  let gets=0;const p=await load(url=>url==='/api/session'?json(++gets===1?GOOD:NEW):json({code:'SESSION_TOKEN',error:'Synthetic expired session'},403));
- await p.type(phrase);const before=p.run('JSON.stringify(state)');await p.submit();assert.equal(gets,2);assert.equal(p.calls.filter(c=>c.url==='/api/talk').length,1);assert.equal(p.token(),NEW.token);assert.equal(p.els.send.disabled,false);assert.equal(p.els.relogin.hidden,true);assert.equal(p.els.input.value,phrase);assert.equal(p.run('JSON.stringify(state)'),before);assert.match(p.els.status.textContent,/nie.*wysł|Wyślij|wyślij/);
+ await p.type(phrase);const before=p.run('JSON.stringify(state)');await p.submit();assert.equal(gets,2);assert.equal(p.calls.filter(c=>c.url==='/api/assist').length,1);assert.equal(p.token(),NEW.token);assert.equal(p.els.send.disabled,false);assert.equal(p.els.relogin.hidden,true);assert.equal(p.els.input.value,phrase);assert.equal(p.run('JSON.stringify(state)'),before);assert.match(p.els.status.textContent,/nie.*wysł|Wyślij|wyślij/);
 });
 test('independent: failed renewal does not loop and cannot claim the message was sent',async()=>{
- let gets=0;const p=await load(url=>url==='/api/session'?(++gets===1?json(GOOD):notJson()):json({code:'SESSION_TOKEN',error:'Expired'},403));await p.type(phrase);await p.submit();assert.equal(gets,2);assert.equal(p.calls.filter(c=>c.url==='/api/talk').length,1);assert.equal(p.token(),null);assert.equal(p.els.relogin.hidden,false);assert.equal(p.els.input.value,phrase);assert.ok(!/zapisano|zaktualizowano/i.test(p.els.status.textContent));
+ let gets=0;const p=await load(url=>url==='/api/session'?(++gets===1?json(GOOD):notJson()):json({code:'SESSION_TOKEN',error:'Expired'},403));await p.type(phrase);await p.submit();assert.equal(gets,2);assert.equal(p.calls.filter(c=>c.url==='/api/assist').length,1);assert.equal(p.token(),null);assert.equal(p.els.relogin.hidden,false);assert.equal(p.els.input.value,phrase);assert.ok(!/zapisano|zaktualizowano/i.test(p.els.status.textContent));
 });
 test('independent: malformed session cannot enable inference even with a nonempty fake token',async()=>{
  for(const x of [{token:GOOD.token},{online:true,token:'bad'}, {...GOOD,token:GOOD.token.toUpperCase()}, {online:'true',token:GOOD.token}]){

@@ -157,30 +157,42 @@ describe('EC-SAFE-1 — trending renders untrusted records as text and binds by 
 
 /* ── the shipped favorites renderer, verbatim ───────────────────────────── */
 describe('EC-SAFE-1 — saved presets render as text with value-bound handlers', () => {
+  // EC-03 / EC-05: the shipped Favorites presentation functions call the storage boundary (EC.favoritesStore, the same
+  // source the page bundles) and need a lock manager for mutations; both are supplied here, nothing is re-implemented.
+  const FAV_FNS = ['favState', 'favStorage', 'favEnv', 'favRead', 'favGetAll', 'favRefresh', 'favSettle', 'favExport', 'favRetry', 'favReset', 'favStatusNode'];
+  const FAV_EC = { favoritesStore: require('../src/storage/favoritesStore') };
+  const FAV_NAV = { locks: { request: (name, opts, cb) => Promise.resolve(cb({ name })) } };
   function favEnv(stored) {
     const doc = makeDoc(); const list = doc.mk('div'); doc.byId['cf-fav-list'] = list;
     const calls = { load: [], del: [] };
     const store = { data: JSON.stringify(stored) };
-    const env = new Function('document', 'localStorage', 'favLoad', 'favDelete',
-      "var FAV_KEY = 'sparky_favorites';" + fn('favGetAll') + fn('favRender') + '; return { favRender };')(
-      doc, { getItem: () => store.data, setItem: (k, v) => { store.data = v; } }, (t, id) => calls.load.push([t, id]), (t, id) => calls.del.push([t, id]));
+    const env = new Function('EC', 'navigator', 'document', 'localStorage', 'favLoad', 'favDelete',
+      "var FAV_KEY = 'sparky_favorites';" + FAV_FNS.map(fn).join('\n') + fn('favRender') + '; return { favRender };')(
+      FAV_EC, FAV_NAV, doc, { getItem: () => store.data, setItem: (k, v) => { store.data = v; } }, (t, id) => calls.load.push([t, id]), (t, id) => calls.del.push([t, id]));
     return { doc, list, calls, env };
   }
   const evilId = '1002);' + BUMP + ';void(0';
   const stored = { cf: [{ name: HOSTILE[0] + ' Kitchen', vals: { a: 1 }, id: 1001 }, { name: 'O\'Brien "run" & <b>x</b>', vals: { a: 2 }, id: evilId }, { name: 'Good', vals: { a: 3 }, id: 1003 }, { name: 12, vals: {}, id: 1004 }, null] };
 
-  test('names are text; ids and types travel as values; no inline handlers; null entries skipped', () => {
-    const { list, env } = favEnv(stored); env.favRender('cf');
-    assert.strictEqual(list.children.length, 4, 'four renderable entries, the null skipped');
-    const nodes = walk(list);
+  test('names are text; ids and types travel as values; no inline handlers; unreadable entries are not rendered', () => {
+    const { list: box, env } = favEnv(stored); env.favRender('cf');
+    // EC-03: this fixture holds entries the app cannot read (a null, a non-string name), so the list now ALSO carries one
+    // recovery status; the readable rows render exactly as before and are addressed by their class below.
+    // EC-03 correction (independent review, finding 3): EC.favoritesStore.rows() returns only rows validRow() accepts,
+    // so the entry with a non-string name (id 1004) is no longer offered as a preset (was: rendered with a blank name).
+    const list = { children: box.children.filter((c) => c.className === 'fav-item') };
+    const status = box.children.filter((c) => c.className === 'fav-status');
+    assert.strictEqual(status.length, 1, 'one recovery status'); assert.strictEqual(status[0].attrs.role, 'alert');
+    assert.strictEqual(list.children.length, 3, 'three readable entries; the null and the non-string-name entry are not rendered');
+    const nodes = walk(box);
     assert.ok(!hasExecutable(nodes), 'no on* attributes anywhere');
     assert.ok(nodes.filter((n) => n.tagName !== '#text').every((n) => n.innerHTML === ''), 'innerHTML never used');
     assert.ok(list.children[0].textContent.includes('<img src=x onerror='), 'hostile name is literal text');
     assert.ok(list.children[1].textContent.includes('O\'Brien "run" & <b>x</b>'));
-    assert.strictEqual(list.children[3].children[1].textContent, '', 'a non-string name renders blank, not as code');
+    assert.deepStrictEqual(list.children.map((r) => r.children[1].textContent), [stored.cf[0].name, stored.cf[1].name, 'Good'], 'every rendered name is a stored string, shown as text; nothing is rendered for the non-string name');
   });
   test('row click loads by value (even a crafted string id); delete stops propagation and never loads', () => {
-    const { list, calls, env } = favEnv(stored); env.favRender('cf');
+    const { list: box, calls, env } = favEnv(stored); env.favRender('cf'); const list = { children: box.children.filter((c) => c.className === 'fav-item') };
     list.children[1].listeners.click[0]();
     assert.deepStrictEqual(calls.load, [['cf', evilId]], 'the crafted id is passed as an inert string value');
     let stopped = false;
@@ -191,16 +203,22 @@ describe('EC-SAFE-1 — saved presets render as text with value-bound handlers',
     assert.ok(!/onclick="favLoad|onclick="event\.stopPropagation\(\);favDelete/.test(fn('favRender')), 'no inline handlers built from stored data');
     assert.ok(/wrapper\.innerHTML = FILL_CONTENT\[mode\];[\s\S]{0,200}favRender\('cf'\); favRender\('ww'\);/.test(html), 'lists rebuilt with live handlers after a swap');
   });
-  test('favLoad / favDelete tolerate a malformed (null) stored entry', () => {
-    const doc = makeDoc(); const store = { data: JSON.stringify(stored) }; const applied = [];
-    const env = new Function('document', 'localStorage', 'favSetValues', 'favRender',
-      "var FAV_KEY = 'sparky_favorites';" + fn('favGetAll') + fn('favSaveAll') + fn('favLoad') + fn('favDelete') + '; return { favLoad, favDelete };')(
-      doc, { getItem: () => store.data, setItem: (k, v) => { store.data = v; } }, (t, v) => applied.push(v), () => {});
+  test('favLoad still loads a readable preset beside a malformed (null) entry; favDelete refuses and keeps every stored byte (EC-03)', async () => {
+    // Was: "favDelete tolerates a malformed entry" — it rewrote the whole list around data the app could not read. A store
+    // with unreadable entries is now a recovery state: nothing is rewritten until the user exports or resets it, while
+    // readable presets stay loadable. A fully readable store deletes exactly one preset and keeps unknown metadata.
+    const doc = makeDoc(); const store = { data: JSON.stringify(stored), sets: 0 }; const applied = [];
+    const env = new Function('EC', 'navigator', 'document', 'localStorage', 'favSetValues', 'favRender',
+      "var FAV_KEY = 'sparky_favorites';" + FAV_FNS.map(fn).join('\n') + fn('favLoad') + fn('favDelete') + '; return { favLoad, favDelete, favState };')(
+      FAV_EC, FAV_NAV, doc, { getItem: () => store.data, setItem: (k, v) => { store.sets++; store.data = v; } }, (t, v) => applied.push(v), () => {});
     env.favLoad('cf', 1003); assert.deepStrictEqual(applied, [{ a: 3 }]);
-    env.favDelete('cf', 1001);
-    const now = JSON.parse(store.data).cf;
-    assert.strictEqual(now.length, 4, 'exactly one removed'); assert.ok(now.includes(null), 'the malformed entry is left alone, not silently repaired');
-    assert.ok(!now.some((f) => f && f.id === 1001));
+    const before = store.data;
+    assert.strictEqual(await env.favDelete('cf', 1001), false);
+    assert.strictEqual(store.data, before, 'exact bytes preserved'); assert.strictEqual(store.sets, 0, 'no write attempted');
+    assert.strictEqual(env.favState().notice.ok, false); assert.ok(/need recovery/.test(env.favState().notice.text), env.favState().notice.text);
+    store.data = JSON.stringify({ cf: [{ name: 'A', vals: { a: 1 }, id: 1 }, { name: 'B', vals: { a: 2 }, id: 2 }], zz: { keep: true } });
+    assert.strictEqual(await env.favDelete('cf', 1), true);
+    assert.deepStrictEqual(JSON.parse(store.data), { cf: [{ name: 'B', vals: { a: 2 }, id: 2 }], zz: { keep: true } }, 'one preset removed, unknown metadata kept');
   });
 });
 

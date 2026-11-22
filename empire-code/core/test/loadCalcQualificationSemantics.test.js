@@ -250,7 +250,12 @@ describe('LC-QUALIFICATION-SEMANTICS-1 — help and existing lifecycle', () => {
     const el = h.$('lcConductorAmpacity'); const text = el.parentNode.textContent;
     assert.match(text, /identified conductor set under documented conditions/); assert.match(text, /documented planned set for a new design/);
     assert.match(text, /not the breaker or service rating/); assert.match(text, /Leave unknown if not established/);
-    assert.match(text, /cannot start a preliminary load calculation before this premise is established/);
+    // EC-AUDIT-FIX-1 stage 4: the former sentence ("cannot start a preliminary load calculation before this premise is
+    // established") became false once the explicit new-design preliminary route exists. Current truth: an unknown value
+    // keeps the ORDINARY calculation incomplete, and the separate "Plan a new supply" check never fills this field in.
+    assert.match(text, /Leave unknown if not established: the ordinary calculation then stays incomplete\./);
+    assert.match(text, /"Plan a new supply" workflow above offers a separate preliminary check; it never fills this field in by itself\./);
+    assert.doesNotMatch(text, /cannot start a preliminary load calculation/);
     assert.strictEqual(el.type, 'number'); assert.strictEqual(el.attrs.placeholder, 'e.g. 200'); assert.strictEqual(el.value, '');
     assert.strictEqual(h.state().snapshot.optional82.conductorAmpacityA.value, null);
   });

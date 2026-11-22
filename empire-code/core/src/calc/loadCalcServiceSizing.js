@@ -23,6 +23,14 @@
  *   - the design object is separate data: it never enters the request, the calculation or any stored format;
  *   - inputs are never mutated; the returned object is deep-frozen.
  * Not wired to the UI or the bundle. Does not use wireSizing.selectConductor.
+ *
+ * STAGE4 (docs/stage4-qualification-contract.md) adds two SEPARATE entry points; analyzePrototype and its output are unchanged:
+ *   analyzePreliminaryPrototype(request, design?) — new-design preliminary analysis for a request whose 220.82(A) conductor
+ *     ampacity is a well-formed unknown. Same stages and tables; a different result kind; at most a CONDITIONAL table candidate;
+ *     never an ordinary EVALUATED analysis and never acceptable to the v1 full-result record.
+ *   adoptPlannedConductorDeclaration({ request, design, preliminary, confirmation }) — explicit, fingerprint-bound adoption of a
+ *     conditional candidate (>= the B82 gate) as a documented PLANNED declaration, followed by the ordinary facade + analysis on
+ *     a NEW request. It never overwrites an existing ampacity value and never accepts a candidate below the gate.
  */
 const F = require('./loadCalcFacade.js');
 const V2 = require('./loadCalcInputV2.js');
@@ -33,6 +41,8 @@ const E4 = V2.E4;
 const VOLTS_LL = 240;
 const FLOOR_A = 100;
 const B82_QUALIFICATION_GATE_A = 100;
+/** STAGE4: the one preliminary calculation status whose demand the preliminary analysis may read (never 'COMPLETE'). */
+const PRELIMINARY_CALC_PENDING = F.PRELIMINARY_STATUS.PENDING;
 
 const deepFreeze = (v) => { if (v && typeof v === 'object' && !Object.isFrozen(v)) { Object.freeze(v); for (const k of Object.keys(v)) deepFreeze(v[k]); } return v; };
 
@@ -184,9 +194,13 @@ function readDesign(design) {
   return { values, problems };
 }
 
-const calcBasisOf = (request, out) => {
+/**
+ * `readyStatus` is the calculation status whose demand may be read: 'COMPLETE' for the ordinary facade result (default) or the
+ * preliminary pending status for the STAGE4 preliminary result. The two are never converted into each other.
+ */
+const calcBasisOf = (request, out, readyStatus) => {
   const r = out.result; const s = request.snapshot;
-  const complete = r.status === 'COMPLETE' && r.demand && r.demand.status === 'complete';
+  const complete = r.status === (readyStatus === undefined ? 'COMPLETE' : readyStatus) && r.demand && r.demand.status === 'complete';
   return {
     engine: out.facade.engine, engineProfileId: out.facade.engineProfileId, importGuard: out.facade.importGuard, calcStatus: r.status,
     purpose: s.purpose, occupancy: s.occupancy, topology: s.supply.topology, vLineToLine: s.supply.vLineToLine, method: s.method.selected,
@@ -198,17 +212,26 @@ const calcBasisOf = (request, out) => {
   };
 };
 
-/** Stage 1: minimum STANDARD service-disconnect rating candidate (eligibility of the calculation + service scope premises). */
-function stageMinimum(basis, dv) {
+/**
+ * Stage 1: minimum STANDARD service-disconnect rating candidate (eligibility of the calculation + service scope premises).
+ * `preliminary` (STAGE4, internal boolean only) changes ONE thing: which calculation status is the ready one — the ordinary
+ * 'COMPLETE' or the preliminary pending status. Every scope, premise, current and rating rule below is shared and identical.
+ */
+function stageMinimum(basis, dv, preliminary) {
   const st = 'minimumService'; const unsupported = []; const waiting = [];
+  const readyStatus = preliminary === true ? PRELIMINARY_CALC_PENDING : 'COMPLETE';
   const eng = (code, field, message) => unsupported.push(reason(st, code, field, ['ENGINE_B82', 'PROTOTYPE_SCOPE'], ['220.82'], message));
   if (basis.engine !== 'B82' || basis.method !== 'opt_220_82') eng('METHOD_UNSUPPORTED', 'snapshot.method.selected', 'only the opt_220_82 route (engine B82_core1) is in prototype scope; the A / 220.87 route and other methods are not');
   if (basis.purpose !== 'service') eng('PURPOSE_UNSUPPORTED', 'snapshot.purpose', basis.purpose === null ? 'purpose unspecified; only an explicit service is in scope (feeder minima are not inferred)' : `purpose ${basis.purpose} unsupported; only service is in scope (feeder minima are not inferred from 230.79(C))`);
   if (basis.occupancy !== 'dwelling_unit_house') eng('OCCUPANCY_UNSUPPORTED', 'snapshot.occupancy', `occupancy ${basis.occupancy} unsupported; only a one-family dwelling (dwelling_unit_house) is in scope`);
   if (basis.topology !== '1ph_3w_120_240' || basis.vLineToLine !== VOLTS_LL) eng('SUPPLY_UNSUPPORTED', 'snapshot.supply.topology', 'only a single-phase 120/240 V three-wire supply is in scope (no 120/208, three-phase or other)');
-  if (basis.engine === 'B82' && basis.calcStatus !== 'COMPLETE') unsupported.push(reason(st, 'CALC_NOT_COMPLETE', 'result.status', ['ENGINE_B82'], ['220.82'], `calculation status ${basis.calcStatus} (${basis.engineProblemCodes.join(', ') || 'no codes'}); a complete 220.82 demand with a confirmed whole-dwelling inventory is required`));
-  if (basis.engine === 'B82' && basis.calcStatus === 'COMPLETE' && basis.currentStatus !== 'computed') unsupported.push(reason(st, 'CURRENT_NOT_COMPUTED', 'result.current', ['ENGINE_B82'], [], 'the engine did not compute a current (requires 120/240 V + split_240_balanced_LN + explicit balancedLN); no ampere value is guessed'));
-  if (basis.engine === 'B82' && basis.calcStatus === 'COMPLETE' && !Number.isSafeInteger(basis.totalExactE4)) unsupported.push(reason(st, 'CALC_TOTAL_UNAVAILABLE', 'result.demand.totalExactE4', ['ENGINE_B82'], [], 'exact total not available'));
+  if (basis.engine === 'B82' && basis.calcStatus !== readyStatus) {
+    unsupported.push(preliminary === true
+      ? reason(st, 'PRELIMINARY_CALC_NOT_READY', 'result.status', ['ENGINE_B82'], ['220.82'], `preliminary calculation status ${basis.calcStatus} (${basis.engineProblemCodes.join(', ') || 'no codes'}); only a well-formed unknown conductor ampacity is deferred — every other input, scope, source, inventory and HVAC condition must be resolved first`)
+      : reason(st, 'CALC_NOT_COMPLETE', 'result.status', ['ENGINE_B82'], ['220.82'], `calculation status ${basis.calcStatus} (${basis.engineProblemCodes.join(', ') || 'no codes'}); a complete 220.82 demand with a confirmed whole-dwelling inventory is required`));
+  }
+  if (basis.engine === 'B82' && basis.calcStatus === readyStatus && basis.currentStatus !== 'computed') unsupported.push(reason(st, 'CURRENT_NOT_COMPUTED', 'result.current', ['ENGINE_B82'], [], 'the engine did not compute a current (requires 120/240 V + split_240_balanced_LN + explicit balancedLN); no ampere value is guessed'));
+  if (basis.engine === 'B82' && basis.calcStatus === readyStatus && !Number.isSafeInteger(basis.totalExactE4)) unsupported.push(reason(st, 'CALC_TOTAL_UNAVAILABLE', 'result.demand.totalExactE4', ['ENGINE_B82'], [], 'exact total not available'));
   const prem = [
     ['plan.oneMainDisconnect', 'MULTIPLE_DISCONNECTS_UNSUPPORTED', 'one main service disconnect is required; multiple service disconnects are unsupported', ['230.71', '230.79(C)']],
     ['plan.noAdditionalSources', 'ADDITIONAL_SOURCES_UNSUPPORTED', 'no additional sources (PV/ESS/EMS/generator) is required; interconnected sources are unsupported', ['705', '230.79(C)']],
@@ -287,11 +310,36 @@ function qualificationOf(declared, candidateAmp, path) {
     `candidate 75 °C table ampacity ${candidateAmp} A differs from the declared qualification ampacity ${declared} A that qualified this calculation; the premise changed (not proved invalid) — revalidate the calculation deliberately before any linked use`)] });
 }
 
+/**
+ * STAGE4 preliminary counterpart of qualificationOf: there is NO declared qualification ampacity and none is assumed, injected
+ * or substituted. A candidate at or above the B82 gate is `deferred_pending_declaration` (conditional; adoptable only through
+ * the explicit helper). A candidate below the gate is `review_required` with the same open-interpretation code as the ordinary
+ * path: it is never raised to the gate value and never reported as a finding against 310.12 use.
+ */
+function preliminaryQualificationOf(candidateAmp, path) {
+  const st = 'qualificationConsistency';
+  const base = {
+    declaredQualificationAmpacityA: null, candidateTableAmpacity75CA: candidateAmp, b82SoftwareGateMinA: B82_QUALIFICATION_GATE_A,
+    sourceEvidence: STAGE_EVIDENCE.qualificationConsistency,
+    note: 'preliminary new-design diagnostic: no qualification ampacity is declared and none is assumed or substituted; the 220.82(A) qualification is deferred and nothing here establishes it',
+  };
+  if (candidateAmp < B82_QUALIFICATION_GATE_A) {
+    return Object.assign({ status: 'review_required' }, base, { reasons: [reason(st, 'B82_310_12_INTERPRETATION_PENDING', 'snapshot.optional82.conductorAmpacityA', ['ENGINE_B82', 'P_310_12_B', 'P_230_90', 'P_110_14_C'], ['220.82(A)', '310.12', '230.90 Exception 5', '110.14(C)(1)'],
+      `the ${path} table candidate has a 75 °C ampacity of ${candidateAmp} A, below the accepted B82 software qualification gate (conductorAmpacityA >= ${B82_QUALIFICATION_GATE_A} A); no qualification ampacity is declared and this candidate cannot become the planned declaration through the adoption helper; 310.12 conditional sizing and that gate are an open model/premise interpretation item, not a finding against 310.12 use; no caller flag resolves it and no value is substituted`)] });
+  }
+  return Object.assign({ status: 'deferred_pending_declaration' }, base, { reasons: [reason(st, 'QUALIFICATION_DECLARATION_DEFERRED', 'snapshot.optional82.conductorAmpacityA', ['ENGINE_B82'], ['220.82(A)'],
+    `candidate 75 °C table ampacity ${candidateAmp} A is at or above the B82 software qualification gate (${B82_QUALIFICATION_GATE_A} A) but no qualification ampacity is declared; the candidate stays conditional until a planned declaration is explicitly confirmed and the ordinary calculation and assessment are re-run`)] });
+}
+
 const conductorBase = (method) => ({ appliesTo: 'ungrounded conductors only', method, notSized: NOT_SIZED, recommendationAvailable: false, size: null, tableCandidate: null, qualificationConsistency: null });
 const notEvaluatedConductors = (reasons) => Object.assign({ status: 'not_evaluated' }, conductorBase(null), { reasons });
 
-/** Stage 3: ungrounded conductor table lookup for the EXPLICIT chosen rating (general_table_75C or dwelling_83pct_310_12). */
-function stageConductor(chosen, dv, declaredQualificationA) {
+/**
+ * Stage 3: ungrounded conductor table lookup for the EXPLICIT chosen rating (general_table_75C or dwelling_83pct_310_12).
+ * `preliminary` (STAGE4, internal boolean only) selects the qualification diagnostic: the same tables, premises and lookups run
+ * either way, and a preliminary result can never reach `premise_unchanged`, so its selection is always withheld.
+ */
+function stageConductor(chosen, dv, declaredQualificationA, preliminary) {
   const st = 'ungroundedConductors';
   if (chosen.status !== 'meets_prototype_minimum') return notEvaluatedConductors([reason(st, 'CHOSEN_MAIN_NOT_ACCEPTED', 'selectedMainRatingA', ['PROTOTYPE_SCOPE'], [], 'conductor analysis requires an explicit chosen rating that meets the minimum candidate')]);
   const pathV = dv.get('conductor.sizingPath');
@@ -345,7 +393,7 @@ function stageConductor(chosen, dv, declaredQualificationA) {
     conditional: true, method: pathV, table: is31012 ? 'Table 310.12' : 'Table 310.16 (75 °C column)', forRatingA: R, material, size, sizeUnit: sizeUnitOf(size), ampacity75CA,
     eightyThreePercentCheck, sourceStatus: 'source_verified_conditional_table_fact', sourceIds: ev.sourceIds,
   };
-  const qualificationConsistency = qualificationOf(declaredQualificationA, ampacity75CA, pathV);
+  const qualificationConsistency = preliminary === true ? preliminaryQualificationOf(ampacity75CA, pathV) : qualificationOf(declaredQualificationA, ampacity75CA, pathV);
   const available = qualificationConsistency.status === 'premise_unchanged';
   const conditions = {
     terminations: '75 °C (all, explicitly confirmed; not inferred from insulation or breaker amperage)',
@@ -380,47 +428,276 @@ class ServiceSizingPrototypeError extends Error {
 }
 
 /**
+ * The one analysis body shared by the ordinary analysis and the STAGE4 preliminary analysis: design validation, the facade call
+ * (ordinary or preliminary — two different entry points, never one result relabelled as the other), calcBasis and the three
+ * stages. Returns { out, body }; `body` carries exactly the ordinary keys in the ordinary order.
+ */
+function analysisBody(request, design, preliminary) {
+  const { values: dv, problems: designProblems } = readDesign(design);
+  let out;
+  try { out = preliminary === true ? F.evaluatePreliminaryV2(request) : F.evaluateV2(request); } catch (e) {
+    if (!e || e.name !== 'LoadCalcEnvelopeError') throw e;
+    const errs = Array.isArray(e.errors) ? e.errors.slice(0, 20).map(String) : [String(e.message)];
+    return { out: null, body: {
+      status: 'REQUEST_INVALID', calcBasis: null, qualificationEcho: null,
+      minimumService: { status: 'not_computed', ratingA: null, reasons: [reason('request', 'REQUEST_STRUCTURALLY_INVALID', 'request', ['ENGINE_B82'], [], `the V2 request failed the accepted boundary: ${errs.join('; ')}`)] },
+      chosenMain: { status: 'not_evaluated', selectedRatingA: null, reasons: [] },
+      ungroundedConductors: notEvaluatedConductors([]),
+      designProblems,
+    } };
+  }
+  const basis = preliminary === true ? calcBasisOf(request, out, PRELIMINARY_CALC_PENDING) : calcBasisOf(request, out);
+  const q = request.snapshot.optional82 && request.snapshot.optional82.conductorAmpacityA ? request.snapshot.optional82.conductorAmpacityA.value : null;
+  const qualificationEcho = { conductorAmpacityA: q, role: '220.82(A) qualification input only; not a main breaker, installed service or conductor sizing value; never replaced by a table candidate' };
+  if (designProblems.length) {
+    return { out, body: {
+      status: 'DESIGN_INVALID', calcBasis: basis, qualificationEcho,
+      minimumService: { status: 'not_computed', ratingA: null, reasons: [reason('design', 'DESIGN_INVALID', 'design', ['PROTOTYPE_SCOPE'], [], 'design input invalid; no rating or conductor output')] },
+      chosenMain: { status: 'not_evaluated', selectedRatingA: null, reasons: [] },
+      ungroundedConductors: notEvaluatedConductors([]),
+      designProblems,
+    } };
+  }
+  const minimumService = stageMinimum(basis, dv, preliminary === true);
+  const chosenMain = stageChosen(minimumService, dv);
+  const ungroundedConductors = stageConductor(chosenMain, dv, q, preliminary === true);
+  return { out, body: { status: 'EVALUATED', calcBasis: basis, qualificationEcho, minimumService, chosenMain, ungroundedConductors, designProblems } };
+}
+
+/**
  * analyzePrototype(request, design?) — NON-OPERATIVE prototype analysis. request: the caller's current V2 request
  * (evaluated here through the unchanged facade). design: { selectedMainRatingA, plan{...}, conductor{...} } | null.
  */
 function analyzePrototype(request, design) {
   try {
-    const { values: dv, problems: designProblems } = readDesign(design);
-    let out;
-    try { out = F.evaluateV2(request); } catch (e) {
-      if (!e || e.name !== 'LoadCalcEnvelopeError') throw e;
-      const errs = Array.isArray(e.errors) ? e.errors.slice(0, 20).map(String) : [String(e.message)];
-      return deepFreeze(envelopeCommon({
-        status: 'REQUEST_INVALID', calcBasis: null, qualificationEcho: null,
-        minimumService: { status: 'not_computed', ratingA: null, reasons: [reason('request', 'REQUEST_STRUCTURALLY_INVALID', 'request', ['ENGINE_B82'], [], `the V2 request failed the accepted boundary: ${errs.join('; ')}`)] },
-        chosenMain: { status: 'not_evaluated', selectedRatingA: null, reasons: [] },
-        ungroundedConductors: notEvaluatedConductors([]),
-        designProblems,
-      }));
-    }
-    const basis = calcBasisOf(request, out);
-    const q = request.snapshot.optional82 && request.snapshot.optional82.conductorAmpacityA ? request.snapshot.optional82.conductorAmpacityA.value : null;
-    const qualificationEcho = { conductorAmpacityA: q, role: '220.82(A) qualification input only; not a main breaker, installed service or conductor sizing value; never replaced by a table candidate' };
-    if (designProblems.length) {
-      return deepFreeze(envelopeCommon({
-        status: 'DESIGN_INVALID', calcBasis: basis, qualificationEcho,
-        minimumService: { status: 'not_computed', ratingA: null, reasons: [reason('design', 'DESIGN_INVALID', 'design', ['PROTOTYPE_SCOPE'], [], 'design input invalid; no rating or conductor output')] },
-        chosenMain: { status: 'not_evaluated', selectedRatingA: null, reasons: [] },
-        ungroundedConductors: notEvaluatedConductors([]),
-        designProblems,
-      }));
-    }
-    const minimumService = stageMinimum(basis, dv);
-    const chosenMain = stageChosen(minimumService, dv);
-    const ungroundedConductors = stageConductor(chosenMain, dv, q);
-    return deepFreeze(envelopeCommon({ status: 'EVALUATED', calcBasis: basis, qualificationEcho, minimumService, chosenMain, ungroundedConductors, designProblems }));
+    return deepFreeze(envelopeCommon(analysisBody(request, design, false).body));
   } catch (e) {
     if (e instanceof ServiceSizingPrototypeError) throw e;
     throw new ServiceSizingPrototypeError(`service sizing prototype fault: ${e && e.message}`, e);
   }
 }
 
+// ── STAGE4: preliminary new-design analysis and explicit planned-declaration adoption (docs/stage4-qualification-contract.md) ──
+
+const copyJson = (v) => {
+  if (v === null || typeof v !== 'object') return v;
+  if (Array.isArray(v)) return v.map(copyJson);
+  const out = {};
+  for (const k of Object.keys(v)) Object.defineProperty(out, k, { value: copyJson(v[k]), writable: true, enumerable: true, configurable: true });
+  return out;
+};
+/** Canonical JSON text (object keys sorted, undefined members omitted). Throws on excessive nesting (cycles included). */
+function canonicalText(v, depth) {
+  const d = depth === undefined ? 0 : depth;
+  if (d > 64) throw new RangeError('canonical text: nesting exceeds 64');
+  if (v === null || v === undefined) return 'null';
+  const t = typeof v;
+  if (t === 'boolean') return v ? 'true' : 'false';
+  if (t === 'number') return Number.isFinite(v) ? (Object.is(v, -0) ? '-0' : String(v)) : JSON.stringify(`[number ${String(v)}]`);
+  if (t === 'string') return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map((x) => canonicalText(x, d + 1)).join(',')}]`;
+  if (t === 'object') return `{${Object.keys(v).filter((k) => v[k] !== undefined).sort().map((k) => `${JSON.stringify(k)}:${canonicalText(v[k], d + 1)}`).join(',')}}`;
+  return JSON.stringify(`[${t}]`);
+}
+const canonicalOrNull = (v) => { try { return canonicalText(v); } catch (e) { return null; } };
+const FINGERPRINT_ALGORITHM = 'fp1 = two FNV-1a 32-bit passes + length over canonical JSON text; a NON-cryptographic change detector, not a signature';
+function fnv1a32(text, seed) { let h = seed >>> 0; for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+const hex8 = (n) => `00000000${(n >>> 0).toString(16)}`.slice(-8);
+const fingerprintOfText = (text) => `fp1-${hex8(fnv1a32(text, 2166136261))}${hex8(fnv1a32(text, (0x9747b28c ^ text.length) >>> 0))}-${text.length.toString(16)}`;
+const BINDING_DOMAIN = 'empire-code/stage4-preliminary-binding/1';
+/** Binding of a preliminary analysis to the EXACT request and design it was computed from. */
+function bindingOf(request, design) {
+  const req = canonicalText(request); const des = canonicalText(design === undefined ? null : design);
+  return { algorithm: FINGERPRINT_ALGORITHM, requestFingerprint: fingerprintOfText(req), designFingerprint: fingerprintOfText(des), fingerprint: fingerprintOfText(`${BINDING_DOMAIN}\n${req}\n${des}`) };
+}
+
+const PRELIMINARY_ANALYSIS_KIND = 'SERVICE_SIZING_PRELIMINARY_NEW_DESIGN';
+const PRELIMINARY_ANALYSIS_REVISION = 1;
+const PRELIMINARY_ANALYSIS_STATUS = deepFreeze({ EVALUATED: 'PRELIMINARY_EVALUATED', BLOCKED: 'PRELIMINARY_BLOCKED', NOT_APPLICABLE: 'PRELIMINARY_NOT_APPLICABLE', REQUEST_INVALID: 'PRELIMINARY_REQUEST_INVALID', DESIGN_INVALID: 'PRELIMINARY_DESIGN_INVALID' });
+const DEFERRED_CONDITION_CODE = 'CONDUCTOR_AMPACITY_QUALIFICATION_DEFERRED';
+const ADOPTION_KIND = 'PLANNED_CONDUCTOR_DECLARATION_ADOPTION';
+const ADOPTION_REVISION = 1;
+const ADOPTION_HELPER = 'adoptPlannedConductorDeclaration';
+const ADOPTION_CONFIRMATION_ACTION = 'ADOPT_PLANNED_CONDUCTOR_DECLARATION';
+const ADOPTION_STATUS = deepFreeze({ ADOPTED: 'ADOPTED_AND_RECHECKED', REFUSED: 'ADOPTION_REFUSED' });
+/** The planned declaration uses the EXISTING provenance contract: source 'designer_declaration' + a documented note with this prefix. */
+const PLANNED_DECLARATION_SOURCE = 'designer_declaration';
+const PLANNED_DECLARATION_NOTE_PREFIX = 'PLANNED_NEW_DESIGN_CONDUCTOR/1';
+const nextAction = (code, message, fields) => ({ code, message, fields: fields || [] });
+
+function adoptionAvailabilityOf(status, conductors) {
+  const base = { helper: ADOPTION_HELPER, requiresExplicitConfirmation: true, confirmationAction: ADOPTION_CONFIRMATION_ACTION, b82SoftwareGateMinA: B82_QUALIFICATION_GATE_A };
+  const t = conductors.tableCandidate;
+  if (status !== PRELIMINARY_ANALYSIS_STATUS.EVALUATED || !t) return Object.assign({ available: false, candidateAmpacityA: null, code: 'NO_CONDITIONAL_CANDIDATE', message: 'no conditional conductor table candidate exists for the current request and design; nothing can be adopted' }, base);
+  if (t.ampacity75CA < B82_QUALIFICATION_GATE_A) {
+    return Object.assign({ available: false, candidateAmpacityA: t.ampacity75CA, code: 'CANDIDATE_BELOW_B82_GATE_REVIEW_REQUIRED',
+      message: `the conditional candidate (${t.material} ${t.size} ${t.sizeUnit}, ${t.ampacity75CA} A at 75 °C) is below the B82 software qualification gate (${B82_QUALIFICATION_GATE_A} A); this is an open model/premise interpretation item, not a finding against 310.12 use; it is not accepted as a qualification premise and is never replaced by ${B82_QUALIFICATION_GATE_A} A` }, base);
+  }
+  return Object.assign({ available: true, candidateAmpacityA: t.ampacity75CA, code: 'PLANNED_DECLARATION_AVAILABLE',
+    message: `the conditional candidate (${t.material} ${t.size} ${t.sizeUnit}, ${t.ampacity75CA} A at 75 °C) may be recorded as a PLANNED conductor declaration by explicit confirmation; the ordinary calculation and assessment are then re-run and decide the result` }, base);
+}
+function preliminaryNextActionOf(status, calc, stages, adoption) {
+  const S = PRELIMINARY_ANALYSIS_STATUS;
+  if (status === S.REQUEST_INVALID) return nextAction('FIX_REQUEST', 'the request failed the accepted V2 boundary; correct it before any preliminary analysis', ['request']);
+  if (status === S.DESIGN_INVALID) return nextAction('FIX_DESIGN_INPUT', 'the service design input is structurally invalid; correct the listed design problems', stages.designProblems.map((p) => p.field));
+  if (status === S.NOT_APPLICABLE) return nextAction('USE_ORDINARY_ANALYSIS', 'a conductor ampacity value is already present in the request; the preliminary route never defers or replaces an existing value — use the ordinary calculation and assessment', ['snapshot.optional82.conductorAmpacityA']);
+  if (status === S.BLOCKED) return nextAction('RESOLVE_CALCULATION_BLOCKERS', `the preliminary calculation is blocked (${calc.blockingStatus}: ${calc.problems.map((p) => p.code).join(', ') || 'no codes'}); only a well-formed unknown conductor ampacity can be deferred — resolve every other condition`, calc.problems.map((p) => p.field));
+  if (adoption.available) return nextAction('CONFIRM_PLANNED_CONDUCTOR_DECLARATION', `review the conditional candidate and its conditions; if it is the planned conductor set, confirm it explicitly through ${ADOPTION_HELPER} (planned ampacity ${adoption.candidateAmpacityA} A), which re-runs the ordinary calculation and assessment. Alternatively establish and enter a documented conductor ampacity and use the ordinary flow`, ['snapshot.optional82.conductorAmpacityA']);
+  if (adoption.code === 'CANDIDATE_BELOW_B82_GATE_REVIEW_REQUIRED') return nextAction('INTERPRETATION_REVIEW_REQUIRED', `${adoption.message}. A documented interpretation/model decision is needed, or a deliberately different plan (rating, sizing path or material); substituting a convenient declaration does not resolve it`, ['snapshot.optional82.conductorAmpacityA', 'selectedMainRatingA', 'conductor.sizingPath', 'conductor.material']);
+  const open = [stages.minimumService, stages.chosenMain, stages.ungroundedConductors].flatMap((s) => (['waiting_input', 'unsupported', 'rejected_undersized'].includes(s.status) ? s.reasons : []));
+  return nextAction('COMPLETE_SERVICE_DESIGN_INPUT', 'answer or correct the listed service design inputs to reach a conditional conductor candidate; unknown premises are never assumed', open.map((r) => r.field).filter((f) => typeof f === 'string'));
+}
+
+/**
+ * analyzePreliminaryPrototype(request, design?) — STAGE4 preliminary NEW-DESIGN analysis (non-operative, never saveable as a v1
+ * full result). The request must carry optional82.conductorAmpacityA.value === null with no parser error on that field; that
+ * single 220.82(A) condition is deferred. Every other request, scope, source, inventory, HVAC and design condition is checked by
+ * the same stages as analyzePrototype. The conductor output is at most a CONDITIONAL table candidate (recommendationAvailable
+ * stays false; size stays null). Result kind PRELIMINARY_ANALYSIS_KIND, status one of PRELIMINARY_ANALYSIS_STATUS.
+ */
+function analyzePreliminaryPrototype(request, design) {
+  try {
+    const S = PRELIMINARY_ANALYSIS_STATUS;
+    const { out, body } = analysisBody(request, design, true);
+    const calc = out ? out.result : null;
+    let status;
+    if (body.status === 'REQUEST_INVALID') status = S.REQUEST_INVALID;
+    else if (body.status === 'DESIGN_INVALID') status = S.DESIGN_INVALID;
+    else if (calc.status === PRELIMINARY_CALC_PENDING) status = S.EVALUATED;
+    else if (calc.status === F.PRELIMINARY_STATUS.NOT_APPLICABLE) status = S.NOT_APPLICABLE;
+    else status = S.BLOCKED;
+    const pending = status === S.EVALUATED;
+    const conditionalOn = pending ? [DEFERRED_CONDITION_CODE] : [];
+    const mark = (stage) => Object.assign({}, stage, { preliminary: true, conditionalOn });
+    const stages = { minimumService: mark(body.minimumService), chosenMain: mark(body.chosenMain), ungroundedConductors: mark(body.ungroundedConductors), designProblems: body.designProblems };
+    const deferredConditions = pending ? [Object.assign(reason('qualificationConsistency', DEFERRED_CONDITION_CODE, 'snapshot.optional82.conductorAmpacityA', ['ENGINE_B82'], ['220.82(A)'],
+      `the 220.82(A) conductor ampacity is unknown and deferred; the calculation is NOT qualified until a declared ampacity >= ${B82_QUALIFICATION_GATE_A} A passes the ordinary calculation`), {
+      b82SoftwareGateMinA: B82_QUALIFICATION_GATE_A, deferredEngineCode: 'QUALIFICATION_UNKNOWN',
+      resolvedBy: 'an explicit documented conductor ampacity declaration (entered by the caller or adopted as a planned declaration through the explicit helper) followed by the ordinary calculation and assessment',
+    })] : [];
+    const adoption = adoptionAvailabilityOf(status, stages.ungroundedConductors);
+    const binding = status === S.REQUEST_INVALID || status === S.DESIGN_INVALID ? null : bindingOf(request, design);
+    return deepFreeze(envelopeCommon({
+      kind: PRELIMINARY_ANALYSIS_KIND, preliminaryContractRevision: PRELIMINARY_ANALYSIS_REVISION,
+      status, qualificationPending: pending, fullResultRecordEligible: false,
+      calcBasis: body.calcBasis, qualificationEcho: body.qualificationEcho,
+      preliminaryCalculation: calc ? { kind: calc.kind, status: calc.status, blockingStatus: calc.blockingStatus, deferred: calc.deferred, problems: calc.problems, nextAction: calc.nextAction } : null,
+      minimumService: stages.minimumService, chosenMain: stages.chosenMain, ungroundedConductors: stages.ungroundedConductors, designProblems: stages.designProblems,
+      deferredConditions, adoption, nextAction: preliminaryNextActionOf(status, calc, stages, adoption), binding,
+    }));
+  } catch (e) {
+    if (e instanceof ServiceSizingPrototypeError) throw e;
+    throw new ServiceSizingPrototypeError(`service sizing preliminary prototype fault: ${e && e.message}`, e);
+  }
+}
+
+/** Deterministic documented provenance note of a planned declaration (text only; it grants nothing and verifies nothing). */
+function plannedDeclarationNote(conductors, fingerprint) {
+  const t = conductors.tableCandidate; const c = conductors.conditions;
+  return `${PLANNED_DECLARATION_NOTE_PREFIX}: PLANNED conductor set for a new design (not inspected, not installed), recorded by explicit confirmation from a preliminary analysis. `
+    + `Basis: ${t.table} for a ${t.forRatingA} A service rating (${t.method}) -> ${t.material} ${t.size} ${t.sizeUnit}, 75 °C Table 310.16 ampacity ${t.ampacity75CA} A. `
+    + `Design conditions as entered: ${c.terminations}; insulation ${c.insulation}; ambient ${c.ambientC} °C; ${c.currentCarryingConductors} current-carrying conductors; ${c.sets} set; ${c.wiringMethod}. `
+    + `Preliminary binding ${fingerprint}. Revalidate 220.82(A) if the installed conductor set or its conditions differ.`;
+}
+/** True for a declaration object written by the adoption helper (source + note prefix). Read-only classification for callers. */
+function isPlannedConductorDeclaration(declaration) {
+  return isPlain(declaration) && isPlain(declaration.provenance) && declaration.provenance.source === PLANNED_DECLARATION_SOURCE
+    && typeof declaration.provenance.note === 'string' && declaration.provenance.note.indexOf(`${PLANNED_DECLARATION_NOTE_PREFIX}:`) === 0;
+}
+
+const ADOPTION_ARG_KEYS = ['request', 'design', 'preliminary', 'confirmation'];
+const CONFIRMATION_KEYS = ['action', 'expectedFingerprint', 'expectedAmpacityA'];
+/**
+ * adoptPlannedConductorDeclaration({ request, design, preliminary, confirmation }) — the ONLY way a conditional candidate becomes
+ * a declaration, and only as a documented PLANNED one:
+ *   request/design  the caller's CURRENT request and design (the request must still carry the unknown ampacity);
+ *   preliminary     the analyzePreliminaryPrototype result the user reviewed;
+ *   confirmation    { action: 'ADOPT_PLANNED_CONDUCTOR_DECLARATION', expectedFingerprint, expectedAmpacityA } — explicit, restating
+ *                   the binding fingerprint and the ampacity being adopted.
+ * The preliminary analysis is recomputed here from the current request and design and must equal the supplied one exactly
+ * (stale input, plan, candidate or fingerprint → refusal). An existing ampacity value is never replaced. A candidate below the
+ * B82 gate is refused for review, never accepted or raised. On success a NEW request is built (the caller's objects are not
+ * modified) whose declaration uses the existing provenance contract, and the ORDINARY facade and analysis are re-run on it;
+ * their unchanged outputs are returned and decide everything. Every result carries the prototype safety flags.
+ */
+function adoptPlannedConductorDeclaration(args) {
+  try {
+    const result = (status, extra) => deepFreeze(Object.assign({ kind: ADOPTION_KIND, adoptionContractRevision: ADOPTION_REVISION, prototypeId: PROTOTYPE_ID }, SAFETY_FLAGS, { status, adopted: status === ADOPTION_STATUS.ADOPTED }, extra));
+    const refuse = (code, field, message, next, before) => result(ADOPTION_STATUS.REFUSED, {
+      reasons: [reason('adoption', code, field, ['ENGINE_B82', 'PROTOTYPE_SCOPE'], ['220.82(A)'], message)],
+      before: before || null, after: null, plannedDeclaration: null, provenanceNote: null, adoptedRequest: null, response: null, analysis: null, recheck: null,
+      nextAction: next || nextAction('RERUN_PRELIMINARY_ANALYSIS', 'nothing was adopted and nothing was changed; run a fresh preliminary analysis on the current request and design and review it again', []),
+    });
+    if (!isPlain(args)) return refuse('ADOPTION_ARGUMENTS_INVALID', 'arguments', 'a plain object { request, design, preliminary, confirmation } is required');
+    for (const k of Object.keys(args)) if (!ADOPTION_ARG_KEYS.includes(k)) return refuse('ADOPTION_ARGUMENTS_INVALID', k, `unknown argument "${k}" (no argument can force, skip or pre-approve an adoption)`);
+    const { request, design, preliminary, confirmation } = args;
+    if (!isPlain(confirmation) || confirmation.action !== ADOPTION_CONFIRMATION_ACTION || Object.keys(confirmation).some((k) => !CONFIRMATION_KEYS.includes(k))) {
+      return refuse('EXPLICIT_CONFIRMATION_REQUIRED', 'confirmation', `an explicit confirmation { action: "${ADOPTION_CONFIRMATION_ACTION}", expectedFingerprint, expectedAmpacityA } is required; nothing is adopted implicitly`,
+        nextAction('CONFIRM_PLANNED_CONDUCTOR_DECLARATION', 'obtain the explicit user confirmation for the reviewed preliminary result', ['confirmation']));
+    }
+    if (!isPlain(preliminary) || preliminary.kind !== PRELIMINARY_ANALYSIS_KIND) return refuse('PRELIMINARY_RESULT_REQUIRED', 'preliminary', 'the reviewed preliminary analysis result is required (an ordinary analysis or any other object is not accepted)');
+    const fresh = analyzePreliminaryPrototype(request, design);
+    const S = PRELIMINARY_ANALYSIS_STATUS;
+    if (fresh.status === S.REQUEST_INVALID) return refuse('REQUEST_INVALID', 'request', 'the current request fails the accepted V2 boundary', fresh.nextAction);
+    const original = copyJson(request.snapshot.optional82.conductorAmpacityA);
+    if (original.value !== null) {
+      return refuse('EXISTING_CONDUCTOR_DECLARATION_NOT_REPLACED', 'snapshot.optional82.conductorAmpacityA', `the current request already carries a conductor ampacity value (${String(original.value)}); a proposal never overwrites an existing value — edit it deliberately and use the ordinary flow`,
+        nextAction('USE_ORDINARY_ANALYSIS', 'the existing conductor ampacity value is kept exactly as it is; use the ordinary calculation and assessment', ['snapshot.optional82.conductorAmpacityA']),
+        { conductorAmpacityA: original, requestFingerprint: fresh.binding ? fresh.binding.requestFingerprint : null, designFingerprint: fresh.binding ? fresh.binding.designFingerprint : null, preliminaryFingerprint: fresh.binding ? fresh.binding.fingerprint : null, preliminaryStatus: fresh.status, totalVA: null, totalExactE4: null, lineA: null });
+    }
+    if (fresh.status === S.DESIGN_INVALID) return refuse('DESIGN_INVALID', 'design', 'the current design input is structurally invalid', fresh.nextAction);
+    const before = { conductorAmpacityA: original, requestFingerprint: fresh.binding.requestFingerprint, designFingerprint: fresh.binding.designFingerprint, preliminaryFingerprint: fresh.binding.fingerprint, preliminaryStatus: fresh.status, totalVA: fresh.calcBasis.totalVA, totalExactE4: fresh.calcBasis.totalExactE4, lineA: fresh.calcBasis.lineA };
+    const suppliedFingerprint = isPlain(preliminary.binding) ? preliminary.binding.fingerprint : null;
+    if (typeof confirmation.expectedFingerprint !== 'string' || confirmation.expectedFingerprint !== fresh.binding.fingerprint || suppliedFingerprint !== fresh.binding.fingerprint) {
+      return refuse('STALE_BINDING_FINGERPRINT', 'confirmation.expectedFingerprint', 'the confirmed/reviewed fingerprint does not match the current request and design; the reviewed preliminary result is stale', undefined, before);
+    }
+    if (canonicalOrNull(preliminary) !== canonicalText(fresh)) return refuse('STALE_PRELIMINARY_RESULT', 'preliminary', 'the supplied preliminary result is not the preliminary analysis of the current request and design (changed input, plan or candidate); it is not accepted', undefined, before);
+    if (fresh.status !== S.EVALUATED) return refuse('PRELIMINARY_NOT_ADOPTABLE', 'preliminary.status', `preliminary status ${fresh.status}: there is no conditional candidate to adopt`, fresh.nextAction, before);
+    if (!fresh.adoption.available) return refuse(fresh.adoption.code, 'preliminary.ungroundedConductors.tableCandidate', fresh.adoption.message, fresh.nextAction, before);
+    const amp = fresh.adoption.candidateAmpacityA;
+    if (confirmation.expectedAmpacityA !== amp) return refuse('CONFIRMED_AMPACITY_MISMATCH', 'confirmation.expectedAmpacityA', `the confirmation must restate the planned ampacity of the reviewed candidate (${amp} A); the confirmed value is not used as a number source`, undefined, before);
+
+    const note = plannedDeclarationNote(fresh.ungroundedConductors, fresh.binding.fingerprint);
+    const declaration = { value: amp, provenance: { source: PLANNED_DECLARATION_SOURCE, note } };
+    const adoptedRequest = copyJson(request);
+    adoptedRequest.snapshot.optional82.conductorAmpacityA = copyJson(declaration);
+    const response = F.evaluateV2(adoptedRequest);                 // the ORDINARY facade decides the calculation
+    const analysis = analyzePrototype(adoptedRequest, design);     // the ORDINARY analysis decides the assessment
+    const r = response.result; const uc = analysis.ungroundedConductors; const qc = uc.qualificationConsistency; const t = fresh.ungroundedConductors.tableCandidate;
+    const recheck = {
+      calcStatus: r.status, totalVA: r.demand ? r.demand.totalVA : null, totalExactE4: r.demand ? r.demand.totalExactE4 : null, lineA: r.current ? r.current.lineA : null,
+      totalUnchangedFromPreliminary: !!r.demand && r.demand.totalExactE4 === fresh.calcBasis.totalExactE4,
+      analysisStatus: analysis.status, qualificationStatus: qc ? qc.status : null, declaredQualificationAmpacityA: qc ? qc.declaredQualificationAmpacityA : null,
+      candidateUnchangedFromPreliminary: !!uc.tableCandidate && uc.tableCandidate.size === t.size && uc.tableCandidate.material === t.material && uc.tableCandidate.ampacity75CA === t.ampacity75CA && uc.tableCandidate.forRatingA === t.forRatingA && uc.tableCandidate.method === t.method,
+      recommendationAvailable: uc.recommendationAvailable,
+    };
+    const consistent = recheck.calcStatus === 'COMPLETE' && recheck.totalUnchangedFromPreliminary && recheck.analysisStatus === 'EVALUATED' && recheck.qualificationStatus === 'premise_unchanged' && recheck.declaredQualificationAmpacityA === amp && recheck.candidateUnchangedFromPreliminary;
+    if (!consistent) return refuse('ADOPTION_RECHECK_INCONSISTENT', 'recheck', `the ordinary calculation/assessment of the planned declaration did not reproduce the reviewed preliminary result (calculation ${recheck.calcStatus}, qualification ${String(recheck.qualificationStatus)}); nothing was adopted`, undefined, before);
+    return result(ADOPTION_STATUS.ADOPTED, {
+      reasons: [reason('adoption', 'PLANNED_DECLARATION_RECORDED', 'snapshot.optional82.conductorAmpacityA', ['ENGINE_B82', 'PROTOTYPE_SCOPE'], ['220.82(A)'],
+        `planned conductor ampacity ${amp} A recorded as a documented designer declaration by explicit confirmation; the ordinary calculation and assessment were re-run on the new request; not an inspected fact, equipment selection or installation approval`)],
+      before,
+      after: { conductorAmpacityA: copyJson(declaration), requestFingerprint: fingerprintOfText(canonicalText(adoptedRequest)), designFingerprint: fresh.binding.designFingerprint, calcStatus: recheck.calcStatus, totalVA: recheck.totalVA, totalExactE4: recheck.totalExactE4, lineA: recheck.lineA, qualificationStatus: recheck.qualificationStatus, recommendationAvailable: recheck.recommendationAvailable },
+      plannedDeclaration: {
+        declarationKind: 'planned_new_design_conductor', ampacityA: amp, inspectedOrInstalledFact: false,
+        provenanceSource: PLANNED_DECLARATION_SOURCE, notePrefix: PLANNED_DECLARATION_NOTE_PREFIX,
+        candidate: { method: t.method, table: t.table, forRatingA: t.forRatingA, material: t.material, size: t.size, sizeUnit: t.sizeUnit, ampacity75CA: t.ampacity75CA },
+        conditions: fresh.ungroundedConductors.conditions, confirmedBy: `explicit caller confirmation (${ADOPTION_CONFIRMATION_ACTION})`,
+      },
+      provenanceNote: note, adoptedRequest, response, analysis, recheck,
+      nextAction: nextAction('APPLY_ADOPTED_DECLARATION_TO_DRAFT', 'write after.conductorAmpacityA (value and provenance, unchanged) into the caller\'s own draft, confirm that its projected request equals adoptedRequest, and present response/analysis as the ordinary result; any later edit of the ampacity field is a new caller declaration and must drop this provenance note', ['snapshot.optional82.conductorAmpacityA']),
+    });
+  } catch (e) {
+    if (e instanceof ServiceSizingPrototypeError) throw e;
+    throw new ServiceSizingPrototypeError(`planned conductor declaration adoption fault: ${e && e.message}`, e);
+  }
+}
+
 module.exports = {
   analyzePrototype, ServiceSizingPrototypeError, PROTOTYPE_ID, SAFETY_FLAGS, SOURCES, SOURCE_REVIEW, STAGE_EVIDENCE, OPEN_INTERPRETATION_ITEMS,
   STANDARD_RATINGS_SUBSET, TABLE_310_16_75C, TABLE_310_12, B82_QUALIFICATION_GATE_A, NOT_SIZED, REMAINING_CHECKS,
+  // STAGE4 (docs/stage4-qualification-contract.md): separate preliminary result kind + explicit adoption; analyzePrototype is unchanged
+  analyzePreliminaryPrototype, adoptPlannedConductorDeclaration, isPlannedConductorDeclaration,
+  PRELIMINARY_ANALYSIS_KIND, PRELIMINARY_ANALYSIS_STATUS, PRELIMINARY_ANALYSIS_REVISION, DEFERRED_CONDITION_CODE,
+  ADOPTION_KIND, ADOPTION_STATUS, ADOPTION_REVISION, ADOPTION_CONFIRMATION_ACTION, PLANNED_DECLARATION_SOURCE, PLANNED_DECLARATION_NOTE_PREFIX, FINGERPRINT_ALGORITHM,
 };

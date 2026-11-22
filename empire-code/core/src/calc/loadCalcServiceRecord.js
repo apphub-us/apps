@@ -17,10 +17,23 @@ const Sizing = require('./loadCalcServiceSizing.js');
 
 const KIND = 'empire-code.service-result';
 const RECORD_VERSION = 1;
+/**
+ * What NEW records are stamped with. It describes the producer of a record at the moment it is created and is
+ * never a condition for reading one: storedChecks() accepts any well-formed historical revision and pins, and
+ * no saved record is rewritten to these values.
+ *
+ * EC-AUDIT-FIX-1: the nine CALCULATION_SOURCE_FILES changed for the preliminary-qualification work, so
+ * applicationRevision and calculationSourcePin name the current sources. The pin is
+ * SHA-256(JSON.stringify([[relative path, file SHA-256], ...])) over CALCULATION_SOURCE_FILES in their listed
+ * (sorted) order, compact JSON. Records created before this revision keep the producer they were saved with
+ * (applicationRevision 'LC-SERVICE-RESULT-STORE-1', calculationSourcePin 40a7de48…9ebe) and stay readable.
+ * sourceBaselinePin is the historical baseline the record contract was accepted against and is unchanged, as
+ * are recordContractRevision and the record shape.
+ */
 const PRODUCER = Object.freeze({
-  applicationRevision: 'LC-SERVICE-RESULT-STORE-1',
+  applicationRevision: 'EC-AUDIT-FIX-1',
   sourceBaselinePin: 'd168fa3b6be018ec2560a3cfbd3a5347b17d6d802926a1b5b4f85b2fbe3b6ab7',
-  calculationSourcePin: '40a7de48e3c0ede97210bacb6e40b3e7e3fb0a5fdf9fd26f7d1cfe21f0709ebe',
+  calculationSourcePin: 'ca231858042fcca62f871495bf281f3262e61ad5d86be755a6ea0795c7171699',
   recordContractRevision: 1,
 });
 const CALCULATION_SOURCE_FILES = Object.freeze([

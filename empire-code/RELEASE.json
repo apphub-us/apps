@@ -1,99 +1,308 @@
 {
   "application": "Empire Code",
-  "build": "PRIVATE-PILOT-4",
-  "publishedDate": "2026-11-21",
-  "sourceContentPin": "8fbc7621fd2c5146d60a13d2c917a05fae87c2b1cd137af047b66e50b3e7b830",
+  "build": "PRIVATE-PILOT-5",
+  "releaseStatus": "DEPLOYED_AND_ACCEPTED",
+  "preparedAt": "2026-11-22T05:15:20.953670+00:00",
+  "publishedDate": "2026-11-22",
+  "sourceContentPin": "6b2404dcfd24cb2ca0933c0035af688e65e4da4d68eb767df6b12928cde30726",
   "entryUrl": "https://empirecode.app/",
   "directAppUrl": "https://empire-code-private-pilot.szczepan-msg.workers.dev/",
-  "sourceTag": "private-pilot-4",
-  "sourceBranch": "release/private-pilot-4",
+  "sourceTag": "private-pilot-5",
+  "sourceBranch": "release/private-pilot-5",
   "developmentBranch": "develop",
   "pagesBranch": "main",
-  "cloudVersion": "c1eda983-3b34-470f-bf89-2d90a76862ae",
+  "cloudVersion": "7755e592-cee9-43d2-8479-466704db5976",
   "previousRelease": {
-    "sourceTag": "private-pilot-3",
-    "sourceCommit": "75674b1e98b5d233a5d030056d5ce61230f324b6",
-    "cloudVersion": "47f5e0df-a4a6-4347-b78f-498f91379da3"
+    "sourceTag": "private-pilot-4",
+    "sourceCommit": "d2bbb90ba70717e2dbcf0695ebba133212634a35",
+    "cloudVersion": "c1eda983-3b34-470f-bf89-2d90a76862ae"
   },
-  "browserShellPin": "8660858492a3dc2ba62234120c1e6f58d6a744cde59ab0e9d4ec015a20f1d5b4",
+  "browserShellPin": "2054947a987a29cfd179aa419f38dbcba2abf93c256f62f749be6be3924022ff",
   "runtimeSourcesUnchanged": false,
   "privateDeploymentConfigPublished": false,
   "changes": [
-    "Offline Wh / Runtime tool in Converter",
-    "Average W, measured kWh/day and label kWh/year input",
-    "Editable charge and usable energy assumptions",
-    "Strict decimal input, validation, illustrative fridge example, persistent example marker until edited",
-    "One pure calculator emitted identically into core and hosted workspace"
+    "Bounded ground-ring sizing, closable source panels, raw-preserving Favorites recovery and no-photo restore correction",
+    "Conversation archive, restore, import/export, durable write recovery and visible request/history/recording budgets",
+    "Associated form labels, shared material quantities, exact voltage-drop threshold and canonical form calculations",
+    "Separate preliminary new-supply qualification with explicit planned-conductor adoption and preserved historical records",
+    "Deterministic conversational calculator registry, current-form capture/corrections and reviewed original-store job notes/measurements"
   ],
   "currentChecks": {
     "rootTests": {
-      "tests": 118,
-      "pass": 118,
+      "tests": 326,
+      "pass": 326,
       "fail": 0,
       "skipped": 0
     },
-    "coreFocusedTests": {
-      "tests": 142,
-      "pass": 142,
+    "coreTests": {
+      "tests": 3021,
+      "pass": 3019,
+      "fail": 0,
+      "skipped": 2
+    },
+    "coreSkipDisposition": "Two pre-existing browser-wrapper skips; not counted as passes. Separate native-browser evidence is listed below.",
+    "bundleChecks": {
+      "core": true,
+      "hostedWorkspace": true,
+      "workerAssets": true,
+      "moduleCount": 44,
+      "browserAssets": 20
+    },
+    "formBridgeTests": {
+      "pass": 22,
       "fail": 0,
       "skipped": 0
     },
-    "browserEngines": [
-      "chromium",
-      "webkit"
-    ],
-    "browserStages": 28,
-    "browserStageResults": [
-      {
-        "engine": "chromium",
-        "passed": 14,
-        "failed": 0
+    "staticReview": {
+      "actionableP1": 0,
+      "actionableP2": 0,
+      "scope": "Original finding repairs and linked form, realm, clock, proposal and job-acceptance boundaries",
+      "supplementalScopes": [
+        "workspace readiness and form labels",
+        "Motor stale early-return path"
+      ]
+    },
+    "nativeBrowserAcceptance": {
+      "status": "PASS",
+      "counts": {
+        "reportedCases": 110,
+        "pass": 110,
+        "fail": 0,
+        "blocked": 0
       },
-      {
-        "engine": "webkit",
-        "passed": 14,
-        "failed": 0
-      }
-    ],
-    "offlineOriginStoppedAndProbedUnreachable": true,
-    "layoutWidths": [
-      320,
-      390,
-      1280
-    ],
-    "savedSyntheticJobAndDraftPreserved": true,
+      "suites": [
+        {
+          "harness": "auditfix",
+          "engine": "chromium",
+          "pass": 21,
+          "fail": 0,
+          "blocked": 0,
+          "reportedCases": 21,
+          "browserVersion": "157.0.8103.79",
+          "headless": true,
+          "contextMode": "fresh non-persistent context per case (browser.newContext)"
+        },
+        {
+          "harness": "auditfix",
+          "engine": "webkit",
+          "pass": 21,
+          "fail": 0,
+          "blocked": 0,
+          "reportedCases": 21,
+          "browserVersion": "27.2",
+          "headless": true,
+          "contextMode": "persistent"
+        },
+        {
+          "harness": "stage45",
+          "engine": "chromium",
+          "pass": 34,
+          "fail": 0,
+          "blocked": 0,
+          "reportedCases": 34,
+          "browserVersion": "157.0.8103.79",
+          "headless": true,
+          "contextMode": "fresh non-persistent context per case (browser.newContext)"
+        },
+        {
+          "harness": "stage45",
+          "engine": "webkit",
+          "pass": 34,
+          "fail": 0,
+          "blocked": 0,
+          "reportedCases": 34,
+          "browserVersion": "27.2",
+          "headless": true,
+          "contextMode": "persistent"
+        }
+      ],
+      "harnessHashes": {
+        "auditfix": "ff19c0c337ae2d8cc17a0f30e9158f873d8c46e7a5a7824ce77074ad7a6a748c",
+        "stage45": "7f5f286751d1194f08d4f96a64393cf7319a9ab6b95268645089cd5227012a47"
+      },
+      "runtimeAndSourcePinsMatch": true,
+      "sourceStable": true,
+      "layout": {
+        "auditCSSWidths": [
+          320,
+          390,
+          1280
+        ],
+        "auditViews": [
+          "Conversation",
+          "tools outer document",
+          "Wire Sizer",
+          "Ampacity"
+        ],
+        "stage45DefaultCSSWidth": 390,
+        "stage45Extra320CSSWidthViews": [
+          "adopted preliminary qualification",
+          "four-analysis selector",
+          "note review",
+          "measurement review"
+        ],
+        "scope": "Headless desktop Chromium/WebKit CSS viewport checks and screenshots; not physical iPhone/Safari, zoom, dynamic type, landscape or all-tool accessibility acceptance."
+      },
+      "sameOriginServiceWorkerUpgrade": {
+        "from": "PRIVATE-PILOT-4",
+        "to": "PRIVATE-PILOT-5",
+        "persistedDraftJobConversation": true,
+        "offlineAfterOriginStopped": true
+      },
+      "updateNoticeSeparateCheck": "PRIVATE-PILOT-5 document with a substituted PRIVATE-PILOT-4 worker; verifies the new document notice and persist-before-reload, not downgrade support.",
+      "formBridgeScope": "B5 checks same-realm bridge mechanics; parent-to-iframe application is separately checked in A5-02.",
+      "staleResponseScope": "A5-03 separately proves ordinary busy navigation refusal and diagnostic native input/change events in the already loaded hidden iframe before a held response is released.",
+      "providerCalls": {
+        "live": 0,
+        "scriptedInjectedTransport": 40,
+        "auditControlledAssistReplies": 4,
+        "unexpectedProviderPathCalls": 0,
+        "nodeNonLoopbackAttempts": 0,
+        "unexpectedScriptedProviderRequests": 0
+      },
+      "escapedExternalRequests": 0,
+      "priorAttemptsPreserved": true,
+      "motorFixtureDisposition": "The former Chromium run4 failure was a broad-panel snapshot comparison with no saved diff. Read-only review found no reachable stale-branch DOM write. The accepted harness waits for the already-scheduled Load Calc initializer before Motor baselines and records strict whole-panel pre/post snapshots plus the original intervening window. The historical run4 timing cause is not claimed as observed."
+    },
+    "cloudflareDryRun": {
+      "pass": true,
+      "runtimeSourcePin": "bd14153347668a52d8e0d6b89e73667ea5e09621212dc3152e85e16cdb4faa60",
+      "bundleFiles": [
+        {
+          "bytes": 4031698,
+          "sha256": "178cdf0a143e181ad0c72840e10a185d0a16f99f9b44bc4f221d49e319f179c8"
+        }
+      ]
+    },
     "sourceModulesMatchGeneratedBrowser": true,
     "deployedFromVerifiedSource": true,
-    "anonymousAccessGateVerified": true,
-    "applicationProviderCalls": 0,
+    "anonymousAccessGateVerifiedForThisBuild": true,
     "ownerProfileAccessed": false,
     "physicalIphoneAccepted": false,
-    "sameOriginOldToNewServiceWorkerUpgradeExercised": false
+    "nativePhotoRestoreAcceptance": {
+      "status": "PASS",
+      "pass": 14,
+      "fail": 0,
+      "blocked": 0,
+      "casesByEngine": [
+        {
+          "engine": "chromium",
+          "total": 7,
+          "pass": 7,
+          "fail": 0,
+          "blocked": 0,
+          "ids": {
+            "P1-CONTROL-DEFAULT-LIMIT": "PASS",
+            "P2-LIMIT-2N-MINUS-1": "PASS",
+            "P3-LIMIT-2N": "PASS",
+            "P4-UPLOAD-IN-GAP-3N-MINUS-1": "PASS",
+            "P5-UPLOAD-IN-GAP-3N": "PASS",
+            "P6-NATIVE-QUEUE-3N-MINUS-1": "PASS",
+            "P7-NATIVE-QUEUE-3N": "PASS"
+          },
+          "canonicalModuleCount": 21,
+          "canonicalAggregateSha256": "82574f07e78fcd5761dc5fa889e3c757b40e366b66fafb984b22dc3843ade8d5",
+          "harnessSha256": "809296df618ff7dc9e27efc1b864ca75862606e6da998cbd4606c13d27def2aa"
+        },
+        {
+          "engine": "webkit",
+          "total": 7,
+          "pass": 7,
+          "fail": 0,
+          "blocked": 0,
+          "ids": {
+            "P1-CONTROL-DEFAULT-LIMIT": "PASS",
+            "P2-LIMIT-2N-MINUS-1": "PASS",
+            "P3-LIMIT-2N": "PASS",
+            "P4-UPLOAD-IN-GAP-3N-MINUS-1": "PASS",
+            "P5-UPLOAD-IN-GAP-3N": "PASS",
+            "P6-NATIVE-QUEUE-3N-MINUS-1": "PASS",
+            "P7-NATIVE-QUEUE-3N": "PASS"
+          },
+          "canonicalModuleCount": 21,
+          "canonicalAggregateSha256": "82574f07e78fcd5761dc5fa889e3c757b40e366b66fafb984b22dc3843ade8d5",
+          "harnessSha256": "809296df618ff7dc9e27efc1b864ca75862606e6da998cbd4606c13d27def2aa"
+        }
+      ],
+      "scope": "Unchanged canonical modules in native IndexedDB/Blob/Web Locks. Small synthetic PNG with scaled logical limits; control uses the production limit. Separate from the full-app browser scenarios.",
+      "physicalQuotaStress": false,
+      "currentDependencyClosureVerified": true
+    },
+    "deployedBundleMatchesDryRun": true,
+    "deployedBundleSHA256": "178cdf0a143e181ad0c72840e10a185d0a16f99f9b44bc4f221d49e319f179c8",
+    "anonymousAccessChecks": [
+      {
+        "url": "https://empire-code-private-pilot.szczepan-msg.workers.dev/",
+        "method": "GET",
+        "status": 302,
+        "accessProtected": true,
+        "redirectFollowed": false,
+        "cookiesSent": false,
+        "authenticationHeadersSent": false
+      },
+      {
+        "url": "https://empire-code-private-pilot.szczepan-msg.workers.dev/workspace/mobile.html",
+        "method": "GET",
+        "status": 302,
+        "accessProtected": true,
+        "redirectFollowed": false,
+        "cookiesSent": false,
+        "authenticationHeadersSent": false
+      },
+      {
+        "url": "https://empire-code-private-pilot.szczepan-msg.workers.dev/api/session",
+        "method": "GET",
+        "status": 302,
+        "accessProtected": true,
+        "redirectFollowed": false,
+        "cookiesSent": false,
+        "authenticationHeadersSent": false
+      },
+      {
+        "url": "https://empire-code-private-pilot.szczepan-msg.workers.dev/api/assist",
+        "method": "POST",
+        "status": 302,
+        "accessProtected": true,
+        "redirectFollowed": false,
+        "cookiesSent": false,
+        "authenticationHeadersSent": false
+      }
+    ],
+    "liveApplicationProviderCalls": 0,
+    "physicalMicrophoneAccepted": false
   },
   "codingModel": {
     "model": "claude-fable-5-2",
     "effort": "high",
     "actualExecutionVerified": true,
-    "independentStaticReview": "PASS; bounded static review of current code; parent separately verified diff, builds, tests and final small fixes"
+    "scope": "Current audit implementation, authored acceptance harnesses and independent code reviews; historical provenance remains historical"
   },
   "referenceCore": {
-    "fullCoreTestsRerunForPublication": false,
-    "focusedCoreTestFiles": [
-      "batteryRuntime.test.js",
-      "designSystem.test.js",
-      "navigation.test.js",
-      "uiFocus.test.js",
-      "loadCalcOracles.test.js",
-      "loadCalcServiceUi.test.js",
-      "loadCalcParity.test.js"
-    ],
+    "fullCoreTestsRerunForPublication": true,
     "legacyWhisperPayloadFilesExcluded": 12,
     "licensesRetained": true
   },
-  "storage": "Per browser and device. Access login is not cloud sync. Jobs .ecjob export/restore; conversations export separately.",
+  "storage": "Per browser and device. Access login is not cloud sync. Jobs .ecjob export/restore; conversations export separately. New conversation metadata fails closed in the older PRIVATE-PILOT-4 client; no automatic downgrade.",
+  "acceptanceLimits": [
+    "No fresh production AI request, physical microphone or physical iPhone acceptance; browser workflows use controlled provider responses.",
+    "The bounded PL/EN evidence parser is not complete language understanding. Language validation does not establish real-model or speech-recognition quality; notes and measurements require explicit review.",
+    "Desktop Chromium and WebKit viewport checks cover the named screens. They do not establish every calculator screen, screen-reader, dynamic-type or physical Safari behavior.",
+    "Native photo tests validate scaled logical capacity and write coordination, not physical500MiB quota exhaustion or two real browser tabs.",
+    "No source-grounded general CodeChat or complete electrical-code compliance certification."
+  ],
   "nextMilestones": [
-    "Conversational notes through original job history",
-    "Conversational measurements through original measurement contracts",
-    "Source-grounded CodeChat"
-  ]
+    "Source-grounded CodeChat under a separately scoped implementation and acceptance plan"
+  ],
+  "acceptedAt": "2026-11-22T05:54:49.172598+00:00",
+  "publicationTimezone": "America/New_York",
+  "runtimeSourcePin": "bd14153347668a52d8e0d6b89e73667ea5e09621212dc3152e85e16cdb4faa60",
+  "deployment": {
+    "deploymentId": "16da1c6d-8c8a-4bcf-8f36-8a4cafc3518e",
+    "versionId": "7755e592-cee9-43d2-8479-466704db5976",
+    "trafficPercent": 100,
+    "sameExistingApplication": true,
+    "existingVariablesPreserved": true,
+    "accessConfigurationChanged": false,
+    "newSecretsCreated": false
+  }
 }

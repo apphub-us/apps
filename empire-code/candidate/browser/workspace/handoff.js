@@ -7,9 +7,10 @@
 const Job = window.EC.jobCard;
 const Material = window.EC.jobMaterial;
 const Batch = window.EC.jobVoiceBatch;
+// EC-08: units and the whole-count rule are the one shared definition (materialQuantity.js); no list is kept here.
+const Quantity = window.EC.materialQuantity;
 const INPUT = ['sourceId','sourceRevision','sourceSavedAt','items','selectedItemIds','job','acknowledgedReviewIds'];
 const ITEM = ['id','name','quantity','unit','specification','notes','review'];
-const UNITS = ['pcs','ft','m','in','cm','mm','roll','set'];
 const fail = (code, message) => ({ok:false, code, problems:[message]});
 const copy = value => JSON.parse(JSON.stringify(value));
 const shape = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value,key));
@@ -30,9 +31,10 @@ function capture(input) {
   for (const i of x.items) {
     if (!shape(i,ITEM)||typeof i.id!=='string'||!/^i[0-9]{4}$/.test(i.id)||ids.has(i.id)||!text(i.name,120,true)||!text(i.specification,500)||!text(i.notes,600)||!Array.isArray(i.review)||i.review.length>8||!i.review.every(v=>text(v,220,true))) return fail('INVALID','An item is malformed, oversized or has a duplicate ID.');
     ids.add(i.id);
-    if (i.quantity!==null && (typeof i.quantity!=='string'||!/^\d{1,7}(?:\.\d{1,4})?$/.test(i.quantity)||Number(i.quantity)<=0||Number(i.quantity)>1e7)) return fail('INVALID','Quantity must be a positive exact decimal string or unknown.');
-    if (i.unit!==null&&!UNITS.includes(i.unit)) return fail('INVALID','Unsupported source unit.');
-    if (i.quantity!==null&&i.unit==='pcs'&&!Number.isInteger(Number(i.quantity))) return fail('INVALID','Pieces require a whole-number quantity.');
+    // Every item must be READABLE. A fractional count (0.5 roll from a draft saved before EC-08) is readable: it is
+    // refused below only when that item is SELECTED, so the other items of the same draft stay transferable.
+    const q=Quantity.inspectDraft(i.quantity,i.unit);
+    if (!q.readable) return fail('INVALID',q.code==='UNIT'?'Unsupported source unit.':'Quantity must be a positive exact decimal string or unknown.');
   }
   const selection=x.selectedItemIds,ack=x.acknowledgedReviewIds;
   if (!Array.isArray(selection)||!selection.length||selection.length>8||new Set(selection).size!==selection.length||!selection.every(id=>typeof id==='string'&&ids.has(id))) return fail('SELECTION','Choose one to eight distinct existing items; no remainder is discarded.');
@@ -54,6 +56,8 @@ async function prepare(input,options={}) {
     const jobId=x.job.head.jobId,selected=x.items.filter(i=>x.selectedItemIds.includes(i.id)),fields=[];
     for(const item of selected){
       if(item.quantity===null||item.unit===null)return fail('INCOMPLETE','Selected item '+item.id+' has no quantity/unit; keep it in the conversation draft.');
+      // EC-08: the shared whole-count rule, stated before anything is prepared. Nothing is rounded and no length is inferred.
+      if(Quantity.inspectDraft(item.quantity,item.unit).correctionRequired)return fail('QUANTITY_CORRECTION','Selected item '+item.id+' ('+item.quantity+' '+item.unit+') needs a correction before it can be saved to a job: '+Quantity.WHOLE_COUNT_MESSAGE+' Correct the quantity in the conversation (a whole number, or a length in ft/in/m/cm/mm) or unselect this item. Nothing was rounded and nothing was saved. / Pozycja '+item.id+': popraw ilość w rozmowie na liczbę całkowitą albo podaj długość, lub odznacz tę pozycję. Niczego nie zaokrąglono ani nie zapisano.');
       if(item.review.length&&!x.acknowledgedReviewIds.includes(item.id))return fail('REVIEW_REQUIRED','Review warnings for '+item.id+' require explicit acknowledgement.');
       const provenance='[Conversation '+x.sourceId+' / revision '+x.sourceRevision+' / item '+item.id+']';
       const warnings=item.review.length?'\nReview warnings acknowledged, not electrical approval:\n'+item.review.join('\n'):'';

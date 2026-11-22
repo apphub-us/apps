@@ -24,7 +24,7 @@ async function load(api,onLine=true){
   addEventListener(t,f){win[t]=f;},fetch:async(url,init={})=>{calls.push({url:String(url),init});return api(String(url),init);}};
  sandbox.window=sandbox;
  const ctx=vm.createContext(sandbox);
- for(const f of ['handoff-session.js','conversation-bank.js','draft-recovery.js','ui.js'])vm.runInContext(read(f),ctx,{filename:f});
+ for(const f of ['handoff-session.js','assistant-session.js','conversation-bank.js','draft-recovery.js','ui.js'])vm.runInContext(read(f),ctx,{filename:f});
  await settle();
  const page={els,calls,local,session,win,navigator,token:()=>vm.runInContext('token',ctx),dump:()=>local.dump()+session.dump(),
   submit:async()=>{els.composer.listeners.submit({preventDefault(){}});await settle();},
@@ -38,16 +38,20 @@ function assertAiOff(p){
 }
 
 test('page: build label, truthful pilot wording, re-login link, original asset references',()=>{
- assert.match(INDEX,/<title>Empire Code — PRIVATE-PILOT-4<\/title>/);assert.match(INDEX,/<span class="build">PRIVATE-PILOT-4<\/span>/);
+ assert.match(INDEX,/<title>Empire Code — PRIVATE-PILOT-5<\/title>/);assert.match(INDEX,/<span class="build">PRIVATE-PILOT-5<\/span>/);
+ assert.ok(INDEX.includes('Prywatny pilot PRIVATE-PILOT-5.'),'the help text names the current release');assert.ok(!INDEX.includes('PRIVATE-PILOT-4'),'no stale release label');
  assert.match(INDEX,/<a id="relogin" href="\/_auth" target="_self" hidden>Zaloguj ponownie<\/a>/);
  assert.ok(!/działa na Macu|127\.0\.0\.1|localhost|WORKSPACE-4/.test(INDEX));
  for(const s of ['tylko do logowania i do rozmowy AI','nie są automatycznie importowane','AI jest pokazywane jako niedostępne','nie stanowi odbioru na fizycznym iPhonie','Ten etap nie jest zweryfikowanym AI Chat o przepisach'])assert.ok(INDEX.includes(s),s);
  for(const id of ['nav-talk','nav-jobs','nav-tools','nav-code','conversation-panel','new','job-target','conversation-select','job-refresh','job-new','job-new-form','job-new-title','context-active','job-status','messages','example','composer','input','mic','cancel','send','status','count','undo','draft-note','items','handoff-panel','copy','export','core-panel','core-frame'])assert.ok(INDEX.includes('id="'+id+'"'),id);
- for(const ref of ['/style.css','/handoff-session.js','/conversation-bank.js','/draft-recovery.js','/ui.js','/material-edit-host.js','/workspace-host.js','/workspace/mobile.html'])assert.ok(INDEX.includes('"'+ref+'"'),ref);
+ for(const ref of ['/style.css','/handoff-session.js','/assistant-session.js','/conversation-bank.js','/draft-recovery.js','/ui.js','/material-edit-host.js','/workspace-host.js','/workspace/mobile.html'])assert.ok(INDEX.includes('"'+ref+'"'),ref);
+ // Script order of the page: assistant-session.js is loaded before ui.js, which uses ASession while it loads.
+ const order=['/handoff-session.js','/assistant-session.js','/conversation-bank.js','/draft-recovery.js','/ui.js','/material-edit-host.js','/workspace-host.js'].map(s=>INDEX.indexOf('<script src="'+s+'" defer></script>'));
+ assert.ok(order.every((at,i)=>at>=0&&(i===0||at>order[i-1])),'required scripts are referenced once each, in load order');
 });
 
 test('source: every /api call refuses redirects; no cookie access, no automatic navigation',()=>{
- for(const p of ['/api/session','/api/talk','/api/transcribe']){const i=UI.indexOf("fetch('"+p+"'");assert.ok(i>=0,p);assert.ok(UI.slice(i,UI.indexOf(')',UI.indexOf("redirect:'error'",i))).includes("redirect:'error'"),p);assert.ok(UI.indexOf("redirect:'error'",i)-i<400,p);}
+ for(const p of ['/api/session','/api/assist','/api/transcribe']){const i=UI.indexOf("fetch('"+p+"'");assert.ok(i>=0,p);assert.ok(UI.slice(i,UI.indexOf(')',UI.indexOf("redirect:'error'",i))).includes("redirect:'error'"),p);assert.ok(UI.indexOf("redirect:'error'",i)-i<400,p);}
  assert.ok(!/document\.cookie|CF_Authorization|location\.(href|assign|replace)|window\.open/.test(UI));
  assert.ok(!/serviceWorker\.[a-z]*sync|SyncManager|sendBeacon/i.test(UI));
 });
@@ -100,7 +104,7 @@ test('talk blocked by an expired login: draft kept and stored, no retry, re-logi
   await p.type('dwa kable 50 fit');
   assert.ok(p.local.dump().includes('dwa kable 50 fit'),'the unsent text is stored before any send');
   await p.submit();
-  const sent=p.calls.filter(c=>c.url==='/api/talk');
+  const sent=p.calls.filter(c=>c.url==='/api/assist');
   assert.equal(sent.length,1,'exactly one attempt, no automatic retry');assert.equal(sent[0].init.redirect,'error');
   assert.equal(p.els.input.value,'dwa kable 50 fit','the text stays in the field');
   assert.ok(p.local.dump().includes('dwa kable 50 fit'),'the text stays stored');
