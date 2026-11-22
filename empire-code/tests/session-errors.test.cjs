@@ -76,9 +76,9 @@ const ACCESS=[
  ['refused redirect',refused]
 ];
 
-test('labels: PRIVATE-PILOT-6 in the build constant, the title and the header',()=>{
- assert.equal(require('../candidate/build.cjs').BUILD,'PRIVATE-PILOT-6');
- assert.match(INDEX,/<title>Empire Code — PRIVATE-PILOT-6<\/title>/);assert.match(INDEX,/<span class="build">PRIVATE-PILOT-6<\/span>/);
+test('labels: PRIVATE-PILOT-7 in the build constant, the title and the header',()=>{
+ assert.equal(require('../candidate/build.cjs').BUILD,'PRIVATE-PILOT-7');
+ assert.match(INDEX,/<title>Empire Code — PRIVATE-PILOT-7<\/title>/);assert.match(INDEX,/<span class="build">PRIVATE-PILOT-7<\/span>/);
  assert.ok(!INDEX.includes('PRIVATE-PILOT-1'));assert.ok(!INDEX.includes('PRIVATE-PILOT-4'),'no label of the previous release is left on the page');
  // The page references every script it needs, the stage-5 rules module included.
  for(const src of ['/handoff-session.js','/assistant-session.js','/conversation-bank.js','/draft-recovery.js','/ui.js','/material-edit-host.js','/workspace-host.js'])assert.ok(INDEX.includes('<script src="'+src+'" defer></script>'),src);

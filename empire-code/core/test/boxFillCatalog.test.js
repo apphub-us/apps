@@ -454,7 +454,7 @@ describe('focus-zoom: Box Fill controls are 16 CSS px by a Box-Fill-scoped rule 
     assert.ok(block.includes('font-size: 16px;'), 'the rule lives in the Box Fill block');
     // EC-UI-FOCUS-1 supersedes the earlier "global rule stays 14px" expectation: the shared select / number rule is now
     // part of the >= 16px field policy (docs/ui-focus-policy.md). Its other declarations must remain exactly as accepted.
-    assert.ok(/\n  select, input\[type=number\] \{\n    background: var\(--surface\); border: 1px solid var\(--border\);\n    color: var\(--text\); font-family: 'IBM Plex Mono', monospace; font-size: 16px;\n    padding: 10px 12px; border-radius: 4px; outline: none; height: 44px;\n    box-sizing: border-box;\n  \}\n  select:focus, input\[type=number\]:focus \{ border-color: var\(--accent\); \}\n  input\[type=number\] \{ width: 90px; \}\n/.test(css), 'the global control rules keep every accepted declaration (16px under the field policy)');
+    assert.ok(/\n  select, input\[type=number\] \{\n    background: var\(--surface\); border: 1px solid var\(--border\);\n    color: var\(--text\); font-family: var\(--ec-family-mono\); font-size: 16px;\n    padding: 10px 12px; border-radius: 4px; outline: none; height: 44px;\n    box-sizing: border-box;\n  \}\n  select:focus, input\[type=number\]:focus \{ border-color: var\(--accent\); \}\n  input\[type=number\] \{ width: 90px; \}\n/.test(css), 'the global control rules keep every accepted declaration (16px under the field policy)');
     const outside = css.replace(block, '');
     assert.ok(!/(select|input)[^{}]*\{[^}]*font-size: (1[0-5]|[0-9])px/.test(outside.replace(/\/\*[\s\S]*?\*\//g, '')), 'no select/input rule outside the Box Fill block sizes field text below 16px');
   });

@@ -1,6 +1,6 @@
-# Local runtime (LOCAL-WORKSPACE-6)
+# Local runtime (LOCAL-WORKSPACE-7)
 
-`local/` runs the accepted PRIVATE-PILOT-6 build on this Mac at one fixed
+`local/` runs the accepted PRIVATE-PILOT-7 build on this Mac at one fixed
 address, `http://127.0.0.1:12350/` — the address the earlier WORKSPACE-4
 working app used, so the browser keeps the same origin and the same stored
 data. It is a development runtime. The cloud app, its Worker and its

@@ -27,7 +27,7 @@ const fontPx = (body) => { const m = /font-size:\s*([0-9.]+)px/.exec(body) || /\
 describe('EC-UI-FOCUS-1 field policy — stylesheet audit', () => {
   test('the shared select / number rule, the AI Chat composer and the modal (API-key) entry are 16px; the Box Fill scoped rule is untouched', () => {
     const shared = rules.find((r) => r.selector === 'select, input[type=number]'); assert.ok(shared); assert.strictEqual(fontPx(shared.body), 16);
-    assert.ok(/height: 44px/.test(shared.body) && /padding: 10px 12px/.test(shared.body) && /font-family: 'IBM Plex Mono', monospace/.test(shared.body), 'other declarations intact');
+    assert.ok(/height: 44px/.test(shared.body) && /padding: 10px 12px/.test(shared.body) && /font-family: var\(--ec-family-mono\)/.test(shared.body), 'other declarations intact');
     const ta = rules.find((r) => r.selector === 'textarea'); assert.ok(ta); assert.strictEqual(fontPx(ta.body), 16); assert.ok(/min-height: 46px/.test(ta.body) && /max-height: 120px/.test(ta.body) && /line-height: 1.5/.test(ta.body), 'composer geometry intact');
     const modal = rules.find((r) => r.selector === '.modal input'); assert.ok(modal); assert.strictEqual(fontPx(modal.body), 16);
     const bf = rules.find((r) => r.selector === '#panel-boxfill .controls select, #panel-boxfill .controls input[type=number]'); assert.ok(bf); assert.strictEqual(fontPx(bf.body), 16);

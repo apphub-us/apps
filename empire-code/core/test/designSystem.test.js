@@ -108,7 +108,14 @@ describe('EC-UI structural safety — untouched surfaces', () => {
     for (const cls of ['.p3d-btn{', '.p3d-act{', '.p3d-field{', '.p3d-flab{', '.p3d-fx{', '.p3d-tier{', '.p3d-card{', '.p3d-res{', '.p3d-fastcalc{', '.p3d-boxsize{']) {
       assert.ok(P3D_CSS.includes(cls), 'V. ' + cls);
     }
-    assert.strictEqual(cnt(P3D_CSS, /var\(--ec-/g), 0, 'V. Pull Box is the reference, not a consumer yet (Phase 6)');
+    // EC-TYPOGRAPHY-1: the Pull Box names its typeface through the two approved typography roles, and nothing else.
+    // Only the exact references `var(--ec-family-ui)` / `var(--ec-family-mono)` are exempt (full name, then the closing
+    // paren: no fallback, no longer name). Every other --ec-* reference - radius, gap, colour, size, weight, tracking,
+    // and any other --ec-family-* or font token - still counts, and the count must still be zero.
+    assert.strictEqual(cnt(P3D_CSS, /var\(\s*--ec-(?!family-(?:ui|mono)\))/g), 0, 'V. Pull Box is the reference, not a consumer yet (Phase 6)');
+    // The exemption is typographic only: each approved role sits in a font / font-family declaration, nowhere else.
+    assert.strictEqual(cnt(P3D_CSS, /(?:^|[;{\s])font(?:-family)?\s*:[^;{}]*var\(\s*--ec-family-(?:ui|mono)\)/g),
+      cnt(P3D_CSS, /var\(\s*--ec-family-(?:ui|mono)\)/g), 'V. the approved font roles are used only as font families');
   });
   test('AD/AE/AF. layer hashes; AG. parse gate', () => {
     assert.strictEqual(md5('src/standards/pullBoxEntryGeometry.js'), '25dee66f99299394d97400e003d2ddd1');

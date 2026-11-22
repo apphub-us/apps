@@ -1,6 +1,6 @@
 {
   "algorithm": "sha256",
-  "contentPin": "f44910167e688e6be5af5675b4835720dd5b8311fbb8b7e85e24de0adb041df4",
+  "contentPin": "8b6c7c985c20c7950ca1c87e280799531c7589543cc6b42963e244f1f49e3230",
   "excludes": [
     "SOURCE-MANIFEST.json",
     "RELEASE.json"
@@ -12,7 +12,7 @@
     ],
     [
       "README.md",
-      "6dc83e9bced385bee7632533864e2d941d0b2824fc8ee773cde7c12cbc4c2b55"
+      "c2707de222b2a37112086b19579041b038ed06a515dffc8850b9c0000f92ce11"
     ],
     [
       "candidate/browser/assistant-session.js",
@@ -32,7 +32,7 @@
     ],
     [
       "candidate/browser/index.html",
-      "8beee801ab13a3a21c3e99e5b7306330d0fa931ddc488485ccd94f23f2c7c31d"
+      "98f56c3ab26c5a23fe41bc8d0a40e585d4cce3760dc6c0d7f13e1745ec100f86"
     ],
     [
       "candidate/browser/material-edit-host.js",
@@ -40,7 +40,7 @@
     ],
     [
       "candidate/browser/style.css",
-      "4c4f04a71fb58ca733661fea450586eb73954c402945fc1ba7d0aa39f3324011"
+      "31801259963ae95bc53ab1e8c8466fba938660f90622184586c90a2eb005a39b"
     ],
     [
       "candidate/browser/sw.js",
@@ -92,19 +92,19 @@
     ],
     [
       "candidate/browser/workspace/mobile.html",
-      "c789579d741c1c528705a538cfd3cf7ae4490071b67041983388aecf6c0fa386"
+      "078dbd44db2e1607c74fe7ff6dcc5da1c49b2dd5726f2d71513829d653fd9f58"
     ],
     [
       "candidate/build-manifest.generated.json",
-      "c5aa24bf7c366a18ef4de0026670b8abc5957595b28ba338c0e578a2ca3db9de"
+      "29652102e1aca9c809f6deca2c4a55ae49af4666546b7494c97bc481b864e299"
     ],
     [
       "candidate/build.cjs",
-      "8c2976c30e319759e33e8509563c869e1dbc002fb6f7b0fbb4744c84a4b0ed02"
+      "0a8a37de6ed5df64c41273265f8221c3d0a2124525aaa9857c0a5aab4a63c083"
     ],
     [
       "candidate/server/assets.generated.mjs",
-      "452635e1f8a6d52886dc997d7f6082b63c3fd4aa2e65dceb68ee0e462a9323eb"
+      "d008d5740b981bab9d5dd9d312f3b0cbda2c006756dbaf605c2663d49a492d5b"
     ],
     [
       "candidate/server/assistant-contract.cjs",
@@ -132,7 +132,7 @@
     ],
     [
       "candidate/server/prompt.generated.mjs",
-      "f5781f77e7473defb66640a2dfed6ae6b17f02e74fc540ab271b86770bf1d100"
+      "2d959350f42feadeed66c892e5f1793679efe88a7b880247f8b1b7aec9a7d5b5"
     ],
     [
       "candidate/server/worker.mjs",
@@ -288,7 +288,7 @@
     ],
     [
       "core/mobile.html",
-      "82883e48ee45015ef4bfb855638d8da11ece3a6f135b714efcacf76f4f5d2c3b"
+      "783bb1b77d26e87df339013dfbfd17f687c24e566b9d089724887e9fe3ce0bd4"
     ],
     [
       "core/nema-wiki-test.html",
@@ -536,7 +536,7 @@
     ],
     [
       "core/test/boxFillCatalog.test.js",
-      "38fa4780dcf7a01a7a1cfbdf910188a2f3a9be4ec32d0f9d8bd2ecc14906ca55"
+      "5a1b3312acbe977cecd7ed958857bf0cc4ee982480b9e508c06121f9cf812a7c"
     ],
     [
       "core/test/boxFillContract.test.js",
@@ -564,7 +564,7 @@
     ],
     [
       "core/test/designSystem.test.js",
-      "8131e37ca08a69e967fa1cdb7b275275fa73adc50de6edd2bcedc1e36c42bd63"
+      "916841be9ba212549fa2091f6a66fb7e254799f11b9e48a4f95d1f76b0538aef"
     ],
     [
       "core/test/favoritesStore.test.js",
@@ -920,7 +920,7 @@
     ],
     [
       "core/test/navigation.test.js",
-      "807ac1ddceab63df3fd42c5e5fa85be316ee9f038d742c282383636217a7b626"
+      "a96b333bbf57d059b44824f2f333685f3c0af8aaa0dcf8fcb318c8a43333f764"
     ],
     [
       "core/test/pullBox.test.js",
@@ -1016,7 +1016,7 @@
     ],
     [
       "core/test/uiFocus.test.js",
-      "38bc8453c74fe96ffc1b56ca395679fbfad83a165c4ba33927a5dd5a6222d0bc"
+      "5172d18185bb14865b74bb6db4a32155079e61bd2e720d6fcf506acadb5778f6"
     ],
     [
       "core/test/uiReferences.test.js",
@@ -1164,11 +1164,15 @@
     ],
     [
       "docs/local-development.md",
-      "bd675541109757ff26981d70e14755421baed3f266a3aad98aac82a512e3d261"
+      "859cf1031d209d7c070514563980c918092f6b798537395b6812f6209ec79b10"
     ],
     [
       "docs/stage4-qualification-contract.md",
       "68c9c7877290167ca23c46c75af8d9d2b45b1ed0bcde2d3b7f9a9598e2c97fc6"
+    ],
+    [
+      "docs/typography.md",
+      "f2a12e50cf3f8d402ffca30d2d518cd646ebb9f598389873a00424311500765e"
     ],
     [
       "input/BROWSER-BASELINE.json",
@@ -1204,15 +1208,15 @@
     ],
     [
       "local/run.mjs",
-      "eac49d39030467cc2dececae3439d2df670031a14de7217e84b43424b72ce1b5"
+      "4223fec0d0b8e97f4a7bc0b4ed768fd489cf9174ea5e5fa97d9fd953462751d5"
     ],
     [
       "local/server.mjs",
-      "17c6055d5048fd8d669480fb5dffaf5e2a99c0416fcbd68ba7c978910cfcb787"
+      "96ca2c8a768fda3bacccf5413c7fa78cc45cb54f009ac9de530c692afa01f5cf"
     ],
     [
       "package.json",
-      "3eee12de1262ef50a43615cdde17dc5e977ab5ff483df94ffe918c25361117f1"
+      "ead61af8ee5365005c385dc807208c941262eb5b3259398d5c038952d70beee3"
     ],
     [
       "tests/backend-budget.test.mjs",
@@ -1228,7 +1232,7 @@
     ],
     [
       "tests/browser-build.test.cjs",
-      "cda73d2a5efbca29603d5a92193a7efbf1c56f206055d9f601d02d1478eeb937"
+      "653aced83f47aeee352b11d5a5c8d3b6fe28cbad234061b933f4892700a69109"
     ],
     [
       "tests/browser-sw.test.cjs",
@@ -1236,7 +1240,7 @@
     ],
     [
       "tests/browser-ui.test.cjs",
-      "cba770bf9245655c7533d101d1cf140d2210c71d55b72866a96285bee4499d1e"
+      "dffdfc5f69badaee7115c75bffe0379429922f223eb2827396315cf095f028c0"
     ],
     [
       "tests/converter-runtime-browser.cjs",
@@ -1280,7 +1284,7 @@
     ],
     [
       "tests/local-credential.test.mjs",
-      "7481286342c1bcd153a696b6448c6551494aa4f60c806a47bbbf1b7b220cecbf"
+      "801fabf4c84caa1f322204d682d0053a4f5eee2309be8c7a1b76b34dd42f13ee"
     ],
     [
       "tests/local-fixtures.mjs",
@@ -1292,11 +1296,11 @@
     ],
     [
       "tests/local-runtime.test.mjs",
-      "5635be8e026df32104ce120db6d6f306ae14f9a9d35b2d108064236821540ad1"
+      "fe935886fdb8bf7fae2d6c7c2a73657d6c23019b1c33b33629046f84ebf2268c"
     ],
     [
       "tests/session-errors.test.cjs",
-      "beb68c26071f85250a87615d669691b1a93a1e3e66caf25ae5a500f2f46de9e3"
+      "518fa732c58eed6a9afd4d5d6436510714f5117ed0db953cbca7352421b45d79"
     ],
     [
       "tests/stage2-conversation-bank.test.cjs",
@@ -1320,7 +1324,7 @@
     ],
     [
       "tests/stage2-update-notice.test.cjs",
-      "ce644cfc7445518dd34a1972212b84cbb69988cdcbb9223a33220fe681a4840b"
+      "7a94c2747db5b440798560bce0426531514100b0e4a9b72a30d13bb01f443e84"
     ],
     [
       "tests/stage3-material-contract.test.cjs",

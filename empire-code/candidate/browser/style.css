@@ -1,14 +1,21 @@
 /* EC-UI-UNIFY-1 — parent shell and Rozmowa in the visual language of the Narzędzia tab (workspace/mobile.html, EC-UI-2):
    the same black / charcoal surfaces, the same #FFC700 accent kept for actions and state, 10px cards, 8px / 46px controls
    and quiet uppercase labels. Colour, radius and control-height values mirror that file's :root tokens. */
-:root{color-scheme:dark;--bg:#0A0A0A;--surface:#1a1a1a;--surface2:#222222;--panel:#111111;--raised:#181818;--line:#2e2e2e;--text:#e8e8e8;--muted:#a8a8a8;--quiet:#9a9a9a;--accent:#FFC700;--danger:#ff8a80;--danger-line:#a84a44;--success:#52c07a;--warn:#e8c23a;--radius-sm:8px;--radius-md:10px;--control-h:46px;--header-h:44px;--nav-h:47px}
+/* EC-TYPOGRAPHY-1 — two font roles, the same two token names and stacks as workspace/mobile.html. System fonts only:
+   nothing is downloaded or bundled for them.
+     --ec-family-ui    UI / reading sans: navigation, titles, prose and help, job and conversation names, free-text
+                       entry, action-button labels. It is the body font, so everything inherits it unless listed below.
+     --ec-family-mono  technical mono: the build badge, quantities with their units, the recording timer, and the
+                       calculator in the conversation (its result, its field list and its correction fields).
+   A heading is the UI role at another weight or size, never a third family. */
+:root{color-scheme:dark;--ec-family-ui:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;--ec-family-mono:Menlo,ui-monospace,'SF Mono',SFMono-Regular,Consolas,'Liberation Mono','DejaVu Sans Mono','Courier New',monospace;--bg:#0A0A0A;--surface:#1a1a1a;--surface2:#222222;--panel:#111111;--raised:#181818;--line:#2e2e2e;--text:#e8e8e8;--muted:#a8a8a8;--quiet:#9a9a9a;--accent:#FFC700;--danger:#ff8a80;--danger-line:#a84a44;--success:#52c07a;--warn:#e8c23a;--radius-sm:8px;--radius-md:10px;--control-h:46px;--header-h:44px;--nav-h:47px}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 var(--ec-family-ui)}
 
 /* Shell: header and four-tab navigation. Fixed heights, because #core-panel is sized from them. */
 header{display:flex;justify-content:space-between;gap:12px;align-items:center;height:var(--header-h);padding:0 28px;background:var(--surface);border-bottom:1px solid var(--line)}
 .brand{font-size:11px;letter-spacing:1.2px;font-weight:800;text-transform:uppercase;white-space:nowrap;color:var(--accent);text-decoration:none}
-.build{font-size:11px;font-weight:600;letter-spacing:.4px;white-space:nowrap;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:3px 7px}
+.build{font-family:var(--ec-family-mono);font-size:11px;font-weight:600;letter-spacing:.4px;white-space:nowrap;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:3px 7px}
 .workspace-nav{display:flex;height:var(--nav-h);padding:0 28px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden}
 .workspace-nav button{flex:1;min-width:0;min-height:var(--control-h);padding:0 8px;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:var(--quiet);font-size:12px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap}
 .workspace-nav button[aria-current=page]{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
@@ -66,7 +73,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .compose-actions .primary{margin-left:auto}
 .compose-actions select{font-size:16px;font-weight:400;max-width:112px}
 .language-hint{font-size:12px;color:var(--muted);white-space:nowrap}
-.rec-time{font-size:12px;color:var(--accent);font-variant-numeric:tabular-nums}
+.rec-time{font-family:var(--ec-family-mono);font-size:12px;color:var(--accent);font-variant-numeric:tabular-nums}
 .input-help{font-size:12px;color:var(--muted);margin:6px 2px 0;overflow-wrap:anywhere}
 #status{font-size:12px;color:var(--muted);margin:10px 2px 0;min-height:18px}
 #status.error{color:var(--danger)}
@@ -84,7 +91,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .item:last-child{border-bottom:0}
 .item-main{display:flex;align-items:baseline;gap:12px;justify-content:space-between}
 .item-name{font-size:15px;font-weight:600}
-.item-qty{font-size:16px;white-space:nowrap;color:var(--text);font-weight:700;font-variant-numeric:tabular-nums}
+.item-qty{font-family:var(--ec-family-mono);font-size:15px;white-space:nowrap;color:var(--text);font-weight:700;font-variant-numeric:tabular-nums}
 .spec{font-size:14px;margin:7px 0}
 .notes{font-size:12px;color:var(--muted);margin:5px 0}
 .review{font-size:12px;color:var(--warn);padding:8px 10px;background:rgba(232,194,58,.08);border-radius:var(--radius-sm);margin:8px 0 0}
@@ -154,13 +161,15 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
 .assist h3{margin:0 0 8px;font-size:14px;font-weight:600}
 .assist p{margin:6px 0;font-size:14px}
 .assist-title{font-weight:600;color:var(--text)}
-.assist .assist-result{font-size:16px;color:var(--text);white-space:pre-wrap}
+.assist .assist-result{font-family:var(--ec-family-mono);font-size:14px;color:var(--text);white-space:pre-wrap}
 .assist-question{color:var(--accent)}
 .assist .assist-assumption{color:var(--muted);font-size:13px}
-.assist-fields{margin:8px 0;padding-left:18px;font-size:13px;color:var(--muted)}
+.assist-fields{margin:8px 0;padding-left:18px;font-family:var(--ec-family-mono);font-size:12px;color:var(--muted)}
 .assist-fields li{margin:2px 0;overflow-wrap:anywhere}
 .assist label{display:block;font-size:13px;color:var(--muted);margin:8px 0 2px}
 .assist input,.assist select,.assist textarea{display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;font-size:16px}
+/* Calculator correction fields are technical values (mono, still 16px); the note / measurement panel keeps the UI role. */
+#assist-panel input,#assist-panel select{font-family:var(--ec-family-mono)}
 .assist textarea{min-height:88px}
 .assist-choice{margin-top:8px;min-width:0;max-width:100%}
 .assist-choice select{min-height:var(--control-h);text-overflow:ellipsis;overflow:hidden}

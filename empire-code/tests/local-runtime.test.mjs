@@ -1,4 +1,4 @@
-// LOCAL-WORKSPACE-6 — the local Node runtime (local/server.mjs) over real loopback HTTP on an ephemeral port.
+// LOCAL-WORKSPACE-7 — the local Node runtime (local/server.mjs) over real loopback HTTP on an ephemeral port.
 // Authored for root execution; the author could not run anything and claims no result.
 // No credential and no network: the provider transport is a controlled function injected through createLocalServer().
 // Calculator arithmetic, evidence parsing and budget internals are tested by the existing suites and are not repeated.
@@ -25,12 +25,12 @@ const GENERIC='Operacja nie powiodła się. Szkic bez zmian; brak automatycznej 
 
 test('static: every path of the accepted manifest is served byte-identically, with the canonical headers; nothing else exists',async t=>{
  const h=await harness(t);
- assert.equal(manifest.build,'PRIVATE-PILOT-6');assert.equal(manifest.served.length,21);
+ assert.equal(manifest.build,'PRIVATE-PILOT-7');assert.equal(manifest.served.length,21);
  for(const entry of manifest.served){
   const r=await h.get(entry.url);
   assert.equal(r.status,200,entry.url);assert.equal(r.body.length,entry.bytes,entry.url);assert.equal(sha256(r.body),entry.sha256,entry.url);
   assert.deepEqual([r.headers['x-empire-asset-sha256'],r.headers['content-type'],r.headers['x-empire-build'],r.headers['x-empire-local-runtime'],r.headers['cache-control'],r.headers['x-content-type-options']],
-   [entry.sha256,entry.mime,'PRIVATE-PILOT-6',LOCAL_RUNTIME,'no-store','nosniff'],entry.url);
+   [entry.sha256,entry.mime,'PRIVATE-PILOT-7',LOCAL_RUNTIME,'no-store','nosniff'],entry.url);
   assert.ok(r.headers['content-security-policy'].includes(entry.url==='/workspace/mobile.html'?"frame-ancestors 'self'":"frame-ancestors 'none'"),entry.url);
  }
  // The same bytes as the canonical browser files (sw.js is the build's generated worker, pinned by the manifest).
@@ -52,7 +52,7 @@ test('GET /api/session: the shape the accepted frontend reads, the configured mo
  const h=await harness(t),r=await h.get('/api/session',{'sec-fetch-site':'same-origin'}),s=r.json();
  assert.equal(r.status,200);assert.equal(r.headers['cache-control'],'no-store');
  assert.deepEqual(Object.keys(s).sort(),['build','model','online','prototype','reason','remainingRequests','speechModel','token']);
- assert.deepEqual([s.build,s.model,s.speechModel,s.online,s.prototype,s.remainingRequests,s.reason],['PRIVATE-PILOT-6','gpt-6-astra','gpt-transcribe',true,true,60,null]);
+ assert.deepEqual([s.build,s.model,s.speechModel,s.online,s.prototype,s.remainingRequests,s.reason],['PRIVATE-PILOT-7','gpt-6-astra','gpt-transcribe',true,true,60,null]);
  assert.match(s.token,/^[0-9a-f]{64}$/);
  assert.notEqual((await h.session()).token,s.token);
  assert.deepEqual([(await call(h.origin,{method:'POST',path:'/api/session',headers:{origin:h.origin,'sec-fetch-site':'same-origin'},body:'{}'})).status,h.seen.upstream.length],[405,0]);

@@ -56,7 +56,23 @@
     --ec-border-active: var(--accent);
     --ec-border-danger: #3a2422;
     --ec-text-muted: #7a7a7a;         /* quiet labels and headings */
+
+    /* ── EC-TYPOGRAPHY-1 — two font roles (authored block, identical in core/mobile.html and the hosted copy) ──
+       Every font-family on this page resolves to one of these two tokens; the parent shell
+       (candidate/browser/style.css) defines the same two names with the same stacks. System fonts only:
+       nothing is downloaded or bundled for them.
+         --ec-family-ui    UI / reading sans: navigation, titles, tool-card names, prose and help, job and
+                           conversation names, free-text entry, action-button labels.
+         --ec-family-mono  technical mono: numeric inputs, values and results, units, AWG / conductor
+                           identifiers, NEC / NYCEC references, code and version badges, compact technical
+                           field labels. Help, notes and tool-card taglines are prose: UI role.
+       A heading is the UI role at another weight or size, never a third family. Guide: docs/typography.md */
+    --ec-family-ui: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --ec-family-mono: Menlo, ui-monospace, 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', 'DejaVu Sans Mono', 'Courier New', monospace;
   }
+  /* EC-TYPOGRAPHY-1: the hosted copy also loads /workspace/host-core.css (SHA-protected), whose plain `body` rule
+     names an older sans stack; `html body` outranks it, so inherited text follows the UI role in both copies. */
+  html body { font-family: var(--ec-family-ui); }
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
@@ -65,7 +81,7 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--ec-family-ui);
     height: 100vh; height: 100dvh;
     display: flex; flex-direction: column;
     overflow: hidden;
@@ -87,7 +103,7 @@
   }
   .editions { display: flex; align-items: center; gap: 6px; }
   .edition {   /* EC-UI-2: shared weight; size and tracking are the accepted header values */
-    font-family: 'Montserrat', sans-serif; font-weight: var(--ec-weight);
+    font-family: var(--ec-family-mono); font-weight: var(--ec-weight);
     font-size: 9px; letter-spacing: 0.4px; text-transform: uppercase;
     padding: 3px 7px; border-radius: 4px; white-space: nowrap;
     border: 1px solid transparent;
@@ -105,7 +121,7 @@
     font-weight: var(--ec-weight); color: var(--ec-text-muted); margin-bottom: var(--ec-gap-xs);
   }
   .ec-label { font-size: var(--ec-font-xs); letter-spacing: var(--ec-tracking); text-transform: uppercase; color: var(--ec-text-muted); }
-  .ec-value { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: var(--ec-weight); color: var(--text); }
+  .ec-value { font-family: var(--ec-family-mono); font-size: 18px; font-weight: var(--ec-weight); color: var(--text); }
   .ec-card {
     background: var(--ec-surface-card); border: 1px solid var(--border);
     border-radius: var(--ec-radius-md); padding: var(--ec-gap-md);
@@ -120,7 +136,7 @@
   .ec-control .ec-label { margin-bottom: 3px; }
   .ec-select, .ec-control select, .ec-control input {
     width: 100%; background: transparent; border: 0; outline: none; padding: 0;
-    color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: var(--ec-font-lg);
+    color: var(--text); font-family: var(--ec-family-mono); font-size: var(--ec-font-lg);
     -webkit-appearance: none; appearance: none;
   }
   .ec-control:focus-within { border-color: var(--ec-border-active); }
@@ -128,7 +144,7 @@
   .ec-btn {
     min-height: 44px; padding: 8px 12px; cursor: pointer;
     background: var(--ec-surface-raised); border: 1px solid var(--border); border-radius: var(--ec-radius-sm);
-    color: var(--text); font-family: Inter, -apple-system, sans-serif; font-size: var(--ec-font-sm);
+    color: var(--text); font-family: var(--ec-family-ui); font-size: var(--ec-font-sm);
     font-weight: var(--ec-weight); letter-spacing: var(--ec-tracking); text-transform: uppercase;
   }
   .ec-btn:active, .ec-btn[aria-pressed="true"] { background: #242424; border-color: var(--ec-border-active); color: var(--accent); }
@@ -141,7 +157,7 @@
   .ec-segmented .ec-btn { flex: 1 1 0; min-width: 0; padding-left: 4px; padding-right: 4px; }
   /* results: quiet heading, one hero value, itemised cards */
   .ec-result { margin: var(--ec-gap-sm) 0; border-top: 1px solid #1e1e1e; padding-top: var(--ec-gap-sm); }
-  .ec-result-hero { font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: var(--ec-weight); color: var(--text); letter-spacing: 0.5px; padding: 2px 0 4px; }
+  .ec-result-hero { font-family: var(--ec-family-mono); font-size: 26px; font-weight: var(--ec-weight); color: var(--text); letter-spacing: 0.5px; padding: 2px 0 4px; }
   .ec-result-item { background: var(--ec-surface-card); border: 1px solid var(--border); border-radius: var(--ec-radius-md); padding: var(--ec-gap-md); margin-top: var(--ec-gap-sm); }
 
   /* ── HOME ── */
@@ -149,12 +165,12 @@
      muted, 600, 1px tracking. Accent yellow is reserved for actions and
      the pinned shelf; the pinned heading stays bright text (its own shelf). */
   .home-section-label {
-    font-family: 'Montserrat', sans-serif; font-weight: var(--ec-weight);
+    font-family: var(--ec-family-ui); font-weight: var(--ec-weight);
     font-size: var(--ec-font-xs); letter-spacing: var(--ec-tracking); text-transform: uppercase;
     color: var(--ec-text-muted); margin-bottom: var(--ec-gap-xs); padding: 0 2px;
   }
   .home-pinned-label {
-    font-family: 'Montserrat', sans-serif; font-weight: var(--ec-weight);
+    font-family: var(--ec-family-ui); font-weight: var(--ec-weight);
     font-size: var(--ec-font-xs); letter-spacing: var(--ec-tracking); text-transform: uppercase; color: var(--text);
   }
   .home-divider { height: 1px; background: var(--border); margin: 0 2px 16px; }
@@ -173,8 +189,8 @@
     border-radius: var(--ec-radius-md);
   }
   .tile:active { background: var(--ec-surface-raised); border-color: var(--ec-border-active); }
-  .tile-name { font-family: 'Montserrat', sans-serif; font-weight: var(--ec-weight); font-size: var(--ec-font-lg); color: var(--text); line-height: 1.2; }
-  .tile-desc { font-family: 'IBM Plex Mono', monospace; font-size: var(--ec-font-xs); color: var(--text-dimmer); line-height: 1.3; }
+  .tile-name { font-family: var(--ec-family-ui); font-weight: var(--ec-weight); font-size: var(--ec-font-lg); color: var(--text); line-height: 1.2; }
+  .tile-desc { font-family: var(--ec-family-ui); font-size: var(--ec-font-xs); color: var(--text-dimmer); line-height: 1.3; }
   /* Pinned tiles keep their semantic tint AND regain the accent rail so the
      electrician's own shelf stays unmistakable against the flat catalogue. */
   .tile-pinned { background: rgba(255,199,0,0.07); border-color: rgba(255,199,0,0.22); border-left: 3px solid var(--accent); }
@@ -184,9 +200,9 @@
      the edition badges, distinguished by weight, colour and letter-spacing. */
   /* EC-UI-2: the brand keeps weight 800 and its accepted 9px deliberately —
      it is the one place that weight still belongs; nothing else changes. */
-  .logo { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent); }
+  .logo { font-family: var(--ec-family-ui); font-weight: 800; font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--accent); }
   .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--nycec); display: inline-block; margin-right: 6px; }
-  .status-txt { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 9px; letter-spacing: 0.3px; color: var(--text-dim); }
+  .status-txt { font-family: var(--ec-family-ui); font-weight: 800; font-size: 9px; letter-spacing: 0.3px; color: var(--text-dim); }
 
   /* ── CONTENT AREA ── */
   .content {
@@ -219,7 +235,7 @@
   .nav-item {
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     min-width: 48px; flex: 1;
-    font-family: 'Montserrat', sans-serif; font-size: 10px; letter-spacing: 0.3px;
+    font-family: var(--ec-family-ui); font-size: 10px; letter-spacing: 0.3px;
     font-weight: 600; text-transform: uppercase;
     color: var(--text-dimmer); padding: 0 4px; cursor: pointer;
     border-top: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
@@ -247,20 +263,20 @@
   .rules-toggle {
     flex-shrink: 0; background: none; border: none; cursor: pointer;
     color: var(--text-dim); font-size: 10px; line-height: 1;
-    padding: 6px 0 6px 8px; font-family: 'IBM Plex Mono', monospace;
+    padding: 6px 0 6px 8px; font-family: var(--ec-family-mono);
   }
   .rules-toggle:active { color: var(--accent); }
   .rules-row { display: flex; align-items: center; gap: 8px; white-space: nowrap; min-height: 26px; }
   .rules-row + .rules-row { margin-top: 4px; }
   .pill {
     padding: 3px 9px; border-radius: 4px;
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+    font-family: var(--ec-family-mono); font-size: 11px; font-weight: 600;
     flex-shrink: 0; cursor: pointer;
   }
   .pill-nec { background: rgba(255,107,26,0.2); color: var(--nec); }
   .pill-nyc { background: rgba(74,158,255,0.2); color: var(--nycec); }
   .pill-ok  { background: rgba(82,192,122,0.2); color: var(--success); }
-  .rule-txt { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); }
+  .rule-txt { font-family: var(--ec-family-mono); font-size: 11px; color: var(--text-dim); }
 
   /* ── CONTROLS ── */
   .controls {
@@ -271,7 +287,7 @@
   }
   .ctrl { display: flex; flex-direction: column; gap: 5px; }
   .ctrl-lbl {
-    font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+    font-family: var(--ec-family-mono); font-size: 9px;
     letter-spacing: 2px; text-transform: uppercase; color: var(--accent);
   }
   /* EC-UI-FOCUS-1 field policy: every live editable field (select, numeric/text/password entry, chat composer)
@@ -280,7 +296,7 @@
      text are NOT fields and keep their own sizes. Policy + exception ledger: docs/ui-focus-policy.md */
   select, input[type=number] {
     background: var(--surface); border: 1px solid var(--border);
-    color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 16px;
+    color: var(--text); font-family: var(--ec-family-mono); font-size: 16px;
     padding: 10px 12px; border-radius: 4px; outline: none; height: 44px;
     box-sizing: border-box;
   }
@@ -302,7 +318,7 @@
   /* ── FAV BAR ── */
   .fav-bar { display: flex; gap: 8px; align-items: center; width: 100%; }
   .reset-btn, .save-btn {
-    font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 1px;
+    font-family: var(--ec-family-ui); font-size: 12px; letter-spacing: 1px;
     padding: 10px 18px; border-radius: 4px; cursor: pointer; height: 44px;
     border: 1px solid var(--border); transition: all 0.15s;
   }
@@ -311,7 +327,7 @@
   .save-btn { background: rgba(255,199,0,0.1); color: var(--accent); border-color: rgba(255,199,0,0.3); }
   .save-btn:active { background: rgba(255,199,0,0.2); }
   .fav-list { display: flex; gap: 6px; flex-wrap: wrap; width: 100%; }
-  .fav-tag { font-family: 'IBM Plex Mono', monospace; font-size: 11px; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+  .fav-tag { font-family: var(--ec-family-mono); font-size: 11px; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); padding: 5px 10px; border-radius: 4px; cursor: pointer; }
   .fav-tag:active { border-color: var(--accent); color: var(--accent); }
 
   /* ── RESULT BOX ── */
@@ -339,7 +355,7 @@
   .result-box.ready .result-title { color: var(--success); }
   .result-box.fail  .result-title { color: var(--danger); }
   .result-title {
-    font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 11px;
+    font-family: var(--ec-family-ui); font-weight: 800; font-size: 11px;
     letter-spacing: 0.5px; color: var(--accent); margin-bottom: 10px;
   }
   .result-grid { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -348,10 +364,10 @@
     border-radius: 4px; padding: 8px 12px; flex: 0 0 auto;
   }
   .result-item-label {
-    font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    font-family: var(--ec-family-mono); font-size: 10px;
     color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px;
   }
-  .result-item-value { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 16px; letter-spacing: 0; }
+  .result-item-value { font-family: var(--ec-family-mono); font-weight: 700; font-size: 15px; letter-spacing: 0; }   /* EC-TYPOGRAPHY-1: results are the mono role; 15px mono is no wider than the former 16px sans */
   .result-ok { color: var(--success); }
   .result-over { color: var(--danger); }
 
@@ -370,7 +386,7 @@
   #panel-boxfill .bf-help-btn {
     position: relative; display: inline-flex; align-items: center; justify-content: center;
     width: 20px; height: 20px; padding: 0; margin: 0; flex: 0 0 auto;
-    font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1; font-weight: 600;
+    font-family: var(--ec-family-mono); font-size: 12px; line-height: 1; font-weight: 600;
     color: var(--accent); background: transparent; border: 1px solid var(--border); border-radius: 50%;
     cursor: pointer; -webkit-tap-highlight-color: transparent;
   }
@@ -380,7 +396,7 @@
   #panel-boxfill .bf-help, #panel-boxfill .bf-note {
     flex: 1 1 100%; width: 100%; min-width: 0; box-sizing: border-box; margin: -2px 0 2px;
     padding: 8px 10px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border);
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.45; color: var(--text-dim);
+    font-family: var(--ec-family-ui); font-size: 11px; line-height: 1.45; color: var(--text-dim);
     overflow-wrap: anywhere;
   }
   #panel-boxfill .bf-help { border-left: 3px solid var(--accent); }
@@ -391,13 +407,13 @@
   #bfResultGrid { min-width: 0; }
   #bfResultGrid .bf-state-row { flex: 1 1 100%; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
   #bfResultGrid .bf-state-row .result-item-label { white-space: normal; }
-  #bfResultGrid .bf-state-row .result-item-value { font-size: 13px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
+  #bfResultGrid .bf-state-row .result-item-value { font-family: var(--ec-family-ui); font-size: 13px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; word-break: normal; }
 
   /* ── WORKFLOW BUTTONS ── */
   .wf-btns { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); }
   .wf-btn {
     flex: 1; background: none; border: 1px solid var(--border);
-    color: var(--text-dim); font-family: 'IBM Plex Mono', monospace;
+    color: var(--text-dim); font-family: var(--ec-family-ui);
     font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase;
     padding: 10px 8px; border-radius: 4px; cursor: pointer;
   }
@@ -413,16 +429,16 @@
   .tbl-wrap::-webkit-scrollbar { height: 3px; }
   .tbl-wrap::-webkit-scrollbar-thumb { background: var(--border); }
   .tbl-hdr { display: flex; align-items: center; justify-content: space-between; padding: 14px 0 8px; gap: 8px; flex-wrap: wrap; }
-  .tbl-title { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 12px; letter-spacing: 0.5px; color: var(--accent); }
+  .tbl-title { font-family: var(--ec-family-ui); font-weight: 800; font-size: 12px; letter-spacing: 0.5px; color: var(--accent); }
   .conduit-tabs { display: flex; gap: 5px; flex-wrap: wrap; }
   .conduit-tab {
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    font-family: var(--ec-family-mono); font-size: 11px;
     padding: 6px 10px; border-radius: 4px; cursor: pointer;
     border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim);
   }
   .conduit-tab.active { border-color: var(--accent); color: var(--accent); background: rgba(255,199,0,0.07); }
 
-  .cf-table { width: 100%; border-collapse: collapse; font-family: 'IBM Plex Mono', monospace; font-size: 12px; min-width: 600px; }
+  .cf-table { width: 100%; border-collapse: collapse; font-family: var(--ec-family-mono); font-size: 12px; min-width: 600px; }
   .cf-table thead th { background: var(--surface); color: var(--accent); padding: 9px 12px; text-align: center; border: none; border-bottom: 1px solid var(--border); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
   .cf-table thead th.wire-col { text-align: left; }
   .cf-table tbody tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
@@ -444,21 +460,21 @@
   .msg.ai  { align-self: flex-start; max-width: 88%; }
   @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
   .msg-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; font-weight: bold; }
-  .msg.user .msg-avatar { background: var(--accent); color: #000; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 9px; }
+  .msg.user .msg-avatar { background: var(--accent); color: #000; font-family: var(--ec-family-ui); font-weight: 800; font-size: 9px; }
   .msg.ai  .msg-avatar { background: var(--surface2); color: var(--accent); font-size: 16px; }
   .msg-wrap { display: flex; flex-direction: column; gap: 2px; }
   .msg.user .msg-wrap { align-items: flex-end; }
   .msg.ai  .msg-wrap { align-items: flex-start; }
-  .msg-name { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #52c07a; padding: 0 4px; font-weight: 600; }
+  .msg-name { font-family: var(--ec-family-mono); font-size: 9px; color: #52c07a; padding: 0 4px; font-weight: 600; }
   .msg.user .msg-name { display: none; }
   .msg-bubble { padding: 10px 13px; font-size: 14px; line-height: 1.65; position: relative; word-break: break-word; }
   .msg.user .msg-bubble { background: #1d3f63; border-radius: 18px 18px 4px 18px; color: #e8f0ff; }
   .msg.ai  .msg-bubble { background: #1e2428; border-radius: 18px 18px 18px 4px; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.35); border: 1px solid rgba(255,199,0,0.1); }
-  .msg-time { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--text-dimmer); padding: 0 4px; }
-  .msg.ai .msg-bubble table { width: 100%; border-collapse: collapse; margin: 8px 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .msg-time { font-family: var(--ec-family-mono); font-size: 9px; color: var(--text-dimmer); padding: 0 4px; }
+  .msg.ai .msg-bubble table { width: 100%; border-collapse: collapse; margin: 8px 0; font-family: var(--ec-family-mono); font-size: 12px; }
   .msg.ai .msg-bubble th { background: rgba(255,199,0,0.12); color: var(--accent); padding: 6px 8px; text-align: left; border: 1px solid rgba(255,255,255,0.08); font-size: 10px; }
   .msg.ai .msg-bubble td { padding: 5px 8px; border: 1px solid rgba(255,255,255,0.06); }
-  .error-bubble { background: rgba(224,82,82,0.1); border: 1px solid rgba(224,82,82,0.3); border-left: 3px solid var(--danger); color: #e08080; padding: 10px 13px; border-radius: 4px; font-size: 13px; font-family: 'IBM Plex Mono', monospace; }
+  .error-bubble { background: rgba(224,82,82,0.1); border: 1px solid rgba(224,82,82,0.3); border-left: 3px solid var(--danger); color: #e08080; padding: 10px 13px; border-radius: 4px; font-size: 13px; font-family: var(--ec-family-mono); }
   .typing-indicator { display: flex; align-items: center; gap: 5px; padding: 10px 14px; background: #1e2428; border-radius: 18px 18px 18px 4px; }
   .typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: typing 1.4s infinite; }
   .typing-dot:nth-child(2){animation-delay:.2s} .typing-dot:nth-child(3){animation-delay:.4s}
@@ -466,7 +482,7 @@
 
   .input-area { background: var(--surface); border-top: 1px solid var(--border); padding: 10px 14px; flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
   .input-row { display: flex; gap: 8px; align-items: flex-end; }
-  textarea { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: Inter, sans-serif; font-size: 16px; padding: 12px; border-radius: 4px; resize: none; outline: none; min-height: 46px; max-height: 120px; line-height: 1.5; }   /* EC-UI-FOCUS-1: 15px -> 16px (AI Chat composer) */
+  textarea { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: var(--ec-family-ui); font-size: 16px; padding: 12px; border-radius: 4px; resize: none; outline: none; min-height: 46px; max-height: 120px; line-height: 1.5; }   /* EC-UI-FOCUS-1: 15px -> 16px (AI Chat composer) */
   textarea:focus { border-color: var(--accent); }
   textarea::placeholder { color: var(--text-dimmer); }
   .send-btn { background: var(--accent); color: #000; border: none; border-radius: 4px; width: 46px; height: 46px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; font-weight: bold; }
@@ -475,8 +491,8 @@
   /* ── TRENDING ── */
   .trending-bar { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 8px 14px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .trending-bar::-webkit-scrollbar { display: none; }
-  .trending-label { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; white-space: nowrap; flex-shrink: 0; }
-  .trend-btn { font-family: 'IBM Plex Mono', monospace; font-size: 11px; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); padding: 5px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+  .trending-label { font-family: var(--ec-family-mono); font-size: 9px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; white-space: nowrap; flex-shrink: 0; }
+  .trend-btn { font-family: var(--ec-family-mono); font-size: 11px; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); padding: 5px 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
   .trend-count { font-size: 9px; color: var(--accent); background: rgba(255,199,0,0.15); padding: 1px 4px; border-radius: 2px; }
 
   /* ── CODE REFERENCE LINKS — source-aware (EC-UI-LAYOUT-REFS-1) ──
@@ -498,20 +514,20 @@
   /* ── MODAL ── */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
   .modal { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 6px; padding: 24px; max-width: 400px; width: 100%; }
-  .modal h2 { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 17px; letter-spacing: 0.3px; color: var(--accent); margin-bottom: 6px; }
+  .modal h2 { font-family: var(--ec-family-ui); font-weight: 800; font-size: 17px; letter-spacing: 0.3px; color: var(--accent); margin-bottom: 6px; }
   .modal p { color: var(--text-dim); font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
-  .modal input { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 16px; padding: 12px; border-radius: 4px; outline: none; margin-bottom: 12px; }   /* EC-UI-FOCUS-1: 13px -> 16px (API-key entry) */
+  .modal input { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: var(--ec-family-mono); font-size: 16px; padding: 12px; border-radius: 4px; outline: none; margin-bottom: 12px; }   /* EC-UI-FOCUS-1: 13px -> 16px (API-key entry) */
   .modal input:focus { border-color: var(--accent); }
-  .modal-btn { width: 100%; background: var(--accent); color: #000; border: none; border-radius: 4px; padding: 14px; font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; cursor: pointer; }
+  .modal-btn { width: 100%; background: var(--accent); color: #000; border: none; border-radius: 4px; padding: 14px; font-family: var(--ec-family-ui); font-weight: 800; font-size: 14px; letter-spacing: 0.5px; cursor: pointer; }
 
   /* ── CODE SUBTABS ── */
   .code-subtabs { display: flex; background: var(--surface2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .code-subtab { flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; padding: 12px 8px; cursor: pointer; color: var(--text-dimmer); background: none; border: none; border-bottom: 2px solid transparent; text-align: center; }
+  .code-subtab { flex: 1; font-family: var(--ec-family-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; padding: 12px 8px; cursor: pointer; color: var(--text-dimmer); background: none; border: none; border-bottom: 2px solid transparent; text-align: center; }
   .code-subtab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
   /* ── FILL SUBTABS ── */
   .fill-subtabs { display: flex; background: var(--surface2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .fill-subtab { flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; padding: 12px 8px; cursor: pointer; color: var(--text-dimmer); background: none; border: none; border-bottom: 2px solid transparent; text-align: center; }
+  .fill-subtab { flex: 1; font-family: var(--ec-family-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; padding: 12px 8px; cursor: pointer; color: var(--text-dimmer); background: none; border: none; border-bottom: 2px solid transparent; text-align: center; }
   .fill-subtab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
   /* ── PULL BOX mobile layout — stacked ── */
@@ -521,32 +537,32 @@
 
   /* ── LOAD CALC ── */
   .lc-subtabs { display: flex; background: var(--surface2); border-bottom: 1px solid var(--border); flex-shrink: 0; overflow-x: auto; }
-  .lc-subtab { font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; padding: 12px 12px; cursor: pointer; color: var(--text-dimmer); background: none; border: none; border-bottom: 2px solid transparent; white-space: nowrap; flex-shrink: 0; }
+  .lc-subtab { font-family: var(--ec-family-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; padding: 12px 12px; cursor: pointer; color: var(--text-dimmer); background: none; border: none; border-bottom: 2px solid transparent; white-space: nowrap; flex-shrink: 0; }
   .lc-subtab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
   /* ── GFCI rooms ── */
-  .room-btn { display: block; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 10px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 5px; }
+  .room-btn { display: block; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); font-family: var(--ec-family-mono); font-size: 12px; padding: 10px 12px; border-radius: 4px; cursor: pointer; margin-bottom: 5px; }
   .room-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(255,199,0,0.07); }
 
   /* ── WELCOME ── */
   .welcome { align-self: center; text-align: center; padding: 30px 20px; max-width: 400px; }
-  .welcome h2 { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: 0.5px; color: var(--accent); margin-bottom: 8px; }
+  .welcome h2 { font-family: var(--ec-family-ui); font-weight: 800; font-size: 20px; letter-spacing: 0.5px; color: var(--accent); margin-bottom: 8px; }
   .welcome p { color: var(--text-dim); font-size: 14px; line-height: 1.6; }
-  .welcome-ex { background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 10px 12px; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text-dim); cursor: pointer; margin-top: 8px; text-align: left; display: block; width: 100%; }
+  .welcome-ex { background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 10px 12px; border-radius: 4px; font-family: var(--ec-family-mono); font-size: 12px; color: var(--text-dim); cursor: pointer; margin-top: 8px; text-align: left; display: block; width: 100%; }
 
   /* ── CONVERTER ── */
   .cv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px; }
   .cv-card { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 12px; }
-  .cv-card-title { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 8px; }
+  .cv-card-title { font-family: var(--ec-family-mono); font-size: 9px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; margin-bottom: 8px; }
 
   /* ── OUTLETS ── */
   .outlet-grid { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 14px; }
   .outlet-card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 4px; padding: 12px; cursor: pointer; }
-  .outlet-card-title { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 13px; letter-spacing: 0.3px; color: var(--accent); }
-  .outlet-card-sub { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+  .outlet-card-title { font-family: var(--ec-family-ui); font-weight: 800; font-size: 13px; letter-spacing: 0.3px; color: var(--accent); }
+  .outlet-card-sub { font-family: var(--ec-family-mono); font-size: 11px; color: var(--text-dim); margin-top: 4px; }
 
   /* ── NOTE BOX ── */
-  .note-box { margin: 0 14px 14px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--text-dimmer); font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); line-height: 1.6; }
+  .note-box { margin: 0 14px 14px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--text-dimmer); font-family: var(--ec-family-ui); font-size: 11px; color: var(--text-dim); line-height: 1.6; }
 /* LC-JOB-ARCHIVE-1 — scoped file archive controls; no global control changes. */
 #lcContent .lc-arc-hub, #lcContent .lc-arc-job { border:1px solid #333; border-radius:8px; padding:14px; margin:16px 0; min-width:0; }
 #lcContent .lc-arc-content, #lcContent .lc-arc-view, #lcContent .lc-arc-version, #lcContent .lc-arc-analysis { min-width:0; max-width:100%; overflow-wrap:anywhere; }
@@ -602,7 +618,7 @@
 #jobWorkspaceRecords .lc-job-button:focus-visible, #jobWorkspaceRecords .lc-job-field:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
 #jobWorkspaceRecords .lc-job-button:disabled{ cursor: default; background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
 #jobWorkspaceRecords .lc-job-control > label{ display: block; margin-bottom: 6px; overflow-wrap: anywhere; }
-#jobWorkspaceRecords .lc-job-field{ width: 100%; min-width: 0; max-width: 100%; min-height: 44px; box-sizing: border-box; font-family: IBM Plex Mono, monospace; font-size: 16px; padding: 10px 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+#jobWorkspaceRecords .lc-job-field{ width: 100%; min-width: 0; max-width: 100%; min-height: 44px; box-sizing: border-box; font-family: var(--ec-family-ui); font-size: 16px; padding: 10px 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
 #jobWorkspaceRecords textarea.lc-job-field{ resize: vertical; line-height: 1.5; }
 #jobWorkspaceRecords .lc-job-title{ margin: 4px 0; font-size: 18px; line-height: 1.4; overflow-wrap: anywhere; }
 #jobWorkspaceRecords .lc-job-heading{ margin: 8px 0 0; font-size: 14px; }
@@ -658,23 +674,23 @@
 #jobWorkspaceRecords .lc-photo-image{ display:block; width:auto; height:auto; max-width:100%; max-height:70vh; object-fit:contain; margin:0 auto; }
 #jobWorkspaceRecords .lc-photo-field[type=file]{ width:100%; min-width:0; white-space:normal; }
 /* EC-VOICE-WORKSPACE-1: isolated field workspace. */
-#panel-jobs{min-width:0}#jobWorkspaceRecords{width:100%;max-width:780px;margin:0 auto;padding:22px 18px 32px;color:var(--text);font-family:Inter,system-ui,sans-serif}#jobWorkspaceRecords *,#jobWorkspaceRecords *::before,#jobWorkspaceRecords *::after{box-sizing:border-box}
-#jobWorkspaceRecords .ec-work-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}#jobWorkspaceRecords h1{font:700 30px/1.1 Inter,system-ui,sans-serif;margin:8px 0 0;letter-spacing:-1px}#jobWorkspaceRecords .ec-eyebrow{font:600 10px/1.5 Inter,system-ui,sans-serif;color:#92928f;letter-spacing:1.5px}#jobWorkspaceRecords .ec-local-pill{font:500 12px Inter,system-ui,sans-serif;padding:7px 10px;border:1px solid #343431;border-radius:20px;color:#b8b8b3;white-space:nowrap}
-#jobWorkspaceRecords .ec-capture{padding:20px;margin-bottom:24px;border:1px solid #3b3a2e;border-radius:18px;background:linear-gradient(155deg,#1c1d19,#131410)}#jobWorkspaceRecords .ec-capture-top{display:flex;justify-content:space-between;gap:10px}#jobWorkspaceRecords .ec-capture h2{font:650 25px/1.2 Inter,system-ui,sans-serif;margin:7px 0 14px;letter-spacing:-.7px}#jobWorkspaceRecords .ec-capture-mark{font-size:26px;color:var(--accent)}#jobWorkspaceRecords .ec-context{color:#c4c4bc;padding:0 0 16px;font:500 13px/1.5 Inter,system-ui,sans-serif;overflow-wrap:anywhere}
-#jobWorkspaceRecords .ec-button{min-height:44px;border:1px solid #393a32;border-radius:10px;background:#23241e;color:#ededdf;padding:11px 15px;font:600 14px/1.3 Inter,system-ui,sans-serif;cursor:pointer}#jobWorkspaceRecords .ec-button:disabled{opacity:.5;cursor:wait}#jobWorkspaceRecords .ec-button:focus-visible,#jobWorkspaceRecords summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}#jobWorkspaceRecords .ec-primary{background:var(--accent);color:#121309;border-color:var(--accent)}#jobWorkspaceRecords .ec-secondary{background:transparent;color:#babbb0}#jobWorkspaceRecords .ec-voice-row{display:flex;gap:10px;align-items:center}#jobWorkspaceRecords .ec-mic{flex:1;min-height:62px;background:var(--accent);color:#131408;border:0;font:650 19px Inter,system-ui,sans-serif;border-radius:13px}#jobWorkspaceRecords .ec-mic::before{content:'';display:inline-block;width:11px;height:20px;border:2px solid currentColor;border-radius:8px;margin-right:12px;vertical-align:middle}#jobWorkspaceRecords .ec-language{width:135px;height:48px;border:1px solid #3c3d32;border-radius:10px;background:#171812;color:#d9d9cb;padding:8px;font-size:16px}
-#jobWorkspaceRecords .ec-muted{display:block;color:#989b8e;font:400 12px/1.6 Inter,system-ui,sans-serif;margin-top:10px}#jobWorkspaceRecords .ec-link-button{background:transparent;border:0;padding:6px 0;color:#cbcda8;font-size:12px;text-align:left}#jobWorkspaceRecords #ecCaptureText{width:100%;min-height:95px;max-height:250px;resize:vertical;border:1px solid #38392f;border-radius:10px;background:#0e100c;padding:13px;color:#f0f1e7;font:400 16px/1.5 Inter,system-ui,sans-serif;margin-top:12px}#jobWorkspaceRecords #ecCaptureText:focus{border-color:var(--accent);outline:none}#jobWorkspaceRecords .ec-capture-actions{display:flex;align-items:center;gap:8px;margin-top:10px}#jobWorkspaceRecords .ec-help{margin:14px 0 0;font:400 12px/1.6 Inter,system-ui,sans-serif;color:#9eaa91}#jobWorkspaceRecords .ec-help summary{cursor:pointer;color:#bec6b3;min-height:30px}#jobWorkspaceRecords .ec-help p{margin:8px 0}#jobWorkspaceRecords .ec-status{font:500 13px/1.5 Inter,system-ui,sans-serif;color:#c6cbbd;margin-top:12px;overflow-wrap:anywhere}#jobWorkspaceRecords .ec-status[data-kind=warn],#jobWorkspaceRecords .ec-question{color:#dfc486}#jobWorkspaceRecords .ec-status[data-kind=error]{color:#eea29a}#jobWorkspaceRecords .ec-status[data-kind=ok]{color:#a9d4ab}
-#jobWorkspaceRecords .ec-entry-preview{border:1px solid #414433;border-radius:12px;padding:14px;margin-top:10px;background:#181d13}#jobWorkspaceRecords .ec-entry-kind{display:block;color:#a0ae8f;font:650 10px Inter,system-ui,sans-serif;letter-spacing:1.3px;margin-bottom:6px}#jobWorkspaceRecords .ec-entry-preview strong{display:block;font:650 23px/1.4 Inter,system-ui,sans-serif;color:#f4f5e9}#jobWorkspaceRecords .ec-entry-preview p{margin:4px 0;font-size:14px;line-height:1.5;overflow-wrap:anywhere}#jobWorkspaceRecords .ec-entry-preview small{font-size:12px;color:#b0b8a2}#jobWorkspaceRecords .ec-review h3{font-size:16px;margin:20px 0 10px}#jobWorkspaceRecords .ec-confirm{width:100%;margin:14px 0 0}#jobWorkspaceRecords .ec-utility{border-top:1px solid #30322a;margin-top:18px;padding-top:8px}#jobWorkspaceRecords .ec-utility>summary{font:550 14px/1.5 Inter,system-ui,sans-serif;color:#b1b5a7;padding:14px 0;cursor:pointer}
-#jobWorkspaceRecords #lcJobHub{border:0;background:none;padding:0;margin:0}#jobWorkspaceRecords #lcJobToggleBtn,#jobWorkspaceRecords #lcJobHub>.lc-note{display:none}#jobWorkspaceRecords .lc-job-actions{display:flex;gap:8px;flex-wrap:wrap}#jobWorkspaceRecords .lc-btn{min-height:44px;border:1px solid #373932;border-radius:9px;padding:10px 13px;background:#22241e;color:#e4e8db;font:600 13px/1.4 Inter,system-ui,sans-serif}#jobWorkspaceRecords #lcJobNewBtn{background:var(--accent);color:#111;border-color:var(--accent)}#jobWorkspaceRecords .lc-job-item{background:#141610;border:1px solid #32352a;border-radius:12px;margin:10px 0;padding:12px 14px}#jobWorkspaceRecords .lc-job-open{width:100%;text-align:left;font-size:17px;background:transparent;padding:5px 0;border:0;min-height:38px;overflow-wrap:anywhere}#jobWorkspaceRecords .lc-job-item>.lc-note{background:transparent;border:0;padding:4px 0;margin:0;font:400 11px/1.5 Inter,system-ui,sans-serif;color:#8c9680}#jobWorkspaceRecords .lc-job-text{font:400 15px/1.6 Inter,system-ui,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}#jobWorkspaceRecords .lc-note{font-size:12px;line-height:1.6;border-radius:8px}
-#jobWorkspaceRecords.ec-has-job #lcJobList,#jobWorkspaceRecords.ec-has-job #lcJobListStatus,#jobWorkspaceRecords.ec-has-job #lcJobBody>.lc-job-actions{display:none}#jobWorkspaceRecords .ec-selected-job h2{font:650 22px/1.3 Inter,system-ui,sans-serif;margin:14px 0 5px;letter-spacing:-.5px;overflow-wrap:anywhere}#jobWorkspaceRecords .ec-job-address{color:#acb39e;font-size:14px;margin:0 0 10px}#jobWorkspaceRecords .ec-job-details summary{padding:12px 0;color:#a0aa92;cursor:pointer;font-size:13px}#jobWorkspaceRecords .lc-meas-hub,#jobWorkspaceRecords .lc-mat-hub,#jobWorkspaceRecords .lc-photo-hub{border:1px solid #32362a;background:#12150f;border-radius:12px;padding:12px;margin-top:12px}#jobWorkspaceRecords #lcMeasToggleBtn,#jobWorkspaceRecords #lcMatToggleBtn,#jobWorkspaceRecords #lcPhotoToggleBtn{width:100%;text-align:left;background:transparent;border:0;padding:6px 3px;font-size:16px}#jobWorkspaceRecords .lc-meas-field,#jobWorkspaceRecords .lc-mat-field,#jobWorkspaceRecords .lc-photo-field,#jobWorkspaceRecords .lc-job-field{font-size:16px;border-radius:8px}#jobWorkspaceRecords .lc-arc-job{border-radius:10px;margin-top:14px}#jobWorkspaceRecords .lc-arc-hub{border:0;padding:0}#jobWorkspaceRecords #lcJobStatus{font:400 12px/1.5 Inter,system-ui,sans-serif;color:#99a28c}#jobWorkspaceRecords [hidden]{display:none!important}
-.ec-tools-explain{margin:0 0 16px;min-height:44px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;color:var(--text-dim);background:var(--surface);font:500 14px Inter,system-ui,sans-serif}.bottom-nav button.nav-item{appearance:none;border-left:0;border-right:0;border-bottom:0;background:transparent;font-family:inherit}
+#panel-jobs{min-width:0}#jobWorkspaceRecords{width:100%;max-width:780px;margin:0 auto;padding:22px 18px 32px;color:var(--text);font-family:var(--ec-family-ui)}#jobWorkspaceRecords *,#jobWorkspaceRecords *::before,#jobWorkspaceRecords *::after{box-sizing:border-box}
+#jobWorkspaceRecords .ec-work-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}#jobWorkspaceRecords h1{font:700 30px/1.1 var(--ec-family-ui);margin:8px 0 0;letter-spacing:-1px}#jobWorkspaceRecords .ec-eyebrow{font:600 10px/1.5 var(--ec-family-ui);color:#92928f;letter-spacing:1.5px}#jobWorkspaceRecords .ec-local-pill{font:500 12px var(--ec-family-ui);padding:7px 10px;border:1px solid #343431;border-radius:20px;color:#b8b8b3;white-space:nowrap}
+#jobWorkspaceRecords .ec-capture{padding:20px;margin-bottom:24px;border:1px solid #3b3a2e;border-radius:18px;background:linear-gradient(155deg,#1c1d19,#131410)}#jobWorkspaceRecords .ec-capture-top{display:flex;justify-content:space-between;gap:10px}#jobWorkspaceRecords .ec-capture h2{font:650 25px/1.2 var(--ec-family-ui);margin:7px 0 14px;letter-spacing:-.7px}#jobWorkspaceRecords .ec-capture-mark{font-size:26px;color:var(--accent)}#jobWorkspaceRecords .ec-context{color:#c4c4bc;padding:0 0 16px;font:500 13px/1.5 var(--ec-family-ui);overflow-wrap:anywhere}
+#jobWorkspaceRecords .ec-button{min-height:44px;border:1px solid #393a32;border-radius:10px;background:#23241e;color:#ededdf;padding:11px 15px;font:600 14px/1.3 var(--ec-family-ui);cursor:pointer}#jobWorkspaceRecords .ec-button:disabled{opacity:.5;cursor:wait}#jobWorkspaceRecords .ec-button:focus-visible,#jobWorkspaceRecords summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}#jobWorkspaceRecords .ec-primary{background:var(--accent);color:#121309;border-color:var(--accent)}#jobWorkspaceRecords .ec-secondary{background:transparent;color:#babbb0}#jobWorkspaceRecords .ec-voice-row{display:flex;gap:10px;align-items:center}#jobWorkspaceRecords .ec-mic{flex:1;min-height:62px;background:var(--accent);color:#131408;border:0;font:650 19px var(--ec-family-ui);border-radius:13px}#jobWorkspaceRecords .ec-mic::before{content:'';display:inline-block;width:11px;height:20px;border:2px solid currentColor;border-radius:8px;margin-right:12px;vertical-align:middle}#jobWorkspaceRecords .ec-language{width:135px;height:48px;border:1px solid #3c3d32;border-radius:10px;background:#171812;color:#d9d9cb;padding:8px;font-size:16px}
+#jobWorkspaceRecords .ec-muted{display:block;color:#989b8e;font:400 12px/1.6 var(--ec-family-ui);margin-top:10px}#jobWorkspaceRecords .ec-link-button{background:transparent;border:0;padding:6px 0;color:#cbcda8;font-size:12px;text-align:left}#jobWorkspaceRecords #ecCaptureText{width:100%;min-height:95px;max-height:250px;resize:vertical;border:1px solid #38392f;border-radius:10px;background:#0e100c;padding:13px;color:#f0f1e7;font:400 16px/1.5 var(--ec-family-ui);margin-top:12px}#jobWorkspaceRecords #ecCaptureText:focus{border-color:var(--accent);outline:none}#jobWorkspaceRecords .ec-capture-actions{display:flex;align-items:center;gap:8px;margin-top:10px}#jobWorkspaceRecords .ec-help{margin:14px 0 0;font:400 12px/1.6 var(--ec-family-ui);color:#9eaa91}#jobWorkspaceRecords .ec-help summary{cursor:pointer;color:#bec6b3;min-height:30px}#jobWorkspaceRecords .ec-help p{margin:8px 0}#jobWorkspaceRecords .ec-status{font:500 13px/1.5 var(--ec-family-ui);color:#c6cbbd;margin-top:12px;overflow-wrap:anywhere}#jobWorkspaceRecords .ec-status[data-kind=warn],#jobWorkspaceRecords .ec-question{color:#dfc486}#jobWorkspaceRecords .ec-status[data-kind=error]{color:#eea29a}#jobWorkspaceRecords .ec-status[data-kind=ok]{color:#a9d4ab}
+#jobWorkspaceRecords .ec-entry-preview{border:1px solid #414433;border-radius:12px;padding:14px;margin-top:10px;background:#181d13}#jobWorkspaceRecords .ec-entry-kind{display:block;color:#a0ae8f;font:650 10px var(--ec-family-ui);letter-spacing:1.3px;margin-bottom:6px}#jobWorkspaceRecords .ec-entry-preview strong{display:block;font:650 23px/1.4 var(--ec-family-ui);color:#f4f5e9}#jobWorkspaceRecords .ec-entry-preview p{margin:4px 0;font-size:14px;line-height:1.5;overflow-wrap:anywhere}#jobWorkspaceRecords .ec-entry-preview small{font-size:12px;color:#b0b8a2}#jobWorkspaceRecords .ec-review h3{font-size:16px;margin:20px 0 10px}#jobWorkspaceRecords .ec-confirm{width:100%;margin:14px 0 0}#jobWorkspaceRecords .ec-utility{border-top:1px solid #30322a;margin-top:18px;padding-top:8px}#jobWorkspaceRecords .ec-utility>summary{font:550 14px/1.5 var(--ec-family-ui);color:#b1b5a7;padding:14px 0;cursor:pointer}
+#jobWorkspaceRecords #lcJobHub{border:0;background:none;padding:0;margin:0}#jobWorkspaceRecords #lcJobToggleBtn,#jobWorkspaceRecords #lcJobHub>.lc-note{display:none}#jobWorkspaceRecords .lc-job-actions{display:flex;gap:8px;flex-wrap:wrap}#jobWorkspaceRecords .lc-btn{min-height:44px;border:1px solid #373932;border-radius:9px;padding:10px 13px;background:#22241e;color:#e4e8db;font:600 13px/1.4 var(--ec-family-ui)}#jobWorkspaceRecords #lcJobNewBtn{background:var(--accent);color:#111;border-color:var(--accent)}#jobWorkspaceRecords .lc-job-item{background:#141610;border:1px solid #32352a;border-radius:12px;margin:10px 0;padding:12px 14px}#jobWorkspaceRecords .lc-job-open{width:100%;text-align:left;font-size:17px;background:transparent;padding:5px 0;border:0;min-height:38px;overflow-wrap:anywhere}#jobWorkspaceRecords .lc-job-item>.lc-note{background:transparent;border:0;padding:4px 0;margin:0;font:400 11px/1.5 var(--ec-family-ui);color:#8c9680}#jobWorkspaceRecords .lc-job-text{font:400 15px/1.6 var(--ec-family-ui);white-space:pre-wrap;overflow-wrap:anywhere}#jobWorkspaceRecords .lc-note{font-size:12px;line-height:1.6;border-radius:8px}
+#jobWorkspaceRecords.ec-has-job #lcJobList,#jobWorkspaceRecords.ec-has-job #lcJobListStatus,#jobWorkspaceRecords.ec-has-job #lcJobBody>.lc-job-actions{display:none}#jobWorkspaceRecords .ec-selected-job h2{font:650 22px/1.3 var(--ec-family-ui);margin:14px 0 5px;letter-spacing:-.5px;overflow-wrap:anywhere}#jobWorkspaceRecords .ec-job-address{color:#acb39e;font-size:14px;margin:0 0 10px}#jobWorkspaceRecords .ec-job-details summary{padding:12px 0;color:#a0aa92;cursor:pointer;font-size:13px}#jobWorkspaceRecords .lc-meas-hub,#jobWorkspaceRecords .lc-mat-hub,#jobWorkspaceRecords .lc-photo-hub{border:1px solid #32362a;background:#12150f;border-radius:12px;padding:12px;margin-top:12px}#jobWorkspaceRecords #lcMeasToggleBtn,#jobWorkspaceRecords #lcMatToggleBtn,#jobWorkspaceRecords #lcPhotoToggleBtn{width:100%;text-align:left;background:transparent;border:0;padding:6px 3px;font-size:16px}#jobWorkspaceRecords .lc-meas-field,#jobWorkspaceRecords .lc-mat-field,#jobWorkspaceRecords .lc-photo-field,#jobWorkspaceRecords .lc-job-field{font-size:16px;border-radius:8px}#jobWorkspaceRecords .lc-arc-job{border-radius:10px;margin-top:14px}#jobWorkspaceRecords .lc-arc-hub{border:0;padding:0}#jobWorkspaceRecords #lcJobStatus{font:400 12px/1.5 var(--ec-family-ui);color:#99a28c}#jobWorkspaceRecords [hidden]{display:none!important}
+.ec-tools-explain{margin:0 0 16px;min-height:44px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;color:var(--text-dim);background:var(--surface);font:500 14px var(--ec-family-ui)}.bottom-nav button.nav-item{appearance:none;border-left:0;border-right:0;border-bottom:0;background:transparent;font-family:inherit}
 @media(max-width:440px){#jobWorkspaceRecords{padding:18px 12px 26px}#jobWorkspaceRecords .ec-capture{padding:16px}#jobWorkspaceRecords .ec-capture h2{font-size:22px}#jobWorkspaceRecords .ec-language{width:122px}}
 
-#jobWorkspaceRecords .ec-preview-notice{padding:10px 12px;margin:0 0 16px;border:1px solid #685633;border-radius:10px;background:#201b10;color:#dfc486;font:500 12px/1.5 Inter,system-ui,sans-serif}
+#jobWorkspaceRecords .ec-preview-notice{padding:10px 12px;margin:0 0 16px;border:1px solid #685633;border-radius:10px;background:#201b10;color:#dfc486;font:500 12px/1.5 var(--ec-family-ui)}
 
 #jobWorkspaceRecords .ec-demo-button{margin:0 0 18px;width:100%;border-style:dashed;color:#c3c8b8}
 
 
-#jobWorkspaceRecords .ec-repair-card{padding:14px;margin-top:12px;border:1px solid #685633;border-radius:12px;background:#1d1b13;font:400 14px/1.5 Inter,system-ui,sans-serif}#jobWorkspaceRecords .ec-repair-fragment{color:#eadbb2;overflow-wrap:anywhere;font-size:18px}#jobWorkspaceRecords #ecRepairReply{width:100%;min-height:74px;padding:12px;border:1px solid #4e503f;border-radius:10px;background:#10120e;color:#eeefe8;font:400 16px/1.5 Inter,system-ui,sans-serif}#jobWorkspaceRecords #ecRepairEditor .ec-capture-actions{flex-wrap:wrap}#jobWorkspaceRecords #ecTryUnclearBtn{display:block;margin:-10px 0 18px}
+#jobWorkspaceRecords .ec-repair-card{padding:14px;margin-top:12px;border:1px solid #685633;border-radius:12px;background:#1d1b13;font:400 14px/1.5 var(--ec-family-ui)}#jobWorkspaceRecords .ec-repair-fragment{color:#eadbb2;overflow-wrap:anywhere;font-size:18px}#jobWorkspaceRecords #ecRepairReply{width:100%;min-height:74px;padding:12px;border:1px solid #4e503f;border-radius:10px;background:#10120e;color:#eeefe8;font:400 16px/1.5 var(--ec-family-ui)}#jobWorkspaceRecords #ecRepairEditor .ec-capture-actions{flex-wrap:wrap}#jobWorkspaceRecords #ecTryUnclearBtn{display:block;margin:-10px 0 18px}
 
 #jobWorkspaceRecords .ec-trade-draft{border:1px solid #343a2e;border-radius:12px;overflow:hidden;margin:14px 0}#jobWorkspaceRecords .ec-trade-row{padding:12px 14px;border-bottom:1px solid #343a2e}#jobWorkspaceRecords .ec-trade-row:last-child{border-bottom:0}#jobWorkspaceRecords .ec-trade-row strong{display:block;font-size:16px}#jobWorkspaceRecords .ec-trade-row span{display:block;margin-top:5px;color:#b5bea9;font-size:13px;overflow-wrap:anywhere}#jobWorkspaceRecords .ec-material-spec{color:#d4ddc4!important;font-weight:600}#jobWorkspaceRecords .ec-current-question p{font-size:15px;line-height:1.5}#jobWorkspaceRecords #ecTryMaterialsBtn{margin:0 0 18px}
 
@@ -684,17 +700,17 @@
    neutral charcoal surfaces instead of the olive tint, 10px cards, 8px / 46px controls, quiet headings and labels.
    Appended so that it follows the rules it refines; no rule above is edited. Fields stay at 16px (EC-UI-FOCUS-1).
    Accent stays on actions and state; warning / error / success keep their own colours. */
-#jobWorkspaceRecords h1{font:700 22px/1.2 Inter,system-ui,sans-serif;letter-spacing:-.2px;margin:6px 0 0}
-#jobWorkspaceRecords .ec-eyebrow{font:600 10px/1.5 Inter,system-ui,sans-serif;letter-spacing:var(--ec-tracking);color:var(--text-dimmer)}
-#jobWorkspaceRecords .ec-local-pill{font:600 10px Inter,system-ui,sans-serif;letter-spacing:.4px;padding:4px 8px;border-color:var(--border);border-radius:4px;color:var(--text-dim)}
+#jobWorkspaceRecords h1{font:700 22px/1.2 var(--ec-family-ui);letter-spacing:-.2px;margin:6px 0 0}
+#jobWorkspaceRecords .ec-eyebrow{font:600 10px/1.5 var(--ec-family-ui);letter-spacing:var(--ec-tracking);color:var(--text-dimmer)}
+#jobWorkspaceRecords .ec-local-pill{font:600 10px var(--ec-family-ui);letter-spacing:.4px;padding:4px 8px;border-color:var(--border);border-radius:4px;color:var(--text-dim)}
 #jobWorkspaceRecords .ec-capture{border-color:var(--border);border-radius:var(--ec-radius-md);background:var(--ec-surface-card)}
-#jobWorkspaceRecords .ec-capture h2{font:600 18px/1.3 Inter,system-ui,sans-serif;letter-spacing:0;margin:6px 0 12px}
-#jobWorkspaceRecords .ec-selected-job h2{font:600 18px/1.3 Inter,system-ui,sans-serif;letter-spacing:0}
+#jobWorkspaceRecords .ec-capture h2{font:600 18px/1.3 var(--ec-family-ui);letter-spacing:0;margin:6px 0 12px}
+#jobWorkspaceRecords .ec-selected-job h2{font:600 18px/1.3 var(--ec-family-ui);letter-spacing:0}
 #jobWorkspaceRecords .ec-context,#jobWorkspaceRecords .ec-job-address{color:var(--text-dim)}
-#jobWorkspaceRecords .ec-button,#jobWorkspaceRecords .lc-btn{min-height:var(--ec-control-h);border-color:var(--border);border-radius:var(--ec-radius-sm);background:var(--ec-surface-raised);color:var(--text);font:600 13px/1.3 Inter,system-ui,sans-serif}
+#jobWorkspaceRecords .ec-button,#jobWorkspaceRecords .lc-btn{min-height:var(--ec-control-h);border-color:var(--border);border-radius:var(--ec-radius-sm);background:var(--ec-surface-raised);color:var(--text);font:600 13px/1.3 var(--ec-family-ui)}
 #jobWorkspaceRecords .ec-primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700}
 #jobWorkspaceRecords .ec-secondary{background:transparent;color:var(--text-dim)}
-#jobWorkspaceRecords .ec-mic{min-height:62px;background:var(--accent);color:#000;border-radius:var(--ec-radius-md);font:700 17px Inter,system-ui,sans-serif}
+#jobWorkspaceRecords .ec-mic{min-height:62px;background:var(--accent);color:#000;border-radius:var(--ec-radius-md);font:700 17px var(--ec-family-ui)}
 #jobWorkspaceRecords .ec-link-button{background:transparent;color:var(--text-dim);font-size:12px}
 #jobWorkspaceRecords .lc-job-open{background:transparent;border-radius:0;color:var(--text);font-size:16px}
 #jobWorkspaceRecords .ec-language{height:var(--ec-control-h);border-color:var(--border);border-radius:var(--ec-radius-sm);background:var(--ec-surface-raised);color:var(--text)}
@@ -705,8 +721,8 @@
 #jobWorkspaceRecords .ec-status[data-kind=error]{color:#ff8a80}
 #jobWorkspaceRecords .ec-status[data-kind=ok]{color:var(--success)}
 #jobWorkspaceRecords .ec-entry-preview,#jobWorkspaceRecords .lc-job-item,#jobWorkspaceRecords .lc-meas-hub,#jobWorkspaceRecords .lc-mat-hub,#jobWorkspaceRecords .lc-photo-hub{border-color:var(--border);border-radius:var(--ec-radius-md);background:var(--ec-surface-card)}
-#jobWorkspaceRecords .ec-entry-kind{color:var(--text-dimmer);font:600 10px Inter,system-ui,sans-serif;letter-spacing:var(--ec-tracking)}
-#jobWorkspaceRecords .ec-entry-preview strong{font:600 18px/1.4 Inter,system-ui,sans-serif;color:var(--text)}
+#jobWorkspaceRecords .ec-entry-kind{color:var(--text-dimmer);font:600 10px var(--ec-family-ui);letter-spacing:var(--ec-tracking)}
+#jobWorkspaceRecords .ec-entry-preview strong{font:600 18px/1.4 var(--ec-family-ui);color:var(--text)}
 #jobWorkspaceRecords .ec-utility{border-top-color:var(--border)}
 #jobWorkspaceRecords .ec-trade-draft{border-color:var(--border);border-radius:var(--ec-radius-md)}
 #jobWorkspaceRecords .ec-trade-row{border-bottom-color:var(--border)}
@@ -780,12 +796,12 @@
     <div id="pinnedWrap" style="display:none;margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 2px">
         <span class="home-pinned-label" id="pinnedHeading">PINNED</span>
-        <span id="pinnedEditBtn" onclick="pinToggleEdit()" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);cursor:pointer;padding:4px 2px">Edit</span>
+        <span id="pinnedEditBtn" onclick="pinToggleEdit()" style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);cursor:pointer;padding:4px 2px">Edit</span>
       </div>
       <div id="pinnedList" class="home-grid"></div>
     </div>
     <div id="pinnedPicker" style="display:none;margin-bottom:14px">
-      <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:8px;padding:0 2px">Tap to pin or unpin &mdash; shortcuts appear at the top of Home.</div>
+      <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);margin-bottom:8px;padding:0 2px">Tap to pin or unpin &mdash; shortcuts appear at the top of Home.</div>
       <div id="pinnedOptions" style="display:flex;flex-wrap:wrap;gap:6px"></div>
     </div>
     <div class="home-divider" id="pinnedDivider"></div>
@@ -797,7 +813,7 @@
 <div class="panel" id="panel-chat">
   <div class="trending-bar">
     <span class="trending-label">Trending</span>
-    <div id="trendingBtns" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch"><span style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer)">—</span></div>
+    <div id="trendingBtns" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch"><span style="font-family:var(--ec-family-mono);font-size:11px;color:var(--text-dimmer)">—</span></div>
   </div>
   <div class="chat-area" id="chatArea">
     <div class="welcome" id="welcome">
@@ -892,7 +908,7 @@
         <option value="0.5" selected>Less than 7/8"</option>
         <option value="0.875">7/8" or more</option>
       </select>
-      <div id="ampRoofClearanceHint" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">Roof surface to bottom of raceway or cable — NEC 310.15(B)(2)</div>
+      <div id="ampRoofClearanceHint" style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">Roof surface to bottom of raceway or cable — NEC 310.15(B)(2)</div>
     </div>
     <div class="fav-bar">
       <button type="button" class="reset-btn" aria-label="Reset Ampacity inputs" onclick="ampReset()">Reset</button>
@@ -1157,7 +1173,7 @@
     <div class="result-box show" id="bfResultBox" style="margin:12px 14px">
       <div class="result-title">BOX FILL — <span class="nec-link" onclick="necLink('NEC 314.16 — Number of conductors in outlet, device and junction boxes (NEC 2020)')">NEC 2020 314.16</span></div>
       <div class="result-grid" id="bfResultGrid"></div>
-      <div id="bfNote" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text-dimmer);line-height:1.45;margin-top:8px"></div>
+      <div id="bfNote" style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);line-height:1.45;margin-top:8px"></div>
     </div>
     <div class="tbl-wrap">
       <div class="tbl-hdr"><span class="tbl-title">CONDUCTOR VOLUME — <span class="nec-link" onclick="necLink('NEC 314.16(B) — Box fill calculations and Table 314.16(B) volume allowance per conductor')">NEC 314.16(B)</span></span></div>
@@ -1211,7 +1227,7 @@
       <div class="ctrl">
         <label class="ctrl-lbl" for="wsContinuous">Continuous Portion (A)</label>
         <input type="number" id="wsContinuous" aria-describedby="wsContinuousHint" placeholder="0" min="0" max="2000" oninput="wsCalc()">
-        <div id="wsContinuousHint" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">NEC Art. 100: a load whose maximum current is expected to continue for 3 hours or more. Sized at 125% per 210.19(A)(1) / 215.2(A)(1).</div>
+        <div id="wsContinuousHint" style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">NEC Art. 100: a load whose maximum current is expected to continue for 3 hours or more. Sized at 125% per 210.19(A)(1) / 215.2(A)(1).</div>
       </div>
       <div class="ctrl">
         <label class="ctrl-lbl" for="wsCircuitType">Circuit Type</label>
@@ -1227,7 +1243,7 @@
           <option value="yes">Yes</option>
           <option value="no">No</option>
         </select>
-        <div id="wsDwellingHint" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">NYCEC 215.2(A)(1): a feeder supplying a dwelling unit shall be 3 conductors, minimum 8 AWG Cu or 6 AWG Al.</div>
+        <div id="wsDwellingHint" style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">NYCEC 215.2(A)(1): a feeder supplying a dwelling unit shall be 3 conductors, minimum 8 AWG Cu or 6 AWG Al.</div>
       </div>
       <div class="ctrl">
         <label class="ctrl-lbl" for="wsHundredPct">100%-Rated Assembly</label>
@@ -1235,7 +1251,7 @@
           <option value="no" selected>No &mdash; apply the 125% rule</option>
           <option value="yes">Yes &mdash; assembly AND OCPD listed for 100%</option>
         </select>
-        <div id="wsHundredPctHint" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">Only Yes if the complete assembly, including the overcurrent device, is listed for continuous operation at 100% of its rating. Rare below 400 A.</div>
+        <div id="wsHundredPctHint" style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">Only Yes if the complete assembly, including the overcurrent device, is listed for continuous operation at 100% of its rating. Rare below 400 A.</div>
       </div>
     <div class="ctrl">
       <label class="ctrl-lbl" for="wsFeet">One-Way Distance (ft)</label>
@@ -1292,14 +1308,14 @@
         <option value="3">3% (NEC informational guideline — not enforced)</option>
         <option value="5" selected>5% (NYCEC 2025 mandatory total)</option>
       </select>
-      <div id="wsMaxVDNote" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-top:4px;line-height:1.4"></div>
+      <div id="wsMaxVDNote" style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);margin-top:4px;line-height:1.4"></div>
     </div>
     <div class="fav-bar">
       <button type="button" class="reset-btn" aria-label="Reset Wire Sizer inputs" onclick="wsReset()">Reset</button>
     </div>
   </div>
   <div id="wsResult" style="padding:14px">
-    <div style="color:var(--text-dimmer);font-family:IBM Plex Mono,monospace;font-size:12px;padding:20px;text-align:center">Enter load to calculate</div>
+    <div style="color:var(--text-dimmer);font-family:var(--ec-family-ui);font-size:12px;padding:20px;text-align:center">Enter load to calculate</div>
   </div>
 </div>
 
@@ -1341,14 +1357,14 @@
             </div>
           </div>
           <div id="pbAngleControls" style="display:none">
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">LEFT SIDE</div>
+            <div style="font-family:var(--ec-family-mono);font-size:10px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">LEFT SIDE</div>
             <div id="pbLeftRaceways" style="display:flex;flex-direction:column;gap:6px"></div>
-            <button onclick="pbAddRaceway('left')" style="margin-top:6px;background:var(--surface);border:1px dashed var(--border);color:var(--text-dim);padding:8px;border-radius: 4px;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:11px;width:100%">+ Add Raceway</button>
-            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin:12px 0 8px" id="pbRightLabel">RIGHT SIDE (Angle only)</div>
+            <button onclick="pbAddRaceway('left')" style="margin-top:6px;background:var(--surface);border:1px dashed var(--border);color:var(--text-dim);padding:8px;border-radius: 4px;cursor:pointer;font-family:var(--ec-family-ui);font-size:11px;width:100%">+ Add Raceway</button>
+            <div style="font-family:var(--ec-family-mono);font-size:10px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin:12px 0 8px" id="pbRightLabel">RIGHT SIDE (Angle only)</div>
             <div id="pbRightRaceways" style="display:flex;flex-direction:column;gap:6px"></div>
-            <button onclick="pbAddRaceway('right')" id="pbAddRight" style="margin-top:6px;background:var(--surface);border:1px dashed var(--border);color:var(--text-dim);padding:8px;border-radius: 4px;cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:11px;width:100%">+ Add Raceway</button>
+            <button onclick="pbAddRaceway('right')" id="pbAddRight" style="margin-top:6px;background:var(--surface);border:1px dashed var(--border);color:var(--text-dim);padding:8px;border-radius: 4px;cursor:pointer;font-family:var(--ec-family-ui);font-size:11px;width:100%">+ Add Raceway</button>
           </div>
-          <div id="pbResult" style="margin-top:12px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:4px;padding:12px;font-family:IBM Plex Mono,monospace;font-size:12px;line-height:1.8"></div>
+          <div id="pbResult" style="margin-top:12px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:4px;padding:12px;font-family:var(--ec-family-mono);font-size:12px;line-height:1.8"></div>
         </div>
         <div class="pb-diagram">
           <div id="pbDiagram" style="width:100%;max-width:500px"></div>
@@ -1382,7 +1398,7 @@
             <div id="gfciRoomList" style="display:flex;flex-direction:column;gap:6px"></div>
           </div>
           <div id="gfciDetailView" style="display:none">
-            <div onclick="gfciBack()" style="display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);position:sticky;top:0;background:var(--bg);z-index:2">&lsaquo; All rooms</div>
+            <div onclick="gfciBack()" style="display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-family:var(--ec-family-ui);font-size:12px;color:var(--text-dim);position:sticky;top:0;background:var(--bg);z-index:2">&lsaquo; All rooms</div>
             <div id="gfciContent" style="padding:16px 14px"></div>
           </div>
         </div>
@@ -1459,12 +1475,12 @@
           </div>
         </div>
 
-        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin-top:4px">Overload only &mdash; read these off the motor nameplate</div>
+        <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--accent);margin-top:4px">Overload only &mdash; read these off the motor nameplate</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <div class="ctrl" style="flex:1;min-width:130px">
             <span class="ctrl-lbl">Nameplate FLA</span>
             <input type="number" id="mt-nameplate" placeholder="e.g. 31" min="0" step="0.1" oninput="mtCalc()" style="width:100%">
-            <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">Leave blank to skip the overload figure</div>
+            <div style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">Leave blank to skip the overload figure</div>
           </div>
           <div class="ctrl" style="flex:1;min-width:150px">
             <span class="ctrl-lbl">Service Factor / Temp Rise</span>
@@ -1478,7 +1494,7 @@
         <div class="fav-bar"><button class="reset-btn" onclick="mtReset()">Reset</button></div>
 
         <div id="mt-result" style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:4px;overflow:hidden"></div>
-        <div id="mt-note" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.7;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px"></div>
+        <div id="mt-note" style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);line-height:1.7;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px"></div>
       </div>
     </div>
 
@@ -1516,7 +1532,7 @@
 
         <div id="bd-result" style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:4px;overflow:hidden"></div>
 
-        <div id="bd-note" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.7;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px"></div>
+        <div id="bd-note" style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);line-height:1.7;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px"></div>
 
         <div style="overflow-x:auto"><table class="cf-table" id="bd-ref-table" style="min-width:420px"></table></div>
       </div>
@@ -1568,7 +1584,7 @@
             </div>
           </div>
 
-          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:8px">Type into any one field — the rest follow.</div>
+          <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);margin-bottom:8px">Type into any one field — the rest follow.</div>
 
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <div class="ctrl" style="flex:1;min-width:100px">
@@ -1609,13 +1625,13 @@
         <!-- ══ WH / RUNTIME (CONVERTER-WH-1) — every number and message comes from EC.batteryRuntime ══ -->
         <div id="cvt-battery" style="display:none">
           <div style="font-size:16px;font-weight:700;color:var(--text)">Na ile wystarczy bateria?</div>
-          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin:2px 0 10px">Powerbank lub stacja zasilania — szacunek czasu pracy z pojemności w Wh.</div>
-          <div id="bt-number-hint" style="font-family:IBM Plex Mono,monospace;font-size:12px;line-height:1.6;color:var(--text);margin:0 0 10px">Liczby bez separatorów tysięcy: 1000. Ułamek: 1,2 lub 1.2.</div>
+          <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);margin:2px 0 10px">Powerbank lub stacja zasilania — szacunek czasu pracy z pojemności w Wh.</div>
+          <div id="bt-number-hint" style="font-family:var(--ec-family-ui);font-size:12px;line-height:1.6;color:var(--text);margin:0 0 10px">Liczby bez separatorów tysięcy: 1000. Ułamek: 1,2 lub 1.2.</div>
 
           <div class="ctrl">
             <label class="ctrl-lbl" for="bt-capacity" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Pojemność baterii (Wh)</label>
-            <input type="text" inputmode="decimal" autocomplete="off" id="bt-capacity" placeholder="Wh" aria-describedby="bt-capacity-hint" oninput="btCalc()" style="width:100%;height:44px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:IBM Plex Mono,monospace;font-size:16px">
-            <span id="bt-capacity-hint" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Wh to energia w baterii — nie moc wyjściowa (W).</span>
+            <input type="text" inputmode="decimal" autocomplete="off" id="bt-capacity" placeholder="Wh" aria-describedby="bt-capacity-hint" oninput="btCalc()" style="width:100%;height:44px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--ec-family-mono);font-size:16px">
+            <span id="bt-capacity-hint" style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim)">Wh to energia w baterii — nie moc wyjściowa (W).</span>
           </div>
 
           <div class="ctrl" style="margin-top:10px">
@@ -1629,23 +1645,23 @@
 
           <div class="ctrl" style="margin-top:10px">
             <label class="ctrl-lbl" id="bt-consumption-label" for="bt-consumption" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Zużycie (W)</label>
-            <input type="text" inputmode="decimal" autocomplete="off" id="bt-consumption" placeholder="W" aria-describedby="bt-fridge-hint" oninput="btCalc()" style="width:100%;height:44px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:IBM Plex Mono,monospace;font-size:16px">
-            <span id="bt-fridge-hint" style="font-family:IBM Plex Mono,monospace;font-size:11px;line-height:1.6;color:var(--text-dim)">Lodówka pracuje cyklicznie: podaj zmierzone kWh/dobę albo kWh/rok z etykiety energetycznej. Waty przy pracującej sprężarce to nie średnia dobowa.</span>
+            <input type="text" inputmode="decimal" autocomplete="off" id="bt-consumption" placeholder="W" aria-describedby="bt-fridge-hint" oninput="btCalc()" style="width:100%;height:44px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--ec-family-mono);font-size:16px">
+            <span id="bt-fridge-hint" style="font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim)">Lodówka pracuje cyklicznie: podaj zmierzone kWh/dobę albo kWh/rok z etykiety energetycznej. Waty przy pracującej sprężarce to nie średnia dobowa.</span>
           </div>
 
           <div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px">
-            <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin-bottom:8px">Założenia — możesz zmienić</div>
+            <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--accent);margin-bottom:8px">Założenia — możesz zmienić</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
               <div class="ctrl" style="flex:1;min-width:110px">
                 <label class="ctrl-lbl" for="bt-charge" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Naładowanie (%)</label>
-                <input type="text" inputmode="decimal" autocomplete="off" id="bt-charge" value="100" oninput="btCalc()" style="width:100%;height:44px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:IBM Plex Mono,monospace;font-size:16px">
+                <input type="text" inputmode="decimal" autocomplete="off" id="bt-charge" value="100" oninput="btCalc()" style="width:100%;height:44px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--ec-family-mono);font-size:16px">
               </div>
               <div class="ctrl" style="flex:1;min-width:110px">
                 <label class="ctrl-lbl" for="bt-usable" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Energia użyteczna (%)</label>
-                <input type="text" inputmode="decimal" autocomplete="off" id="bt-usable" value="85" aria-describedby="bt-usable-hint" oninput="btCalc()" style="width:100%;height:44px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:IBM Plex Mono,monospace;font-size:16px">
+                <input type="text" inputmode="decimal" autocomplete="off" id="bt-usable" value="85" aria-describedby="bt-usable-hint" oninput="btCalc()" style="width:100%;height:44px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--ec-family-mono);font-size:16px">
               </div>
             </div>
-            <div id="bt-usable-hint" style="font-family:IBM Plex Mono,monospace;font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:8px">85% to edytowalny szacunek uwzględniający straty — nie certyfikowana sprawność ani stała uniwersalna.</div>
+            <div id="bt-usable-hint" style="font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:8px">85% to edytowalny szacunek uwzględniający straty — nie certyfikowana sprawność ani stała uniwersalna.</div>
           </div>
 
           <div class="fav-bar" style="margin-top:10px;flex-wrap:wrap">
@@ -1653,16 +1669,16 @@
             <button type="button" class="reset-btn" onclick="btReset()">Reset</button>
           </div>
 
-          <div id="bt-status" role="status" aria-live="polite" style="font-family:IBM Plex Mono,monospace;font-size:12px;line-height:1.6;color:var(--text-dim);margin-top:10px">Wpisz pojemność baterii w Wh. Wpisz zużycie w W.</div>
+          <div id="bt-status" role="status" aria-live="polite" style="font-family:var(--ec-family-ui);font-size:12px;line-height:1.6;color:var(--text-dim);margin-top:10px">Wpisz pojemność baterii w Wh. Wpisz zużycie w W.</div>
 
           <div id="bt-result" aria-live="polite" style="display:none;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--success);border-radius:4px;overflow:hidden;margin-top:10px"></div>
 
-          <div id="bt-compat" style="font-family:IBM Plex Mono,monospace;font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px"><span style="color:var(--text)">Zgodność:</span> czas pracy zakłada właściwe wyjście zasilania. Zwykła lodówka AC wymaga odpowiedniego wyjścia AC oraz wystarczającej mocy ciągłej i rozruchowej (szczytowej). Same Wh nie potwierdzą, że lodówka wystartuje.</div>
+          <div id="bt-compat" style="font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px"><span style="color:var(--text)">Zgodność:</span> czas pracy zakłada właściwe wyjście zasilania. Zwykła lodówka AC wymaga odpowiedniego wyjścia AC oraz wystarczającej mocy ciągłej i rozruchowej (szczytowej). Same Wh nie potwierdzą, że lodówka wystartuje.</div>
         </div>
 
         <!-- ══ TORQUE ══ -->
         <div id="cvt-torque" style="display:none">
-          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:10px">NEC 110.14(D) requires terminals to be tightened with a calibrated torque tool. Specs come in mixed units — convert here.</div>
+          <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);margin-bottom:10px">NEC 110.14(D) requires terminals to be tightened with a calibrated torque tool. Specs come in mixed units — convert here.</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <div class="ctrl" style="flex:1;min-width:110px">
               <span class="ctrl-lbl">Pound-feet (lb-ft)</span>
@@ -1677,28 +1693,28 @@
               <input type="number" id="tq-nm" placeholder="?" min="0" oninput="tqCalc('nm')" style="width:100%">
             </div>
           </div>
-          <div id="tq-note" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.7"></div>
+          <div id="tq-note" style="font-family:var(--ec-family-mono);font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.7"></div>
         </div>
 
         <!-- ══ WIRE SIZE ══ -->
         <div id="cvt-wire" style="display:none">
-          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:10px">Imported gear and EU documentation are sized in mm². Cross-reference to AWG here.</div>
+          <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);margin-bottom:10px">Imported gear and EU documentation are sized in mm². Cross-reference to AWG here.</div>
           <div class="ctrl" style="max-width:220px">
             <span class="ctrl-lbl">AWG / kcmil</span>
             <select id="wc-awg" onchange="wcCalc()" style="width:100%"></select>
           </div>
           <div id="wc-out" style="margin-top:12px"></div>
-          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin:14px 0 6px">Nearest AWG for a metric size</div>
+          <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--accent);margin:14px 0 6px">Nearest AWG for a metric size</div>
           <div class="ctrl" style="max-width:160px">
             <span class="ctrl-lbl">mm²</span>
             <input type="number" id="wc-mm2" placeholder="e.g. 16" min="0" step="0.1" oninput="wcFromMM2()" style="width:100%">
           </div>
-          <div id="wc-mm2-out" style="margin-top:10px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim)"></div>
+          <div id="wc-mm2-out" style="margin-top:10px;font-family:var(--ec-family-mono);font-size:12px;color:var(--text-dim)"></div>
         </div>
 
         <!-- ══ TEMPERATURE ══ -->
         <div id="cvt-temp" style="display:none">
-          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:10px">Derating tables are in °C, site thermometers read °F.</div>
+          <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);margin-bottom:10px">Derating tables are in °C, site thermometers read °F.</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <div class="ctrl" style="flex:1;min-width:120px">
               <span class="ctrl-lbl">Fahrenheit (°F)</span>
@@ -1709,7 +1725,7 @@
               <input type="number" id="tp-c" placeholder="?" oninput="tpCalc('c')" style="width:100%">
             </div>
           </div>
-          <div id="tp-note" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-top:12px;line-height:1.7"></div>
+          <div id="tp-note" style="font-family:var(--ec-family-mono);font-size:11px;color:var(--text-dim);margin-top:12px;line-height:1.7"></div>
         </div>
 
         <!-- ══ LENGTH ══ -->
@@ -1728,7 +1744,7 @@
               <input type="number" id="ln-m" placeholder="?" min="0" step="0.01" oninput="lnCalc('m')" style="width:100%">
             </div>
           </div>
-          <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin:16px 0 6px">Conduit trade size — metric designator</div>
+          <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--accent);margin:16px 0 6px">Conduit trade size — metric designator</div>
           <div style="overflow-x:auto"><table class="cf-table" id="cv-conduit-table" style="min-width:320px"></table></div>
         </div>
 
@@ -14882,7 +14898,7 @@ function pinRenderPicker() {
       (on ? 'rgba(255,199,0,0.12)' : 'var(--surface)') + ';border:1px solid ' +
       (on ? 'rgba(255,199,0,0.4)' : 'var(--border)') + ';color:' +
       (on ? 'var(--accent)' : 'var(--text-dim)') +
-      ';font-family:IBM Plex Mono,monospace;font-size:11px;padding:7px 11px;border-radius:4px;cursor:pointer">' +
+      ';font-family:var(--ec-family-mono);font-size:11px;padding:7px 11px;border-radius:4px;cursor:pointer">' +
       (on ? '\u2713 ' : '+ ') + t.label + '</button>';
   }).join('');
 }
@@ -15243,7 +15259,7 @@ function formatResponse(text) {
     // Code block
     if (line.trim().startsWith('```')) {
       inCode = !inCode;
-      if (inCode) result.push('<pre style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;padding:10px;overflow-x:auto;font-family:IBM Plex Mono,monospace;font-size:12px;margin:8px 0">');
+      if (inCode) result.push('<pre style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:6px;padding:10px;overflow-x:auto;font-family:var(--ec-family-mono);font-size:12px;margin:8px 0">');
       else result.push('</pre>');
       continue;
     }
@@ -15260,9 +15276,9 @@ function formatResponse(text) {
     }
 
     // Headings
-    if (line.startsWith('### ')) { result.push('<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.3px;color:var(--accent);margin:10px 0 4px">' + escapeHtml(line.slice(4)) + '</div>'); continue; }
-    if (line.startsWith('## '))  { result.push('<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:14px;letter-spacing:0.3px;color:var(--accent);margin:12px 0 4px">' + escapeHtml(line.slice(3)) + '</div>'); continue; }
-    if (line.startsWith('# '))   { result.push('<div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:16px;letter-spacing:0.5px;color:var(--accent);margin:14px 0 6px">' + escapeHtml(line.slice(2)) + '</div>'); continue; }
+    if (line.startsWith('### ')) { result.push('<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;letter-spacing:0.3px;color:var(--accent);margin:10px 0 4px">' + escapeHtml(line.slice(4)) + '</div>'); continue; }
+    if (line.startsWith('## '))  { result.push('<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:14px;letter-spacing:0.3px;color:var(--accent);margin:12px 0 4px">' + escapeHtml(line.slice(3)) + '</div>'); continue; }
+    if (line.startsWith('# '))   { result.push('<div style="font-family:var(--ec-family-ui);font-weight:800;font-size:16px;letter-spacing:0.5px;color:var(--accent);margin:14px 0 6px">' + escapeHtml(line.slice(2)) + '</div>'); continue; }
 
     // Bullet list
     if (line.match(/^[\-\*] /)) {
@@ -15273,7 +15289,7 @@ function formatResponse(text) {
     // Numbered list
     var numMatch = line.match(/^(\d+)\. /);
     if (numMatch) {
-      result.push('<div style="display:flex;gap:8px;margin:3px 0;padding-left:4px"><span style="color:var(--accent);flex-shrink:0;font-family:IBM Plex Mono,monospace;font-size:12px;min-width:18px">' + numMatch[1] + '.</span><span>' + inlineFormat(line.slice(numMatch[0].length)) + '</span></div>');
+      result.push('<div style="display:flex;gap:8px;margin:3px 0;padding-left:4px"><span style="color:var(--accent);flex-shrink:0;font-family:var(--ec-family-mono);font-size:12px;min-width:18px">' + numMatch[1] + '.</span><span>' + inlineFormat(line.slice(numMatch[0].length)) + '</span></div>');
       continue;
     }
 
@@ -15465,7 +15481,7 @@ function inlineFormat(text) {
   // Italic *text*
   text = text.replace(/\*(.+?)\*/g, '<em style="color:#c8c8c8">$1</em>');
   // Inline code `code`
-  text = text.replace(/`(.+?)`/g, '<code style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius: 4px;padding:1px 5px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--accent)">$1</code>');
+  text = text.replace(/`(.+?)`/g, '<code style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius: 4px;padding:1px 5px;font-family:var(--ec-family-mono);font-size:12px;color:var(--accent)">$1</code>');
   // Code references auto-link (shared one-pass linkifier: NYCEC blue, NEC orange, explicit current editions, amendment phrases; text is already escaped above)
   text = refLinkifyHtml(text);
   return text;
@@ -16408,7 +16424,7 @@ var RACEWAY_SIZES = [0.5,0.75,1,1.25,1.5,2,2.5,3,3.5,4,5,6];
 var WIRE_COLORS_PB = ['#e05252','#4a90d9','#FFC700','#52c07a','#b06ae8','#e87a30'];
 
 function pbSizeSelect(val, side, idx) {
-  var sel = '<select style="background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono,monospace;font-size:12px;padding:4px 8px;border-radius: 4px;outline:none;flex:1" onchange="pbOnChange(\''+side+'\','+idx+',this.value)">';
+  var sel = '<select style="background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--ec-family-mono);font-size:12px;padding:4px 8px;border-radius: 4px;outline:none;flex:1" onchange="pbOnChange(\''+side+'\','+idx+',this.value)">';
   for (var i=0;i<RACEWAY_SIZES.length;i++){var s=RACEWAY_SIZES[i];sel+='<option value="'+s+'"'+(s==val?' selected':'')+'>'+s+'"</option>';}
   return sel+'</select>';
 }
@@ -16422,7 +16438,7 @@ function pbRenderRacewayList(side){
   for(var i=0;i<list.length;i++){
     var row=document.createElement('div');
     row.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:4px';
-    row.innerHTML='<span style="font-family:IBM Plex Mono,monospace;font-size:10px;color:'+WIRE_COLORS_PB[i%WIRE_COLORS_PB.length]+';min-width:14px;font-weight:bold">'+(i+1)+'.</span>'+pbSizeSelect(list[i],side,i)+'<button onclick="pbRemoveRaceway(\''+side+'\','+i+')" style="background:rgba(224,82,82,0.12);border:1px solid rgba(224,82,82,0.25);color:#e08080;border-radius: 4px;padding:3px 8px;cursor:pointer;font-size:13px;flex-shrink:0">×</button>';
+    row.innerHTML='<span style="font-family:var(--ec-family-mono);font-size:10px;color:'+WIRE_COLORS_PB[i%WIRE_COLORS_PB.length]+';min-width:14px;font-weight:bold">'+(i+1)+'.</span>'+pbSizeSelect(list[i],side,i)+'<button onclick="pbRemoveRaceway(\''+side+'\','+i+')" style="background:rgba(224,82,82,0.12);border:1px solid rgba(224,82,82,0.25);color:#e08080;border-radius: 4px;padding:3px 8px;cursor:pointer;font-size:13px;flex-shrink:0">×</button>';
     container.appendChild(row);
   }
 }
@@ -16476,7 +16492,9 @@ var SV={
   dim:'#52c07a', dimC:'#e8c23a',
   label:'#e8e8e8', sub:'#8ab0c8',
   title:'#FFC700', note:'#556070',
-  font:'IBM Plex Mono, monospace', fontB:'Montserrat, sans-serif'
+  // EC-TYPOGRAPHY-1: SVG font-family attributes cannot read CSS variables, so the two role stacks are written out
+  // (same order as --ec-family-mono / --ec-family-ui, unquoted because they sit inside a double-quoted attribute).
+  font:'Menlo, ui-monospace, SF Mono, SFMono-Regular, Consolas, Liberation Mono, DejaVu Sans Mono, Courier New, monospace', fontB:'system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif'
 };
 
 // Shared: draw a nice 3D-ish box wall
@@ -16730,8 +16748,8 @@ function codeSubTab(name) {
 // GFCI no longer needs a snapshot — it has its own persistent container.
 
 // Store grounding and nyc content
-CSR_CONTENT['grounding'] = "<div class=\"rules-bar\">\n    <div class=\"rules-row\">\n      <span class=\"pill pill-nec\" onclick=\"necLink('NEC Article 250 \u2014 Complete Grounding and Bonding requirements overview')\">NEC Art. 250</span>\n      <span class=\"rule-txt\">Grounding and Bonding \u2014 EGC, GEC, electrodes, bonding</span>\n    </div>\n  </div>\n\n  <div style=\"flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch\">\n    <div id=\"groundingListView\" style=\"padding:14px\">\n      <div style=\"font-family:Montserrat,sans-serif;font-weight:800;font-size:10px;letter-spacing:0.5px;color:var(--accent);margin-bottom:10px\">SELECT TOPIC</div>\n      <div style=\"display:flex;flex-direction:column;gap:6px\" id=\"groundingTopicList\"></div>\n    </div>\n    <div id=\"groundingDetailView\" style=\"display:none\">\n      <div onclick=\"groundingBack()\" style=\"display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);position:sticky;top:0;background:var(--bg);z-index:2\">\u2039 All topics</div>\n      <div id=\"groundingContent\" style=\"padding:16px 14px\"></div>\n    </div>\n  </div>";
-CSR_CONTENT['nyc'] = "<div class=\"rules-bar\">\n    <div class=\"rules-row\">\n      <span class=\"pill pill-nyc\" onclick=\"necLink('NYCEC 2025 \u2014 New York City Electrical Code current edition amendments and local requirements')\">NYCEC 2025</span>\n      <span class=\"rule-txt\">NEC 2020 base + NYC amendments \u00B7 DOB enforced</span>\n    </div>\n  </div>\n\n  <div style=\"flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch\">\n    <div id=\"nycListView\" style=\"padding:14px\">\n      <div style=\"font-family:Montserrat,sans-serif;font-weight:800;font-size:10px;letter-spacing:0.5px;color:var(--accent);margin-bottom:10px\">CATEGORY</div>\n      <div style=\"display:flex;flex-direction:column;gap:6px\" id=\"nycTopicList\"></div>\n    </div>\n    <div id=\"nycDetailView\" style=\"display:none\">\n      <div onclick=\"nycBack()\" style=\"display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);position:sticky;top:0;background:var(--bg);z-index:2\">\u2039 All categories</div>\n      <div id=\"nycContent\" style=\"padding:16px 14px\"></div>\n    </div>\n</div>";
+CSR_CONTENT['grounding'] = "<div class=\"rules-bar\">\n    <div class=\"rules-row\">\n      <span class=\"pill pill-nec\" onclick=\"necLink('NEC Article 250 \u2014 Complete Grounding and Bonding requirements overview')\">NEC Art. 250</span>\n      <span class=\"rule-txt\">Grounding and Bonding \u2014 EGC, GEC, electrodes, bonding</span>\n    </div>\n  </div>\n\n  <div style=\"flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch\">\n    <div id=\"groundingListView\" style=\"padding:14px\">\n      <div style=\"font-family:var(--ec-family-ui);font-weight:800;font-size:10px;letter-spacing:0.5px;color:var(--accent);margin-bottom:10px\">SELECT TOPIC</div>\n      <div style=\"display:flex;flex-direction:column;gap:6px\" id=\"groundingTopicList\"></div>\n    </div>\n    <div id=\"groundingDetailView\" style=\"display:none\">\n      <div onclick=\"groundingBack()\" style=\"display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-family:var(--ec-family-ui);font-size:12px;color:var(--text-dim);position:sticky;top:0;background:var(--bg);z-index:2\">\u2039 All topics</div>\n      <div id=\"groundingContent\" style=\"padding:16px 14px\"></div>\n    </div>\n  </div>";
+CSR_CONTENT['nyc'] = "<div class=\"rules-bar\">\n    <div class=\"rules-row\">\n      <span class=\"pill pill-nyc\" onclick=\"necLink('NYCEC 2025 \u2014 New York City Electrical Code current edition amendments and local requirements')\">NYCEC 2025</span>\n      <span class=\"rule-txt\">NEC 2020 base + NYC amendments \u00B7 DOB enforced</span>\n    </div>\n  </div>\n\n  <div style=\"flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch\">\n    <div id=\"nycListView\" style=\"padding:14px\">\n      <div style=\"font-family:var(--ec-family-ui);font-weight:800;font-size:10px;letter-spacing:0.5px;color:var(--accent);margin-bottom:10px\">CATEGORY</div>\n      <div style=\"display:flex;flex-direction:column;gap:6px\" id=\"nycTopicList\"></div>\n    </div>\n    <div id=\"nycDetailView\" style=\"display:none\">\n      <div onclick=\"nycBack()\" style=\"display:flex;align-items:center;gap:6px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;font-family:var(--ec-family-ui);font-size:12px;color:var(--text-dim);position:sticky;top:0;background:var(--bg);z-index:2\">\u2039 All categories</div>\n      <div id=\"nycContent\" style=\"padding:16px 14px\"></div>\n    </div>\n</div>";
 
 
 // ── CON ED BLUE BOOK ──────────────────────────────────────
@@ -16811,22 +16829,22 @@ CSR_CONTENT['coned'] = (function() {
 
   var html = '<div style="padding:14px;overflow-y:auto">';
   html += '<div style="background:rgba(74,158,255,0.1);border:1px solid rgba(74,158,255,0.3);border-left:4px solid var(--nycec);border-radius:4px;padding:12px 14px;margin-bottom:14px">';
-  html += '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--nycec);margin-bottom:4px">CON EDISON — ELECTRIC BLUE BOOK</div>';
-  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Requirements for Service Installation · coned.com/en/save-money/using-private-generation-energy-sources</div>';
+  html += '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--nycec);margin-bottom:4px">CON EDISON — ELECTRIC BLUE BOOK</div>';
+  html += '<div style="font-family:var(--ec-family-mono);font-size:11px;color:var(--text-dim)">Requirements for Service Installation · coned.com/en/save-money/using-private-generation-energy-sources</div>';
   html += '</div>';
 
   sections.forEach(function(s) {
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:10px">';
-    html += '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.3px;color:var(--accent);margin-bottom:4px">' + s.title + '</div>';
-    html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--nycec);margin-bottom:10px">' + s.ref + '</div>';
+    html += '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;letter-spacing:0.3px;color:var(--accent);margin-bottom:4px">' + s.title + '</div>';
+    html += '<div style="font-family:var(--ec-family-mono);font-size:10px;color:var(--nycec);margin-bottom:10px">' + s.ref + '</div>';
     s.items.forEach(function(item) {
-      html += '<div style="display:flex;gap:8px;margin-bottom:6px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);line-height:1.5">';
+      html += '<div style="display:flex;gap:8px;margin-bottom:6px;font-family:var(--ec-family-ui);font-size:12px;color:var(--text-dim);line-height:1.5">';
       html += '<span style="color:var(--nycec);flex-shrink:0">▸</span><span>' + item + '</span></div>';
     });
     html += '</div>';
   });
 
-  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);padding:10px 0;text-align:center">Source: Con Ed Electric Blue Book (latest revision) · Always verify with Con Ed Project Center</div>';
+  html += '<div style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);padding:10px 0;text-align:center">Source: Con Ed Electric Blue Book (latest revision) · Always verify with Con Ed Project Center</div>';
   html += '</div>';
   return html;
 })();
@@ -16836,8 +16854,8 @@ CSR_CONTENT['dob'] = (function() {
   var html = '<div style="padding:14px;overflow-y:auto">';
   
   html += '<div style="background:rgba(255,107,26,0.1);border:1px solid rgba(255,107,26,0.3);border-left:4px solid var(--nec);border-radius:4px;padding:12px 14px;margin-bottom:14px">';
-  html += '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--nec);margin-bottom:4px">DOB — ELECTRICAL PLAN REVIEW (EPR)</div>';
-  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">NYC Department of Buildings · NYCEC Section 110.2(B) · 1 RCNY §4000-01</div>';
+  html += '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--nec);margin-bottom:4px">DOB — ELECTRICAL PLAN REVIEW (EPR)</div>';
+  html += '<div style="font-family:var(--ec-family-mono);font-size:11px;color:var(--text-dim)">NYC Department of Buildings · NYCEC Section 110.2(B) · 1 RCNY §4000-01</div>';
   html += '</div>';
 
   var steps = [
@@ -16893,18 +16911,18 @@ CSR_CONTENT['dob'] = (function() {
   steps.forEach(function(s) {
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:10px">';
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">';
-    html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;color:' + s.color + ';flex-shrink:0">' + s.step + '</div>';
-    html += '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.3px;color:var(--accent)">' + s.title + '</div></div>';
+    html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:var(--ec-family-ui);font-weight:700;font-size:12px;color:' + s.color + ';flex-shrink:0">' + s.step + '</div>';
+    html += '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;letter-spacing:0.3px;color:var(--accent)">' + s.title + '</div></div>';
     s.items.forEach(function(item) {
-      html += '<div style="display:flex;gap:8px;margin-bottom:6px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);line-height:1.5">';
+      html += '<div style="display:flex;gap:8px;margin-bottom:6px;font-family:var(--ec-family-ui);font-size:12px;color:var(--text-dim);line-height:1.5">';
       html += '<span style="color:' + s.color + ';flex-shrink:0">▸</span><span>' + item + '</span></div>';
     });
     html += '</div>';
   });
 
   html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:12px;margin-bottom:10px">';
-  html += '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:10px;letter-spacing:0.3px;color:var(--accent);margin-bottom:8px">USEFUL LINKS</div>';
-  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--nycec);line-height:2">';
+  html += '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:10px;letter-spacing:0.3px;color:var(--accent);margin-bottom:8px">USEFUL LINKS</div>';
+  html += '<div style="font-family:var(--ec-family-mono);font-size:11px;color:var(--nycec);line-height:2">';
   html += '▸ DOB EPR page: nyc.gov/site/buildings/codes/electrical-advisory-board-plan-review.page<br>';
   html += '▸ EPR email: elecplanreview@buildings.nyc.gov<br>';
   html += '▸ DOB NOW: a810-dobnowpub.nyc.gov<br>';
@@ -16993,27 +17011,27 @@ CSR_CONTENT['locallaws'] = (function() {
   var html = '<div style="padding:14px;overflow-y:auto">';
 
   html += '<div style="background:rgba(255,199,0,0.08);border:1px solid rgba(255,199,0,0.2);border-left:4px solid var(--accent);border-radius:4px;padding:12px 14px;margin-bottom:14px">';
-  html += '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--accent);margin-bottom:4px">NYC LOCAL LAWS — ELECTRICIAN RELEVANCE</div>';
-  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Laws that directly impact electrical work in NYC buildings</div>';
+  html += '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--accent);margin-bottom:4px">NYC LOCAL LAWS — ELECTRICIAN RELEVANCE</div>';
+  html += '<div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim)">Laws that directly impact electrical work in NYC buildings</div>';
   html += '</div>';
 
   laws.forEach(function(law) {
     html += '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid ' + law.color + ';border-radius:4px;padding:14px;margin-bottom:10px">';
     html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;gap:8px">';
     html += '<div>';
-    html += '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.3px;color:var(--accent)">' + law.id + ' — ' + law.topic + '</div>';
-    html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:2px">' + law.name + '</div>';
+    html += '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;letter-spacing:0.3px;color:var(--accent)">' + law.id + ' — ' + law.topic + '</div>';
+    html += '<div style="font-family:var(--ec-family-mono);font-size:10px;color:var(--text-dimmer);margin-top:2px">' + law.name + '</div>';
     html += '</div></div>';
-    html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;padding:4px 8px;border-radius: 4px;background:var(--surface2);border:1px solid var(--border);color:' + law.color + ';margin-bottom:10px;display:inline-block">RELEVANCE: ' + law.relevance + '</div>';
+    html += '<div style="font-family:var(--ec-family-mono);font-size:10px;padding:4px 8px;border-radius: 4px;background:var(--surface2);border:1px solid var(--border);color:' + law.color + ';margin-bottom:10px;display:inline-block">RELEVANCE: ' + law.relevance + '</div>';
     html += '<br>';
     law.items.forEach(function(item) {
-      html += '<div style="display:flex;gap:8px;margin-bottom:6px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);line-height:1.5">';
+      html += '<div style="display:flex;gap:8px;margin-bottom:6px;font-family:var(--ec-family-ui);font-size:12px;color:var(--text-dim);line-height:1.5">';
       html += '<span style="color:' + law.color + ';flex-shrink:0">▸</span><span>' + item + '</span></div>';
     });
     html += '</div>';
   });
 
-  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);padding:10px 0;text-align:center">Source: NYC.gov · Always verify current deadlines at nyc.gov/buildings</div>';
+  html += '<div style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);padding:10px 0;text-align:center">Source: NYC.gov · Always verify current deadlines at nyc.gov/buildings</div>';
   html += '</div>';
   return html;
 })();
@@ -17330,20 +17348,20 @@ function gfciUpdate() {
   // Build status badge
   var statusBadge = '<div style="display:inline-flex;align-items:center;gap:8px;background:'+colorData.bg+';border:1px solid '+colorData.border+';border-radius:4px;padding:8px 16px;margin-bottom:20px">' +
     '<span style="font-size:20px">' + (data.color==='dual'?'✓✓':data.color==='gfci'?'✓':data.color==='afci'?'✓':'✗') + '</span>' +
-    '<span style="font-family:Montserrat,sans-serif;font-weight:700;font-size:14px;letter-spacing:0.5px;color:'+colorData.text+'">'+colorData.label+'</span>' +
+    '<span style="font-family:var(--ec-family-ui);font-weight:700;font-size:14px;letter-spacing:0.5px;color:'+colorData.text+'">'+colorData.label+'</span>' +
     '</div>';
 
   // Build GFCI card
   var gfciCard = '';
   if (data.gfci) {
     gfciCard = '<div style="background:rgba(255,199,0,0.06);border:1px solid rgba(255,199,0,0.25);border-left:4px solid var(--accent);border-radius:4px;padding:16px;margin-bottom:14px">' +
-      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--accent);margin-bottom:8px">GFCI REQUIRED — ' + refSpanFromText(data.gfciRef, data.gfciRef) + '</div>' +
-      '<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text);line-height:1.7">' + necify(data.gfciNote) + '</div>' +
+      '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--accent);margin-bottom:8px">GFCI REQUIRED — ' + refSpanFromText(data.gfciRef, data.gfciRef) + '</div>' +
+      '<div style="font-family:var(--ec-family-ui);font-size:12px;color:var(--text);line-height:1.7">' + necify(data.gfciNote) + '</div>' +
       '</div>';
   } else {
     gfciCard = '<div style="background:rgba(136,136,136,0.05);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">' +
-      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;letter-spacing:0.5px;color:var(--text-dimmer)">GFCI — NOT REQUIRED</div>' +
-      '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin-top:6px;line-height:1.6">GFCI protection is not specifically required in this location unless near water.</div>' +
+      '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:11px;letter-spacing:0.5px;color:var(--text-dimmer)">GFCI — NOT REQUIRED</div>' +
+      '<div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dimmer);margin-top:6px;line-height:1.6">GFCI protection is not specifically required in this location unless near water.</div>' +
       '</div>';
   }
 
@@ -17351,13 +17369,13 @@ function gfciUpdate() {
   var afciCard = '';
   if (data.afci) {
     afciCard = '<div style="background:rgba(232,194,58,0.06);border:1px solid rgba(232,194,58,0.25);border-left:4px solid var(--warn);border-radius:4px;padding:16px;margin-bottom:14px">' +
-      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--warn);margin-bottom:8px">AFCI REQUIRED — ' + refSpanFromText(data.afciRef, data.afciRef) + '</div>' +
-      '<div style="font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text);line-height:1.7">' + necify(data.afciNote) + '</div>' +
+      '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;letter-spacing:0.5px;color:var(--warn);margin-bottom:8px">AFCI REQUIRED — ' + refSpanFromText(data.afciRef, data.afciRef) + '</div>' +
+      '<div style="font-family:var(--ec-family-ui);font-size:12px;color:var(--text);line-height:1.7">' + necify(data.afciNote) + '</div>' +
       '</div>';
   } else {
     afciCard = '<div style="background:rgba(136,136,136,0.05);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">' +
-      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;letter-spacing:0.5px;color:var(--text-dimmer)">AFCI — NOT REQUIRED</div>' +
-      '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dimmer);margin-top:6px;line-height:1.6">AFCI protection is not required in this location per NEC 2023.</div>' +
+      '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:11px;letter-spacing:0.5px;color:var(--text-dimmer)">AFCI — NOT REQUIRED</div>' +
+      '<div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dimmer);margin-top:6px;line-height:1.6">AFCI protection is not required in this location per NEC 2023.</div>' +
       '</div>';
   }
 
@@ -17365,34 +17383,34 @@ function gfciUpdate() {
   var exceptionsHtml = '';
   if (data.exceptions && data.exceptions.length > 0) {
     exceptionsHtml = '<div style="background:rgba(136,136,136,0.05);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:14px">' +
-      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:10px">EXCEPTIONS</div>';
+      '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:11px;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:10px">EXCEPTIONS</div>';
     data.exceptions.forEach(function(ex) {
-      exceptionsHtml += '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.7;padding:4px 0;border-bottom:1px solid var(--border)">• ' + ex + '</div>';
+      exceptionsHtml += '<div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);line-height:1.7;padding:4px 0;border-bottom:1px solid var(--border)">• ' + ex + '</div>';
     });
     exceptionsHtml += '</div>';
   }
 
   // NYC note
   var nycHtml = '<div style="background:rgba(82,192,122,0.06);border:1px solid rgba(82,192,122,0.2);border-radius:4px;padding:12px;margin-bottom:14px">' +
-    '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:10px;letter-spacing:0.5px;color:var(--success);margin-bottom:6px">NYC NOTE</div>' +
-    '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.7">' + necify(data.nyc) + '</div>' +
+    '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:10px;letter-spacing:0.5px;color:var(--success);margin-bottom:6px">NYC NOTE</div>' +
+    '<div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);line-height:1.7">' + necify(data.nyc) + '</div>' +
     '</div>';
 
   // Extra warning if any
   var extraHtml = data.extra ?
     '<div style="background:rgba(224,82,82,0.08);border:1px solid rgba(224,82,82,0.3);border-radius:4px;padding:12px;margin-bottom:14px">' +
-    '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#e08080;line-height:1.7">' + data.extra + '</div>' +
+    '<div style="font-family:var(--ec-family-ui);font-size:11px;color:#e08080;line-height:1.7">' + data.extra + '</div>' +
     '</div>' : '';
 
   content.innerHTML =
-    '<div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:22px;letter-spacing:0.5px;color:var(--accent);margin-bottom:6px">' + room.label + '</div>' +
+    '<div style="font-family:var(--ec-family-ui);font-weight:800;font-size:22px;letter-spacing:0.5px;color:var(--accent);margin-bottom:6px">' + room.label + '</div>' +
     statusBadge +
     gfciCard +
     afciCard +
     exceptionsHtml +
     nycHtml +
     extraHtml +
-    '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.8;padding:10px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">' +
+    '<div style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);line-height:1.8;padding:10px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">' +
     '★ Based on NEC 2023. NYC currently enforces NEC 2020 with local amendments (NYCEC).<br>' +
     'Always verify requirements with the local Authority Having Jurisdiction (AHJ).<br>' +
     'AFCI breakers must be listed and installed at the panel. GFCI can be breaker or receptacle type.' +
@@ -21247,7 +21265,7 @@ function favStatusNode(type, read) {
   var bad = recovery || !!(notice && !notice.ok);
   var box = document.createElement('div'); box.className = 'fav-status';
   box.setAttribute('role', bad ? 'alert' : 'status');
-  box.style.cssText = 'flex:1 1 100%;font-family:IBM Plex Mono,monospace;font-size:11px;line-height:1.6;padding:8px 10px;border-radius:4px;overflow-wrap:anywhere;border:1px solid ' + (bad ? 'var(--danger)' : 'var(--border)') + ';color:' + (bad ? 'var(--danger)' : 'var(--text-dim)');
+  box.style.cssText = 'flex:1 1 100%;font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;padding:8px 10px;border-radius:4px;overflow-wrap:anywhere;border:1px solid ' + (bad ? 'var(--danger)' : 'var(--border)') + ';color:' + (bad ? 'var(--danger)' : 'var(--text-dim)');
   var say = function (text) { var p = document.createElement('div'); p.textContent = text; box.appendChild(p); };
   if (recovery) say('Saved presets need recovery: ' + read.problems.join(' ') + ' Saving and deleting presets is paused so nothing is overwritten; the stored data has not been changed. Calculators keep working.');
   else if (noLock) say('Saving and deleting presets is unavailable in this browser (it has no cross-tab lock). Existing presets can still be loaded and exported.');
@@ -21818,8 +21836,8 @@ function mtRow(label, value, note, strong) {
   return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(46,46,46,0.5)' +
     (strong ? ';background:rgba(255,199,0,0.05)' : '') + '">' +
     '<div><span style="font-size:13px;color:var(--text)">' + label + '</span>' +
-    (note ? '<span style="display:block;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer)">' + necify(note) + '</span>' : '') +
-    '</div><span style="font-family:IBM Plex Mono,monospace;font-size:15px;font-weight:600;color:' +
+    (note ? '<span style="display:block;font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer)">' + necify(note) + '</span>' : '') +
+    '</div><span style="font-family:var(--ec-family-mono);font-size:15px;font-weight:600;color:' +
     (strong ? 'var(--success)' : 'var(--accent)') + ';white-space:nowrap">' + value + '</span></div>';
 }
 
@@ -21977,7 +21995,7 @@ function bdType(kind, el) {
       return '<div class="ctrl" style="width:100%;max-width:260px">' +
         '<span class="ctrl-lbl">' + x[0] + ' (' + x[3] + ')</span>' +
         '<input type="number" id="' + x[1] + '" value="' + x[2] + '" min="0" step="0.0625" oninput="bdCalc()" style="width:100%">' +
-        '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">' + x[4] + '</div>' +
+        '<div style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);margin-top:3px;line-height:1.4">' + x[4] + '</div>' +
         '</div>';
     }).join('');
   }
@@ -21987,8 +22005,8 @@ function bdType(kind, el) {
 function bdRow(label, value, note) {
   return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(46,46,46,0.5)">' +
     '<div><span style="font-size:13px;color:var(--text)">' + label + '</span>' +
-    (note ? '<span style="display:block;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer)">' + note + '</span>' : '') +
-    '</div><span style="font-family:IBM Plex Mono,monospace;font-size:15px;font-weight:600;color:var(--accent);white-space:nowrap">' + value + '</span></div>';
+    (note ? '<span style="display:block;font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer)">' + note + '</span>' : '') +
+    '</div><span style="font-family:var(--ec-family-mono);font-size:15px;font-weight:600;color:var(--accent);white-space:nowrap">' + value + '</span></div>';
 }
 
 function bdVal(id, dflt) {
@@ -22197,9 +22215,9 @@ function cvCalc(from) {
 function cvRow(label, value, note) {
   return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid rgba(46,46,46,0.5)">' +
     '<div><span style="font-size:13px;color:var(--text)">' + label + '</span>' +
-    (note ? '<span style="display:block;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer)">' + note + '</span>' : '') +
+    (note ? '<span style="display:block;font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer)">' + note + '</span>' : '') +
     '</div>' +
-    '<span style="font-family:IBM Plex Mono,monospace;font-size:15px;font-weight:600;color:var(--accent);white-space:nowrap">' + value + '</span>' +
+    '<span style="font-family:var(--ec-family-mono);font-size:15px;font-weight:600;color:var(--accent);white-space:nowrap">' + value + '</span>' +
   '</div>';
 }
 
@@ -22296,13 +22314,13 @@ function btCalc(isExample) {
   status.style.display = 'none';
   out.innerHTML =
     '<div style="padding:12px 14px;border-bottom:1px solid rgba(46,46,46,0.5)">' +
-      '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;letter-spacing:1px;color:var(--text-dim)">SZACOWANY CZAS PRACY</div>' +
+      '<div style="font-family:var(--ec-family-mono);font-size:10px;letter-spacing:1px;color:var(--text-dim)">SZACOWANY CZAS PRACY</div>' +
       '<div style="font-size:22px;font-weight:700;line-height:1.3;color:var(--accent)">' + btEsc(t.duration) + '</div>' +
-      (showExample ? '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:4px">Przykład poglądowy — to nie są dane konkretnej lodówki. Wpisz własne wartości.</div>' : '') +
+      (showExample ? '<div style="font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:4px">Przykład poglądowy — to nie są dane konkretnej lodówki. Wpisz własne wartości.</div>' : '') +
     '</div>' +
     cvRow('Dostępna energia', btEsc(t.availableWh), btEsc(t.availableBasis)) +
     cvRow('Średni pobór', btEsc(t.averageW), btEsc(t.averageBasis)) +
-    '<div style="padding:9px 14px;font-family:IBM Plex Mono,monospace;font-size:11px;line-height:1.6;color:var(--text-dim)">' + btEsc(t.assumptions) + '</div>';
+    '<div style="padding:9px 14px;font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim)">' + btEsc(t.assumptions) + '</div>';
   out.style.display = '';
 }
 
@@ -22352,7 +22370,7 @@ function tqCalc(from) {
 
   document.getElementById('tq-note').innerHTML =
     lbft.toFixed(2) + ' lb-ft &nbsp;=&nbsp; ' + (lbft*12).toFixed(1) + ' lb-in &nbsp;=&nbsp; ' + (lbft*1.35582).toFixed(2) + ' N\u00B7m' +
-    '<br><span style="color:var(--text-dimmer)">Always use the value on the equipment label \u2014 these are unit conversions, not torque specs.</span>';
+    '<br><span style="font-family:var(--ec-family-ui);color:var(--text-dimmer)">Always use the value on the equipment label \u2014 these are unit conversions, not torque specs.</span>';
   cvUpdating = false;
 }
 
@@ -22380,7 +22398,7 @@ function tpCalc(from) {
            : cdeg <= 40 ? 'Above 30\u00B0C base \u2014 apply the correction factor from NEC 310.15(B)(1).'
            : 'Well above base \u2014 correction factor is significant, check Ampacity.';
   document.getElementById('tp-note').innerHTML =
-    f.toFixed(1) + '\u00B0F &nbsp;=&nbsp; ' + cdeg.toFixed(1) + '\u00B0C<br><span style="color:var(--text-dimmer)">' + band + '</span>';
+    f.toFixed(1) + '\u00B0F &nbsp;=&nbsp; ' + cdeg.toFixed(1) + '\u00B0C<br><span style="font-family:var(--ec-family-ui);color:var(--text-dimmer)">' + band + '</span>';
   cvUpdating = false;
 }
 
@@ -22477,11 +22495,11 @@ function wcFromMM2() {
     var cm = (typeof VD_CM !== 'undefined') ? VD_CM[WC_SIZES[i]] : null;
     if (cm && cm >= targetCM) { pick = WC_SIZES[i]; break; }
   }
-  if (!pick) { out.innerHTML = '<span style="color:var(--danger)">Larger than 750 kcmil \u2014 parallel conductors needed.</span>'; return; }
+  if (!pick) { out.innerHTML = '<span style="font-family:var(--ec-family-ui);color:var(--danger)">Larger than 750 kcmil \u2014 parallel conductors needed.</span>'; return; }
   var pickCM = VD_CM[pick];
   out.innerHTML = mm2 + ' mm\u00B2 \u2192 nearest size at or above: <strong style="color:var(--accent)">' + wcLabel(pick) + '</strong>' +
     ' <span style="color:var(--text-dimmer)">(' + (pickCM * 0.0005067).toFixed(2) + ' mm\u00B2)</span>' +
-    '<br><span style="color:var(--text-dimmer)">Rounded up \u2014 never down into a smaller conductor.</span>';
+    '<br><span style="font-family:var(--ec-family-ui);color:var(--text-dimmer)">Rounded up \u2014 never down into a smaller conductor.</span>';
 }
 
 // Quick reference kept from the original converter
@@ -22490,8 +22508,8 @@ function cvInitQuickTables() {
   if (!el || el.innerHTML.trim() !== '') return;
   var V = 208;
   el.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden">' +
-    '<div style="background:rgba(255,199,0,0.08);padding:8px 14px;font-family:Montserrat,sans-serif;font-weight:700;font-size:10px;letter-spacing:0.5px;color:var(--accent)">AMPS \u2192 WATTS @ ' + V + 'V, 1\u00D8, PF 1.0</div>' +
-    '<div style="padding:10px 14px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--text-dim);display:grid;grid-template-columns:auto 1fr;gap:3px 18px">' +
+    '<div style="background:rgba(255,199,0,0.08);padding:8px 14px;font-family:var(--ec-family-ui);font-weight:700;font-size:10px;letter-spacing:0.5px;color:var(--accent)">AMPS \u2192 WATTS @ ' + V + 'V, 1\u00D8, PF 1.0</div>' +
+    '<div style="padding:10px 14px;font-family:var(--ec-family-mono);font-size:12px;color:var(--text-dim);display:grid;grid-template-columns:auto 1fr;gap:3px 18px">' +
     [15,20,30,40,50,60,80,100].map(function(a){
       return '<span>' + a + 'A</span><span style="color:var(--text)">' + (a*V).toLocaleString() + ' W \u00B7 ' + ((a*V)/1000).toFixed(1) + ' kW</span>';
     }).join('') +
@@ -22772,32 +22790,32 @@ function gndRenderCalc() {
   }).join('');
 
   document.getElementById('groundingContent').innerHTML =
-    '<div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:18px;letter-spacing:0.5px;color:var(--accent);margin-bottom:6px">EGC / GEC CALCULATOR</div>' +
-    '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);margin-bottom:16px;line-height:1.6">The EGC runs back to the panel and is sized from the breaker. The GEC goes down to the electrode and is sized from the service conductor. Different destination, different table \u2014 mixing them up is a violation.</div>' +
+    '<div style="font-family:var(--ec-family-ui);font-weight:800;font-size:18px;letter-spacing:0.5px;color:var(--accent);margin-bottom:6px">EGC / GEC CALCULATOR</div>' +
+    '<div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);margin-bottom:16px;line-height:1.6">The EGC runs back to the panel and is sized from the breaker. The GEC goes down to the electrode and is sized from the service conductor. Different destination, different table \u2014 mixing them up is a violation.</div>' +
 
     // ── EGC ──
     '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--success);border-radius:6px;padding:14px;margin-bottom:14px">' +
-      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;color:var(--success);margin-bottom:10px">EQUIPMENT GROUNDING CONDUCTOR \u2014 Table 250.122</div>' +
+      '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;color:var(--success);margin-bottom:10px">EQUIPMENT GROUNDING CONDUCTOR \u2014 Table 250.122</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
         '<div class="ctrl" style="flex:1;min-width:120px"><label class="ctrl-lbl" for="gnd-ocpd">Breaker / Fuse</label>' +
           '<select id="gnd-ocpd" onchange="gndCalc()" style="width:100%">' + ocpdOpts + '</select></div>' +
         '<div class="ctrl" style="flex:1;min-width:120px"><label class="ctrl-lbl" for="gnd-egc-mat">EGC Material</label>' +
           '<select id="gnd-egc-mat" onchange="gndCalc()" style="width:100%"><option value="cu">Copper</option><option value="al">Aluminum</option></select></div>' +
       '</div>' +
-      '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--accent);margin:10px 0 6px">Were the phase conductors upsized (voltage drop)?</div>' +
+      '<div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--accent);margin:10px 0 6px">Were the phase conductors upsized (voltage drop)?</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
         '<div class="ctrl" style="flex:1;min-width:120px"><label class="ctrl-lbl" for="gnd-req">Required size</label>' +
           '<select id="gnd-req" onchange="gndCalc()" style="width:100%">' + opts + '</select></div>' +
         '<div class="ctrl" style="flex:1;min-width:120px"><label class="ctrl-lbl" for="gnd-inst">Actually installed</label>' +
           '<select id="gnd-inst" onchange="gndCalc()" style="width:100%">' + opts + '</select></div>' +
       '</div>' +
-      '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:4px">Leave both the same if you did not upsize.</div>' +
+      '<div style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);margin-top:4px">Leave both the same if you did not upsize.</div>' +
       '<div id="gnd-egc-out" style="margin-top:12px"></div>' +
     '</div>' +
 
     // ── GEC ──
     '<div style="background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--nycec);border-radius:6px;padding:14px;margin-bottom:14px">' +
-      '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;color:var(--nycec);margin-bottom:10px">GROUNDING ELECTRODE CONDUCTOR \u2014 Table 250.66</div>' +
+      '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;color:var(--nycec);margin-bottom:10px">GROUNDING ELECTRODE CONDUCTOR \u2014 Table 250.66</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
         '<div class="ctrl" style="flex:1;min-width:130px"><label class="ctrl-lbl" for="gnd-svc">Largest Service Conductor</label>' +
           '<select id="gnd-svc" onchange="gndCalc()" style="width:100%">' + opts + '</select></div>' +
@@ -22818,12 +22836,12 @@ function gndRenderCalc() {
             '<option value="cu_2awg_sole">Confirmed: #2 AWG copper ring, and this GEC portion is the sole connection to it</option>' +
             '<option value="other">Larger, different or unverified ring, or not the sole connection</option>' +
           '</select>' +
-          '<div id="gnd-ring-help" style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);margin-top:4px;line-height:1.5">This calculator applies the ground ring reduction in one case only: a ring confirmed as #2 AWG copper, for the GEC portion that is the sole connection to that ring. Nothing is assumed.</div></div>' +
+          '<div id="gnd-ring-help" style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);margin-top:4px;line-height:1.5">This calculator applies the ground ring reduction in one case only: a ring confirmed as #2 AWG copper, for the GEC portion that is the sole connection to that ring. Nothing is assumed.</div></div>' +
       '</div>' +
       '<div id="gnd-gec-out" style="margin-top:12px"></div>' +
     '</div>' +
 
-    '<div id="gnd-note" style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim);line-height:1.7;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px"></div>';
+    '<div id="gnd-note" style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);line-height:1.7;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px"></div>';
 
   gndCalc();
 }
@@ -22831,8 +22849,8 @@ function gndRenderCalc() {
 function gndRow(label, value, note, color) {
   return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(46,46,46,0.5)">' +
     '<div><span style="font-size:13px;color:var(--text)">' + label + '</span>' +
-    (note ? '<span style="display:block;font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer)">' + necify(note) + '</span>' : '') +
-    '</div><span style="font-family:IBM Plex Mono,monospace;font-size:15px;font-weight:600;color:' + (color || 'var(--accent)') + ';white-space:nowrap">' + value + '</span></div>';
+    (note ? '<span style="display:block;font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer)">' + necify(note) + '</span>' : '') +
+    '</div><span style="font-family:var(--ec-family-mono);font-size:15px;font-weight:600;color:' + (color || 'var(--accent)') + ';white-space:nowrap">' + value + '</span></div>';
 }
 
 // EC-01: field-specific wording for a request the engine refused. Presentation only — the engine decides.
@@ -22846,7 +22864,7 @@ function gndProblem(r) {
   return 'These inputs could not be evaluated.';
 }
 function gndAlert(text) {
-  return '<div role="alert" style="font-family:IBM Plex Mono,monospace;font-size:12px;line-height:1.6;color:var(--danger);border:1px solid var(--danger);border-radius:4px;padding:9px 10px;margin-top:8px">' + refAttr(text) + '</div>';
+  return '<div role="alert" style="font-family:var(--ec-family-ui);font-size:12px;line-height:1.6;color:var(--danger);border:1px solid var(--danger);border-radius:4px;padding:9px 10px;margin-top:8px">' + refAttr(text) + '</div>';
 }
 
 function gndCalc() {
@@ -23004,12 +23022,12 @@ function groundingSelectTopic(id) {
 
   var colorMap = {accent:'rgba(255,199,0,0.08)|rgba(255,199,0,0.3)|#FFC700', warn:'rgba(232,194,58,0.08)|rgba(232,194,58,0.3)|#e8c23a', success:'rgba(82,192,122,0.08)|rgba(82,192,122,0.3)|#52c07a', danger:'rgba(224,82,82,0.08)|rgba(224,82,82,0.3)|#e05252'};
 
-  var html = '<div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:20px;letter-spacing:0.5px;color:var(--accent);margin-bottom:16px">' + data.title + '</div>';
+  var html = '<div style="font-family:var(--ec-family-ui);font-weight:800;font-size:20px;letter-spacing:0.5px;color:var(--accent);margin-bottom:16px">' + data.title + '</div>';
 
   data.sections.forEach(function(sec) {
     var cols = (colorMap[sec.color]||colorMap.accent).split('|');
     html += '<div style="background:'+cols[0]+';border:1px solid '+cols[1]+';border-left:4px solid '+cols[2]+';border-radius:6px;padding:16px;margin-bottom:14px">';
-    html += '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.3px;color:'+cols[2]+';margin-bottom:10px">';
+    html += '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;letter-spacing:0.3px;color:'+cols[2]+';margin-bottom:10px">';
     html += necify(sec.heading) + ' ' + refSpanFromText(sec.ref, sec.ref, 'font-size:11px') + '</div>';
     // Render content with basic markdown
     var rendered = necify(sec.content)
@@ -23021,7 +23039,7 @@ function groundingSelectTopic(id) {
     html += '</div>';
   });
 
-  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.8;padding:10px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);margin-top:8px">★ Based on NEC 2023. NYC uses NEC 2020 with NYCEC amendments. Always verify with local AHJ and NYC DOB.</div>';
+  html += '<div style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);line-height:1.8;padding:10px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);margin-top:8px">★ Based on NEC 2023. NYC uses NEC 2020 with NYCEC amendments. Always verify with local AHJ and NYC DOB.</div>';
 
   document.getElementById('groundingContent').innerHTML = html;
 }
@@ -23188,15 +23206,15 @@ function nycSelectTopic(id) {
     danger:  'rgba(224,82,82,0.08)|rgba(224,82,82,0.3)|#e05252'
   };
 
-  var html = '<div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:20px;letter-spacing:0.5px;color:var(--accent);margin-bottom:16px">' + data.title + '</div>';
+  var html = '<div style="font-family:var(--ec-family-ui);font-weight:800;font-size:20px;letter-spacing:0.5px;color:var(--accent);margin-bottom:16px">' + data.title + '</div>';
 
   data.items.forEach(function(item) {
     var cols = (colorMap[item.color]||colorMap.accent).split('|');
     html += '<div style="background:'+cols[0]+';border:1px solid '+cols[1]+';border-left:4px solid '+cols[2]+';border-radius:6px;padding:16px;margin-bottom:14px">';
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
-    html += '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:12px;letter-spacing:0.3px;color:'+cols[2]+'">' + item.label + '</div>';
+    html += '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:12px;letter-spacing:0.3px;color:'+cols[2]+'">' + item.label + '</div>';
     if (item.section) {
-      html += '<span class="nycec-link" role="button" tabindex="0" data-ref="' + refAttr('NYCEC ' + item.section + ' — ' + item.label) + '" data-src="nycec" data-ed="' + EC_NYCEC_EDITION + '" data-sec="' + refAttr(item.section) + '" style="text-decoration:none;font-family:IBM Plex Mono,monospace;font-size:10px;font-weight:700;padding:2px 8px;border-radius: 4px;background:rgba(74,158,255,0.2);color:var(--nycec);cursor:pointer;letter-spacing:0.5px" title="Ask AI about NYCEC ' + item.section + '">' + item.section + '</span>';
+      html += '<span class="nycec-link" role="button" tabindex="0" data-ref="' + refAttr('NYCEC ' + item.section + ' — ' + item.label) + '" data-src="nycec" data-ed="' + EC_NYCEC_EDITION + '" data-sec="' + refAttr(item.section) + '" style="text-decoration:none;font-family:var(--ec-family-mono);font-size:10px;font-weight:700;padding:2px 8px;border-radius: 4px;background:rgba(74,158,255,0.2);color:var(--nycec);cursor:pointer;letter-spacing:0.5px" title="Ask AI about NYCEC ' + item.section + '">' + item.section + '</span>';
     }
     html += '</div>';
     var rendered = necify(item.content)
@@ -23209,7 +23227,7 @@ function nycSelectTopic(id) {
     html += '</div>';
   });
 
-  html += '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--text-dimmer);line-height:1.8;padding:10px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);margin-top:8px">★ NYC Electrical Code (NYCEC) based on NEC 2020 with local amendments. Always verify current requirements with NYC DOB (nyc.gov/buildings) and Con Edison. Requirements change frequently.</div>';
+  html += '<div style="font-family:var(--ec-family-ui);font-size:10px;color:var(--text-dimmer);line-height:1.8;padding:10px;background:var(--surface2);border-radius:4px;border:1px solid var(--border);margin-top:8px">★ NYC Electrical Code (NYCEC) based on NEC 2020 with local amendments. Always verify current requirements with NYC DOB (nyc.gov/buildings) and Con Edison. Requirements change frequently.</div>';
 
   document.getElementById('nycContent').innerHTML = html;
 }
@@ -23255,7 +23273,7 @@ async function getNEMAImageURL(code) {
 }
 
 function buildNEMACard(code) {
-  return '<div data-nema-code="'+code+'" style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;margin:0 auto;font-family:IBM Plex Mono,monospace;font-size:9px;color:#aaa">⏳</div>';
+  return '<div data-nema-code="'+code+'" style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;margin:0 auto;font-family:var(--ec-family-mono);font-size:9px;color:#aaa">⏳</div>';
 }
 
 function loadNEMAImages() {
@@ -23409,14 +23427,14 @@ function renderOutlets() {
         buildNEMACard(o.id) +
       '</div>'+
       '<div style="padding:10px 12px">'+
-        '<div style="font-family:Montserrat,sans-serif;font-weight:700;font-size:11px;letter-spacing:0.3px;color:var(--accent);margin-bottom:5px">'+o.label+'</div>'+
+        '<div style="font-family:var(--ec-family-ui);font-weight:700;font-size:11px;letter-spacing:0.3px;color:var(--accent);margin-bottom:5px">'+o.label+'</div>'+
         '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px">'+
-          '<span style="background:rgba(255,255,255,0.06);color:'+voltColor+';font-family:IBM Plex Mono,monospace;font-size:10px;padding:2px 6px;border-radius: 4px;font-weight:600">'+voltLabel+'</span>'+
-          '<span style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-family:IBM Plex Mono,monospace;font-size:10px;padding:2px 6px;border-radius: 4px">'+o.amps+'A</span>'+
-          '<span style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-family:IBM Plex Mono,monospace;font-size:10px;padding:2px 6px;border-radius: 4px">#'+o.awg+' AWG</span>'+
-          (o.type==='R' ? '<span style="background:rgba(82,192,122,0.12);color:#52c07a;font-family:IBM Plex Mono,monospace;font-size:10px;padding:2px 6px;border-radius: 4px">-R</span>' :
-                          '<span style="background:rgba(74,144,217,0.12);color:#4a90d9;font-family:IBM Plex Mono,monospace;font-size:10px;padding:2px 6px;border-radius: 4px">-P</span>') +
-          (isOld ? '<span style="background:rgba(224,82,82,0.12);color:#e05252;font-family:IBM Plex Mono,monospace;font-size:10px;padding:2px 6px;border-radius: 4px">OLD</span>' : '') +
+          '<span style="background:rgba(255,255,255,0.06);color:'+voltColor+';font-family:var(--ec-family-mono);font-size:10px;padding:2px 6px;border-radius: 4px;font-weight:600">'+voltLabel+'</span>'+
+          '<span style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-family:var(--ec-family-mono);font-size:10px;padding:2px 6px;border-radius: 4px">'+o.amps+'A</span>'+
+          '<span style="background:rgba(255,255,255,0.06);color:var(--text-dim);font-family:var(--ec-family-mono);font-size:10px;padding:2px 6px;border-radius: 4px">#'+o.awg+' AWG</span>'+
+          (o.type==='R' ? '<span style="background:rgba(82,192,122,0.12);color:#52c07a;font-family:var(--ec-family-mono);font-size:10px;padding:2px 6px;border-radius: 4px">-R</span>' :
+                          '<span style="background:rgba(74,144,217,0.12);color:#4a90d9;font-family:var(--ec-family-mono);font-size:10px;padding:2px 6px;border-radius: 4px">-P</span>') +
+          (isOld ? '<span style="background:rgba(224,82,82,0.12);color:#e05252;font-family:var(--ec-family-mono);font-size:10px;padding:2px 6px;border-radius: 4px">OLD</span>' : '') +
         '</div>'+
         '<div style="font-size:11px;color:var(--text-dim);line-height:1.5;margin-bottom:6px">'+o.use+'</div>'+
         refSpanFromText(o.nec, o.nec, 'font-size:10px') +
@@ -23446,10 +23464,10 @@ function initOutletsIfNeeded() {
      Engine: EC.pullBox (injected shared module). No connections, no results,
      no visible code references in this milestone. -->
 <style>
-#pbv2-overlay{position:fixed;inset:0;z-index:9000;display:none;flex-direction:column;background:var(--bg,#0a0a0a);color:var(--text,#eee);overflow-y:auto;-webkit-overflow-scrolling:touch;font-family:Inter,sans-serif}
+#pbv2-overlay{position:fixed;inset:0;z-index:9000;display:none;flex-direction:column;background:var(--bg,#0a0a0a);color:var(--text,#eee);overflow-y:auto;-webkit-overflow-scrolling:touch;font-family:var(--ec-family-ui)}
 #pbv2-overlay.show{display:flex}
 .pbv2-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #222}
-.pbv2-title{font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;flex:1}
+.pbv2-title{font-family:var(--ec-family-ui);font-weight:700;font-size:15px;flex:1}
 .pbv2-dev{font-size:10px;letter-spacing:1px;color:var(--accent,#ffc700);border:1px solid var(--accent,#ffc700);border-radius:3px;padding:2px 6px}
 .pbv2-btn{min-height:44px;min-width:44px;background:#161616;color:var(--text,#eee);border:1px solid #2a2a2a;border-radius:8px;font-size:14px;padding:8px 12px;cursor:pointer}
 .pbv2-btn:focus-visible{outline:2px solid var(--accent,#ffc700);outline-offset:2px}
@@ -23468,17 +23486,17 @@ function initOutletsIfNeeded() {
 .pbv2-rowdel{background:none;border:none;color:#c0392b;font-size:11px;min-height:28px;min-width:28px;padding:6px;cursor:pointer}
 .pbv2-entries{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .pbv2-lane-left .pbv2-entries,.pbv2-lane-right .pbv2-entries{flex-direction:column}
-.pbv2-entry{width:44px;height:44px;border-radius:50%;background:#191919;border:2px solid var(--accent,#ffc700);color:var(--text,#eee);font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1;cursor:pointer;padding:0}
+.pbv2-entry{width:44px;height:44px;border-radius:50%;background:#191919;border:2px solid var(--accent,#ffc700);color:var(--text,#eee);font-family:var(--ec-family-mono);font-size:11px;line-height:1;cursor:pointer;padding:0}
 .pbv2-entry:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .pbv2-add{width:44px;height:44px;border-radius:50%;background:none;border:2px dashed #3a3a3a;color:#888;font-size:20px;cursor:pointer}
 .pbv2-entry.pbv2-selected{background:var(--accent,#ffc700);color:#111;border-color:#fff}
 .pbv2-connitem{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:#101010;border:1px solid #222;border-radius:8px;color:var(--text,#eee);font-size:12px;padding:10px;margin-top:6px;min-height:44px;cursor:pointer}
-.pbv2-conntype{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent,#ffc700);min-width:58px}
+.pbv2-conntype{font-family:var(--ec-family-mono);font-size:11px;color:var(--accent,#ffc700);min-width:58px}
 .pbv2-card{background:#101010;border:1px solid #222;border-radius:10px;padding:12px;margin-top:8px}
 .pbv2-dim{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .pbv2-dimlabel{font-size:11px;letter-spacing:1px;color:#888;min-width:52px}
-.pbv2-dimvalue{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600}
-.pbv2-eq{font-family:'IBM Plex Mono',monospace;font-size:13px;color:#bbb;margin:6px 0}
+.pbv2-dimvalue{font-family:var(--ec-family-mono);font-size:24px;font-weight:600}
+.pbv2-eq{font-family:var(--ec-family-mono);font-size:13px;color:#bbb;margin:6px 0}
 .pbv2-h{font-size:11px;letter-spacing:1px;color:#888;margin:14px 0 2px}
 .ec-coderef{display:inline-block;min-height:32px;padding:6px 12px;margin-top:6px;background:#181405;border:1px solid var(--accent,#ffc700);border-radius:999px;color:var(--accent,#ffc700);font-size:12px;cursor:pointer}
 .ec-coderef:focus-visible{outline:2px solid #fff;outline-offset:2px}
@@ -24490,11 +24508,11 @@ function pbv2ResetConfirm() {
    no position:fixed, no inset:0, no z-index. Its host .panel supplies the
    scrolling and the height between the global header and the bottom nav,
    exactly as for every other tool. */
-#pbv2-3d-prototype{display:none;flex-direction:column;background:#0a0a0a;color:#eee;font-family:Inter,sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#pbv2-3d-prototype{display:none;flex-direction:column;background:#0a0a0a;color:#eee;font-family:var(--ec-family-ui);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #pbv2-3d-prototype.show{display:flex}
 #panel-pullbox{background:#0a0a0a}
 .p3d-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #1e1e1e}
-.p3d-title{font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;flex:1}
+.p3d-title{font-family:var(--ec-family-ui);font-weight:700;font-size:15px;flex:1}
 .p3d-fixtures{display:flex;gap:6px;padding:10px 14px 4px}
 .p3d-fx{flex:1;min-width:0;min-height:44px;font-size:10px;background:#141414;border:1px solid #2a2a2a;border-radius:8px;color:#bbb;font-size:11px;letter-spacing:1px;cursor:pointer}
 .p3d-fx[aria-pressed="true"]{border-color:#ffc700;color:#ffc700}
@@ -24520,9 +24538,9 @@ function pbv2ResetConfirm() {
 .p3d-cfg .p3d-field{flex:1 1 0;min-width:0}
 .p3d-field{display:flex;flex-direction:column;justify-content:center;gap:0;height:46px;padding:0 8px;background:#181818;border:1px solid #2c2c2c;border-radius:8px;text-align:left}
 .p3d-field .p3d-flab{margin:0;font-size:9px;letter-spacing:.5px;line-height:1.3}
-.p3d-sel{width:100%;background:none;border:0;color:#ddd;font:600 13px/1.2 'IBM Plex Mono',monospace;-webkit-appearance:none;appearance:none;cursor:pointer}
+.p3d-sel{width:100%;background:none;border:0;color:#ddd;font:600 13px/1.2 var(--ec-family-mono);-webkit-appearance:none;appearance:none;cursor:pointer}
 .p3d-sel{font-size:16px} /* EC-UI-FOCUS-1 field policy: a native <select> is a field even inside the compact 3D sheet */
-.p3d-fval{color:#ddd;font:600 13px/1.2 'IBM Plex Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p3d-fval{color:#ddd;font:600 13px/1.2 var(--ec-family-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* the two connection actions: siblings of the selectors, side by side */
 .p3d-acts{display:flex;gap:6px}
 .p3d-act{flex:1 1 0;height:46px;padding:0 8px;background:#181818;border:1px solid #2c2c2c;border-radius:8px;color:#ddd;font-size:11px;font-weight:600;letter-spacing:1px;cursor:pointer}
@@ -24535,13 +24553,13 @@ function pbv2ResetConfirm() {
 .p3d-cfg .p3d-flab{font-size:9px;letter-spacing:.5px}
 .p3d-cfg .p3d-field{padding:5px 6px}
 .p3d-pullinfo{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
-.p3d-pullends{color:#8a8a8a;font:11px/1.2 'IBM Plex Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p3d-pullends{color:#8a8a8a;font:11px/1.2 var(--ec-family-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p3d-add{display:block;width:100%;text-align:left;color:#ffc700;letter-spacing:1px}
 .p3d-newpull{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px;background:#141414;border-radius:8px}
 .p3d-panel{margin-top:8px;padding:2px 0;border-top:1px solid #1e1e1e}
 .p3d-pull{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 2px}
 .p3d-pull+.p3d-pull{border-top:1px solid #1a1a1a}
-.p3d-pullnum{flex:0 0 auto;min-width:30px;padding:3px 7px;border:1px solid;border-radius:999px;text-align:center;font:600 12px/1.2 'IBM Plex Mono',monospace}
+.p3d-pullnum{flex:0 0 auto;min-width:30px;padding:3px 7px;border:1px solid;border-radius:999px;text-align:center;font:600 12px/1.2 var(--ec-family-mono)}
 .p3d-pulltype{flex:1;color:#8a8a8a;font-size:11px;letter-spacing:.5px}
 .p3d-link{min-height:44px;padding:0 4px;background:none;border:0;color:#ddd;font-size:11px;letter-spacing:1px;cursor:pointer}
 .p3d-link.p3d-danger{color:#c0392b}
@@ -24550,7 +24568,7 @@ function pbv2ResetConfirm() {
 .p3d-cta{display:block;width:100%;min-height:48px;background:#ffc700;border:0;border-radius:10px;color:#141414;font-size:13px;font-weight:700;letter-spacing:.5px;cursor:pointer}
 .p3d-primary .p3d-sheetres{padding:6px 0 0;color:#8a8a8a;font-size:11px}
 .p3d-bar.p3d-connecting{border-color:#ffc700}
-.p3d-barlabel{flex:1 1 100%;min-width:0;color:#bbb;font-family:'IBM Plex Mono',monospace;overflow-wrap:anywhere;line-height:1.5}
+.p3d-barlabel{flex:1 1 100%;min-width:0;color:#bbb;font-family:var(--ec-family-mono);overflow-wrap:anywhere;line-height:1.5}
 .p3d-btn{min-height:44px;padding:8px 12px;background:#181818;border:1px solid #2c2c2c;border-radius:8px;color:#ddd;font-size:12px;cursor:pointer}
 .p3d-btn.p3d-danger{color:#c0392b}
 .p3d-hint{padding:8px 14px 0;font-size:11px;color:#7a7a7a;line-height:1.5}
@@ -24599,18 +24617,18 @@ function pbv2ResetConfirm() {
 .p3d-confirm-acts .p3d-btn{flex:1 1 0;min-height:46px}
 .p3d-danger-fill{background:#3a1f1c;border-color:#c0392b;color:#ff8a80;font-weight:600}
 .p3d-btn[disabled]{opacity:0.45}
-.p3d-boxsize{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:#eee;letter-spacing:0.5px;padding:2px 0 4px}
+.p3d-boxsize{font-family:var(--ec-family-mono);font-size:26px;font-weight:600;color:#eee;letter-spacing:0.5px;padding:2px 0 4px}
 .p3d-card{background:#101010;border:1px solid #222;border-radius:10px;padding:10px;margin-top:8px}
 .p3d-cardhead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .p3d-reqline{font-size:12px;margin-top:5px;line-height:1.5}
-.p3d-reqline strong{font-family:'IBM Plex Mono',monospace;font-weight:600}
+.p3d-reqline strong{font-family:var(--ec-family-mono);font-weight:600}
 .p3d-muted{color:#8a8a8a;font-size:11px}
 .p3d-governs{display:inline-block;margin-left:6px;font-size:9px;letter-spacing:1px;color:#0a0a0a;background:#8a8a8a;border-radius:3px;padding:1px 5px;vertical-align:2px}
-.p3d-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1.5px solid;border-radius:50%;font-family:'IBM Plex Mono',monospace;font-size:11px}
+.p3d-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1.5px solid;border-radius:50%;font-family:var(--ec-family-mono);font-size:11px}
 .p3d-h{font-size:10px;letter-spacing:1px;color:#7a7a7a;margin-bottom:6px}
 .p3d-row{display:flex;align-items:baseline;gap:12px;padding:4px 0}
 .p3d-lab{font-size:10px;letter-spacing:1px;color:#8a8a8a;min-width:56px}
-.p3d-val{font-family:'IBM Plex Mono',monospace;font-size:18px}
+.p3d-val{font-family:var(--ec-family-mono);font-size:18px}
 .p3d-val.p3d-undet{font-size:12px;color:#9a9a9a;letter-spacing:0.5px}
 .p3d-note{font-size:11px;color:#7a7a7a;margin-top:8px;line-height:1.5}
 /* PBV2-13B-4.8g — the selected-raceway details are an EXPANDED SECTION in
@@ -24633,10 +24651,10 @@ function pbv2ResetConfirm() {
 #pbv2-3d-delete{flex:0 0 auto;min-height:36px;padding:6px 10px;font-size:11px;letter-spacing:.5px;border-color:#3a2422}
 .p3d-sheet-t{flex:1;font-size:13px;font-weight:600}
 .p3d-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.p3d-opt{min-width:52px;min-height:44px;background:#181818;border:1px solid #2c2c2c;border-radius:8px;color:#ddd;font-size:12px;font-family:'IBM Plex Mono',monospace;cursor:pointer}
+.p3d-opt{min-width:52px;min-height:44px;background:#181818;border:1px solid #2c2c2c;border-radius:8px;color:#ddd;font-size:12px;font-family:var(--ec-family-mono);cursor:pointer}
 .p3d-opt[aria-pressed="true"]{border-color:#ffc700;color:#ffc700;background:#1d1a0d}
 .p3d-flab{font-size:10px;letter-spacing:1px;color:#7a7a7a;margin-bottom:4px}
-.p3d-sheetres{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#bbb;text-align:center;padding:6px 0 2px}
+.p3d-sheetres{font-family:var(--ec-family-mono);font-size:12px;color:#bbb;text-align:center;padding:6px 0 2px}
 </style>
 <div id="pbv2-3d-prototype" role="region" aria-label="Pull / Junction Box">
   <div class="p3d-head">
@@ -26791,12 +26809,12 @@ function closePullBox() {
 /* EC-CALC-2 / B2 — Load Calc (profile A) layout. Fields keep the shared >=16px policy (select/input[type=number]); text inputs are set inline. */
 #lcContent .lc-form { padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 #lcContent .lc-step { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-#lcContent .lc-step-num { background: var(--surface2); border: 1px solid var(--accent); border-radius: 50%; width: 22px; height: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: Montserrat, sans-serif; font-weight: 700; font-size: 10px; color: var(--accent); }
-#lcContent .lc-step-title { font-family: Montserrat, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.5px; color: var(--accent); }
+#lcContent .lc-step-num { background: var(--surface2); border: 1px solid var(--accent); border-radius: 50%; width: 22px; height: 22px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--ec-family-ui); font-weight: 700; font-size: 10px; color: var(--accent); }
+#lcContent .lc-step-title { font-family: var(--ec-family-ui); font-weight: 700; font-size: 11px; letter-spacing: 0.5px; color: var(--accent); }
 /* LC-UI-POLISH-1 / P3: a code-rule identification, deliberately NOT the round step marker. It wraps on a narrow
    screen instead of forcing a width, and its rule number keeps the ordinary reference styling and behaviour. */
 #lcContent .lc-rule-head { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; min-width: 0; max-width: 100%; }
-#lcContent .lc-rule-badge { display: inline-flex; align-items: center; gap: 4px; background: var(--surface2); border: 1px solid var(--accent); border-radius: 3px; padding: 3px 7px; font-family: Montserrat, sans-serif; font-weight: 700; font-size: 10px; letter-spacing: 0.5px; color: var(--accent); line-height: 1.3; white-space: normal; overflow-wrap: anywhere; min-width: 0; max-width: 100%; }
+#lcContent .lc-rule-badge { display: inline-flex; align-items: center; gap: 4px; background: var(--surface2); border: 1px solid var(--accent); border-radius: 3px; padding: 3px 7px; font-family: var(--ec-family-mono); font-weight: 700; font-size: 10px; letter-spacing: 0.5px; color: var(--accent); line-height: 1.3; white-space: normal; overflow-wrap: anywhere; min-width: 0; max-width: 100%; }
 /* LC-UI-POLISH-1 / P1: a saved Load Calculation row is a button-like control, so a mouse shows a pointer over the
    whole loading area — including the star and the name, which are not editable fields. Scoped to this one list:
    no global cursor change, no change to real text inputs, and text selection stays enabled everywhere else. */
@@ -26805,40 +26823,40 @@ function closePullBox() {
 #lcContent #lc-fav-list .fav-item-name { overflow-wrap: anywhere; min-width: 0; }
 #lcContent #lc-fav-list .fav-delete { cursor: pointer; color: var(--danger); padding: 0 4px; border-radius: 3px; flex-shrink: 0; }
 #lcContent #lc-fav-list .fav-delete:hover { background: rgba(255,80,80,0.12); }
-#lcContent .lc-subtitle { font-family: Montserrat, sans-serif; font-weight: 700; font-size: 10px; letter-spacing: 0.5px; color: var(--accent); background: rgba(255,199,0,0.08); border-left: 3px solid var(--accent); padding: 6px 10px; margin-top: 4px; }
+#lcContent .lc-subtitle { font-family: var(--ec-family-ui); font-weight: 700; font-size: 10px; letter-spacing: 0.5px; color: var(--accent); background: rgba(255,199,0,0.08); border-left: 3px solid var(--accent); padding: 6px 10px; margin-top: 4px; }
 #lcContent { min-width: 0; max-width: 100%; overflow-x: hidden; }   /* MOBILE-HOV-1 */
 #lcContent .lc-form, #lcContent .lc-box, #lcContent .lc-load, #lcContent .lc-grid > *, #lcContent .lc-load-head > *, #lcContent .lc-line > * { min-width: 0; max-width: 100%; }
 #lcContent select, #lcContent input, #lcContent button { min-width: 0; max-width: 100%; box-sizing: border-box; }
 #lcContent .lc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr)); gap: 10px; min-width: 0; max-width: 100%; margin-top: 4px; }
 #lcContent .lc-ctrl { min-width: 0; max-width: 100%; }
 #lcContent .lc-hint, #lcContent .lc-note, #lcContent .lc-fav-status { overflow-wrap: anywhere; word-break: break-word; min-width: 0; }
-#lcContent .lc-hint { font-family: IBM Plex Mono, monospace; font-size: 10px; color: var(--text-dimmer); margin-top: 3px; line-height: 1.4; overflow-wrap: anywhere; }
-#lcContent .lc-note { font-family: IBM Plex Mono, monospace; font-size: 11px; color: var(--text-dim); line-height: 1.6; padding: 8px 10px; border-radius: 4px; border-left: 3px solid var(--border); background: rgba(255,255,255,0.02); overflow-wrap: anywhere; }
+#lcContent .lc-hint { font-family: var(--ec-family-ui); font-size: 10px; color: var(--text-dimmer); margin-top: 3px; line-height: 1.4; overflow-wrap: anywhere; }
+#lcContent .lc-note { font-family: var(--ec-family-ui); font-size: 11px; color: var(--text-dim); line-height: 1.6; padding: 8px 10px; border-radius: 4px; border-left: 3px solid var(--border); background: rgba(255,255,255,0.02); overflow-wrap: anywhere; }
 #lcContent .lc-note-warn { border-left-color: var(--accent); color: var(--text); background: rgba(255,199,0,0.06); }
 #lcContent .lc-note-ok { border-left-color: var(--success); }
 #lcContent .lc-note-error { border-left-color: var(--danger); color: var(--danger); }
 #lcContent .lc-box { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; gap: 6px; padding-bottom: 6px; }
-#lcContent .lc-btn { background: var(--accent); color: #000; border: none; border-radius: 4px; padding: 11px 16px; font-family: Montserrat, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.3px; cursor: pointer; flex-shrink: 0; }
+#lcContent .lc-btn { background: var(--accent); color: #000; border: none; border-radius: 4px; padding: 11px 16px; font-family: var(--ec-family-ui); font-weight: 700; font-size: 11px; letter-spacing: 0.3px; cursor: pointer; flex-shrink: 0; }
 #lcContent .lc-add { display: flex; gap: 8px; align-items: flex-end; background: var(--surface2); border: 1px dashed var(--border); border-radius: 4px; padding: 10px; min-width: 0; }
 #lcContent .lc-load { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; min-width: 0; }
 #lcContent .lc-load-attn { border-color: var(--accent); }
 #lcContent .lc-load-head { display: flex; gap: 8px; align-items: center; min-width: 0; max-width: 100%; }
 #lcContent .lc-x { background: none; border: 1px solid var(--border); color: var(--danger); font-size: 13px; cursor: pointer; padding: 3px 9px; border-radius: 4px; line-height: 1; flex-shrink: 0; }
-#lcContent .lc-cover { font-family: IBM Plex Mono, monospace; font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
-#lcContent input[type=text] { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 16px; padding: 10px 12px; border-radius: 4px; outline: none; height: 44px; box-sizing: border-box; min-width: 0; }
+#lcContent .lc-cover { font-family: var(--ec-family-ui); font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+#lcContent input[type=text] { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: var(--ec-family-mono); font-size: 16px; padding: 10px 12px; border-radius: 4px; outline: none; height: 44px; box-sizing: border-box; min-width: 0; }
 #lcContent input[type=text]:focus { border-color: var(--accent); }
 #lcContent input[type=checkbox] { width: 18px; height: 18px; margin: 0; }
 #lcContent input.lc-invalid { border-color: var(--danger); }
 #lcContent input::placeholder { color: #858585; font-style: italic; opacity: 1; }   /* LC-UI-PLACEHOLDER-1: example text only (4.72:1 on --surface vs 14.2:1 entered); the pseudo-element is styled, never the input, so entered text keeps var(--text) */
 #lcContent .lc-calc-bar { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 #lcContent .lc-calc-btn { width: 100%; padding: 14px 16px; font-size: 14px; }
-#lcContent .lc-calc-status { font-family: IBM Plex Mono, monospace; font-size: 11px; color: var(--accent); }
+#lcContent .lc-calc-status { font-family: var(--ec-family-ui); font-size: 11px; color: var(--accent); }
 #lcContent input.lc-calc-invalid, #lcContent select.lc-calc-invalid, #lcContent button.lc-calc-invalid, #lcContent .lc-load.lc-calc-invalid { border: 1px solid var(--danger); box-shadow: 0 0 0 1px var(--danger); }
-#lcContent .lc-calc-msg { font-family: IBM Plex Mono, monospace; font-size: 11px; color: var(--danger); margin-top: 3px; line-height: 1.4; overflow-wrap: anywhere; }
+#lcContent .lc-calc-msg { font-family: var(--ec-family-ui); font-size: 11px; color: var(--danger); margin-top: 3px; line-height: 1.4; overflow-wrap: anywhere; }
 #lcContent .lc-problem-go { text-decoration: underline; cursor: pointer; }
 #lcContent .lc-result { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 4px; padding: 12px; min-height: 80px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-#lcContent .lc-banner { border-radius: 6px; padding: 10px 12px; font-family: IBM Plex Mono, monospace; font-size: 11px; line-height: 1.5; color: var(--text-dim); border: 1px solid var(--border); overflow-wrap: anywhere; }
-#lcContent .lc-banner-title { font-family: Montserrat, sans-serif; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; margin-bottom: 4px; color: var(--text); }
+#lcContent .lc-banner { border-radius: 6px; padding: 10px 12px; font-family: var(--ec-family-ui); font-size: 11px; line-height: 1.5; color: var(--text-dim); border: 1px solid var(--border); overflow-wrap: anywhere; }
+#lcContent .lc-banner-title { font-family: var(--ec-family-ui); font-weight: 800; font-size: 14px; letter-spacing: 0.5px; margin-bottom: 4px; color: var(--text); }
 #lcContent .lc-banner-ok { border-color: rgba(82,192,122,0.4); background: rgba(82,192,122,0.08); }
 #lcContent .lc-banner-ok .lc-banner-title { color: var(--success); }
 #lcContent .lc-banner-bad { border-color: rgba(255,80,80,0.4); background: rgba(255,80,80,0.08); }
@@ -26847,29 +26865,29 @@ function closePullBox() {
 #lcContent .lc-banner-warn .lc-banner-title { color: var(--accent); }
 #lcContent .lc-banner-error { border-color: rgba(255,80,80,0.5); background: rgba(255,80,80,0.1); }
 #lcContent .lc-banner-error .lc-banner-title { color: var(--danger); }
-#lcContent .lc-problem { font-family: IBM Plex Mono, monospace; font-size: 11px; color: var(--text-dim); padding: 5px 10px; border-bottom: 1px solid rgba(46,46,46,0.5); overflow-wrap: anywhere; }
+#lcContent .lc-problem { font-family: var(--ec-family-ui); font-size: 11px; color: var(--text-dim); padding: 5px 10px; border-bottom: 1px solid rgba(46,46,46,0.5); overflow-wrap: anywhere; }
 #lcContent .lc-problem-field { color: var(--text); }
-#lcContent .lc-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 7px 10px; border-bottom: 1px solid rgba(46,46,46,0.5); font-family: IBM Plex Mono, monospace; font-size: 11px; color: var(--text); overflow-wrap: anywhere; }
-#lcContent .lc-line-val { font-family: Montserrat, sans-serif; font-weight: 700; font-size: 13px; color: var(--text-dim); text-align: right; white-space: nowrap; }
+#lcContent .lc-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 7px 10px; border-bottom: 1px solid rgba(46,46,46,0.5); font-family: var(--ec-family-mono); font-size: 11px; color: var(--text); overflow-wrap: anywhere; }
+#lcContent .lc-line-val { font-family: var(--ec-family-mono); font-weight: 700; font-size: 13px; color: var(--text-dim); text-align: right; white-space: nowrap; }
 #lcContent .lc-line-ref { grid-column: 1 / -1; font-size: 10px; color: var(--text-dimmer); }
 #lcContent .lc-line-op { color: var(--text-dimmer); }
 #lcContent .lc-line-total { background: rgba(255,199,0,0.08); }
-#lcContent .lc-total { font-family: Montserrat, sans-serif; font-weight: 800; font-size: 15px; color: var(--text); padding: 8px 10px; overflow-wrap: anywhere; }
+#lcContent .lc-total { font-family: var(--ec-family-mono); font-weight: 800; font-size: 15px; color: var(--text); padding: 8px 10px; overflow-wrap: anywhere; }
 #lcContent .lc-total-partial { color: var(--text-dim); font-size: 13px; }
 #lcContent .lc-p82 { border-top: 1px dashed var(--border); padding-top: 6px; }
 #lcContent .lc-basis-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-#lcContent .lc-mini { background: none; border: 1px solid var(--border); color: var(--text-dim); font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.3px; padding: 7px 10px; min-height: 30px; border-radius: 4px; cursor: pointer; flex-shrink: 0; min-height: 30px; }
+#lcContent .lc-mini { background: none; border: 1px solid var(--border); color: var(--text-dim); font-family: var(--ec-family-ui); font-size: 12px; letter-spacing: 0.3px; padding: 7px 10px; min-height: 30px; border-radius: 4px; cursor: pointer; flex-shrink: 0; min-height: 30px; }
 #lcContent .lc-problem-current { color: var(--text-dimmer); }
 #lcContent #lcImportConfirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 #lcContent .lc-cov-unresolved .lc-problem-field { color: var(--accent); }
 #lcContent .lc-cap-adequate .lc-subtitle { color: var(--success); border-left-color: var(--success); background: rgba(82,192,122,0.08); }
 #lcContent .lc-cap-inadequate .lc-subtitle { color: var(--danger); border-left-color: var(--danger); background: rgba(255,80,80,0.08); }
 #lcContent .lc-action { color: var(--nycec); text-decoration: underline; cursor: pointer; }
-#lcContent .lc-foot { font-family: IBM Plex Mono, monospace; font-size: 10px; color: var(--text-dimmer); line-height: 1.8; padding: 12px; background: var(--surface2); border-radius: 4px; border: 1px solid var(--border); overflow-wrap: anywhere; }
+#lcContent .lc-foot { font-family: var(--ec-family-ui); font-size: 10px; color: var(--text-dimmer); line-height: 1.8; padding: 12px; background: var(--surface2); border-radius: 4px; border: 1px solid var(--border); overflow-wrap: anywhere; }
 /* LC-SERVICE-UI-1: service sizing design preview. Scoped to #lcContent; fields keep the shared >=16px rule and the
    MOBILE-HOV-1 cap (no size, zoom or opacity is set on any input here); every box shrinks and wraps. */
 #lcContent .lc-svc { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--nycec); border-radius: 4px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; max-width: 100%; }
-#lcContent .lc-svc-title { font-family: Montserrat, sans-serif; font-weight: 800; font-size: 13px; letter-spacing: 0.5px; color: var(--text); overflow-wrap: anywhere; }
+#lcContent .lc-svc-title { font-family: var(--ec-family-ui); font-weight: 800; font-size: 13px; letter-spacing: 0.5px; color: var(--text); overflow-wrap: anywhere; }
 #lcContent .lc-svc-controls, #lcContent .lc-svc-result, #lcContent .lc-svc-box, #lcContent .lc-svc-ref, #lcContent .lc-svc-pair > * { min-width: 0; max-width: 100%; }
 #lcContent .lc-svc-controls, #lcContent .lc-svc-result { display: flex; flex-direction: column; gap: 10px; }
 #lcContent .lc-svc label.ctrl-lbl { display: block; overflow-wrap: anywhere; }
@@ -26877,14 +26895,14 @@ function closePullBox() {
 #lcContent .lc-svc-val { white-space: normal; overflow-wrap: anywhere; }
 #lcContent .lc-svc-ref { border: 1px dashed var(--border); border-radius: 4px; margin: 0 10px; padding-bottom: 4px; }
 #lcContent .lc-svc-ref-only { border-color: var(--accent); }
-#lcContent .lc-svc-ref-title { font-family: IBM Plex Mono, monospace; font-size: 11px; font-weight: 600; color: var(--text); padding: 6px 10px 0; overflow-wrap: anywhere; }
+#lcContent .lc-svc-ref-title { font-family: var(--ec-family-mono); font-size: 11px; font-weight: 600; color: var(--text); padding: 6px 10px 0; overflow-wrap: anywhere; }
 #lcContent .lc-svc-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr)); gap: 8px; padding: 0 10px; }
 #lcContent .lc-svc-cell { border: 1px solid var(--border); border-radius: 4px; padding: 8px 10px; }
-#lcContent .lc-svc-cell-val { font-family: Montserrat, sans-serif; font-weight: 700; font-size: 14px; color: var(--text); }
-#lcContent .lc-svc-list { margin: 0; padding: 0 10px 0 28px; font-family: IBM Plex Mono, monospace; font-size: 11px; color: var(--text-dim); line-height: 1.6; overflow-wrap: anywhere; }
+#lcContent .lc-svc-cell-val { font-family: var(--ec-family-mono); font-weight: 700; font-size: 14px; color: var(--text); }
+#lcContent .lc-svc-list { margin: 0; padding: 0 10px 0 28px; font-family: var(--ec-family-ui); font-size: 11px; color: var(--text-dim); line-height: 1.6; overflow-wrap: anywhere; }
 #lcContent .lc-svc-reason-info { color: var(--text-dimmer); }
 #lcContent input.lc-svc-invalid, #lcContent select.lc-svc-invalid { border: 1px solid var(--danger); box-shadow: 0 0 0 1px var(--danger); }
-#lcContent .lc-svc-msg { font-family: IBM Plex Mono, monospace; font-size: 11px; color: var(--danger); margin-top: 3px; line-height: 1.4; overflow-wrap: anywhere; }
+#lcContent .lc-svc-msg { font-family: var(--ec-family-ui); font-size: 11px; color: var(--danger); margin-top: 3px; line-height: 1.4; overflow-wrap: anywhere; }
 /* STAGE4-UI: conductor workflow mode + preliminary new-design check. Same shrink/wrap rules as the panel above; no size,
    zoom or opacity is set on any field (the shared >=16px rule and MOBILE-HOV-1 cap stay in force at 320 px). */
 #lcContent .lc-pre, #lcContent .lc-pre-result { display: flex; flex-direction: column; gap: 10px; min-width: 0; max-width: 100%; }
@@ -26924,7 +26942,7 @@ function closePullBox() {
 #lcContent .lc-job-button:focus-visible, #lcContent .lc-job-field:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 #lcContent .lc-job-button:disabled { cursor: default; background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
 #lcContent .lc-job-control > label { display: block; margin-bottom: 6px; overflow-wrap: anywhere; }
-#lcContent .lc-job-field { width: 100%; min-width: 0; max-width: 100%; min-height: 44px; box-sizing: border-box; font-family: IBM Plex Mono, monospace; font-size: 16px; padding: 10px 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
+#lcContent .lc-job-field { width: 100%; min-width: 0; max-width: 100%; min-height: 44px; box-sizing: border-box; font-family: var(--ec-family-ui); font-size: 16px; padding: 10px 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; }
 #lcContent textarea.lc-job-field { resize: vertical; line-height: 1.5; }
 #lcContent .lc-job-title { margin: 4px 0; font-size: 18px; line-height: 1.4; overflow-wrap: anywhere; }
 #lcContent .lc-job-heading { margin: 8px 0 0; font-size: 14px; }
@@ -26993,7 +27011,7 @@ function closePullBox() {
 /* LC-SERVICE-UI-CLEANUP-1: one native disclosure ("Calculation details & sources"). The region's own flex rule must never
    override [hidden]; the toggle is a full-width >= 44px native button with a visible focus ring and a wrapping label. */
 #lcContent .lc-svc-details { border-top: 1px dashed var(--border); padding-top: 8px; min-width: 0; max-width: 100%; }
-#lcContent .lc-svc-details-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: IBM Plex Mono, monospace; font-size: 13px; font-weight: 600; text-align: left; white-space: normal; overflow-wrap: anywhere; cursor: pointer; }
+#lcContent .lc-svc-details-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: var(--ec-family-ui); font-size: 13px; font-weight: 600; text-align: left; white-space: normal; overflow-wrap: anywhere; cursor: pointer; }
 #lcContent .lc-svc-details-btn::after { content: ''; flex-shrink: 0; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid currentColor; }
 #lcContent .lc-svc-details-btn[aria-expanded="true"]::after { transform: rotate(180deg); }
 #lcContent .lc-svc-details-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -27068,7 +27086,7 @@ function wsCalc() {
 
   if (!load) {
     wsMark(null);
-    document.getElementById('wsResult').innerHTML = '<div style="color:var(--text-dimmer);font-family:IBM Plex Mono,monospace;font-size:12px;padding:20px;text-align:center">Enter load and distance to calculate</div>';
+    document.getElementById('wsResult').innerHTML = '<div style="color:var(--text-dimmer);font-family:var(--ec-family-ui);font-size:12px;padding:20px;text-align:center">Enter load and distance to calculate</div>';
     return;
   }
 
@@ -27096,7 +27114,7 @@ function wsCalc() {
 
   wsMark(r.ok ? null : ({ INVALID_CONTINUOUS_LOAD: 'wsContinuous', NEGATIVE_LOAD: 'wsLoad', INVALID_LOAD: 'wsLoad', INVALID_DISTANCE: 'wsFeet' })[r.reason] || null);
   if (!r.ok) {
-    document.getElementById('wsResult').innerHTML = '<div id="wsError" role="alert" style="background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.3);border-left:4px solid var(--danger);border-radius:4px;padding:14px 18px;font-family:IBM Plex Mono,monospace;font-size:12px;color:var(--danger)">Cannot size: ' + String(r.reason || 'invalid input').replace(/[<>&]/g, '') + '</div>';
+    document.getElementById('wsResult').innerHTML = '<div id="wsError" role="alert" style="background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.3);border-left:4px solid var(--danger);border-radius:4px;padding:14px 18px;font-family:var(--ec-family-ui);font-size:12px;color:var(--danger)">Cannot size:' + String(r.reason || 'invalid input').replace(/[<>&]/g, '') + '</div>';
     window.wsSizerWinner = null;
     return;
   }
@@ -27151,17 +27169,17 @@ function wsCalc() {
 
     summary =
       '<div style="background:rgba(82,192,122,0.1);border:1px solid rgba(82,192,122,0.3);border-left:4px solid var(--success);border-radius:4px;padding:14px 18px;margin-bottom:16px">' +
-        '<div style="font-family:Montserrat,sans-serif;font-weight:800;font-size:22px;letter-spacing:0.5px;color:var(--success);margin-bottom:10px">✓ USE: ' + wLabel + ' ' + (mat==='cu'?'COPPER':'ALUMINUM') + '</div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:8px;font-family:IBM Plex Mono,monospace;font-size:12px;margin-bottom:10px">' +
+        '<div style="font-family:var(--ec-family-ui);font-weight:800;font-size:22px;letter-spacing:0.5px;color:var(--success);margin-bottom:10px">✓ USE: ' + wLabel + ' ' + (mat==='cu'?'COPPER':'ALUMINUM') + '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:8px;font-family:var(--ec-family-mono);font-size:12px;margin-bottom:10px">' +
           '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">Ampacity: <strong style="color:var(--success)">' + wFinal.toFixed(0) + 'A</strong> ≥ ' + load + 'A</span>' +
           (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">V-Drop: <strong style="color:var(--success)">' + wVDpct.toFixed(2) + '%</strong> ≤ ' + maxVD + '%</span>' : '') +
           '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">Breaker: <strong style="color:var(--accent)">' + typical + '</strong></span>' +
           (feet ? '<span style="background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius: 4px">V at load: <strong>' + (win.voltageAtLoad !== null ? win.voltageAtLoad.toFixed(1) : voltage.toFixed(1)) + 'V</strong></span>' : '') +
         '</div>' +
-        '<div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:var(--text-dim)">Derating: ' + wBase + 'A base × ' + tempFactor.toFixed(2) + ' (temp@' + temp + '°F) × ' + bundle + ' (bundle) = ' + win.calculatedAmpacity.toFixed(0) + 'A → capped at 75°C terminal: <strong>' + wFinal.toFixed(0) + 'A</strong></div>' +
+        '<div style="font-family:var(--ec-family-mono);font-size:11px;color:var(--text-dim)">Derating: ' + wBase + 'A base × ' + tempFactor.toFixed(2) + ' (temp@' + temp + '°F) × ' + bundle + ' (bundle) = ' + win.calculatedAmpacity.toFixed(0) + 'A → capped at 75°C terminal: <strong>' + wFinal.toFixed(0) + 'A</strong></div>' +
       '</div>';
   } else {
-    summary = '<div style="background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.3);border-left:4px solid var(--danger);border-radius:4px;padding:14px 18px;margin-bottom:16px;font-family:IBM Plex Mono,monospace">' +
+    summary = '<div style="background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.3);border-left:4px solid var(--danger);border-radius:4px;padding:14px 18px;margin-bottom:16px;font-family:var(--ec-family-mono)">' +
       '<div style="font-size:16px;color:var(--danger);margin-bottom:6px">✗ No single conductor qualifies</div>' +
       '<div style="font-size:12px;color:var(--text-dim)">Run parallel conductors or increase voltage/reduce distance.</div></div>';
   }
@@ -27170,7 +27188,7 @@ function wsCalc() {
 
   var fillBtn = winner ? '<div style="padding:10px 0 4px"><button onclick="wsGoToFillCalc()" class="wf-btn" style="width:100%">Fill Calc →</button></div>' : '';
   document.getElementById('wsResult').innerHTML = summary + fillBtn +
-    '<div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;padding:0 4px">' + tableTitle + '</div>' +
+    '<div style="font-family:var(--ec-family-mono);font-size:10px;color:var(--accent);letter-spacing:1px;margin-bottom:8px;padding:0 4px">' + tableTitle + '</div>' +
     '<div style="overflow-x:auto"><table class="cf-table" style="min-width:480px">' +
     '<thead><tr>' +
       '<th class="wire-col">Wire</th>' +
@@ -27198,7 +27216,7 @@ function wsReset() {
   var defs = {wsVoltage:'208',wsPhase:'1',wsMaterial:'cu',wsBundle:'1.00',wsTemp:'86',wsMaxVD:'5',wsInsul:'thhn',wsContinuous:'',wsCircuitType:'BRANCH_CIRCUIT',wsHundredPct:'no',wsDwelling:''};
   Object.keys(defs).forEach(function(id){ var el=document.getElementById(id); if(el) el.value=defs[id]; });
   var r=document.getElementById('wsResult');
-  if(r) r.innerHTML='<div style="color:var(--text-dimmer);font-family:IBM Plex Mono,monospace;font-size:12px;padding:20px;text-align:center">Enter load and distance to calculate</div>';
+  if(r) r.innerHTML='<div style="color:var(--text-dimmer);font-family:var(--ec-family-ui);font-size:12px;padding:20px;text-align:center">Enter load and distance to calculate</div>';
 }
 
 </script>

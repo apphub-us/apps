@@ -419,7 +419,7 @@ describe('UX-2 — presentation', { skip: skipAll }, () => {
     assert.ok(/\.tile-name\s*\{[^}]*font-size:\s*var\(--ec-font-lg\)/.test(html), 'tile name uses the shared large text token');
     assert.ok(/\.tile-desc\s*\{[^}]*font-size:\s*var\(--ec-font-xs\)/.test(html), 'tile description uses the shared xs token');
     assert.ok(/--ec-font-lg:\s*13px/.test(html) && /--ec-font-xs:\s*10px/.test(html), 'and those resolve to readable sizes');
-    assert.ok(/\.tile-desc\s*\{[^}]*IBM Plex Mono/.test(html), 'descriptions should be monospace');
+    assert.ok(/\.tile-desc\s*\{[^}]*font-family:\s*var\(--ec-family-ui\)/.test(html) && /--ec-family-mono:\s*[^;]*\bmonospace;/.test(html), 'descriptions should use the UI family and the mono token should stay monospace');
   });
 
   test('PINNED is visually distinct: bright heading, tinted tiles, divider', () => {

@@ -133,7 +133,7 @@ test('page source: the only reload is the click handler of the notice; no pollin
  // The page carries the label of the release it belongs to (the builder's own constant) in the title and in the header, and no
  // label of an earlier release: the notice is what moves an open tab from one labelled build to the next.
  const build=require('../candidate/build.cjs').BUILD;
- assert.equal(build,'PRIVATE-PILOT-6');
+ assert.equal(build,'PRIVATE-PILOT-7');
  assert.ok(index.includes('<title>Empire Code — '+build+'</title>'),'title label');assert.ok(index.includes('<span class="build">'+build+'</span>'),'header label');
  assert.deepEqual([...new Set(index.match(/PRIVATE-PILOT-\d+/g))],[build],'no stale build label on the page');
 });

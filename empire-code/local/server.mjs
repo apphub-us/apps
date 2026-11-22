@@ -1,4 +1,4 @@
-// Empire Code — LOCAL-WORKSPACE-6: a loopback Node runtime of the accepted PRIVATE-PILOT-6 build.
+// Empire Code — LOCAL-WORKSPACE-7: a loopback Node runtime of the accepted PRIVATE-PILOT-7 build.
 //
 // This file is an HTTP adapter and nothing else. Every route, shape, limit, guard and text comes from the unchanged
 // canonical modules:
@@ -29,7 +29,7 @@ import {PROMPT} from '../candidate/server/prompt.generated.mjs';
 import {createKeyReader} from './credential.mjs';
 import {memoryBudgetStorage} from './budget-store.mjs';
 
-export const LOCAL_RUNTIME='LOCAL-WORKSPACE-6';
+export const LOCAL_RUNTIME='LOCAL-WORKSPACE-7';
 export const DEFAULT_PORT=12350;
 export const LOCAL_PRINCIPAL='local-operator@loopback.invalid';
 export const ENV_KEY_MARKER='sk-local-runtime-marker-not-a-credential';
