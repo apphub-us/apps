@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Empire Code — LOCAL-WORKSPACE-5 launcher. User-invoked; foreground; one fixed address: http://127.0.0.1:12350/
+// Empire Code — LOCAL-WORKSPACE-6 launcher. User-invoked; foreground; one fixed address: http://127.0.0.1:12350/
 //   node local/run.mjs            verify, then serve until Control-C / SIGTERM
 //   node local/run.mjs --open     the same, then open the address with /usr/bin/open
 //   node local/run.mjs --check    verify the accepted browser manifest and the served bytes; no key, no AI, then exit

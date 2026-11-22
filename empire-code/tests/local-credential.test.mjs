@@ -1,4 +1,4 @@
-// LOCAL-WORKSPACE-5 — key reader, live transport wiring, persisted budget and the --check verification.
+// LOCAL-WORKSPACE-6 — key reader, live transport wiring, persisted budget and the --check verification.
 // Authored for root execution; the author could not run anything and claims no result.
 // The real credential is never touched: every key reader gets a synthetic temporary directory, every live transport
 // gets an injected fetch. No test calls createKeyReader() or createLiveRequest() with no argument — the only form that
@@ -174,7 +174,7 @@ test('budget file: the canonical per-UTC-day count, duplicate ids and nothing el
 
 test('--check: sources, build, generated files, release record and served bytes agree; no provider is contacted',async()=>{
  const release=JSON.parse(fs.readFileSync(path.join(APP,'RELEASE.json'),'utf8')),accepted=verifyAccepted();
- assert.deepEqual([accepted.build,accepted.pin,accepted.served.length],['PRIVATE-PILOT-5',release.browserShellPin,21]);
+ assert.deepEqual([accepted.build,accepted.pin,accepted.served.length],['PRIVATE-PILOT-6',release.browserShellPin,21]);
  const report=await check();
- assert.deepEqual(report,{build:'PRIVATE-PILOT-5',pin:release.browserShellPin,paths:21,model:'gpt-6-astra',speechModel:'gpt-transcribe'});
+ assert.deepEqual(report,{build:'PRIVATE-PILOT-6',pin:release.browserShellPin,paths:21,model:'gpt-6-astra',speechModel:'gpt-transcribe'});
 });

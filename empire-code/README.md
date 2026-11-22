@@ -3,6 +3,15 @@
 Source of the Empire Code PRIVATE-PILOT-5 release: a browser app served by a
 Cloudflare Worker, with the local build and tests that produce and check it.
 
+**Working build in this tree: PRIVATE-PILOT-6** (local runtime
+LOCAL-WORKSPACE-6). It is PRIVATE-PILOT-5 with one visual change
+(EC-UI-UNIFY-1): the shell, Rozmowa, Roboty and Przepisy use the colours,
+radii, control sizes and label style of the Narzędzia tab. Calculators, stored
+data, the provider path and access rules are not changed by it. This README
+claims no tag, release or deployment of PRIVATE-PILOT-6; `RELEASE.json` records
+what was accepted. Everything below describes the PRIVATE-PILOT-5 release that
+PRIVATE-PILOT-6 is built on.
+
 - Stable address: <https://empirecode.app/current/> (a plain redirect page)
 - Direct app address: <https://empire-code-private-pilot.szczepan-msg.workers.dev/>
 - Previous app (unchanged): <https://empirecode.app/mobile.html>

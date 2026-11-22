@@ -38,8 +38,8 @@ function assertAiOff(p){
 }
 
 test('page: build label, truthful pilot wording, re-login link, original asset references',()=>{
- assert.match(INDEX,/<title>Empire Code — PRIVATE-PILOT-5<\/title>/);assert.match(INDEX,/<span class="build">PRIVATE-PILOT-5<\/span>/);
- assert.ok(INDEX.includes('Prywatny pilot PRIVATE-PILOT-5.'),'the help text names the current release');assert.ok(!INDEX.includes('PRIVATE-PILOT-4'),'no stale release label');
+ assert.match(INDEX,/<title>Empire Code — PRIVATE-PILOT-6<\/title>/);assert.match(INDEX,/<span class="build">PRIVATE-PILOT-6<\/span>/);
+ assert.ok(INDEX.includes('Prywatny pilot PRIVATE-PILOT-6.'),'the help text names the current release');assert.ok(!INDEX.includes('PRIVATE-PILOT-4'),'no stale release label');assert.ok(!INDEX.includes('PRIVATE-PILOT-5'),'no label of the previous release');
  assert.match(INDEX,/<a id="relogin" href="\/_auth" target="_self" hidden>Zaloguj ponownie<\/a>/);
  assert.ok(!/działa na Macu|127\.0\.0\.1|localhost|WORKSPACE-4/.test(INDEX));
  for(const s of ['tylko do logowania i do rozmowy AI','nie są automatycznie importowane','AI jest pokazywane jako niedostępne','nie stanowi odbioru na fizycznym iPhonie','Ten etap nie jest zweryfikowanym AI Chat o przepisach'])assert.ok(INDEX.includes(s),s);

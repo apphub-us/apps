@@ -1,6 +1,6 @@
 {
   "algorithm": "sha256",
-  "contentPin": "6b2404dcfd24cb2ca0933c0035af688e65e4da4d68eb767df6b12928cde30726",
+  "contentPin": "f44910167e688e6be5af5675b4835720dd5b8311fbb8b7e85e24de0adb041df4",
   "excludes": [
     "SOURCE-MANIFEST.json",
     "RELEASE.json"
@@ -12,7 +12,7 @@
     ],
     [
       "README.md",
-      "a21225a5f9efad23779f8258d8ccd1e796678ce23ab250e46bf6e3c708f2ad91"
+      "6dc83e9bced385bee7632533864e2d941d0b2824fc8ee773cde7c12cbc4c2b55"
     ],
     [
       "candidate/browser/assistant-session.js",
@@ -32,7 +32,7 @@
     ],
     [
       "candidate/browser/index.html",
-      "f029ba36d3ffd32e02d6346ff8c8201b693c50ef3954a881251b7e7781dda678"
+      "8beee801ab13a3a21c3e99e5b7306330d0fa931ddc488485ccd94f23f2c7c31d"
     ],
     [
       "candidate/browser/material-edit-host.js",
@@ -40,7 +40,7 @@
     ],
     [
       "candidate/browser/style.css",
-      "b4299db01404060140ab55258f775b2fcb4d6cade7b1e147d6cd3615d9a9b7e0"
+      "4c4f04a71fb58ca733661fea450586eb73954c402945fc1ba7d0aa39f3324011"
     ],
     [
       "candidate/browser/sw.js",
@@ -92,19 +92,19 @@
     ],
     [
       "candidate/browser/workspace/mobile.html",
-      "f4524150ae88409f22a46151d41e229b1edfd9503d91944c04f391487deb186e"
+      "c789579d741c1c528705a538cfd3cf7ae4490071b67041983388aecf6c0fa386"
     ],
     [
       "candidate/build-manifest.generated.json",
-      "67f81355bc8ec4d7e017f9e7edb88990ed17c75b60bcd1293faeb673fafe6187"
+      "c5aa24bf7c366a18ef4de0026670b8abc5957595b28ba338c0e578a2ca3db9de"
     ],
     [
       "candidate/build.cjs",
-      "72cbccf1740c212dc0975bc31b16a414315cb92df4ac2a1ab65eee6ed8da569f"
+      "8c2976c30e319759e33e8509563c869e1dbc002fb6f7b0fbb4744c84a4b0ed02"
     ],
     [
       "candidate/server/assets.generated.mjs",
-      "2496dabfa3590c93b94145957b47f611a330e86f5e34f6e3047298268af0b878"
+      "452635e1f8a6d52886dc997d7f6082b63c3fd4aa2e65dceb68ee0e462a9323eb"
     ],
     [
       "candidate/server/assistant-contract.cjs",
@@ -132,7 +132,7 @@
     ],
     [
       "candidate/server/prompt.generated.mjs",
-      "64c917761fe3cebc86106efb2c85e1094dc9356ba725e887d1826dc47cb25f03"
+      "f5781f77e7473defb66640a2dfed6ae6b17f02e74fc540ab271b86770bf1d100"
     ],
     [
       "candidate/server/worker.mjs",
@@ -288,7 +288,7 @@
     ],
     [
       "core/mobile.html",
-      "bdf751dc2a317ac2394e6027fa52399fc9ad7ca8f85aa7736ee18b0d0991eb72"
+      "82883e48ee45015ef4bfb855638d8da11ece3a6f135b714efcacf76f4f5d2c3b"
     ],
     [
       "core/nema-wiki-test.html",
@@ -1163,6 +1163,10 @@
       "cf6b9e9391513dc21e23ee1e525089f9a44816c8a9082e3048bb62f3a5d7ca83"
     ],
     [
+      "docs/local-development.md",
+      "bd675541109757ff26981d70e14755421baed3f266a3aad98aac82a512e3d261"
+    ],
+    [
       "docs/stage4-qualification-contract.md",
       "68c9c7877290167ca23c46c75af8d9d2b45b1ed0bcde2d3b7f9a9598e2c97fc6"
     ],
@@ -1187,8 +1191,28 @@
       "ec547666d7f04d197d3605a9dfcd7f0be3e6dbea0e3e7c4f8faf6361ed19f06c"
     ],
     [
+      "local/budget-store.mjs",
+      "d8c90cb47b2d4bf1b89f24a0bf00553e6b3b612713bdc4b88af18ef9de141d52"
+    ],
+    [
+      "local/check.mjs",
+      "9b5cfe3535758baa7052bed1becaa6868f950faf58e2bf21a425806b3d9f7bd1"
+    ],
+    [
+      "local/credential.mjs",
+      "6aead1653ba4b276771f8e92ddafee88c8042510ed84dcb3c9ee9f32a47d332b"
+    ],
+    [
+      "local/run.mjs",
+      "eac49d39030467cc2dececae3439d2df670031a14de7217e84b43424b72ce1b5"
+    ],
+    [
+      "local/server.mjs",
+      "17c6055d5048fd8d669480fb5dffaf5e2a99c0416fcbd68ba7c978910cfcb787"
+    ],
+    [
       "package.json",
-      "d1d15aca83d50a3c9ab32e178abaa37a30d7993d47aa74d970e6ed2f1491e52f"
+      "3eee12de1262ef50a43615cdde17dc5e977ab5ff483df94ffe918c25361117f1"
     ],
     [
       "tests/backend-budget.test.mjs",
@@ -1204,7 +1228,7 @@
     ],
     [
       "tests/browser-build.test.cjs",
-      "82cbdfa55eebb7db834d0917b24485d9e755db6dad9cef82d5a2418bbef5e036"
+      "cda73d2a5efbca29603d5a92193a7efbf1c56f206055d9f601d02d1478eeb937"
     ],
     [
       "tests/browser-sw.test.cjs",
@@ -1212,7 +1236,7 @@
     ],
     [
       "tests/browser-ui.test.cjs",
-      "da08ed0a582386614f7ad9c8c3a6f3f84a0704b35fbe7c2b24d8872ea67d70eb"
+      "cba770bf9245655c7533d101d1cf140d2210c71d55b72866a96285bee4499d1e"
     ],
     [
       "tests/converter-runtime-browser.cjs",
@@ -1255,12 +1279,24 @@
       "d51d184f3e311a97c2a21ca96db2c3a46c0e7b15f85ba135878bdcd8ef32b010"
     ],
     [
+      "tests/local-credential.test.mjs",
+      "7481286342c1bcd153a696b6448c6551494aa4f60c806a47bbbf1b7b220cecbf"
+    ],
+    [
+      "tests/local-fixtures.mjs",
+      "8660477da44632b319213649f5d3316b9fb34f6502b36545b85584b3c09837c9"
+    ],
+    [
       "tests/local-node-runtime.cjs",
       "79855513c1e473c84edd0f4cf890db00bfe726c21131065f3ec5a1692b20e912"
     ],
     [
+      "tests/local-runtime.test.mjs",
+      "5635be8e026df32104ce120db6d6f306ae14f9a9d35b2d108064236821540ad1"
+    ],
+    [
       "tests/session-errors.test.cjs",
-      "50c7d1c1d8516fbf3eef79febccaeacadee273714c5d8e48ba0c47f7f4ced6ff"
+      "beb68c26071f85250a87615d669691b1a93a1e3e66caf25ae5a500f2f46de9e3"
     ],
     [
       "tests/stage2-conversation-bank.test.cjs",
@@ -1284,7 +1320,7 @@
     ],
     [
       "tests/stage2-update-notice.test.cjs",
-      "c0033539723086cf8eb818591b3879176283ae2c53393d4c4b3ff07bfd606661"
+      "ce644cfc7445518dd34a1972212b84cbb69988cdcbb9223a33220fe681a4840b"
     ],
     [
       "tests/stage3-material-contract.test.cjs",

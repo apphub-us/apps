@@ -679,6 +679,55 @@
 #jobWorkspaceRecords .ec-trade-draft{border:1px solid #343a2e;border-radius:12px;overflow:hidden;margin:14px 0}#jobWorkspaceRecords .ec-trade-row{padding:12px 14px;border-bottom:1px solid #343a2e}#jobWorkspaceRecords .ec-trade-row:last-child{border-bottom:0}#jobWorkspaceRecords .ec-trade-row strong{display:block;font-size:16px}#jobWorkspaceRecords .ec-trade-row span{display:block;margin-top:5px;color:#b5bea9;font-size:13px;overflow-wrap:anywhere}#jobWorkspaceRecords .ec-material-spec{color:#d4ddc4!important;font-weight:600}#jobWorkspaceRecords .ec-current-question p{font-size:15px;line-height:1.5}#jobWorkspaceRecords #ecTryMaterialsBtn{margin:0 0 18px}
 
 #jobWorkspaceRecords .ec-trade-facts{display:block;color:#9aa58e;font-size:12px;line-height:1.5;overflow-wrap:anywhere;margin-top:4px}
+
+/* EC-UI-UNIFY-1: Jobs and Code Reference in the EC-UI-2 language of the tool catalogue (tokens from :root above):
+   neutral charcoal surfaces instead of the olive tint, 10px cards, 8px / 46px controls, quiet headings and labels.
+   Appended so that it follows the rules it refines; no rule above is edited. Fields stay at 16px (EC-UI-FOCUS-1).
+   Accent stays on actions and state; warning / error / success keep their own colours. */
+#jobWorkspaceRecords h1{font:700 22px/1.2 Inter,system-ui,sans-serif;letter-spacing:-.2px;margin:6px 0 0}
+#jobWorkspaceRecords .ec-eyebrow{font:600 10px/1.5 Inter,system-ui,sans-serif;letter-spacing:var(--ec-tracking);color:var(--text-dimmer)}
+#jobWorkspaceRecords .ec-local-pill{font:600 10px Inter,system-ui,sans-serif;letter-spacing:.4px;padding:4px 8px;border-color:var(--border);border-radius:4px;color:var(--text-dim)}
+#jobWorkspaceRecords .ec-capture{border-color:var(--border);border-radius:var(--ec-radius-md);background:var(--ec-surface-card)}
+#jobWorkspaceRecords .ec-capture h2{font:600 18px/1.3 Inter,system-ui,sans-serif;letter-spacing:0;margin:6px 0 12px}
+#jobWorkspaceRecords .ec-selected-job h2{font:600 18px/1.3 Inter,system-ui,sans-serif;letter-spacing:0}
+#jobWorkspaceRecords .ec-context,#jobWorkspaceRecords .ec-job-address{color:var(--text-dim)}
+#jobWorkspaceRecords .ec-button,#jobWorkspaceRecords .lc-btn{min-height:var(--ec-control-h);border-color:var(--border);border-radius:var(--ec-radius-sm);background:var(--ec-surface-raised);color:var(--text);font:600 13px/1.3 Inter,system-ui,sans-serif}
+#jobWorkspaceRecords .ec-primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700}
+#jobWorkspaceRecords .ec-secondary{background:transparent;color:var(--text-dim)}
+#jobWorkspaceRecords .ec-mic{min-height:62px;background:var(--accent);color:#000;border-radius:var(--ec-radius-md);font:700 17px Inter,system-ui,sans-serif}
+#jobWorkspaceRecords .ec-link-button{background:transparent;color:var(--text-dim);font-size:12px}
+#jobWorkspaceRecords .lc-job-open{background:transparent;border-radius:0;color:var(--text);font-size:16px}
+#jobWorkspaceRecords .ec-language{height:var(--ec-control-h);border-color:var(--border);border-radius:var(--ec-radius-sm);background:var(--ec-surface-raised);color:var(--text)}
+#jobWorkspaceRecords #ecCaptureText,#jobWorkspaceRecords #ecRepairReply{border-color:var(--border);border-radius:var(--ec-radius-sm);background:var(--ec-surface-raised);color:var(--text)}
+#jobWorkspaceRecords .ec-muted,#jobWorkspaceRecords .ec-help,#jobWorkspaceRecords #lcJobStatus,#jobWorkspaceRecords .lc-job-item>.lc-note,#jobWorkspaceRecords .ec-trade-facts{color:var(--text-dimmer)}
+#jobWorkspaceRecords .ec-help summary,#jobWorkspaceRecords .ec-utility>summary,#jobWorkspaceRecords .ec-job-details summary,#jobWorkspaceRecords .ec-status,#jobWorkspaceRecords .ec-trade-row span,#jobWorkspaceRecords .ec-entry-preview small{color:var(--text-dim)}
+#jobWorkspaceRecords .ec-status[data-kind=warn],#jobWorkspaceRecords .ec-question{color:var(--warn)}
+#jobWorkspaceRecords .ec-status[data-kind=error]{color:#ff8a80}
+#jobWorkspaceRecords .ec-status[data-kind=ok]{color:var(--success)}
+#jobWorkspaceRecords .ec-entry-preview,#jobWorkspaceRecords .lc-job-item,#jobWorkspaceRecords .lc-meas-hub,#jobWorkspaceRecords .lc-mat-hub,#jobWorkspaceRecords .lc-photo-hub{border-color:var(--border);border-radius:var(--ec-radius-md);background:var(--ec-surface-card)}
+#jobWorkspaceRecords .ec-entry-kind{color:var(--text-dimmer);font:600 10px Inter,system-ui,sans-serif;letter-spacing:var(--ec-tracking)}
+#jobWorkspaceRecords .ec-entry-preview strong{font:600 18px/1.4 Inter,system-ui,sans-serif;color:var(--text)}
+#jobWorkspaceRecords .ec-utility{border-top-color:var(--border)}
+#jobWorkspaceRecords .ec-trade-draft{border-color:var(--border);border-radius:var(--ec-radius-md)}
+#jobWorkspaceRecords .ec-trade-row{border-bottom-color:var(--border)}
+#jobWorkspaceRecords .ec-repair-card,#jobWorkspaceRecords .ec-preview-notice{border-color:rgba(232,194,58,0.35);border-radius:var(--ec-radius-md);background:rgba(232,194,58,0.06)}
+#jobWorkspaceRecords .ec-preview-notice{color:var(--warn)}
+#jobWorkspaceRecords .ec-repair-fragment{color:var(--text)}
+#jobWorkspaceRecords .lc-job-field,#jobWorkspaceRecords .lc-meas-field,#jobWorkspaceRecords .lc-mat-field,#jobWorkspaceRecords .lc-photo-field,#jobWorkspaceRecords .lc-arc-field,#jobWorkspaceRecords .lc-arc-file{min-height:var(--ec-control-h);font-family:inherit;font-size:16px;color:var(--text);background:var(--ec-surface-raised);border-color:var(--border);border-radius:var(--ec-radius-sm)}
+#jobWorkspaceRecords .lc-job-field:focus,#jobWorkspaceRecords .lc-meas-field:focus,#jobWorkspaceRecords .lc-mat-field:focus,#jobWorkspaceRecords .lc-photo-field:focus,#jobWorkspaceRecords .lc-arc-field:focus{border-color:var(--accent)}
+#jobWorkspaceRecords .lc-arc-job,#jobWorkspaceRecords .lc-record-hub,#jobWorkspaceRecords .lc-job-hub{border-color:var(--border);border-radius:var(--ec-radius-md)}
+#jobWorkspaceRecords .lc-arc-content{border-top-color:var(--border)}
+#jobWorkspaceRecords .lc-record-details{border-radius:var(--ec-radius-sm)}
+#jobWorkspaceRecords .lc-record-data-key{color:var(--text-dim)}
+#sub-coderef .code-subtabs{overflow-x:auto;scrollbar-width:none}
+#sub-coderef .code-subtabs::-webkit-scrollbar{display:none}
+#sub-coderef .code-subtab{flex:1 0 auto;min-height:var(--ec-control-h);white-space:nowrap}
+#sub-coderef .code-subtab:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+#sub-coderef .ctrl-lbl{font-size:var(--ec-font-xs);font-weight:var(--ec-weight);letter-spacing:var(--ec-tracking);color:var(--text-dimmer)}
+#sub-coderef select{height:var(--ec-control-h);border-radius:var(--ec-radius-sm);background:var(--ec-surface-raised)}
+#sub-coderef .room-btn{min-height:var(--ec-control-h);border-radius:var(--ec-radius-sm);background:var(--ec-surface-card)}
+#sub-coderef .room-btn.active{border-color:var(--accent);background:rgba(255,199,0,0.07)}
+#sub-coderef .note-box{border-radius:var(--ec-radius-sm)}
 </style>
 </head>
 <body>
