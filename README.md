@@ -1,13 +1,20 @@
-# Empire Code — current release: PRIVATE-PILOT-4
+# Empire Code — current release: PRIVATE-PILOT-5
 
 - Open the current app: <https://empirecode.app/current/>
 - Direct app address: <https://empire-code-private-pilot.szczepan-msg.workers.dev/>
-- Source (tag `private-pilot-4`): [`empire-code/`](https://github.com/apphub-us/apps/tree/private-pilot-4/empire-code)
+- Source (tag `private-pilot-5`): [`empire-code/`](https://github.com/apphub-us/apps/tree/private-pilot-5/empire-code)
 - Previous app, unchanged: <https://empirecode.app/mobile.html>
 
+Changed in PRIVATE-PILOT-5: audit fixes to existing tools and data handling, a
+preliminary qualification result for new designs, and conversation tools that
+reach the calculators and Jobs after explicit review.
+
 The current app uses the existing login. The login controls access only: saved
-jobs stay in the browser on the device where they were created, and there is no
+data stays in the browser on the device where it was created, and there is no
 cloud sync. The current and the previous app keep separate data.
+
+This branch holds the entry page and the previous app. It is not a deployment
+of the current app's source.
 
 Everything below describes the previous app and its calculation core.
 
