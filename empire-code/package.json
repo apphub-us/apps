@@ -7,7 +7,12 @@
     "build": "node candidate/build.cjs",
     "build:check": "node candidate/build.cjs --check",
     "test": "node --test tests/*.test.cjs tests/*.test.mjs",
-    "verify": "npm test && npm run build:check"
+    "verify": "npm test && npm run build:check",
+    "dev": "node local/run.mjs",
+    "dev:open": "node local/run.mjs --open",
+    "dev:check": "node local/run.mjs --check",
+    "dev:status": "node local/run.mjs --status",
+    "test:local": "node --test tests/local-*.test.mjs"
   },
   "engines": {
     "node": ">=22"
