@@ -1,10 +1,14 @@
-# Empire Code — current release: PRIVATE-PILOT-6
+# Empire Code — current release: PRIVATE-PILOT-7
 
 - Open the current app: <https://empirecode.app/current/>
 - Old phone bookmark, now also opens the current app: <https://empirecode.app/mobile.html>
 - Direct app address: <https://empire-code-private-pilot.szczepan-msg.workers.dev/>
-- Source (tag `private-pilot-6`): [`empire-code/`](https://github.com/apphub-us/apps/tree/private-pilot-6/empire-code)
+- Source (tag `private-pilot-7`): [`empire-code/`](https://github.com/apphub-us/apps/tree/private-pilot-7/empire-code)
 - Previous app, same file at a new address: <https://empirecode.app/mobile-previous.html>
+
+Changed in PRIVATE-PILOT-7: the app's screens use two typefaces throughout, a
+system sans for interface and reading text and a system monospace for values,
+units and code references, as the Wire Sizer already did. No font is downloaded.
 
 Changed in PRIVATE-PILOT-6: the app's screens share one visual style, the one
 its Tools (Narzędzia) screen already had.
