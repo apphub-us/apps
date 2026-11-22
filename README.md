@@ -1,9 +1,10 @@
 # Empire Code — current release: PRIVATE-PILOT-5
 
 - Open the current app: <https://empirecode.app/current/>
+- Old phone bookmark, now also opens the current app: <https://empirecode.app/mobile.html>
 - Direct app address: <https://empire-code-private-pilot.szczepan-msg.workers.dev/>
 - Source (tag `private-pilot-5`): [`empire-code/`](https://github.com/apphub-us/apps/tree/private-pilot-5/empire-code)
-- Previous app, unchanged: <https://empirecode.app/mobile.html>
+- Previous app, same file at a new address: <https://empirecode.app/mobile-previous.html>
 
 Changed in PRIVATE-PILOT-5: audit fixes to existing tools and data handling, a
 preliminary qualification result for new designs, and conversation tools that
@@ -13,10 +14,61 @@ The current app uses the existing login. The login controls access only: saved
 data stays in the browser on the device where it was created, and there is no
 cloud sync. The current and the previous app keep separate data.
 
-This branch holds the entry page and the previous app. It is not a deployment
-of the current app's source.
+This branch holds the entry page, two forwarding pages and the previous app. It
+is not a deployment of the current app's source and it runs no server: the
+current app, its login and its conversation tools run only at the direct
+address.
 
-Everything below describes the previous app and its calculation core.
+## Addresses and stored data
+
+`/current/` and `/mobile.html` are the same small page. It forwards to the
+direct app address and does nothing else. `/mobile.html` used to be the
+previous app and is still the home-screen start address in `manifest.json`, so
+an existing bookmark or home-screen icon now opens the current app.
+
+The previous app is the same file, byte for byte, at `/mobile-previous.html`.
+Browser storage belongs to the site, not to the file path, so on
+`empirecode.app` the previous app still reads the data it saved earlier. The
+current app is on a different site with its own storage. Nothing is copied or
+merged between the two.
+
+On iPhone a home-screen icon keeps its storage apart from Safari, so data saved
+through the old icon is only visible from that icon. The forwarding page links
+back to the entry page, which links to the previous app. How iOS presents the
+forward inside a home-screen icon has not been tested on a device.
+
+## Offline and the service worker
+
+`sw.js` is unchanged. It still precaches the path `/mobile.html` and still uses
+that path as the offline fallback for any page it holds no copy of. That path
+is now the forwarding page.
+
+- Online, navigation is network-first, so `/mobile.html` delivers the
+  forwarding page. A device that already has the service worker may show the
+  previous app once more if the network does not answer within 3 s, until the
+  first successful load replaces its cached copy. Normal short-lived browser
+  caching of GitHub Pages can delay the change by a few minutes.
+- Offline, the forwarding page cannot reach the current app, and the login
+  cannot be completed.
+- The previous app is no longer precached. It opens offline only on a device
+  that has loaded `/mobile-previous.html` online at least once with the service
+  worker already active. Otherwise an offline or very slow open falls back to
+  the forwarding page.
+- A home-screen icon created from the previous app starts at `/mobile.html`,
+  so it opens the current app, not the previous one.
+- `start.html` is unchanged; its MOBILE link points at `mobile.html` and now
+  forwards to the current app as well.
+
+---
+
+Everything below is the previous app's own documentation, kept as written.
+Where it says `mobile.html` it means the previous app, now published as
+`mobile-previous.html`; the service worker's behaviour in the current layout is
+described above. `tools/build-calc.js` and the suites in `test/` still read the
+root path `mobile.html`, which is now the forwarding page, so `npm run verify`,
+`npm test` and `npm run build` do not pass on this branch as published
+(`npm run build` stops without writing anything). The test counts below were
+recorded with the previous app at its original path.
 
 ---
 
