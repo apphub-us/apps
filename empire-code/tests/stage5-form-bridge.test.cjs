@@ -289,7 +289,7 @@ test('battery: explicit 100 % / 85 % in the form are ordinary stated values; the
   assert.equal(unit.status, 'unrepresentable'); assert.ok(unit.fields.some((f) => f.reason === 'UNIT_CHANGE_REQUIRES_CONSUMPTION')); assert.equal(JSON.stringify(p.h.api.btRead()), before, 'a number is never re-read in another unit');
   const ok = p.bridge.apply({ toolId: 'battery_runtime', expectedGeneration: cap.generation, patch: { set: { consumptionMode: 'kwh_day', consumption: 1.2 } } });
   assert.equal(ok.status, 'applied'); assert.deepEqual(p.h.api.btRead(), { capacityWh: '1000', consumptionMode: 'kwh_day', consumption: '1.2', chargePercent: '100', usablePercent: '85' });
-  assert.equal(p.h.els['bt-consumption-label'].textContent, 'Zużycie (kWh/dobę)'); assert.ok(p.h.shown().includes('Około 17 h 0 min'), 'rendered by the form\'s own btCalc');
+  assert.equal(p.h.els['bt-consumption-label'].textContent, 'Consumption (kWh/day)'); assert.ok(p.h.shown().includes('About 17 h 0 min'), 'rendered by the form\'s own btCalc');
   p.type('bt-consumption', '1,5');
   assert.equal(p.bridge.capture('battery_runtime').formInput.consumption, 1.5, 'decimal comma is read by the battery module\'s own parser');
 });

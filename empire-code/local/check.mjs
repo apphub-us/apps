@@ -19,11 +19,11 @@ const refuse=message=>Object.assign(new Error(message),{code:'EC_LOCAL_CHECK'});
 export function verifyAccepted(){
  const build=require('../candidate/build.cjs'),computed=build.compute({root:APP});
  const text=rel=>fs.readFileSync(path.join(APP,...rel.split('/')),'utf8');
- if(text(build.OUT.manifest)!==computed.manifestJson)throw refuse('Zapisany manifest (candidate/build-manifest.generated.json) nie odpowiada plikom candidate/browser.');
- if(text(build.OUT.assets)!==computed.assetsModule)throw refuse('Zapisane zasoby (candidate/server/assets.generated.mjs) nie odpowiadają plikom candidate/browser.');
- if(text(build.OUT.prompt)!==computed.promptModule)throw refuse('Zapisany prompt (candidate/server/prompt.generated.mjs) nie odpowiada input/online-prompt.txt.');
+ if(text(build.OUT.manifest)!==computed.manifestJson)throw refuse('The saved manifest (candidate/build-manifest.generated.json) does not match the candidate/browser files.');
+ if(text(build.OUT.assets)!==computed.assetsModule)throw refuse('The saved assets (candidate/server/assets.generated.mjs) do not match the candidate/browser files.');
+ if(text(build.OUT.prompt)!==computed.promptModule)throw refuse('The saved prompt (candidate/server/prompt.generated.mjs) does not match input/online-prompt.txt.');
  const release=JSON.parse(text('RELEASE.json'));
- if(release.build!==computed.build||release.browserShellPin!==computed.pin)throw refuse('Pliki przeglądarki nie są zaakceptowanym wydaniem z RELEASE.json (build lub pin powłoki).');
+ if(release.build!==computed.build||release.browserShellPin!==computed.pin)throw refuse('The browser files are not the accepted release from RELEASE.json (build or shell pin).');
  return{build:computed.build,pin:computed.pin,served:computed.manifest.served};
 }
 
@@ -42,12 +42,12 @@ export async function verifyServed(accepted){
    const r=await get(origin+entry.url);
    const ok=r.status===200&&r.body.length===entry.bytes&&sha256(r.body)===entry.sha256&&r.headers['x-empire-asset-sha256']===entry.sha256&&r.headers['content-type']===entry.mime
     &&r.headers['x-empire-build']===accepted.build&&r.headers['x-empire-local-runtime']===LOCAL_RUNTIME&&r.headers['cache-control']==='no-store';
-   if(!ok)throw refuse('Serwowany plik różni się od zaakceptowanego manifestu: '+entry.url);
+   if(!ok)throw refuse('A served file differs from the accepted manifest: '+entry.url);
   }
   const s=await get(origin+'/api/session',{'sec-fetch-site':'same-origin'});
   let session=null;try{session=JSON.parse(s.body.toString('utf8'));}catch{}
-  if(s.status!==200||!session||session.build!==accepted.build||session.online!==true||typeof session.token!=='string'||!/^[0-9a-f]{64}$/.test(session.token)||!Number.isInteger(session.remainingRequests))throw refuse('Nieprawidłowa odpowiedź /api/session lokalnego serwera.');
-  if(upstream!==0)throw refuse('Sprawdzenie dotknęło dostawcy AI — to błąd.');
+  if(s.status!==200||!session||session.build!==accepted.build||session.online!==true||typeof session.token!=='string'||!/^[0-9a-f]{64}$/.test(session.token)||!Number.isInteger(session.remainingRequests))throw refuse('Invalid /api/session response from the local server.');
+  if(upstream!==0)throw refuse('The check touched the AI provider — that is an error.');
   return{paths:accepted.served.length,model:session.model,speechModel:session.speechModel};
  }finally{await local.stop();}
 }

@@ -17,7 +17,7 @@ const abortError=()=>Object.assign(Error('The operation was aborted.'),{name:'Ab
 const refused=()=>Promise.reject(new TypeError('Failed to fetch')); // what fetch reports for a refused redirect
 // The session answer in the shape the backend really sends.
 const sessionBody=(token=T1)=>({build:'PRIVATE-PILOT-2',model:'model-x',speechModel:'speech-x',online:true,prototype:true,remainingRequests:60,token,reason:null});
-const SESSION_TOKEN=()=>json({error:'Nieprawidłowy token sesji.',code:'SESSION_TOKEN'},403);
+const SESSION_TOKEN=()=>json({error:'Invalid session token.',code:'SESSION_TOKEN'},403);
 // Answers GET /api/session from the list, in order; one GET more than listed fails the test. Everything else goes to post().
 const routes=(sessions,post)=>{let n=0;return (url,init)=>{if(url!=='/api/session')return post(url,init);if(n>=sessions.length)throw Error('unexpected extra GET /api/session');return sessions[n++]();};};
 const noPost=url=>{throw Error('unexpected request '+url);};
@@ -61,7 +61,7 @@ test('voice independent: delayed old permission releases its own stream but leav
  const p=await load(routes([()=>json(sessionBody())],noPost)),pending=[];p.navigator.mediaDevices.getUserMedia=()=>new Promise(r=>pending.push(r));const first=p.els.mic.onclick();await settle();await p.cancel();const second=p.els.mic.onclick();await settle();const old=seenStream(),fresh=seenStream();pending[0](old.stream);await first;assert.equal(old.track.stops,1);assert.equal(p.recorders.length,0);pending[1](fresh.stream);await second;assert.equal(p.run('recording'),true);assert.equal(fresh.track.stops,0);await p.cancel();assert.equal(fresh.track.stops,1);assert.equal(p.count('/api/transcribe'),0);
 });
 test('voice independent: browser permission rejection shows safe message, no raw system detail and no post',async()=>{
- const p=await load(routes([()=>json(sessionBody())],noPost));p.navigator.mediaDevices.getUserMedia=()=>Promise.reject(Object.assign(Error('private OS detail must stay hidden'),{name:'NotAllowedError'}));await p.els.mic.onclick();await settle();assert.match(p.els.status.textContent,/mikrofon/);assert.ok(!p.els.status.textContent.includes('private OS detail'));assert.equal(p.run('audioBusy'),false);assert.equal(p.count('/api/transcribe'),0);
+ const p=await load(routes([()=>json(sessionBody())],noPost));p.navigator.mediaDevices.getUserMedia=()=>Promise.reject(Object.assign(Error('private OS detail must stay hidden'),{name:'NotAllowedError'}));await p.els.mic.onclick();await settle();assert.match(p.els.status.textContent,/Microphone permission denied/);assert.ok(!p.els.status.textContent.includes('private OS detail'));assert.equal(p.run('audioBusy'),false);assert.equal(p.count('/api/transcribe'),0);
 });
 test('voice independent: recorder constructor failure releases every acquired track',async()=>{
  const p=await load(routes([()=>json(sessionBody())],noPost)),x=seenStream();p.navigator.mediaDevices.getUserMedia=async()=>x.stream;p.run("MediaRecorder=class {static isTypeSupported(){return true;} constructor(){throw Error('private failure');}}");await p.els.mic.onclick();await settle();assert.equal(x.track.stops,1);assert.equal(p.run('recording'),false);assert.equal(p.run('audioBusy'),false);assert.ok(!p.els.status.textContent.includes('private failure'));assert.equal(p.count('/api/transcribe'),0);

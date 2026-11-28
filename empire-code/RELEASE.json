@@ -1,24 +1,24 @@
 {
   "application": "Empire Code",
-  "build": "PRIVATE-PILOT-7",
+  "build": "PRIVATE-PILOT-8",
   "releaseStatus": "DEPLOYED_AND_ACCEPTED",
-  "preparedAt": "2026-11-22T19:50:09.836935+00:00",
-  "publishedDate": "2026-11-22",
-  "acceptedAt": "2026-11-22T19:56:04.401367+00:00",
+  "preparedAt": "2026-11-28T01:41:59.141392+00:00",
+  "publishedDate": "2026-11-27",
+  "acceptedAt": "2026-11-28T02:07:58.222921+00:00",
   "sourceCommit": null,
-  "sourceContentPin": "8b6c7c985c20c7950ca1c87e280799531c7589543cc6b42963e244f1f49e3230",
-  "browserShellPin": "83f55923f1f0e7572fd21f930b46336e513d2ddceeb9c063fe971c019cb4882b",
-  "runtimeSourcePin": "3aae32c2ac8d5a0e85139476f2ee5b35b4681ebbb952f1a16ed79c6b1b2e2555",
+  "sourceContentPin": "166d71535e8ca8923e9907009d0a0f1754bc34a6d96b35c8075f9181a0fc24d3",
+  "browserShellPin": "ef74bb51f538b84adf3de735d769e38b5c37c3cae7540058917893ce4d1f1dd3",
+  "runtimeSourcePin": "dc8b4f12b6209164fb75c51bfe1f032499fdcdfa0fa10301b0804423e4b38d38",
   "entryUrl": "https://empirecode.app/",
   "directAppUrl": "https://empire-code-private-pilot.szczepan-msg.workers.dev/",
-  "sourceTag": "private-pilot-7",
-  "sourceBranch": "release/private-pilot-7",
+  "sourceTag": "private-pilot-8",
+  "sourceBranch": "release/private-pilot-8",
   "developmentBranch": "develop",
   "pagesBranch": "main",
-  "cloudVersion": "285b4358-d0dd-4155-9294-a3f93f6ff391",
+  "cloudVersion": "383534fd-3ac2-432c-a5e8-85d5d07d53f9",
   "deployment": {
-    "deploymentId": "89a58e00-b1b4-49bb-a392-84564f121d7b",
-    "versionId": "285b4358-d0dd-4155-9294-a3f93f6ff391",
+    "deploymentId": "dd50c365-1e52-4b75-afb1-beff8ac2cbc7",
+    "versionId": "383534fd-3ac2-432c-a5e8-85d5d07d53f9",
     "trafficPercent": 100,
     "sameExistingApplication": true,
     "existingVariablesPreserved": true,
@@ -26,62 +26,843 @@
     "newSecretsCreated": false
   },
   "previousRelease": {
-    "build": "PRIVATE-PILOT-6",
-    "sourceTag": "private-pilot-6",
-    "sourceCommit": "8e013336c1412616bbbe10a988978edc3b404ce9",
-    "cloudVersion": "18b573ef-c284-4271-a760-5daa05f3a05a",
-    "sourceContentPin": "f44910167e688e6be5af5675b4835720dd5b8311fbb8b7e85e24de0adb041df4",
-    "browserShellPin": "22bbae51cc2f3a2ffba0cad1f2adc97062175fdd052ce45b3aa7e1d623c56928"
+    "build": "PRIVATE-PILOT-7",
+    "sourceTag": "private-pilot-7",
+    "sourceCommit": "409e9da642f45b67d759369955d0acbe30be1f99",
+    "cloudVersion": "285b4358-d0dd-4155-9294-a3f93f6ff391",
+    "sourceContentPin": "8b6c7c985c20c7950ca1c87e280799531c7589543cc6b42963e244f1f49e3230",
+    "browserShellPin": "83f55923f1f0e7572fd21f930b46336e513d2ddceeb9c063fe971c019cb4882b"
   },
   "implementationBase": {
-    "sourceCommit": "8e013336c1412616bbbe10a988978edc3b404ce9",
-    "scope": "Accepted PRIVATE-PILOT-6 and LOCAL-WORKSPACE-6, before typography iteration"
+    "sourceCommit": "409e9da642f45b67d759369955d0acbe30be1f99",
+    "scope": "Accepted PRIVATE-PILOT-7 and LOCAL-WORKSPACE-7"
   },
   "changes": [
-    "Apply two font roles consistently using Wire Sizer as reference; preserve palette, calculation, storage, provider and authentication behavior."
+    "English first-party application interface and public entry; preserve original user content and PL/EN conversation input.",
+    "Repair New chat behavior and verify previous conversation/draft continuity."
   ],
   "currentChecks": {
     "rootTests": {
       "status": "PASS",
-      "uniqueTests": 343,
-      "passed": 343,
+      "uniqueTests": 363,
+      "passed": 363,
       "failed": 0,
       "skipped": 0,
       "guardedSuite": {
-        "passed": 341,
+        "passed": 361,
         "environmentSetupBlocked": 2
       },
       "exactSyntheticSupplement": {
-        "passed": 2,
-        "failed": 0,
-        "scope": "Only the two audited temporary symlink fixtures; no full-suite unguarded rerun"
+        "receipt": {
+          "sha256": "a9e98d252e83235b0a5e4fc885cce6d436ca9e1ba91c32c5d2dde1e1818ac70a"
+        },
+        "plan": {
+          "sha256": "1d40d06842b018470222102b4822f15013229b577b23562528e3e8ef476e2eb0"
+        },
+        "runner": {
+          "sha256": "cc3ffd15126b062d0e64cf022044c5b94fe58d965a19765e08825741872b36ed"
+        },
+        "fixtureDispositionBasis": {
+          "sha256": "dd124b3da1187a22c724c4c67f328fb93d6fc232d2c3eb2a29fc462c4e0a8deb"
+        },
+        "processCount": 2,
+        "processes": [
+          {
+            "name": "browser-build-symlink",
+            "pid": 9067,
+            "testFile": "tests/browser-build.test.cjs",
+            "testName": "refuses symlinks, also when they point at identical bytes",
+            "testNamePattern": "^refuses symlinks, also when they point at identical bytes$",
+            "exitCode": 0,
+            "timeoutSeconds": 60,
+            "counts": {
+              "tests": 1,
+              "pass": 1,
+              "fail": 0,
+              "cancelled": 0,
+              "skipped": 0,
+              "todo": 0
+            },
+            "startedAt": "2026-11-28T01:59:03.519685+00:00",
+            "finishedAt": "2026-11-28T01:59:03.703465+00:00",
+            "unsetEnv": [
+              "NODE_OPTIONS",
+              "NODE_V8_COVERAGE",
+              "NODE_COMPILE_CACHE",
+              "NODE_REDIRECT_WARNINGS",
+              "NODE_TEST_CONTEXT",
+              "NODE_PATH"
+            ],
+            "envSetNames": [
+              "OPENAI_API_KEY",
+              "TMPDIR"
+            ],
+            "emptyEnvNames": [
+              "OPENAI_API_KEY"
+            ],
+            "testSource": {
+              "sha256": "809eceffe23411afa0cb1fbd19c41763043dbc7395271dd61cbf73626b05e16c"
+            }
+          },
+          {
+            "name": "local-credential-symlink",
+            "pid": 9069,
+            "testFile": "tests/local-credential.test.mjs",
+            "testName": "key reader: the WORKSPACE-4 convention and hardening; reads only when called; errors carry no detail",
+            "testNamePattern": "^key reader: the WORKSPACE-4 convention and hardening; reads only when called; errors carry no detail$",
+            "exitCode": 0,
+            "timeoutSeconds": 60,
+            "counts": {
+              "tests": 1,
+              "pass": 1,
+              "fail": 0,
+              "cancelled": 0,
+              "skipped": 0,
+              "todo": 0
+            },
+            "startedAt": "2026-11-28T01:59:03.703916+00:00",
+            "finishedAt": "2026-11-28T01:59:03.876102+00:00",
+            "unsetEnv": [
+              "NODE_OPTIONS",
+              "NODE_V8_COVERAGE",
+              "NODE_COMPILE_CACHE",
+              "NODE_REDIRECT_WARNINGS",
+              "NODE_TEST_CONTEXT",
+              "NODE_PATH"
+            ],
+            "envSetNames": [
+              "OPENAI_API_KEY",
+              "TMPDIR"
+            ],
+            "emptyEnvNames": [
+              "OPENAI_API_KEY"
+            ],
+            "testSource": {
+              "sha256": "7bc981a566a6affd68215594f0c3f1e06bfc1ad5ddab07ca05ceb875136bca8c"
+            }
+          }
+        ],
+        "aggregateCounts": {
+          "tests": 2,
+          "pass": 2,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "aggregationMethod": "Arithmetic sum of two separately verified real process TAP logs; no combined TAP report is created.",
+        "scope": "Only the two exact named fixtures. Current-asset review renewal and execution eligibility are recorded in the independent final-review gate."
       },
-      "disposition": "The two original Node permission-model fixture-setup denials remain in their original evidence; successful exact synthetic executions complete the unique test set."
+      "rawGuardedReceipt": {
+        "sha256": "31d1318fbb66ae63c82c130c3a0af2080ff1014e0229590524b6881412c025b5"
+      }
     },
-    "targetedCoreTests": {
+    "coreTests": {
       "status": "PASS",
-      "tests": 105,
-      "pass": 105,
-      "fail": 0,
-      "cancelled": 0,
-      "skipped": 0,
-      "todo": 0,
-      "scope": [
-        "test/designSystem.test.js",
-        "test/uiFocus.test.js",
-        "test/boxFillCatalog.test.js",
-        "test/navigation.test.js"
-      ],
-      "fullCoreSuiteRerun": false
+      "receipt": {
+        "sha256": "d2236b61a7fe4eb071cf2985d80066ddf20e1551b8b9a77cb3a79504c820a5ab"
+      },
+      "results": [
+        {
+          "name": "core-ui-battery",
+          "counts": {
+            "tests": 183,
+            "pass": 183,
+            "fail": 0,
+            "cancelled": 0,
+            "skipped": 0,
+            "todo": 0
+          }
+        }
+      ]
     },
     "localRuntimeCheck": {
       "status": "PASS",
-      "scope": "local/run.mjs --check preflight; local behavior is also covered by root tests"
+      "receipt": {
+        "sha256": "31d1318fbb66ae63c82c130c3a0af2080ff1014e0229590524b6881412c025b5"
+      }
     },
     "bundleChecks": {
       "status": "PASS",
       "checks": 3,
-      "scope": "Browser assets, canonical calculator block and hosted calculator block --check"
+      "receipt": {
+        "sha256": "f5afaf6fa572aff1bfaac78aa5e7113a5c724ed371d61e473076dec8c6dd51e8"
+      }
+    },
+    "nativeBrowserAcceptance": {
+      "status": "PASS",
+      "counts": {
+        "total": 360,
+        "pass": 310,
+        "fail": 0,
+        "blocked": 0,
+        "skip": 0,
+        "info": 50,
+        "unknown": 0,
+        "gatingFailures": 0,
+        "safetyViolations": 0,
+        "harnessErrors": 0,
+        "scenarioErrors": 0,
+        "cleanupErrors": 0,
+        "missingRequiredScreenshots": 0,
+        "providerStubCalls": 8,
+        "providerUnscriptedCalls": 0,
+        "providerAborts": 2,
+        "injectedKeyReaderCalls": 0,
+        "actualCredentialReads": 0,
+        "externalBrowserAttempts": 0,
+        "externalBrowserEscapes": 0,
+        "jsErrors": 0,
+        "screenshots": 68
+      },
+      "build": "PRIVATE-PILOT-8",
+      "sourceContentPin": "166d71535e8ca8923e9907009d0a0f1754bc34a6d96b35c8075f9181a0fc24d3",
+      "browserShellPin": "ef74bb51f538b84adf3de735d769e38b5c37c3cae7540058917893ce4d1f1dd3",
+      "sourceStable": true,
+      "currentSourceMatchesReports": true,
+      "engines": [
+        {
+          "engine": "chromium",
+          "report": {
+            "sha256": "8f0f15c61bd93bbd82c8de18a8c21b54da42c0626c9b1df00f29c3dc9c55c4e2"
+          },
+          "execution": {
+            "sha256": "99a3db234f3e7c3d61648dc7172284f32bba89a0aeffa4ab0b6ae2a3ac81cda7"
+          },
+          "overallPass": true,
+          "counts": {
+            "total": 180,
+            "pass": 155,
+            "fail": 0,
+            "blocked": 0,
+            "skip": 0,
+            "info": 25,
+            "unknown": 0,
+            "gatingFailures": 0,
+            "safetyViolations": 0,
+            "harnessErrors": 0,
+            "scenarioErrors": 0,
+            "cleanupErrors": 0,
+            "missingRequiredScreenshots": 0,
+            "providerStubCalls": 4,
+            "providerUnscriptedCalls": 0,
+            "providerAborts": 1,
+            "injectedKeyReaderCalls": 0,
+            "actualCredentialReads": 0,
+            "externalBrowserAttempts": 0,
+            "externalBrowserEscapes": 0,
+            "jsErrors": 0,
+            "screenshots": 34
+          },
+          "reportedCounts": {
+            "total": 180,
+            "pass": 155,
+            "fail": 0,
+            "blocked": 0,
+            "skip": 0,
+            "info": 25,
+            "gatingFailures": 0,
+            "safetyViolations": 0,
+            "scenarioErrors": 0,
+            "harnessErrors": 0,
+            "providerStubCalls": 4,
+            "providerUnscriptedCalls": 0,
+            "providerAborts": 1,
+            "injectedKeyReaderCalls": 0,
+            "actualCredentialReads": 0,
+            "externalBrowserAttempts": 0,
+            "externalBrowserEscapes": 0,
+            "jsErrors": 0,
+            "screenshots": 34
+          },
+          "sourceStable": true,
+          "environment": {
+            "node": "v22.22.0",
+            "platform": "darwin",
+            "arch": "arm64",
+            "locale": "pl-PL",
+            "viewports": {
+              "320": 640,
+              "430": 932,
+              "1280": 800
+            },
+            "playwrightVersion": "1.65.1",
+            "browserName": "chromium",
+            "browserVersion": "158.0.8127.37",
+            "profile": "ephemeral Playwright profile + a fresh incognito context per scenario (no owner profile)"
+          },
+          "runtime": "LOCAL-WORKSPACE-8",
+          "build": "PRIVATE-PILOT-8",
+          "safetyCounters": {
+            "credentialPathAccess": 0,
+            "injectedKeyReaderCalls": 0,
+            "injectedFetchCalls": 0,
+            "providerStubCalls": 4,
+            "providerUnscriptedCalls": 0,
+            "providerAborts": 1,
+            "globalFetchCalls": 0,
+            "nodeExternalHttpAttempts": 0,
+            "browserRequests": 227,
+            "browserExternalAttempts": 0,
+            "browserExternalEscapes": 0,
+            "browserWebSocketAttempts": 0,
+            "popups": 0,
+            "offOriginNavigations": 0,
+            "pageErrors": 0,
+            "consoleErrors": 1,
+            "dialogs": 0,
+            "serviceWorkerRegistrations": 0,
+            "adaptersStarted": 11,
+            "adaptersStopped": 11,
+            "contextsOpened": 10,
+            "contextsClosed": 10
+          },
+          "screenshots": [
+            {
+              "sha256": "81e135c1781647fef46e70ad7b54d3eed3537710777b2185118eafae2bcc4e8e",
+              "name": "430-s1-before-new",
+              "width": 430,
+              "scenario": "s1@430"
+            },
+            {
+              "sha256": "71b4b181a2c15a6d4a482e40fe50952bb5f3c7415ee36f26eb5d65acb01b2a36",
+              "name": "430-s1-after-new",
+              "width": 430,
+              "scenario": "s1@430"
+            },
+            {
+              "sha256": "f54f7863ee49abfd5db76ed9c03e0951084de495d99fd27a286a8e8a4bef45a5",
+              "name": "430-s1-after-new-full",
+              "width": 430,
+              "scenario": "s1@430"
+            },
+            {
+              "sha256": "8ab92eb557e683d9f93e388cf19715efa9e9a411d175568273c8dbcea47198df",
+              "name": "430-s1-after-repeat-new",
+              "width": 430,
+              "scenario": "s1@430"
+            },
+            {
+              "sha256": "988e25a4157178e593fffbace40387ec6b385dbd55a02de9d3b966a19fcca8da",
+              "name": "1280-s1-before-new",
+              "width": 1280,
+              "scenario": "s1@1280"
+            },
+            {
+              "sha256": "ce187e1d3c0ebdfafcfe9dbc5df5aca404bce37b70fddf53d942d8e4339603c5",
+              "name": "1280-s1-after-new",
+              "width": 1280,
+              "scenario": "s1@1280"
+            },
+            {
+              "sha256": "2d919d244cc3a836f4a12bb584bf9c3b2e226af87fcb58b788f3182e743b6d06",
+              "name": "1280-s1-after-new-full",
+              "width": 1280,
+              "scenario": "s1@1280"
+            },
+            {
+              "sha256": "a948e87e4d26b7a2a9ca42504d448cd361a1737ab8a7e016b228a134bad37f07",
+              "name": "1280-s1-after-repeat-new",
+              "width": 1280,
+              "scenario": "s1@1280"
+            },
+            {
+              "sha256": "6d20545e9852e2f4165e306e7a174c14f80bd53378a2e906e73bac60eda46062",
+              "name": "430-s2-new-blank",
+              "width": 430,
+              "scenario": "s2"
+            },
+            {
+              "sha256": "398b28e533ef50e7a0489b99a6e1b1767b2ca40e2ec4ec8e8e5e625c74c487c7",
+              "name": "430-s2-restored-old-thread",
+              "width": 430,
+              "scenario": "s2"
+            },
+            {
+              "sha256": "71a50e9b0932ef09f8fad1a0c0e60bf5c3dad7d6fb8a73d76843c6f1653e70ea",
+              "name": "430-s2-restored-old-thread-full",
+              "width": 430,
+              "scenario": "s2"
+            },
+            {
+              "sha256": "226e787746afb38c0005d37715eca803fdfd02d81360b119f5ba0f01824f19a6",
+              "name": "430-s2-rapid-new",
+              "width": 430,
+              "scenario": "s2"
+            },
+            {
+              "sha256": "c4be31562609ccb3197a992e82052b80b3a7e4d739570ae3c7a4e2c993d28d07",
+              "name": "430-s3-job-thread-new",
+              "width": 430,
+              "scenario": "s3"
+            },
+            {
+              "sha256": "2748329b894b07bd8718ca8ece1d3d7f5c3a9d858d14b570cb9d5c20dc3f2b3c",
+              "name": "430-s3-job-thread-restored",
+              "width": 430,
+              "scenario": "s3"
+            },
+            {
+              "sha256": "976b98c73614461fc502c3affe798617506bd6682a834511c3c3717a07f3a527",
+              "name": "430-s3-job-thread-restored-full",
+              "width": 430,
+              "scenario": "s3"
+            },
+            {
+              "sha256": "4726098b1c1ad688f1a604df2790fbb7d3c4f3442d3bd75af5873b548c33cb01",
+              "name": "430-s4-old-thread-after-late-answer",
+              "width": 430,
+              "scenario": "s4"
+            },
+            {
+              "sha256": "7e0da01628bf4cfcd043db9692ffc50221093e1c3d20cd36faff82040c96e2e7",
+              "name": "430-conversation",
+              "width": 430,
+              "scenario": "s6@430"
+            },
+            {
+              "sha256": "267724edd490518d6ac9d68ba32c987c77c2cedc99175ea387100b8c1ab48989",
+              "name": "430-jobs",
+              "width": 430,
+              "scenario": "s6@430"
+            },
+            {
+              "sha256": "00c37285366b19efa1044d4784fc861d55eda1af713073d33d0f06a892af083a",
+              "name": "430-tools",
+              "width": 430,
+              "scenario": "s6@430"
+            },
+            {
+              "sha256": "94058d6f16b3757f3cd27749b0b0ed154bc8d2ff2d821f7b00b8b4710553bbad",
+              "name": "430-wire-sizer",
+              "width": 430,
+              "scenario": "s6@430"
+            },
+            {
+              "sha256": "91ec91c65296e4dde0bda0c06bdd67b7b5e08867e836bf3e37d3d4c4a234137b",
+              "name": "430-code",
+              "width": 430,
+              "scenario": "s6@430"
+            },
+            {
+              "sha256": "c8f7cc2906816d768565f06905d977c55ec461d07b9ae40866059e4f53e8a749",
+              "name": "430-manage-panel",
+              "width": 430,
+              "scenario": "s5"
+            },
+            {
+              "sha256": "5fa75b32cf6728b6d824a20d02a48b5fd5bb2183048f3afc279c9ec1ef60c86f",
+              "name": "430-error-status",
+              "width": 430,
+              "scenario": "s5"
+            },
+            {
+              "sha256": "1426dcecec973422c838b752d37f4b5d94ce66670178152b304ee0f49feb38e9",
+              "name": "320-conversation",
+              "width": 320,
+              "scenario": "s6@320"
+            },
+            {
+              "sha256": "36fb01764d1892fa06b29b07beaf505d05b5d93b56ae71bc63b5dad4b471d07f",
+              "name": "320-jobs",
+              "width": 320,
+              "scenario": "s6@320"
+            },
+            {
+              "sha256": "54cf862e121f8d9fe3b787e63a4a6c89580e808f9e0c275bfbd9c0ed22f7ae50",
+              "name": "320-tools",
+              "width": 320,
+              "scenario": "s6@320"
+            },
+            {
+              "sha256": "82d297d8be574c0a00a9cd2e760ed92ec1862de5b1d6fecd9bc2470f827262ba",
+              "name": "320-wire-sizer",
+              "width": 320,
+              "scenario": "s6@320"
+            },
+            {
+              "sha256": "b9b7df4a82a41c711c0dcc65054b553fd89055d2c8692d4099db08ff5cac410a",
+              "name": "320-code",
+              "width": 320,
+              "scenario": "s6@320"
+            },
+            {
+              "sha256": "988e25a4157178e593fffbace40387ec6b385dbd55a02de9d3b966a19fcca8da",
+              "name": "1280-conversation",
+              "width": 1280,
+              "scenario": "s6@1280"
+            },
+            {
+              "sha256": "cca61ce7b02e3eb287936c0f89f52518fbe34b5e77dc72ac894bf2d9fdb90d56",
+              "name": "1280-jobs",
+              "width": 1280,
+              "scenario": "s6@1280"
+            },
+            {
+              "sha256": "3ce7161b54927c5be8c5dc026650e8a43c9e8eeb5a1cd4c647f2f59803c87fe4",
+              "name": "1280-tools",
+              "width": 1280,
+              "scenario": "s6@1280"
+            },
+            {
+              "sha256": "f7bff38a0b490a83dfcaeec5aafbfbc45ce144d3e0226c87112c3ca4d40d5400",
+              "name": "1280-wire-sizer",
+              "width": 1280,
+              "scenario": "s6@1280"
+            },
+            {
+              "sha256": "96c9c50f57a1326c242d9ce96810f57565b9214cb764a2ef3ee887da1de2dc8c",
+              "name": "1280-code",
+              "width": 1280,
+              "scenario": "s6@1280"
+            },
+            {
+              "sha256": "574a8792ec40e3b4794d41469275cbec6a900e52a7a6278b415689f8e078f468",
+              "name": "1280-conversation-full",
+              "width": 1280,
+              "scenario": "s6@1280"
+            }
+          ],
+          "harnessErrors": [],
+          "scenarioErrors": [],
+          "cleanupErrors": [],
+          "missingRequiredScreenshots": [],
+          "notEvaluated": []
+        },
+        {
+          "engine": "webkit",
+          "report": {
+            "sha256": "2aaa748e6398c6ad4a22ea8957c8a6989f0c1e4ebc0da7f35a954004c93bc35b"
+          },
+          "execution": {
+            "sha256": "156fb0d91b5e1ee83d146b9347103e8962f4b54b7a4e59d4927b31d4e43a4f28"
+          },
+          "overallPass": true,
+          "counts": {
+            "total": 180,
+            "pass": 155,
+            "fail": 0,
+            "blocked": 0,
+            "skip": 0,
+            "info": 25,
+            "unknown": 0,
+            "gatingFailures": 0,
+            "safetyViolations": 0,
+            "harnessErrors": 0,
+            "scenarioErrors": 0,
+            "cleanupErrors": 0,
+            "missingRequiredScreenshots": 0,
+            "providerStubCalls": 4,
+            "providerUnscriptedCalls": 0,
+            "providerAborts": 1,
+            "injectedKeyReaderCalls": 0,
+            "actualCredentialReads": 0,
+            "externalBrowserAttempts": 0,
+            "externalBrowserEscapes": 0,
+            "jsErrors": 0,
+            "screenshots": 34
+          },
+          "reportedCounts": {
+            "total": 180,
+            "pass": 155,
+            "fail": 0,
+            "blocked": 0,
+            "skip": 0,
+            "info": 25,
+            "gatingFailures": 0,
+            "safetyViolations": 0,
+            "scenarioErrors": 0,
+            "harnessErrors": 0,
+            "providerStubCalls": 4,
+            "providerUnscriptedCalls": 0,
+            "providerAborts": 1,
+            "injectedKeyReaderCalls": 0,
+            "actualCredentialReads": 0,
+            "externalBrowserAttempts": 0,
+            "externalBrowserEscapes": 0,
+            "jsErrors": 0,
+            "screenshots": 34
+          },
+          "sourceStable": true,
+          "environment": {
+            "node": "v22.22.0",
+            "platform": "darwin",
+            "arch": "arm64",
+            "locale": "pl-PL",
+            "viewports": {
+              "320": 640,
+              "430": 932,
+              "1280": 800
+            },
+            "playwrightVersion": "1.65.1",
+            "browserName": "webkit",
+            "browserVersion": "27.2",
+            "profile": "ephemeral Playwright profile + a fresh incognito context per scenario (no owner profile)"
+          },
+          "runtime": "LOCAL-WORKSPACE-8",
+          "build": "PRIVATE-PILOT-8",
+          "safetyCounters": {
+            "credentialPathAccess": 0,
+            "injectedKeyReaderCalls": 0,
+            "injectedFetchCalls": 0,
+            "providerStubCalls": 4,
+            "providerUnscriptedCalls": 0,
+            "providerAborts": 1,
+            "globalFetchCalls": 0,
+            "nodeExternalHttpAttempts": 0,
+            "browserRequests": 240,
+            "browserExternalAttempts": 0,
+            "browserExternalEscapes": 0,
+            "browserWebSocketAttempts": 0,
+            "popups": 0,
+            "offOriginNavigations": 0,
+            "pageErrors": 0,
+            "consoleErrors": 35,
+            "dialogs": 0,
+            "serviceWorkerRegistrations": 0,
+            "adaptersStarted": 11,
+            "adaptersStopped": 11,
+            "contextsOpened": 10,
+            "contextsClosed": 10
+          },
+          "screenshots": [
+            {
+              "sha256": "ce43886a9cb3e122bb65eec93f043de0fa170445a2a482b084ca4da8bba52f76",
+              "name": "430-s1-before-new",
+              "width": 430,
+              "scenario": "s1@430"
+            },
+            {
+              "sha256": "6a770a2a2773adad78a7a6b780c0792c748534f64a3387377274f67d98fd955c",
+              "name": "430-s1-after-new",
+              "width": 430,
+              "scenario": "s1@430"
+            },
+            {
+              "sha256": "1c09d12322abc7fa8061f4ad47d4c781b852f921c4c17fde0d104ea9870a5c35",
+              "name": "430-s1-after-new-full",
+              "width": 430,
+              "scenario": "s1@430"
+            },
+            {
+              "sha256": "6a770a2a2773adad78a7a6b780c0792c748534f64a3387377274f67d98fd955c",
+              "name": "430-s1-after-repeat-new",
+              "width": 430,
+              "scenario": "s1@430"
+            },
+            {
+              "sha256": "29106c87ff22fb79e7cb424391e5580e8882be9f390adc930808b1cefc7ff866",
+              "name": "1280-s1-before-new",
+              "width": 1280,
+              "scenario": "s1@1280"
+            },
+            {
+              "sha256": "dacaf92129d34cbe4a67d9ad4fbf98de3464c782ff45b67f6298fd2686fcba72",
+              "name": "1280-s1-after-new",
+              "width": 1280,
+              "scenario": "s1@1280"
+            },
+            {
+              "sha256": "b3f5680fb17c4298bc919a6e7043bf9e0d49218359e6c48a13cea8e3f7d89530",
+              "name": "1280-s1-after-new-full",
+              "width": 1280,
+              "scenario": "s1@1280"
+            },
+            {
+              "sha256": "dacaf92129d34cbe4a67d9ad4fbf98de3464c782ff45b67f6298fd2686fcba72",
+              "name": "1280-s1-after-repeat-new",
+              "width": 1280,
+              "scenario": "s1@1280"
+            },
+            {
+              "sha256": "5dc5420ddb0bcc39c10920d75ef40a8782d8305d3bfb5df6cdd1350ef9b8b371",
+              "name": "430-s2-new-blank",
+              "width": 430,
+              "scenario": "s2"
+            },
+            {
+              "sha256": "4cbcb931bcfcc8dd5a73a836eb42ce3fccc9d75b5886f84d132ad8aaad04be52",
+              "name": "430-s2-restored-old-thread",
+              "width": 430,
+              "scenario": "s2"
+            },
+            {
+              "sha256": "b67c3c4a97cd661621eceb213a0414e93e4f56234c6c40ab590ed80ec8e3dd5e",
+              "name": "430-s2-restored-old-thread-full",
+              "width": 430,
+              "scenario": "s2"
+            },
+            {
+              "sha256": "d611f4e07951b78c75575064076e8dbc36034db3144a703bb1c28e61e5d6f4df",
+              "name": "430-s2-rapid-new",
+              "width": 430,
+              "scenario": "s2"
+            },
+            {
+              "sha256": "e67accc85089399497b8cc3b2a70319e48cc9459dec1272de82e38855a7ca9ac",
+              "name": "430-s3-job-thread-new",
+              "width": 430,
+              "scenario": "s3"
+            },
+            {
+              "sha256": "534199574ccbb3f671ad4f8d6f78a2b83a00e830e42636810312b80f5c6ea08b",
+              "name": "430-s3-job-thread-restored",
+              "width": 430,
+              "scenario": "s3"
+            },
+            {
+              "sha256": "db3205b1f77831954b99d2c713f119ecc383c8aef63f5ed6d6016dfff6f009fa",
+              "name": "430-s3-job-thread-restored-full",
+              "width": 430,
+              "scenario": "s3"
+            },
+            {
+              "sha256": "db8c01fba33df7d6da8f7cec01dc7f7b603d2c3d35a3d904ac915045e2099d48",
+              "name": "430-s4-old-thread-after-late-answer",
+              "width": 430,
+              "scenario": "s4"
+            },
+            {
+              "sha256": "ce43886a9cb3e122bb65eec93f043de0fa170445a2a482b084ca4da8bba52f76",
+              "name": "430-conversation",
+              "width": 430,
+              "scenario": "s6@430"
+            },
+            {
+              "sha256": "2894deb91000fd0033a5c3cf194bccf38780751a8f395f22152a6842936dc98f",
+              "name": "430-jobs",
+              "width": 430,
+              "scenario": "s6@430"
+            },
+            {
+              "sha256": "2a8a966598cf6733f3644d7952fdccbb04d4bc7cbfbbb95d05e60e51f36104b0",
+              "name": "430-tools",
+              "width": 430,
+              "scenario": "s6@430"
+            },
+            {
+              "sha256": "c23479706109f69b364d9902634cdb6331235b4a980e654131a004584feef242",
+              "name": "430-wire-sizer",
+              "width": 430,
+              "scenario": "s6@430"
+            },
+            {
+              "sha256": "21c3a3d687c70fd974c6ce24000085411728056b64b3fff67ca25b3c58aa4788",
+              "name": "430-code",
+              "width": 430,
+              "scenario": "s6@430"
+            },
+            {
+              "sha256": "a3097a682f1afc75e04035812831cf6ab6ef8290be6f98f07a77a4eb3729f1fa",
+              "name": "430-manage-panel",
+              "width": 430,
+              "scenario": "s5"
+            },
+            {
+              "sha256": "6ff95865280319d83fb56dce2459235f3ef2a871013b951dfa6d03597b44a0c7",
+              "name": "430-error-status",
+              "width": 430,
+              "scenario": "s5"
+            },
+            {
+              "sha256": "31e78405c05a4b5a4cee188d55ca4aa39353da7a9bfcc8721d1a31ac1f275f07",
+              "name": "320-conversation",
+              "width": 320,
+              "scenario": "s6@320"
+            },
+            {
+              "sha256": "d9da67506b974e2ab55d16134c97e5862d00b96bbb3668e2f28af47a9fb8b407",
+              "name": "320-jobs",
+              "width": 320,
+              "scenario": "s6@320"
+            },
+            {
+              "sha256": "02708861a8ba459f8d44649d6586206337572ef75bb3aa755dd74d9a8055e22e",
+              "name": "320-tools",
+              "width": 320,
+              "scenario": "s6@320"
+            },
+            {
+              "sha256": "1fd95ebfb0f32c044aabab8df275ad065e960083d3be9e3d90d59109acf22f85",
+              "name": "320-wire-sizer",
+              "width": 320,
+              "scenario": "s6@320"
+            },
+            {
+              "sha256": "fabece36f2714d26838cd036c36dea49b48db5131c41bde4972d73bd5b429da2",
+              "name": "320-code",
+              "width": 320,
+              "scenario": "s6@320"
+            },
+            {
+              "sha256": "29106c87ff22fb79e7cb424391e5580e8882be9f390adc930808b1cefc7ff866",
+              "name": "1280-conversation",
+              "width": 1280,
+              "scenario": "s6@1280"
+            },
+            {
+              "sha256": "05ff57a0c6c86508b02b981dbb7e49ab526e3dd4ae9c348aa5d01917b8769167",
+              "name": "1280-jobs",
+              "width": 1280,
+              "scenario": "s6@1280"
+            },
+            {
+              "sha256": "ad98d2cbbc806410242a6940303daddfff7cf69510fd59aa9c70a6772179ea0a",
+              "name": "1280-tools",
+              "width": 1280,
+              "scenario": "s6@1280"
+            },
+            {
+              "sha256": "097aeee80be6954bfeb435a765a49d1c3bf6b1228eb177e534c7b4d42f493fe8",
+              "name": "1280-wire-sizer",
+              "width": 1280,
+              "scenario": "s6@1280"
+            },
+            {
+              "sha256": "8422c7539929352c169cce21a456f099ca8f658e6e9ca98e02ea200597c4de2f",
+              "name": "1280-code",
+              "width": 1280,
+              "scenario": "s6@1280"
+            },
+            {
+              "sha256": "dd80abfbccadd4912c7f9ff0e6b4608e03a90c01e3bdfe46a66c568a7247a9a2",
+              "name": "1280-conversation-full",
+              "width": 1280,
+              "scenario": "s6@1280"
+            }
+          ],
+          "harnessErrors": [],
+          "scenarioErrors": [],
+          "cleanupErrors": [],
+          "missingRequiredScreenshots": [],
+          "notEvaluated": []
+        }
+      ],
+      "harnessSha256": "bd336b7e494278b3ac21f7ba7dfaf25b4d04730a2d57a3669ade7971256661b1"
+    },
+    "englishInputContract": {
+      "status": "PASS",
+      "receipt": {
+        "sha256": "74b870fc8c66962aeda801f6a3d81bebc8fb53e3ffc3fb068b1f7b4a18dbd766"
+      },
+      "authorReceipt": {
+        "sha256": "90b91dc80a895aa95f89c558360b0d4e4cb748570eb15ba899a2c7817c9aadb6"
+      },
+      "results": [
+        {
+          "name": "english-input-contract",
+          "counts": {
+            "tests": 5,
+            "pass": 5,
+            "fail": 0,
+            "cancelled": 0,
+            "skipped": 0,
+            "todo": 0
+          }
+        }
+      ],
+      "sourceContentPin": "166d71535e8ca8923e9907009d0a0f1754bc34a6d96b35c8075f9181a0fc24d3",
+      "scope": "Controlled contract regressions for English UI defaults with retained Polish and mixed-language input and voice request behavior; no real-provider or microphone acceptance."
     },
     "staticReview": {
       "status": "PASS",
@@ -90,75 +871,154 @@
       "actualExecutionVerified": true,
       "actionableP1": 0,
       "actionableP2": 0,
-      "scope": "Bounded hosted two-font typography, version, Pages and launcher review plus explicit workflow-action P2 closure; exact claude-fable-5-2 high. Runtime tests and hash verification are recorded separately.",
+      "scope": "Actual exact Fable/high complete-base-plus-delta review: source3 131 actual reads explicitly reused, all34 current chunks newly read. Source4 and all2057 bound review files stable. Runtime eligibility is conditional; this record does not claim fixture or converter execution.",
       "sourceStable": true,
-      "initialReview": {
-        "status": "HOLD_AT_INITIAL_REVIEW",
-        "actionableP1": 0,
-        "actionableP2": 1,
-        "receipt": {
-          "phase": "typography-review",
-          "sha256": "7307fb23e2f0058f7103db648012ac1c1aae611bc575a2bd8d7207b11962f2d1",
-          "reportSha256": "07ecc9a1fb4af23360b96bac18f694da810c7f955c8d35e75092290d1510005f",
-          "finishedAt": "2026-11-22T19:41:28.470379+00:00",
-          "disposition": "HOLD: 0 P1, 1 P2 (.wf-btn active actions); followup required"
-        }
-      },
-      "finalFollowup": {
-        "status": "PASS",
-        "receipt": {
-          "phase": "typography-review-followup",
-          "sha256": "720f38ca3d4da036a1ef6a458f30629e4f09eadaa7e1d8dad4275123ec6b8052",
-          "reportSha256": "1317afc5f02d88317d29ba78a06314d366615e7cad1ca95baf2da77e77bf4e09",
-          "finishedAt": "2026-11-22T19:48:18.949003+00:00",
-          "disposition": "FINAL_FOLLOWUP"
+      "sourceContentPin": "166d71535e8ca8923e9907009d0a0f1754bc34a6d96b35c8075f9181a0fc24d3",
+      "receiptSha256": "b5ae69651271c6f09b97d2320b23fb428ce24634735bfd1d9bf59455f7acef6a",
+      "reportSha256": "34fe9d74b8ec11e1203577c74559e3f3b80963aa74bcd793e2934aa96668bbe3",
+      "fixtureAudit": {
+        "eligible": true,
+        "sourceContentPin": "166d71535e8ca8923e9907009d0a0f1754bc34a6d96b35c8075f9181a0fc24d3",
+        "cases": [
+          {
+            "testFile": "tests/browser-build.test.cjs",
+            "testName": "refuses symlinks, also when they point at identical bytes",
+            "testSha256": "809eceffe23411afa0cb1fbd19c41763043dbc7395271dd61cbf73626b05e16c",
+            "disposition": "safe"
+          },
+          {
+            "testFile": "tests/local-credential.test.mjs",
+            "testName": "key reader: the WORKSPACE-4 convention and hardening; reads only when called; errors carry no detail",
+            "testSha256": "7bc981a566a6affd68215594f0c3f1e06bfc1ad5ddab07ca05ceb875136bca8c",
+            "disposition": "safe"
+          }
+        ],
+        "conditionalEvidence": [
+          {
+            "sha256": "fb2ffbd005592916c52d8c774d5f1017a455ed67b29871a83c488f5ad94317f1"
+          },
+          {
+            "sha256": "782ac01fa8ac151ed0fc45fb6d7a5ea351b4852cbb6589af7d9c2807516a74f8"
+          },
+          {
+            "sha256": "dd124b3da1187a22c724c4c67f328fb93d6fc232d2c3eb2a29fc462c4e0a8deb"
+          }
+        ],
+        "execution": {
+          "sha256": "a9e98d252e83235b0a5e4fc885cce6d436ca9e1ba91c32c5d2dde1e1818ac70a"
+        },
+        "verifiedExecution": {
+          "receipt": {
+            "sha256": "a9e98d252e83235b0a5e4fc885cce6d436ca9e1ba91c32c5d2dde1e1818ac70a"
+          },
+          "plan": {
+            "sha256": "1d40d06842b018470222102b4822f15013229b577b23562528e3e8ef476e2eb0"
+          },
+          "runner": {
+            "sha256": "cc3ffd15126b062d0e64cf022044c5b94fe58d965a19765e08825741872b36ed"
+          },
+          "fixtureDispositionBasis": {
+            "sha256": "dd124b3da1187a22c724c4c67f328fb93d6fc232d2c3eb2a29fc462c4e0a8deb"
+          },
+          "processCount": 2,
+          "processes": [
+            {
+              "name": "browser-build-symlink",
+              "pid": 9067,
+              "testFile": "tests/browser-build.test.cjs",
+              "testName": "refuses symlinks, also when they point at identical bytes",
+              "testNamePattern": "^refuses symlinks, also when they point at identical bytes$",
+              "exitCode": 0,
+              "timeoutSeconds": 60,
+              "counts": {
+                "tests": 1,
+                "pass": 1,
+                "fail": 0,
+                "cancelled": 0,
+                "skipped": 0,
+                "todo": 0
+              },
+              "startedAt": "2026-11-28T01:59:03.519685+00:00",
+              "finishedAt": "2026-11-28T01:59:03.703465+00:00",
+              "unsetEnv": [
+                "NODE_OPTIONS",
+                "NODE_V8_COVERAGE",
+                "NODE_COMPILE_CACHE",
+                "NODE_REDIRECT_WARNINGS",
+                "NODE_TEST_CONTEXT",
+                "NODE_PATH"
+              ],
+              "envSetNames": [
+                "OPENAI_API_KEY",
+                "TMPDIR"
+              ],
+              "emptyEnvNames": [
+                "OPENAI_API_KEY"
+              ],
+              "testSource": {
+                "sha256": "809eceffe23411afa0cb1fbd19c41763043dbc7395271dd61cbf73626b05e16c"
+              }
+            },
+            {
+              "name": "local-credential-symlink",
+              "pid": 9069,
+              "testFile": "tests/local-credential.test.mjs",
+              "testName": "key reader: the WORKSPACE-4 convention and hardening; reads only when called; errors carry no detail",
+              "testNamePattern": "^key reader: the WORKSPACE-4 convention and hardening; reads only when called; errors carry no detail$",
+              "exitCode": 0,
+              "timeoutSeconds": 60,
+              "counts": {
+                "tests": 1,
+                "pass": 1,
+                "fail": 0,
+                "cancelled": 0,
+                "skipped": 0,
+                "todo": 0
+              },
+              "startedAt": "2026-11-28T01:59:03.703916+00:00",
+              "finishedAt": "2026-11-28T01:59:03.876102+00:00",
+              "unsetEnv": [
+                "NODE_OPTIONS",
+                "NODE_V8_COVERAGE",
+                "NODE_COMPILE_CACHE",
+                "NODE_REDIRECT_WARNINGS",
+                "NODE_TEST_CONTEXT",
+                "NODE_PATH"
+              ],
+              "envSetNames": [
+                "OPENAI_API_KEY",
+                "TMPDIR"
+              ],
+              "emptyEnvNames": [
+                "OPENAI_API_KEY"
+              ],
+              "testSource": {
+                "sha256": "7bc981a566a6affd68215594f0c3f1e06bfc1ad5ddab07ca05ceb875136bca8c"
+              }
+            }
+          ],
+          "aggregateCounts": {
+            "tests": 2,
+            "pass": 2,
+            "fail": 0,
+            "cancelled": 0,
+            "skipped": 0,
+            "todo": 0
+          },
+          "aggregationMethod": "Arithmetic sum of two separately verified real process TAP logs; no combined TAP report is created.",
+          "scope": "Only the two exact named fixtures. Current-asset review renewal and execution eligibility are recorded in the independent final-review gate."
         }
       }
     },
-    "nativeVisualAcceptance": {
-      "status": "PASS",
-      "counts": {
-        "pass": 241,
-        "fail": 0,
-        "blocked": 0
-      },
-      "build": "PRIVATE-PILOT-7",
-      "browserShellPin": "83f55923f1f0e7572fd21f930b46336e513d2ddceeb9c063fe971c019cb4882b",
-      "scope": "Bounded native visual/navigation and synthetic job/draft-retention acceptance of typography iteration3. Current counts exclude baseline6 and historical candidate7 iterations1/2.",
-      "actualLayoutWidths": [
-        320,
-        430,
-        1280
-      ],
-      "sourceStable": true,
-      "currentSourceMatchesReports": true,
-      "metadataOnlyExclusions": [
-        "RELEASE.json",
-        "SOURCE-MANIFEST.json"
-      ],
-      "serviceWorkerUpgradeTested": false,
-      "physicalIPhoneTested": false,
-      "providerCalls": 0,
-      "escapedExternalRequests": 0,
-      "harnessSha256": "414d67b476b8c72b7c667119b5195ed415ba2fe3461968eaafb15d4b53ce37f3",
-      "acceptanceLimits": [
-        "No physical iPhone or touch emulation; desktop-class engines at1x scale.",
-        "No actual glyph-font or downloaded-font-face proof. Font-family metrics are declared fallback stacks.",
-        "No full-DOM font-role census; metrics sample visible controls and containers.",
-        "No focus-state exercise, all-control text-clipping acceptance or screenshot at320.",
-        "No new calculator arithmetic, AI/provider answer, transcription, note or measurement acceptance.",
-        "No service-worker/offline/update/archive execution; service workers were blocked.",
-        "Small numeric placeholders and long selected job names can truncate inside controls. Passing root/iframe overflow does not prove all control text fits."
-      ]
-    },
     "cloudflareDryRun": {
       "status": "PASS",
-      "runtimeSourcePin": "3aae32c2ac8d5a0e85139476f2ee5b35b4681ebbb952f1a16ed79c6b1b2e2555",
-      "sourceStable": true
+      "runtimeSourcePin": "dc8b4f12b6209164fb75c51bfe1f032499fdcdfa0fa10301b0804423e4b38d38",
+      "sourceStable": true,
+      "bundleSha256": "02d062704d32b27312bdf58c13b9a88bdbb3cf67bb6da4c43606bcac45572fd4"
     },
     "anonymousAccessGate": {
       "status": "PASS",
-      "cloudVersion": "285b4358-d0dd-4155-9294-a3f93f6ff391",
+      "cloudVersion": "383534fd-3ac2-432c-a5e8-85d5d07d53f9",
       "checks": [
         {
           "url": "https://empire-code-private-pilot.szczepan-msg.workers.dev/",
@@ -198,45 +1058,15 @@
         }
       ]
     },
-    "sourcePreservation": {
-      "status": "VERIFIED_BY_HASH",
-      "files": 61,
-      "aggregateSha256": "4d1156a68123f5031454634e83338a39eaabb57dc62009efe00e5b933f1acee4",
-      "scope": "Dedicated canonical calculation, storage, provider and data-bridge sources; not an execution test"
-    },
-    "coreTests": {
-      "status": "FULL_SUITE_NOT_RERUN_FOR_PRIVATE-PILOT-7",
-      "priorResultsAreHistorical": true,
-      "targetedChecksListedSeparately": true
-    },
-    "syntheticFixtureAudit": {
-      "status": "PASS",
-      "model": "claude-fable-5-2",
-      "effort": "high",
-      "receiptSha256": "720f38ca3d4da036a1ef6a458f30629e4f09eadaa7e1d8dad4275123ec6b8052",
-      "reportSha256": "1317afc5f02d88317d29ba78a06314d366615e7cad1ca95baf2da77e77bf4e09",
-      "initialReceiptSha256": "7307fb23e2f0058f7103db648012ac1c1aae611bc575a2bd8d7207b11962f2d1",
-      "initialReportSha256": "07ecc9a1fb4af23360b96bac18f694da810c7f955c8d35e75092290d1510005f",
-      "fixtureHashes": {
-        "tests/browser-build.test.cjs": "653aced83f47aeee352b11d5a5c8d3b6fe28cbad234061b933f4892700a69109",
-        "tests/local-credential.test.mjs": "801fabf4c84caa1f322204d682d0053a4f5eee2309be8c7a1b76b34dd42f13ee"
-      },
-      "scope": "Initial review confirms the two temporary fixtures; final followup reconfirms identical fixture bytes and final eligibility before exact supplementary execution. Initial typography P2 is preserved separately."
-    },
-    "nativePhotoRestoreAcceptance": {
-      "status": "NOT_RERUN_FOR_PRIVATE-PILOT-7",
-      "priorResultsAreHistorical": true,
-      "scope": "Historical PRIVATE-PILOT-5 logical photo-capacity and concurrency acceptance; dedicated data source preservation checked separately"
-    },
-    "liveApplicationProviderCalls": 0,
     "deployedFromVerifiedSource": true,
     "deployedBundleMatchesDryRun": true,
-    "deployedBundleSHA256": "cb45a6ccff4f321b5d687e66b434667505379a9fac72ec94a5604d03ed338e9e"
+    "deployedBundleSHA256": "02d062704d32b27312bdf58c13b9a88bdbb3cf67bb6da4c43606bcac45572fd4"
   },
   "historicalAcceptance": {
-    "build": "PRIVATE-PILOT-6",
-    "acceptedAt": "2026-11-22T18:27:00.075257+00:00",
-    "scope": "Prior PRIVATE-PILOT-6 results only; these are not reruns or current acceptance for PRIVATE-PILOT-7",
+    "build": "PRIVATE-PILOT-7",
+    "sourceTag": "private-pilot-7",
+    "acceptedAt": "2026-11-22T19:56:04.401367+00:00",
+    "scope": "Prior-release checks are historical, not new executions for PRIVATE-PILOT-8",
     "checks": {
       "rootTests": {
         "status": "PASS",
@@ -255,6 +1085,22 @@
         },
         "disposition": "The two original Node permission-model fixture-setup denials remain in their original evidence; successful exact synthetic executions complete the unique test set."
       },
+      "targetedCoreTests": {
+        "status": "PASS",
+        "tests": 105,
+        "pass": 105,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "scope": [
+          "test/designSystem.test.js",
+          "test/uiFocus.test.js",
+          "test/boxFillCatalog.test.js",
+          "test/navigation.test.js"
+        ],
+        "fullCoreSuiteRerun": false
+      },
       "localRuntimeCheck": {
         "status": "PASS",
         "scope": "local/run.mjs --check preflight; local behavior is also covered by root tests"
@@ -271,8 +1117,30 @@
         "actualExecutionVerified": true,
         "actionableP1": 0,
         "actionableP2": 0,
-        "scope": "Current four-tab UI/version/Pages diff and bounded harness/fixture safety, exact claude-fable-5-2 high",
-        "sourceStable": true
+        "scope": "Bounded hosted two-font typography, version, Pages and launcher review plus explicit workflow-action P2 closure; exact claude-fable-5-2 high. Runtime tests and hash verification are recorded separately.",
+        "sourceStable": true,
+        "initialReview": {
+          "status": "HOLD_AT_INITIAL_REVIEW",
+          "actionableP1": 0,
+          "actionableP2": 1,
+          "receipt": {
+            "phase": "typography-review",
+            "sha256": "7307fb23e2f0058f7103db648012ac1c1aae611bc575a2bd8d7207b11962f2d1",
+            "reportSha256": "07ecc9a1fb4af23360b96bac18f694da810c7f955c8d35e75092290d1510005f",
+            "finishedAt": "2026-11-22T19:41:28.470379+00:00",
+            "disposition": "HOLD: 0 P1, 1 P2 (.wf-btn active actions); followup required"
+          }
+        },
+        "finalFollowup": {
+          "status": "PASS",
+          "receipt": {
+            "phase": "typography-review-followup",
+            "sha256": "720f38ca3d4da036a1ef6a458f30629e4f09eadaa7e1d8dad4275123ec6b8052",
+            "reportSha256": "1317afc5f02d88317d29ba78a06314d366615e7cad1ca95baf2da77e77bf4e09",
+            "finishedAt": "2026-11-22T19:48:18.949003+00:00",
+            "disposition": "FINAL_FOLLOWUP"
+          }
+        }
       },
       "nativeVisualAcceptance": {
         "status": "PASS",
@@ -281,9 +1149,9 @@
           "fail": 0,
           "blocked": 0
         },
-        "build": "PRIVATE-PILOT-6",
-        "browserShellPin": "22bbae51cc2f3a2ffba0cad1f2adc97062175fdd052ce45b3aa7e1d623c56928",
-        "scope": "Bounded native visual/navigation and synthetic job/draft-retention acceptance; baseline counts are separate.",
+        "build": "PRIVATE-PILOT-7",
+        "browserShellPin": "83f55923f1f0e7572fd21f930b46336e513d2ddceeb9c063fe971c019cb4882b",
+        "scope": "Bounded native visual/navigation and synthetic job/draft-retention acceptance of typography iteration3. Current counts exclude baseline6 and historical candidate7 iterations1/2.",
         "actualLayoutWidths": [
           320,
           430,
@@ -291,20 +1159,33 @@
         ],
         "sourceStable": true,
         "currentSourceMatchesReports": true,
-        "metadataOnlyExclusions": [],
+        "metadataOnlyExclusions": [
+          "RELEASE.json",
+          "SOURCE-MANIFEST.json"
+        ],
         "serviceWorkerUpgradeTested": false,
         "physicalIPhoneTested": false,
         "providerCalls": 0,
-        "escapedExternalRequests": 0
+        "escapedExternalRequests": 0,
+        "harnessSha256": "414d67b476b8c72b7c667119b5195ed415ba2fe3461968eaafb15d4b53ce37f3",
+        "acceptanceLimits": [
+          "No physical iPhone or touch emulation; desktop-class engines at1x scale.",
+          "No actual glyph-font or downloaded-font-face proof. Font-family metrics are declared fallback stacks.",
+          "No full-DOM font-role census; metrics sample visible controls and containers.",
+          "No focus-state exercise, all-control text-clipping acceptance or screenshot at320.",
+          "No new calculator arithmetic, AI/provider answer, transcription, note or measurement acceptance.",
+          "No service-worker/offline/update/archive execution; service workers were blocked.",
+          "Small numeric placeholders and long selected job names can truncate inside controls. Passing root/iframe overflow does not prove all control text fits."
+        ]
       },
       "cloudflareDryRun": {
         "status": "PASS",
-        "runtimeSourcePin": "e08d4beef2c907b5871a42dd849a60a0e08628b1bbdb726bb2e59d46f7a0824b",
+        "runtimeSourcePin": "3aae32c2ac8d5a0e85139476f2ee5b35b4681ebbb952f1a16ed79c6b1b2e2555",
         "sourceStable": true
       },
       "anonymousAccessGate": {
         "status": "PASS",
-        "cloudVersion": "18b573ef-c284-4271-a760-5daa05f3a05a",
+        "cloudVersion": "285b4358-d0dd-4155-9294-a3f93f6ff391",
         "checks": [
           {
             "url": "https://empire-code-private-pilot.szczepan-msg.workers.dev/",
@@ -351,411 +1232,330 @@
         "scope": "Dedicated canonical calculation, storage, provider and data-bridge sources; not an execution test"
       },
       "coreTests": {
-        "status": "FULL_SUITE_NOT_RERUN_FOR_PRIVATE-PILOT-6",
+        "status": "FULL_SUITE_NOT_RERUN_FOR_PRIVATE-PILOT-7",
         "priorResultsAreHistorical": true,
         "targetedChecksListedSeparately": true
       },
-      "targetedCoreTests": {
+      "syntheticFixtureAudit": {
         "status": "PASS",
-        "tests": 53,
-        "pass": 53,
-        "fail": 0,
-        "cancelled": 0,
-        "skipped": 0,
-        "todo": 0,
-        "scope": [
-          "test/designSystem.test.js",
-          "test/uiFocus.test.js",
-          "test/boxFillCatalog.test.js"
-        ],
-        "fullCoreSuiteRerun": false
+        "model": "claude-fable-5-2",
+        "effort": "high",
+        "receiptSha256": "720f38ca3d4da036a1ef6a458f30629e4f09eadaa7e1d8dad4275123ec6b8052",
+        "reportSha256": "1317afc5f02d88317d29ba78a06314d366615e7cad1ca95baf2da77e77bf4e09",
+        "initialReceiptSha256": "7307fb23e2f0058f7103db648012ac1c1aae611bc575a2bd8d7207b11962f2d1",
+        "initialReportSha256": "07ecc9a1fb4af23360b96bac18f694da810c7f955c8d35e75092290d1510005f",
+        "fixtureHashes": {
+          "tests/browser-build.test.cjs": "653aced83f47aeee352b11d5a5c8d3b6fe28cbad234061b933f4892700a69109",
+          "tests/local-credential.test.mjs": "801fabf4c84caa1f322204d682d0053a4f5eee2309be8c7a1b76b34dd42f13ee"
+        },
+        "scope": "Initial review confirms the two temporary fixtures; final followup reconfirms identical fixture bytes and final eligibility before exact supplementary execution. Initial typography P2 is preserved separately."
       },
       "nativePhotoRestoreAcceptance": {
-        "status": "NOT_RERUN_FOR_PRIVATE-PILOT-6",
+        "status": "NOT_RERUN_FOR_PRIVATE-PILOT-7",
         "priorResultsAreHistorical": true,
         "scope": "Historical PRIVATE-PILOT-5 logical photo-capacity and concurrency acceptance; dedicated data source preservation checked separately"
       },
       "liveApplicationProviderCalls": 0,
       "deployedFromVerifiedSource": true,
       "deployedBundleMatchesDryRun": true,
-      "deployedBundleSHA256": "4cb0569e11195d9cae4fd8c53601c6f60a9f77fa53c48c56960c71b73bd60304"
+      "deployedBundleSHA256": "cb45a6ccff4f321b5d687e66b434667505379a9fac72ec94a5604d03ed338e9e"
     },
-    "referenceCore": {},
     "acceptanceLimits": [
-      "PRIVATE-PILOT-6 has fresh root, local-runtime, build and native visual evidence listed above; full core, photo-capacity and service-worker upgrade scenarios from PRIVATE-PILOT-5 are historical, not new executions.",
+      "PRIVATE-PILOT-7 has fresh root, local-runtime, build and native visual evidence listed above; full core, photo-capacity and service-worker upgrade scenarios from PRIVATE-PILOT-5 are historical, not new executions.",
       "Desktop Chromium and WebKit checks cover the named screens and viewport widths. They do not establish physical iPhone/Safari, screen-reader or every calculator-screen behavior.",
       "No fresh real-provider AI, physical microphone, owner browser profile or stored owner-data acceptance.",
       "The bounded PL/EN parser and prior qualification limits remain unchanged; no general electrical-code compliance certification."
-    ],
-    "previousHistoricalAcceptance": {
-      "build": "PRIVATE-PILOT-5",
-      "acceptedAt": "2026-11-22T05:54:49.172598+00:00",
-      "scope": "Prior PRIVATE-PILOT-5 results only; these are not reruns or current acceptance for PRIVATE-PILOT-6",
-      "checks": {
-        "rootTests": {
-          "tests": 326,
-          "pass": 326,
-          "fail": 0,
-          "skipped": 0
-        },
-        "coreTests": {
-          "tests": 3021,
-          "pass": 3019,
-          "fail": 0,
-          "skipped": 2
-        },
-        "coreSkipDisposition": "Two pre-existing browser-wrapper skips; not counted as passes. Separate native-browser evidence is listed below.",
-        "bundleChecks": {
-          "core": true,
-          "hostedWorkspace": true,
-          "workerAssets": true,
-          "moduleCount": 44,
-          "browserAssets": 20
-        },
-        "formBridgeTests": {
-          "pass": 22,
-          "fail": 0,
-          "skipped": 0
-        },
-        "staticReview": {
-          "actionableP1": 0,
-          "actionableP2": 0,
-          "scope": "Original finding repairs and linked form, realm, clock, proposal and job-acceptance boundaries",
-          "supplementalScopes": [
-            "workspace readiness and form labels",
-            "Motor stale early-return path"
-          ]
-        },
-        "nativeBrowserAcceptance": {
-          "status": "PASS",
-          "counts": {
-            "reportedCases": 110,
-            "pass": 110,
-            "fail": 0,
-            "blocked": 0
-          },
-          "suites": [
-            {
-              "harness": "auditfix",
-              "engine": "chromium",
-              "pass": 21,
-              "fail": 0,
-              "blocked": 0,
-              "reportedCases": 21,
-              "browserVersion": "157.0.8103.79",
-              "headless": true,
-              "contextMode": "fresh non-persistent context per case (browser.newContext)"
-            },
-            {
-              "harness": "auditfix",
-              "engine": "webkit",
-              "pass": 21,
-              "fail": 0,
-              "blocked": 0,
-              "reportedCases": 21,
-              "browserVersion": "27.2",
-              "headless": true,
-              "contextMode": "persistent"
-            },
-            {
-              "harness": "stage45",
-              "engine": "chromium",
-              "pass": 34,
-              "fail": 0,
-              "blocked": 0,
-              "reportedCases": 34,
-              "browserVersion": "157.0.8103.79",
-              "headless": true,
-              "contextMode": "fresh non-persistent context per case (browser.newContext)"
-            },
-            {
-              "harness": "stage45",
-              "engine": "webkit",
-              "pass": 34,
-              "fail": 0,
-              "blocked": 0,
-              "reportedCases": 34,
-              "browserVersion": "27.2",
-              "headless": true,
-              "contextMode": "persistent"
-            }
-          ],
-          "harnessHashes": {
-            "auditfix": "ff19c0c337ae2d8cc17a0f30e9158f873d8c46e7a5a7824ce77074ad7a6a748c",
-            "stage45": "7f5f286751d1194f08d4f96a64393cf7319a9ab6b95268645089cd5227012a47"
-          },
-          "runtimeAndSourcePinsMatch": true,
-          "sourceStable": true,
-          "layout": {
-            "auditCSSWidths": [
-              320,
-              390,
-              1280
-            ],
-            "auditViews": [
-              "Conversation",
-              "tools outer document",
-              "Wire Sizer",
-              "Ampacity"
-            ],
-            "stage45DefaultCSSWidth": 390,
-            "stage45Extra320CSSWidthViews": [
-              "adopted preliminary qualification",
-              "four-analysis selector",
-              "note review",
-              "measurement review"
-            ],
-            "scope": "Headless desktop Chromium/WebKit CSS viewport checks and screenshots; not physical iPhone/Safari, zoom, dynamic type, landscape or all-tool accessibility acceptance."
-          },
-          "sameOriginServiceWorkerUpgrade": {
-            "from": "PRIVATE-PILOT-4",
-            "to": "PRIVATE-PILOT-5",
-            "persistedDraftJobConversation": true,
-            "offlineAfterOriginStopped": true
-          },
-          "updateNoticeSeparateCheck": "PRIVATE-PILOT-5 document with a substituted PRIVATE-PILOT-4 worker; verifies the new document notice and persist-before-reload, not downgrade support.",
-          "formBridgeScope": "B5 checks same-realm bridge mechanics; parent-to-iframe application is separately checked in A5-02.",
-          "staleResponseScope": "A5-03 separately proves ordinary busy navigation refusal and diagnostic native input/change events in the already loaded hidden iframe before a held response is released.",
-          "providerCalls": {
-            "live": 0,
-            "scriptedInjectedTransport": 40,
-            "auditControlledAssistReplies": 4,
-            "unexpectedProviderPathCalls": 0,
-            "nodeNonLoopbackAttempts": 0,
-            "unexpectedScriptedProviderRequests": 0
-          },
-          "escapedExternalRequests": 0,
-          "priorAttemptsPreserved": true,
-          "motorFixtureDisposition": "The former Chromium run4 failure was a broad-panel snapshot comparison with no saved diff. Read-only review found no reachable stale-branch DOM write. The accepted harness waits for the already-scheduled Load Calc initializer before Motor baselines and records strict whole-panel pre/post snapshots plus the original intervening window. The historical run4 timing cause is not claimed as observed."
-        },
-        "cloudflareDryRun": {
-          "pass": true,
-          "runtimeSourcePin": "bd14153347668a52d8e0d6b89e73667ea5e09621212dc3152e85e16cdb4faa60",
-          "bundleFiles": [
-            {
-              "bytes": 4031698,
-              "sha256": "178cdf0a143e181ad0c72840e10a185d0a16f99f9b44bc4f221d49e319f179c8"
-            }
-          ]
-        },
-        "sourceModulesMatchGeneratedBrowser": true,
-        "deployedFromVerifiedSource": true,
-        "anonymousAccessGateVerifiedForThisBuild": true,
-        "ownerProfileAccessed": false,
-        "physicalIphoneAccepted": false,
-        "nativePhotoRestoreAcceptance": {
-          "status": "PASS",
-          "pass": 14,
-          "fail": 0,
-          "blocked": 0,
-          "casesByEngine": [
-            {
-              "engine": "chromium",
-              "total": 7,
-              "pass": 7,
-              "fail": 0,
-              "blocked": 0,
-              "ids": {
-                "P1-CONTROL-DEFAULT-LIMIT": "PASS",
-                "P2-LIMIT-2N-MINUS-1": "PASS",
-                "P3-LIMIT-2N": "PASS",
-                "P4-UPLOAD-IN-GAP-3N-MINUS-1": "PASS",
-                "P5-UPLOAD-IN-GAP-3N": "PASS",
-                "P6-NATIVE-QUEUE-3N-MINUS-1": "PASS",
-                "P7-NATIVE-QUEUE-3N": "PASS"
-              },
-              "canonicalModuleCount": 21,
-              "canonicalAggregateSha256": "82574f07e78fcd5761dc5fa889e3c757b40e366b66fafb984b22dc3843ade8d5",
-              "harnessSha256": "809296df618ff7dc9e27efc1b864ca75862606e6da998cbd4606c13d27def2aa"
-            },
-            {
-              "engine": "webkit",
-              "total": 7,
-              "pass": 7,
-              "fail": 0,
-              "blocked": 0,
-              "ids": {
-                "P1-CONTROL-DEFAULT-LIMIT": "PASS",
-                "P2-LIMIT-2N-MINUS-1": "PASS",
-                "P3-LIMIT-2N": "PASS",
-                "P4-UPLOAD-IN-GAP-3N-MINUS-1": "PASS",
-                "P5-UPLOAD-IN-GAP-3N": "PASS",
-                "P6-NATIVE-QUEUE-3N-MINUS-1": "PASS",
-                "P7-NATIVE-QUEUE-3N": "PASS"
-              },
-              "canonicalModuleCount": 21,
-              "canonicalAggregateSha256": "82574f07e78fcd5761dc5fa889e3c757b40e366b66fafb984b22dc3843ade8d5",
-              "harnessSha256": "809296df618ff7dc9e27efc1b864ca75862606e6da998cbd4606c13d27def2aa"
-            }
-          ],
-          "scope": "Unchanged canonical modules in native IndexedDB/Blob/Web Locks. Small synthetic PNG with scaled logical limits; control uses the production limit. Separate from the full-app browser scenarios.",
-          "physicalQuotaStress": false,
-          "currentDependencyClosureVerified": true
-        },
-        "deployedBundleMatchesDryRun": true,
-        "deployedBundleSHA256": "178cdf0a143e181ad0c72840e10a185d0a16f99f9b44bc4f221d49e319f179c8",
-        "anonymousAccessChecks": [
-          {
-            "url": "https://empire-code-private-pilot.szczepan-msg.workers.dev/",
-            "method": "GET",
-            "status": 302,
-            "accessProtected": true,
-            "redirectFollowed": false,
-            "cookiesSent": false,
-            "authenticationHeadersSent": false
-          },
-          {
-            "url": "https://empire-code-private-pilot.szczepan-msg.workers.dev/workspace/mobile.html",
-            "method": "GET",
-            "status": 302,
-            "accessProtected": true,
-            "redirectFollowed": false,
-            "cookiesSent": false,
-            "authenticationHeadersSent": false
-          },
-          {
-            "url": "https://empire-code-private-pilot.szczepan-msg.workers.dev/api/session",
-            "method": "GET",
-            "status": 302,
-            "accessProtected": true,
-            "redirectFollowed": false,
-            "cookiesSent": false,
-            "authenticationHeadersSent": false
-          },
-          {
-            "url": "https://empire-code-private-pilot.szczepan-msg.workers.dev/api/assist",
-            "method": "POST",
-            "status": 302,
-            "accessProtected": true,
-            "redirectFollowed": false,
-            "cookiesSent": false,
-            "authenticationHeadersSent": false
-          }
-        ],
-        "liveApplicationProviderCalls": 0,
-        "physicalMicrophoneAccepted": false
-      },
-      "referenceCore": {
-        "fullCoreTestsRerunForPublication": true,
-        "legacyWhisperPayloadFilesExcluded": 12,
-        "licensesRetained": true
-      },
-      "acceptanceLimits": [
-        "No fresh production AI request, physical microphone or physical iPhone acceptance; browser workflows use controlled provider responses.",
-        "The bounded PL/EN evidence parser is not complete language understanding. Language validation does not establish real-model or speech-recognition quality; notes and measurements require explicit review.",
-        "Desktop Chromium and WebKit viewport checks cover the named screens. They do not establish every calculator screen, screen-reader, dynamic-type or physical Safari behavior.",
-        "Native photo tests validate scaled logical capacity and write coordination, not physical500MiB quota exhaustion or two real browser tabs.",
-        "No source-grounded general CodeChat or complete electrical-code compliance certification."
-      ]
-    }
+    ]
   },
   "codingModel": {
     "model": "claude-fable-5-2",
     "effort": "high",
     "actualExecutionVerified": true,
     "implementationPhases": [
-      "typography-author",
-      "typography-correction",
-      "typography-final-correction",
-      "typography-test-correction",
-      "typography-runtime-correction",
-      "typography-wf-action-correction"
+      "english-chat-author-released",
+      "english-chat-feedback-correction",
+      "english-chat-completion-resumed-20261127",
+      "english-chat-test-correction-1",
+      "english-chat-review-fixes-1",
+      "english-chat-hosted-hint-1",
+      "english-chat-status-label-fixes-1"
     ],
     "implementationReceipts": [
       {
-        "phase": "typography-author",
-        "sha256": "f19e70529d17c4d3321d9cad6b43c81fc5d7f2ecd4ca5094a396907fc69a1f6e",
-        "finishedAt": "2026-11-22T19:06:20.709929+00:00"
+        "phase": "english-chat-author-released",
+        "sha256": "1b039a3c4c8f91bce6ebd185340cae8b7170f70f8b38d6577eca9ce037404bfe",
+        "finishedAt": "2026-11-23T02:50:32.737166+00:00"
       },
       {
-        "phase": "typography-correction",
-        "sha256": "70aa9c5b644cd39eb5561c5b5e679d00ad6b792eabe36cf57164761c0019b142",
-        "finishedAt": "2026-11-22T19:13:48.490584+00:00"
+        "phase": "english-chat-feedback-correction",
+        "sha256": "25971f784f0c5981a7d613d1e436d93e11b387f51b9b4b2db831fd97b99b1ddd",
+        "finishedAt": "2026-11-23T03:06:34.003881+00:00"
       },
       {
-        "phase": "typography-final-correction",
-        "sha256": "21cb919a610d46ebb2a41039c3d445d396d828dc9621e930be2a7c3fb84976a2",
-        "finishedAt": "2026-11-22T19:19:56.284929+00:00"
+        "phase": "english-chat-completion-resumed-20261127",
+        "sha256": "5e7578c39b6cb153197a5c2251cd35fc4ec0dbd3058f6e2409c960ddfc9cfc5b",
+        "finishedAt": "2026-11-28T00:04:17.717489+00:00"
       },
       {
-        "phase": "typography-test-correction",
-        "sha256": "f4928dfd39341bb6c350594f624efd390ae55406d4828d67ed69c278819a9d9c",
-        "finishedAt": "2026-11-22T19:25:18.999489+00:00"
+        "phase": "english-chat-test-correction-1",
+        "sha256": "afa6b9c2c153b259ce94ccf8323e3bc43b270cf7bd2b31bd37480d88dbe47186",
+        "finishedAt": "2026-11-28T00:22:18.563636+00:00"
       },
       {
-        "phase": "typography-runtime-correction",
-        "sha256": "684911a4d0ccf1015ffdbfa5e34b49de44c7264a2ede038b890d2f94c5eee622",
-        "finishedAt": "2026-11-22T19:30:38.582060+00:00"
+        "phase": "english-chat-review-fixes-1",
+        "sha256": "ad5199d25d35321537af8f0026581331a63a0ddc8b6e5b59a7fff1d403230334",
+        "finishedAt": "2026-11-28T01:03:09.208877+00:00"
       },
       {
-        "phase": "typography-wf-action-correction",
-        "sha256": "e71aac5543e3d054a74297537f8ac3b0bd5a6a4786831c48601450079e3b232b",
-        "finishedAt": "2026-11-22T19:44:43.282303+00:00"
+        "phase": "english-chat-hosted-hint-1",
+        "sha256": "82057be35c9e0a37bc7b1295373788aa18af450606078723eb6fa9faa03c8e52",
+        "finishedAt": "2026-11-28T01:07:45.467091+00:00"
+      },
+      {
+        "phase": "english-chat-status-label-fixes-1",
+        "sha256": "46a54087eec064bf18cc1b2e459af42aa476deee8d7a4a691ebdd59c6d285ef0",
+        "finishedAt": "2026-11-28T01:40:33.974235+00:00"
       }
     ],
-    "scope": "Typography implementation, initial review and P2-closing followup complete, verified by exact-model receipts; current release acceptance, deployment and anonymous Access checks verified.",
-    "initialReviewReceipt": {
-      "phase": "typography-review",
-      "sha256": "7307fb23e2f0058f7103db648012ac1c1aae611bc575a2bd8d7207b11962f2d1",
-      "reportSha256": "07ecc9a1fb4af23360b96bac18f694da810c7f955c8d35e75092290d1510005f",
-      "finishedAt": "2026-11-22T19:41:28.470379+00:00",
-      "disposition": "HOLD: 0 P1, 1 P2 (.wf-btn active actions); followup required"
-    },
-    "reviewPhase": "typography-review-followup",
+    "reviewPhase": "english-chat-review-closure-1",
     "reviewReceipt": {
-      "phase": "typography-review-followup",
-      "sha256": "720f38ca3d4da036a1ef6a458f30629e4f09eadaa7e1d8dad4275123ec6b8052",
-      "reportSha256": "1317afc5f02d88317d29ba78a06314d366615e7cad1ca95baf2da77e77bf4e09",
-      "finishedAt": "2026-11-22T19:48:18.949003+00:00",
-      "disposition": "FINAL_FOLLOWUP"
+      "phase": "english-chat-review-closure-1",
+      "sha256": "b5ae69651271c6f09b97d2320b23fb428ce24634735bfd1d9bf59455f7acef6a",
+      "finishedAt": "2026-11-28T01:50:08.515598+00:00",
+      "model": "claude-fable-5-2",
+      "effort": "high",
+      "reportSha256": "34fe9d74b8ec11e1203577c74559e3f3b80963aa74bcd793e2934aa96668bbe3"
     },
     "reviewReceipts": [
       {
-        "phase": "typography-review",
-        "sha256": "7307fb23e2f0058f7103db648012ac1c1aae611bc575a2bd8d7207b11962f2d1",
-        "reportSha256": "07ecc9a1fb4af23360b96bac18f694da810c7f955c8d35e75092290d1510005f",
-        "finishedAt": "2026-11-22T19:41:28.470379+00:00",
-        "disposition": "HOLD: 0 P1, 1 P2 (.wf-btn active actions); followup required"
-      },
-      {
-        "phase": "typography-review-followup",
-        "sha256": "720f38ca3d4da036a1ef6a458f30629e4f09eadaa7e1d8dad4275123ec6b8052",
-        "reportSha256": "1317afc5f02d88317d29ba78a06314d366615e7cad1ca95baf2da77e77bf4e09",
-        "finishedAt": "2026-11-22T19:48:18.949003+00:00",
-        "disposition": "FINAL_FOLLOWUP"
+        "phase": "english-chat-review-closure-1",
+        "sha256": "b5ae69651271c6f09b97d2320b23fb428ce24634735bfd1d9bf59455f7acef6a",
+        "finishedAt": "2026-11-28T01:50:08.515598+00:00",
+        "model": "claude-fable-5-2",
+        "effort": "high",
+        "reportSha256": "34fe9d74b8ec11e1203577c74559e3f3b80963aa74bcd793e2934aa96668bbe3"
       }
     ],
     "implementationComplete": true,
     "independentReviewComplete": true,
-    "currentAcceptanceStatus": "DEPLOYED_AND_ACCEPTED"
+    "currentAcceptanceStatus": "DEPLOYED_AND_ACCEPTED",
+    "scope": "English UI/New chat implementation and final independent read-only review have exact-model receipts; current controlled acceptance, deployment and anonymous access checks verified.",
+    "interruptedAuthorHistory": [
+      {
+        "phase": "english-chat-completion",
+        "phaseOutcome": "interrupted-account-quota",
+        "originalExitCode": 1,
+        "originalReceiptExactModelVerified": false,
+        "originalReceiptSha256": "28814f6fd74a36eaf77b5fc0d4f604d3a4bde277a6595625a1e76e0d87b07018",
+        "partialAuditSha256": "3ca050861650a169de3c7cf92728855ca20e9d7a6e280ab57ad805de7bf6936b",
+        "streamSha256": "605e803c938b33eccd90149d11d5fb47aa877f8c587a6566fce764683f5809f4",
+        "successfulWriteProvenanceSha256": "d7bb57c96a2a3b728e67aa910d7b901d0df97be6c1c6b97b44169088484f9e1f",
+        "actualWriteAuthorModel": "claude-fable-5-2",
+        "effort": "high",
+        "successfulWriteCount": 244,
+        "successfulWritePathCount": 17,
+        "resumedPhase": "english-chat-completion-resumed-20261127",
+        "resumedReceiptSha256": "5e7578c39b6cb153197a5c2251cd35fc4ec0dbd3058f6e2409c960ddfc9cfc5b",
+        "acknowledgementSha256": "ad3d1aa4fb23137e324ef99d18e57e82d9b673bbacec1876bd25c74b4cb442b0",
+        "preResumeWipReceiptSha256": "e2b87216a513d51238594693674d327919d39684e9d20aea8ba419461f800627",
+        "completionResponsibilityVerified": true
+      }
+    ],
+    "interruptedAuthorHistoryReview": {
+      "sourceContentPin": "166d71535e8ca8923e9907009d0a0f1754bc34a6d96b35c8075f9181a0fc24d3",
+      "fullSourceDiffSha256": "21c1ac2d7648c6404f1b1a998fcbfecab9f752e91eec46f81353901317efc33a",
+      "reviewReceiptSha256": "b5ae69651271c6f09b97d2320b23fb428ce24634735bfd1d9bf59455f7acef6a",
+      "reviewReportSha256": "34fe9d74b8ec11e1203577c74559e3f3b80963aa74bcd793e2934aa96668bbe3",
+      "coverage": [
+        {
+          "interruptedPhase": "english-chat-completion",
+          "successfulWriteProvenanceSha256": "d7bb57c96a2a3b728e67aa910d7b901d0df97be6c1c6b97b44169088484f9e1f",
+          "resumedPhase": "english-chat-completion-resumed-20261127",
+          "acknowledgementSha256": "ad3d1aa4fb23137e324ef99d18e57e82d9b673bbacec1876bd25c74b4cb442b0",
+          "fullDiffReviewed": true,
+          "originalFailedReceiptPreserved": true
+        }
+      ]
+    },
+    "harnessAuthorReceipt": {
+      "phase": "english-chat-harness-repeat-fix",
+      "sha256": "f914f4c5d01892632f21a60755facf767bfaf4cb29a5809e534ef64d7890b825",
+      "finishedAt": "2026-11-23T02:57:52.574442+00:00",
+      "model": "claude-fable-5-2",
+      "effort": "high"
+    },
+    "harnessAuthorReceipts": [
+      {
+        "phase": "english-chat-browser-harness-subset",
+        "sha256": "e6d8e9dfa55836ce87a7ba2e0e79c5cef11d40a74bc67f844110527b1bb03d29",
+        "finishedAt": "2026-11-23T02:11:01.452702+00:00",
+        "model": "claude-fable-5-2",
+        "effort": "high"
+      },
+      {
+        "phase": "english-chat-harness-alignment",
+        "sha256": "4766443c6f0121ced1bbe1196002025467fb68c35f3f0026aa1ac14bec7525f5",
+        "finishedAt": "2026-11-23T02:28:27.297312+00:00",
+        "model": "claude-fable-5-2",
+        "effort": "high"
+      },
+      {
+        "phase": "english-chat-harness-repeat-fix",
+        "sha256": "f914f4c5d01892632f21a60755facf767bfaf4cb29a5809e534ef64d7890b825",
+        "finishedAt": "2026-11-23T02:57:52.574442+00:00",
+        "model": "claude-fable-5-2",
+        "effort": "high"
+      }
+    ],
+    "reviewHistory": [
+      {
+        "phase": "english-chat-review-early",
+        "usage": "HISTORICAL_ONLY",
+        "receipt": {
+          "sha256": "c621b44412e47ec882c6c5ae4531ac7a8c3fe75d8eb311710db6a49e087f75ab"
+        },
+        "report": {
+          "sha256": "37555e50102d169b0cd08b96f54503f50e4e8f50395ef7ebc6a9700db3c6c1c2"
+        }
+      },
+      {
+        "phase": "english-input-safety-review",
+        "usage": "HISTORICAL_ONLY",
+        "receipt": {
+          "sha256": "73f9cdbe7d9041c4fe7bbedc9d81ea82c535fb4385ef7c5fad5be187ff7431e0"
+        },
+        "report": {
+          "sha256": "93ace33705fa8f6c72a2e7c986f692b8bbe39ce6abac58db4c0fe276bfd2ca12"
+        },
+        "disposition": {
+          "sha256": "20c2f75caf3548a1cbeb10ff8ec090f4bbdbb28bb5ccfd5ff23de95707167186"
+        }
+      },
+      {
+        "phase": "english-chat-fixture-safety-1",
+        "usage": "HISTORICAL_ONLY",
+        "receipt": {
+          "sha256": "b533696702ec705714195d20ebbc2aeb548fd9ac0cac01e219f77e6ab4139410"
+        },
+        "report": {
+          "sha256": "17985850ce3898ac98458d88722e7217f1159975fb800881bdc780482a549efa"
+        }
+      },
+      {
+        "phase": "english-chat-review",
+        "usage": "HISTORICAL_INCOMPLETE_NOT_ACCEPTED",
+        "receipt": {
+          "sha256": "ced3dcbb11338a39402f157d914f930fb37bece40037bdb4ce5a3733a2849fda"
+        },
+        "report": {
+          "sha256": "2542c10f0ab0bfe1f776de175610d16afbaee372cab1aacda77928f4f751e521"
+        },
+        "disposition": {
+          "sha256": "92cad6568a87af7af5eaa0caeb0e3afe80c41c6c41966edfd3f7189fd7ba3508"
+        },
+        "sourceContentPin": "b50a7f8d59271f0037be607d18e33f54cbe55b3bc0d438e043f4790fe1444e75",
+        "fullDiffReviewed": false,
+        "releaseAccepted": false,
+        "preservedBinding": {
+          "sha256": "4efbe723434294438e5c4b2848316658a8493fc3f2ce195124b3b90c51bd18bc"
+        },
+        "candidateSnapshot": {
+          "sha256": "c957cd9c3b067c1a20c88dbccf0c56f9327c2af8df6bb54e86f60b39765267f5"
+        }
+      },
+      {
+        "phase": "english-chat-review-completion-1",
+        "usage": "COMPLETE_SCOPE_REUSED_ONLY_CURRENT_CLOSURE_REQUIRED",
+        "status": "BLOCKED",
+        "actionableP1": 0,
+        "actionableP2": 2,
+        "releaseAccepted": false,
+        "fullDiffReviewed": true,
+        "sourceContentPin": "d5377a1492bcf9559ef3e5a724e94a97666737575e259e12af0c1f8a55ce86d9",
+        "completeBaseReview": {
+          "phase": "english-chat-review-completion-1",
+          "sourceContentPin": "d5377a1492bcf9559ef3e5a724e94a97666737575e259e12af0c1f8a55ce86d9",
+          "receiptSha256": "1968644f411770ede13fa20cf1849d4b552a22ede760d74429e325333ac942f6",
+          "reportSha256": "a12624062175628e16b393d17bf4fbf2e659a5c4c6428d8ce0dc5331b3659bbc",
+          "fullSourceDiffSha256": "7f55660d43313d1bc37a5dbcc636c9acf6eff862025d42a966b143977a49933e",
+          "readCoverageSha256": "3f1297f17772ad0b0616711d8ac13ab7873b89142d333936b58d0c4b9a44e4c6",
+          "checklistSha256": "482e75107068c6c7b7c3d82d5b942b26029844304ddac965cb325bb15d31f0ae",
+          "snapshotSha256": "bce47dc17d6eba75b2eb214488bfc70b42a1910f6f05a48965e1e9338ce8d523",
+          "sourceAfterSha256": "c1607c539ecff58c3ec989329df368703fdc97ae3e03d1746fb03a7f9b75f7cc",
+          "completeRequiredChunks": 131
+        },
+        "references": {
+          "receipt": {
+            "sha256": "1968644f411770ede13fa20cf1849d4b552a22ede760d74429e325333ac942f6"
+          },
+          "report": {
+            "sha256": "a12624062175628e16b393d17bf4fbf2e659a5c4c6428d8ce0dc5331b3659bbc"
+          },
+          "fullDiff": {
+            "sha256": "7f55660d43313d1bc37a5dbcc636c9acf6eff862025d42a966b143977a49933e"
+          },
+          "stream": {
+            "sha256": "64ae19a9fe16a2fa53109264ba0f7f85a2ab11e967ae1caa1898ebf1f63da3fc"
+          },
+          "sourceBefore": {
+            "sha256": "b8ad62f0a25e2117b31cbd5ea5c210d133a839d1fc3f3a9466b6f1e0378f6475"
+          },
+          "sourceAfter": {
+            "sha256": "c1607c539ecff58c3ec989329df368703fdc97ae3e03d1746fb03a7f9b75f7cc"
+          },
+          "inputs": {
+            "sha256": "2c6df068a0691041ac89b23c5718e6789d7e95a7fc50ee83dd7fc898733044f5"
+          },
+          "checklist": {
+            "sha256": "482e75107068c6c7b7c3d82d5b942b26029844304ddac965cb325bb15d31f0ae"
+          },
+          "access": {
+            "sha256": "3d5241f64e6a74f34f4362d8e76394fa07d07f09d45100ba6f145a4da03c132a"
+          },
+          "readCoverage": {
+            "sha256": "3f1297f17772ad0b0616711d8ac13ab7873b89142d333936b58d0c4b9a44e4c6"
+          },
+          "parserReconciliation": {
+            "sha256": "3746315100dfadf8ccce5ac1c10a29b0f8ffb2bcd5eac2658fed58073db4ac29"
+          },
+          "snapshot": {
+            "sha256": "bce47dc17d6eba75b2eb214488bfc70b42a1910f6f05a48965e1e9338ce8d523"
+          },
+          "helperMap": {
+            "sha256": "de2319ac2b50d27c0a51d3d916cc6539b00b2ff232fed0ed3be51087fe5048d1"
+          }
+        },
+        "originalFalseNegativeCoverage": {
+          "sha256": "14344244e7acba300fc05c4be68499ff4afdbf1888ccb56345dfce30327c5879"
+        },
+        "originalFalseNegativeReviewRecord": {
+          "sha256": "5c4347e1a72b4bbf6acbc83231aac0895344582f5c290b5bc7360d1df0031930"
+        },
+        "nativeEvidence": {
+          "sha256": "fa26dcdea3a8410416fdcfb39ba01d302483bd58078aaa5ab5f85b5b8b666bb7"
+        },
+        "visualObservation": {
+          "sha256": "1f70110c7cd97fc85f873cb03316e049df38930272d8cbeebd19f92a42b871ab"
+        },
+        "scope": "Actual source3 0P1/2P2 report remains blocked. Complete131-read scope is reused through the validated reconciliation; no old reads or runtime results are claimed anew."
+      }
+    ]
   },
   "storage": "Per browser and device. Access login is not cloud sync. Jobs .ecjob export/restore; conversations export separately. New conversation metadata fails closed in the older PRIVATE-PILOT-4 client; no automatic downgrade.",
   "acceptanceLimits": [
-    "PRIVATE-PILOT-7 has fresh root, local-runtime, build and native visual evidence listed above; full core, photo-capacity and service-worker upgrade scenarios from PRIVATE-PILOT-5 are historical, not new executions.",
-    "Desktop Chromium and WebKit checks cover the named screens and viewport widths. They do not establish physical iPhone/Safari, screen-reader or every calculator-screen behavior.",
-    "No fresh real-provider AI, physical microphone, owner browser profile or stored owner-data acceptance.",
-    "The bounded PL/EN parser and prior qualification limits remain unchanged; no general electrical-code compliance certification."
+    "No fresh live app-provider request, physical microphone, physical iPhone, or owner browser-profile acceptance.",
+    "Existing PL/EN input and electrical-code qualification limits remain; English interface does not certify model understanding or code compliance.",
+    "Current checks are listed explicitly; prior releases remain historical and are not fresh acceptance for PRIVATE-PILOT-8.",
+    "Browser acceptance uses controlled responses and synthetic data. No fresh real-provider, physical microphone, physical iPhone or owner-browser-profile acceptance.",
+    "First-party interface is English; existing English, Polish and mixed-language input is retained. This does not certify unrestricted model understanding or electrical-code compliance."
   ],
   "privateDeploymentConfigPublished": false,
-  "candidateIteration": 3,
-  "previousCandidate": {
-    "iteration": 2,
-    "sourceContentPin": "7e2f66bca64e9b30df43b13de2eb09897bc6044701789eec967af9fc9a8c7628",
-    "browserShellPin": "9098d20691cbfbdbab73a326e7b5552628e62a7eae849cb06c14877547ec6b83",
-    "archive": "evidence/iteration-history/iteration-2-before-3-7e2f66bca64e",
-    "archiveIndexSha256": "4fbb481a8dfb17661708f0707f82c88eabc93d78334dd91cf2573e7ab374b53e",
-    "priorResultsAreHistorical": true
-  },
-  "candidateHistory": [
-    {
-      "iteration": 1,
-      "sourceContentPin": "115f296b73d68adc25cd551efe0a19ccf8c333e1a678e182a6c23ac5e7298796",
-      "browserShellPin": "3d00484c275ca26d727406779b4226eda48df0081ae5b0652aaccb882b6c53cc",
-      "archive": "evidence/iteration-history/iteration-1-before-2-115f296b73d6",
-      "archiveIndexSha256": "60d07f1d7f1018ae364e77a2126e540c6882d009661702e865b171a7c3e47c1e",
-      "priorResultsAreHistorical": true
-    }
+  "candidateAcceptedAt": "2026-11-28T02:05:54.557163+00:00",
+  "interfaceLanguage": "en",
+  "conversationInputLanguagesRetained": [
+    "en",
+    "pl",
+    "mixed"
   ],
-  "candidateAcceptedAt": "2026-11-22T19:54:26.476526+00:00",
   "publicationTimezone": "America/New_York"
 }

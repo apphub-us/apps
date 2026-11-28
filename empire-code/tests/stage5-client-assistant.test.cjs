@@ -41,8 +41,9 @@ function calculator(tool,args,tamper){
 }
 const frame=extra=>({EC:{conversationTools:T},...(extra||{})});
 const shown=p=>JSON.parse(p.run('JSON.stringify(assistShown&&assistShown.result)'));
-// The panel shows the registry's own summary lines of the locally computed result, word for word.
-const panelShows=p=>{const text=p.text('assist-body'),r=shown(p);assert.ok(r.summary.length>0);for(const s of r.summary)assert.ok(text.includes(s.pl),'summary line shown: '+s.pl);};
+// The panel shows the registry's own summary lines of the locally computed result, word for word, in the language of the
+// interface: the English member of each line (ui.js pl() takes `en` whenever the registry provides one).
+const panelShows=p=>{const text=p.text('assist-body'),r=shown(p);assert.ok(r.summary.length>0);for(const s of r.summary){assert.ok(typeof s.en==='string'&&s.en.length>0,'the registry line has an English member: '+s.pl);assert.ok(text.includes(s.en),'summary line shown: '+s.en);}};
 const storedAssistant=p=>p.bank().contexts.find(e=>e.contextId===p.active()).envelope.assistant;
 const BATTERY={capacityWh:1000,consumptionMode:'kwh_year',consumption:365,chargePercent:100,usablePercent:85};
 const WIRE={noncontinuousLoadA:20,continuousLoadA:0,material:'cu',insulation:'thhn',ambientF:86,adjustmentFactor:1,terminalRatingC:75,circuitType:'BRANCH_CIRCUIT',jurisdiction:'NEC',feet:0};
@@ -59,7 +60,7 @@ test('battery: 1000 Wh / 365 kWh per year / 100 % / 85 % gives 20 h 24 min; "cha
  assert.deepEqual([first.assistant.toolDraft,first.assistant.form,first.assistant.job,first.assistant.clock],[null,null,null,null]);
  assert.equal(first.assistant.baseFingerprint,'ab1/r0/d:-/f:-/j:-');assert.match(first.assistant.contextToken,/^[A-Za-z0-9_-]{8,80}$/);
  assert.match(JSON.stringify(shown(p).coreResult),/20 h 24 min/);assert.equal(shown(p).status,'complete');
- panelShows(p);assert.match(p.text('assist-body'),/To nie jest odbiór/);
+ panelShows(p);assert.match(p.text('assist-body'),/It is not an inspection, an installation approval or a confirmation of code compliance/);
  assert.equal(p.els.input.value,'');assert.equal(p.run('state.history.length'),2);
  await send(p,'naładowanie 50 procent');
  const second=seen[1].body,draft=second.assistant.toolDraft;
@@ -68,7 +69,7 @@ test('battery: 1000 Wh / 365 kWh per year / 100 % / 85 % gives 20 h 24 min; "cha
  const kept=storedAssistant(p).tool;
  assert.deepEqual(kept.input,{...BATTERY,chargePercent:50},'every other field is exactly as stated before');
  assert.deepEqual(JSON.parse(p.run('JSON.stringify(assistChanged)')),['chargePercent']);
- assert.match(JSON.stringify(shown(p).coreResult),/10 h 12 min/);panelShows(p);assert.match(p.text('assist-body'),/zmienione teraz/);
+ assert.match(JSON.stringify(shown(p).coreResult),/10 h 12 min/);panelShows(p);assert.match(p.text('assist-body'),/ · changed now/);
  // Direct core parity: the screen holds exactly what the registry computes for these declared values.
  assert.deepEqual(shown(p),own(T.run('battery_runtime',{...BATTERY,chargePercent:50}).result));
  // Stored: input state only. No result, summary or engine answer is kept with the draft.
@@ -85,13 +86,13 @@ test('reload, offline and portable export: the stored input is recomputed locall
  assert.match(JSON.stringify(shown(q).coreResult),/10 h 12 min/);panelShows(q);
  // Without the registry in the tools frame no number is shown at all.
  const bare=await H.load({local:p.local,session:p.session});
- assert.equal(shown(bare),null);assert.match(bare.text('assist-body'),/nie pokazano żadnej liczby/);assert.ok(!/10 h 12 min/.test(bare.text('assist-body')));
+ assert.equal(shown(bare),null);assert.match(bare.text('assist-body'),/no number is shown without a local/);assert.ok(!/10 h 12 min/.test(bare.text('assist-body')));
  // Portable archive: carries the draft (input only); a fresh browser accepts it and computes the result itself.
  await p.click('export');const archive=JSON.parse(p.downloads[p.downloads.length-1]);
  assert.equal(archive.kind,'empire-code.conversation-archive');assert.deepEqual(archive.entry.envelope.assistant.tool.input,{...BATTERY,chargePercent:50});
  const fresh=await H.load({frame:frame()});
  await fresh.click('manage-open');await fresh.choose(JSON.stringify(archive));
- assert.match(fresh.text('import-preview'),/kalkulator rozmowy/);
+ assert.match(fresh.text('import-preview'),/chat calculator/);
  await fresh.click('import-apply');
  await fresh.run("hostExclusive(()=>{switchContext('"+archive.entry.contextId+"');render();})");await H.settle();
  assert.match(JSON.stringify(shown(fresh).coreResult),/10 h 12 min/);
@@ -118,7 +119,7 @@ test('a result that differs from the local engine is discarded; the screen shows
  await send(p,'akumulator 1000 Wh, 365 kWh rocznie, 100 i 85 procent');
  assert.equal(p.run('assistShown.discarded'),true);
  assert.deepEqual(shown(p),own(T.run('battery_runtime',BATTERY).result));
- assert.ok(!/99 h 59 min/.test(p.text('assist-body')));panelShows(p);assert.match(p.text('assist-body'),/został odrzucony/);
+ assert.ok(!/99 h 59 min/.test(p.text('assist-body')));panelShows(p);assert.match(p.text('assist-body'),/was discarded/);
 });
 
 test('stale answers change nothing: wrong token, context change and revert with an identical fingerprint, conversation switch',async()=>{
@@ -165,7 +166,7 @@ test('current Wire Sizer form: explicit one-shot import, registry parity, and a 
  const local=storedAssistant(p).tool;
  assert.deepEqual(local.input,WIRE);assert.ok(Object.values(local.origins).every(o=>o==='current_form'));
  assert.deepEqual(shown(p),own(T.run('wire_sizing',WIRE,{origin:'current_form'}).result),'same result as the canonical engine through the registry');
- assert.match(p.text('assist-body'),/z formularza/);
+ assert.match(p.text('assist-body'),/from the form/);
  await send(p,'długość 120 stóp przy 240 V jednofazowo, limit spadku 3 procent');
  assert.equal(seen[0].body.assistant.form,null,'no form snapshot is resent with a later turn');assert.deepEqual(seen[0].body.assistant.toolDraft.input,WIRE);
  const next=storedAssistant(p).tool,changed=['feet','voltage','phase','maxVoltDropPercent'];
@@ -181,8 +182,8 @@ test('current Wire Sizer form: explicit one-shot import, registry parity, and a 
  await send(p,'temperatura otoczenia 104 stopnie');
  assert.equal(applied.length,1,'the bridge is not asked to write for a discarded answer');
  assert.equal(p.run('JSON.stringify(state)'),keptState);assert.equal(JSON.stringify(storedAssistant(p)),keptDraft);assert.equal(storedAssistant(p).tool.input.ambientF,86);
- assert.equal(p.els.input.value,'temperatura otoczenia 104 stopnie');assert.equal(p.els.status.className,'error');assert.match(p.els.status.textContent,/zanim nadeszła odpowiedź/);
- assert.match(p.els['assist-status'].textContent,/zmienił się od pobrania/);assert.equal(p.run('assistLink'),null);
+ assert.equal(p.els.input.value,'temperatura otoczenia 104 stopnie');assert.equal(p.els.status.className,'error');assert.match(p.els.status.textContent,/before the reply arrived/);
+ assert.match(p.els['assist-status'].textContent,/changed since its values were taken/);assert.equal(p.run('assistLink'),null);
  assert.equal(p.count('/api/assist'),2,'one attempt, no retry');assert.equal(captures,1,'the form is not captured again by itself');
  // Sent again by the user, the message is an ordinary turn on the conversation's own data: stored, and the form is left alone.
  await p.submit();await idle(p);
@@ -191,7 +192,7 @@ test('current Wire Sizer form: explicit one-shot import, registry parity, and a 
 });
 
 test('form capture is honest: nothing is assumed for a missing, navigation-only or unready form',async()=>{
- const answers=[[{ok:false,status:'needs_form',capture:'requires_form',toolId:'pull_box',formInput:null,generation:'g1.1'},/nie ma teraz wartości/],[{ok:false,status:'navigation_only',capture:'none',toolId:'power',formInput:null,generation:'g1.1'},/tylko w zakładce Narzędzia/],[{ok:false,status:'not_ready',capture:'none',toolId:null,formInput:null,generation:null},/nie są jeszcze gotowe/],[{ok:false,status:'needs_input',capture:'unsupported',toolId:'voltage_drop',formInput:null,generation:'g1.1'},/nie ma formularza/]];
+ const answers=[[{ok:false,status:'needs_form',capture:'requires_form',toolId:'pull_box',formInput:null,generation:'g1.1'},/has no values to take right now/],[{ok:false,status:'navigation_only',capture:'none',toolId:'power',formInput:null,generation:'g1.1'},/only in the Tools tab/],[{ok:false,status:'not_ready',capture:'none',toolId:null,formInput:null,generation:null},/are not ready to read the form yet/],[{ok:false,status:'needs_input',capture:'unsupported',toolId:'voltage_drop',formInput:null,generation:'g1.1'},/has no form to take values from/]];
  for(const [answer,message] of answers){
   const p=await H.load({frame:frame({ECAssistantBridge:{capture:()=>answer,apply(){throw Error('no write expected');},navigate:()=>({status:'unsupported'})}})}),before=p.local.dump();
   await p.click('assist-use-form');
@@ -205,7 +206,7 @@ test('Power / Torque / Bender: a navigation answer calculates nothing and create
  const p=await H.load({frame:frame(),api:server([body=>json(H.assistAnswer(body,{domain:'navigation',reply:'Otwórz narzędzie „Moc” w aplikacji. Nic nie policzono.',assistant:{navigation:{tool:'power',form:{},executableHere:false,reason:'NO_PURE_MODULE'}}}))])});
  await send(p,'policz moc dla 20 amperów');
  assert.equal(p.run('assistantMeta'),null);assert.equal(shown(p),null);
- assert.match(p.text('assist-body'),/niczego dla niego nie policzyła/);assert.ok(p.find('assist-open-tool'));
+ assert.match(p.text('assist-body'),/calculated nothing for it/);assert.ok(p.find('assist-open-tool'));
 });
 
 test('old material flow through the same endpoint: items, changes and undo work as before; errors keep the text and are not retried',async()=>{
@@ -213,10 +214,10 @@ test('old material flow through the same endpoint: items, changes and undo work 
  const refuse=()=>json({error:'Nie rozpoznano jednego wywołania funkcji.',code:'ASSIST_CALL'},422);
  const p=await H.load({frame:frame(),api:server([add,refuse])});
  await send(p,'dodaj jeden bushing');
- assert.equal(p.run('state.items.length'),1);assert.equal(p.els.count.textContent,1);assert.match(p.els.status.textContent,/Zaktualizowano roboczy szkic/);assert.equal(p.run('assistantMeta'),null);
+ assert.equal(p.run('state.items.length'),1);assert.equal(p.els.count.textContent,1);assert.match(p.els.status.textContent,/Working draft updated/);assert.equal(p.run('assistantMeta'),null);
  await send(p,'tekst którego serwer nie przyjmie');
  assert.equal(p.els.input.value,'tekst którego serwer nie przyjmie');assert.match(p.els.status.textContent,/Nie rozpoznano jednego wywołania funkcji/);assert.equal(p.count('/api/assist'),2);
- assert.equal(p.els.export.disabled,false);assert.match(p.els.limits.textContent,/Pozostałe zapytania pilotażu: 59/,'only the accepted request is known to be counted');
+ assert.equal(p.els.export.disabled,false);assert.match(p.els.limits.textContent,/Pilot requests remaining: 59/,'only the accepted request is known to be counted');
  await p.click('undo');assert.equal(p.run('state.items.length'),0);
 });
 
@@ -236,11 +237,11 @@ test('pure rules: response acceptance, bank layout compatibility and the optiona
  assert.equal(sent.assistant.baseFingerprint,'ab1/r0/d:-/f:-/j:-');
  assert.equal(AS.response(H.assistAnswer(sent),sent).domain,'materials');
  for(const change of [a=>{a.requestId='other-request';},a=>{a.baseRevision=5;},a=>{a.base.fingerprint='ab1/r0/d:x@ct1-0000000000000000-1/f:-/j:-';},a=>{a.assistant.extra=1;},a=>{a.domain='code_answer';},a=>{a.assistant.actionProposal={kind:'ec.assist.jobNoteAppend'};}]){
-  const a=H.assistAnswer(sent);change(a);assert.throws(()=>AS.response(a,sent),/Nieaktualna propozycja/);
+  const a=H.assistAnswer(sent);change(a);assert.throws(()=>AS.response(a,sent),/Outdated proposal/);
  }
  // A proposal without a selected job in the request is never accepted.
  const note=H.assistAnswer(sent,{domain:'job_note',assistant:{actionProposal:{kind:'ec.assist.jobNoteAppend',version:1,proposalId:'a'.repeat(64),committed:false,requiresUserReview:true,target:{jobId:H.ids.job(1),baseRevisionId:'jrev1_'+'1'.repeat(32),baseRevisionNumber:1},append:{text:'x',separator:'',baseNotesLength:0,resultingNotesLength:1},evidence:{sourceQuote:'policz'},modelAuthored:['append.text']}}});
- assert.throws(()=>AS.response(note,sent),/Nieaktualna propozycja/);
+ assert.throws(()=>AS.response(note,sent),/Outdated proposal/);
  // Released layout 1 and conversations without assistant data: read entry for entry, nothing added, nothing dropped.
  const old=H.entry(1,{state:H.filledState(2),job:3,source:11,receipts:[H.receipt(3,1)],input:'niewysłane'});
  const read=CBank.read(H.bankV1([old]));
@@ -253,6 +254,6 @@ test('pure rules: response acceptance, bank layout compatibility and the optiona
  for(const assistant of [null,[],{version:1,tool:draft,proposal:null,action:null},{version:1,tool:null,proposal:null,action:{phase:'pending'},receipts:[]},{version:1,tool:null,proposal:null,action:null,receipts:[{planId:'x',state:'confirmed'}]}]){
   assert.throws(()=>CBank.commit(CBank.empty(),{contextId:H.ids.ctx(6),baseVersion:0,input:'',now,envelope:{state,undo:[],diffs:[],workspace:null,assistant}}),e=>e.code==='INVALID');
  }
- assert.throws(()=>AS.validate({version:1,tool:{...draft,result:{status:'complete'}},proposal:null,action:null,receipts:[]}),/kalkulator/);
- assert.throws(()=>AS.validate({version:2,tool:draft,proposal:null,action:null,receipts:[]}),/nieznany układ/);
+ assert.throws(()=>AS.validate({version:1,tool:{...draft,result:{status:'complete'}},proposal:null,action:null,receipts:[]}),/calculator/);
+ assert.throws(()=>AS.validate({version:2,tool:draft,proposal:null,action:null,receipts:[]}),/unknown layout/);
 });

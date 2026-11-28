@@ -11,7 +11,7 @@ import path from 'node:path';
 const KEY_FORMAT=/^sk-[A-Za-z0-9_-]{20,}$/;
 // Shown by the accepted frontend as it is (a known code, under 300 characters). REQUEST_FAILED on purpose: the read
 // happens after the attempt was reserved, and the frontend treats this code as "counting unknown", never as free.
-export const KEY_MESSAGE='Nie można bezpiecznie odczytać zapisanego klucza API na tym komputerze. Nie wklejaj go do czatu. Szkic bez zmian; brak automatycznej ponownej próby.';
+export const KEY_MESSAGE='The saved API key cannot be read safely on this computer. Do not paste it into the chat. The draft is unchanged; there is no automatic retry.';
 const unavailable=()=>Object.assign(new Error(KEY_MESSAGE),{code:'REQUEST_FAILED',status:503,safe:true,reason:'KEY_UNAVAILABLE'});
 
 // `dir` exists for tests only (a synthetic temporary directory). The runtime calls createKeyReader() with no argument;

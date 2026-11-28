@@ -17,7 +17,7 @@ const abortError=()=>Object.assign(Error('The operation was aborted.'),{name:'Ab
 const refused=()=>Promise.reject(new TypeError('Failed to fetch')); // what fetch reports for a refused redirect
 // The session answer in the shape the backend really sends.
 const sessionBody=(token=T1)=>({build:'PRIVATE-PILOT-2',model:'model-x',speechModel:'speech-x',online:true,prototype:true,remainingRequests:60,token,reason:null});
-const SESSION_TOKEN=()=>json({error:'Nieprawidłowy token sesji.',code:'SESSION_TOKEN'},403);
+const SESSION_TOKEN=()=>json({error:'Invalid session token.',code:'SESSION_TOKEN'},403);
 // Answers GET /api/session from the list, in order; one GET more than listed fails the test. Everything else goes to post().
 const routes=(sessions,post)=>{let n=0;return (url,init)=>{if(url!=='/api/session')return post(url,init);if(n>=sessions.length)throw Error('unexpected extra GET /api/session');return sessions[n++]();};};
 const noPost=url=>{throw Error('unexpected request '+url);};

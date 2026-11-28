@@ -17,7 +17,7 @@ const abortError=()=>Object.assign(Error('The operation was aborted.'),{name:'Ab
 const refused=()=>Promise.reject(new TypeError('Failed to fetch')); // what fetch reports for a refused redirect
 // The session answer in the shape the backend really sends.
 const sessionBody=(token=T1)=>({build:'PRIVATE-PILOT-2',model:'model-x',speechModel:'speech-x',online:true,prototype:true,remainingRequests:60,token,reason:null});
-const SESSION_TOKEN=()=>json({error:'Nieprawidłowy token sesji.',code:'SESSION_TOKEN'},403);
+const SESSION_TOKEN=()=>json({error:'Invalid session token.',code:'SESSION_TOKEN'},403);
 // Answers GET /api/session from the list, in order; one GET more than listed fails the test. Everything else goes to post().
 const routes=(sessions,post)=>{let n=0;return (url,init)=>{if(url!=='/api/session')return post(url,init);if(n>=sessions.length)throw Error('unexpected extra GET /api/session');return sessions[n++]();};};
 const noPost=url=>{throw Error('unexpected request '+url);};
@@ -57,13 +57,13 @@ function assertTextKept(p,note){assert.equal(p.els.input.value,TEXT,note);assert
 const noLeak=(p,note)=>assert.ok(!/<html|sk-fixture|login-page/.test(p.els.status.textContent),note+': '+p.els.status.textContent);
 
 const PROVIDER=[
- [401,'API_AUTH','OpenAI odrzuciło klucz. Dotychczasowa aplikacja i szkic są bez zmian.'],
- [403,'API_ACCESS','Brak uprawnień do wybranego modelu lub projektu API.'],
- [429,'API_QUOTA','API nie ma dostępnych środków lub limitu. Sprawdź rozliczenia projektu; nie twórz kolejnego klucza.'],
- [429,'API_RATE_LIMIT','Osiągnięto limit API. Nie ponawiam automatycznie płatnej operacji.'],
- [503,'MODEL_UNAVAILABLE','Wybrany model nie jest dostępny dla tego projektu API. Nie przełączam potajemnie na inny.'],
- [422,'API_REQUEST','API odrzuciło format zapytania. Niczego nie zastosowano; potrzebna jest korekta integracji.'],
- [429,'DAILY_LIMIT','Osiągnięto dzienny limit 60 zapytań pilotażu. Szkic bez zmian; limit odnawia się o północy UTC.']
+ [401,'API_AUTH','OpenAI rejected the key. The existing application and the draft are unchanged.'],
+ [403,'API_ACCESS','No access to the selected model or API project.'],
+ [429,'API_QUOTA','The API has no available funds or quota. Check the project billing; do not create another key.'],
+ [429,'API_RATE_LIMIT','The API limit was reached. A paid operation is not retried automatically.'],
+ [503,'MODEL_UNAVAILABLE','The selected model is not available for this API project. It is not silently replaced with another one.'],
+ [422,'API_REQUEST','The API rejected the request format. Nothing was applied; the integration needs a correction.'],
+ [429,'DAILY_LIMIT','The daily pilot limit of 60 requests was reached. The draft is unchanged; the limit renews at midnight UTC.']
 ];
 // 401/403 that did not come from the application: the login gate.
 const ACCESS=[
@@ -76,9 +76,9 @@ const ACCESS=[
  ['refused redirect',refused]
 ];
 
-test('labels: PRIVATE-PILOT-7 in the build constant, the title and the header',()=>{
- assert.equal(require('../candidate/build.cjs').BUILD,'PRIVATE-PILOT-7');
- assert.match(INDEX,/<title>Empire Code — PRIVATE-PILOT-7<\/title>/);assert.match(INDEX,/<span class="build">PRIVATE-PILOT-7<\/span>/);
+test('labels: PRIVATE-PILOT-8 in the build constant, the title and the header',()=>{
+ assert.equal(require('../candidate/build.cjs').BUILD,'PRIVATE-PILOT-8');
+ assert.match(INDEX,/<title>Empire Code — PRIVATE-PILOT-8<\/title>/);assert.match(INDEX,/<span class="build">PRIVATE-PILOT-8<\/span>/);
  assert.ok(!INDEX.includes('PRIVATE-PILOT-1'));assert.ok(!INDEX.includes('PRIVATE-PILOT-4'),'no label of the previous release is left on the page');
  // The page references every script it needs, the stage-5 rules module included.
  for(const src of ['/handoff-session.js','/assistant-session.js','/conversation-bank.js','/draft-recovery.js','/ui.js','/material-edit-host.js','/workspace-host.js'])assert.ok(INDEX.includes('<script src="'+src+'" defer></script>'),src);
@@ -117,13 +117,13 @@ test('talk: provider and API errors keep the session, show the safe server messa
   // Pressing Send again is not a replay: nothing is posted, the session is not renewed, the limit is said, the text stays.
   await p.submit();
   assert.equal(p.count('/api/assist'),1,code+': an exhausted budget is never posted again');assert.equal(p.count('/api/session'),1,code+': no renewal, no relogin');
-  assert.match(p.els.status.textContent,/^Dzienny limit zapytań pilotażu jest wyczerpany/,code);assert.match(p.els.status.textContent,/Wyślij i Mów są wyłączone; tekst pozostaje w polu/,code);
+  assert.match(p.els.status.textContent,/^The daily pilot request limit is used up/,code);assert.match(p.els.status.textContent,/Send and Speak are disabled; the text stays in the field/,code);
   assert.equal(p.els.status.className,'error',code);assertCapped(p,T1,code+' after a second Send');assertTextKept(p,code+' after a second Send');
   // The microphone starts nothing either: no recording, no transcription request.
   await p.els.mic.onclick();await settle();
-  assert.equal(p.els.mic.textContent,'Mów',code+': no recording was started');assert.equal(p.count('/api/transcribe'),0,code);
+  assert.equal(p.els.mic.textContent,'Speak',code+': no recording was started');assert.equal(p.count('/api/transcribe'),0,code);
   assert.equal(p.calls.length,2,code+': one session GET and the one refused POST, nothing else');
-  assertCapped(p,T1,code+' after Mów');assertTextKept(p,code+' after Mów');noLeak(p,code);
+  assertCapped(p,T1,code+' after Speak');assertTextKept(p,code+' after Speak');noLeak(p,code);
  }
 });
 
@@ -131,7 +131,7 @@ test('talk: an over-long or uncoded error text is replaced by the fixed message'
  for(const [note,answer] of [['known code, long text',()=>json({error:'sk-fixture '.repeat(40),code:'API_SERVICE'},503)],['no code',()=>json({error:'<html>login-page</html>'},500)],['unknown code',()=>json({error:'sk-fixture',code:'SOMETHING_NEW'},500)]]){
   const p=await load(routes([()=>json(sessionBody())],answer));
   await p.type(TEXT);await p.submit();
-  assert.equal(p.els.status.textContent,'Brak odpowiedzi usługi AI.',note);noLeak(p,note);
+  assert.equal(p.els.status.textContent,'No reply from the AI service.',note);noLeak(p,note);
   assertReady(p,T1,note);assert.equal(p.els.relogin.hidden,true,note);assert.equal(p.count('/api/assist'),1,note);assert.equal(p.count('/api/session'),1,note);
  }
 });
@@ -141,20 +141,20 @@ test('talk: 401/403 without a known code, a login page or a redirect drops the t
   const p=await load(routes([()=>json(sessionBody())],answer));
   await p.type(TEXT);await p.submit();
   assert.equal(p.count('/api/assist'),1,note);assert.equal(p.count('/api/session'),1,note+': no renewal for a lost login');
-  assertOff(p,note);assert.equal(p.els.relogin.hidden,false,note);assert.match(p.els.status.textContent,/logowanie wygasło/,note);noLeak(p,note);assertTextKept(p,note);
+  assertOff(p,note);assert.equal(p.els.relogin.hidden,false,note);assert.match(p.els.status.textContent,/sign-in expired/,note);noLeak(p,note);assertTextKept(p,note);
   await p.submit();assert.equal(p.count('/api/assist'),1,note+': the stale token is never posted again');
  }
 });
 
 test('talk: 403 SESSION_TOKEN renews the session once and does not send the message again',async()=>{
- const answers=[SESSION_TOKEN,()=>json({error:'Usługa AI jest chwilowo niedostępna. Szkic bez zmian; brak automatycznej ponownej próby.',code:'API_SERVICE'},503)];
+ const answers=[SESSION_TOKEN,()=>json({error:'The AI service is temporarily unavailable. The draft is unchanged; there is no automatic retry.',code:'API_SERVICE'},503)];
  const p=await load(routes([()=>json(sessionBody(T1)),()=>json(sessionBody(T2))],()=>answers.shift()()));
  await p.type(TEXT);await p.submit();
  assert.equal(p.count('/api/assist'),1,'exactly one rejected POST');assert.equal(p.count('/api/session'),2,'exactly one renewal GET');
  assert.equal(p.sent('/api/assist')[0].init.headers['X-EC-Token'],T1);
  assertReady(p,T2,'renewed');assert.equal(p.els.relogin.hidden,true);assertTextKept(p,'renewed');
- for(const s of [/została odświeżona/,/nie została wysłana/,/Wyślij ponownie/])assert.match(p.els.status.textContent,s);
- assert.ok(!/OpenAI odrzuciło klucz/.test(p.els.status.textContent),'not reported as a key problem');
+ for(const s of [/session was refreshed/,/The message was not sent/,/Press Send again/])assert.match(p.els.status.textContent,s);
+ assert.ok(!/OpenAI rejected the key/.test(p.els.status.textContent),'not reported as a key problem');
  // Only an explicit second press sends again, with the new token.
  await p.submit();
  assert.equal(p.count('/api/assist'),2);assert.equal(p.sent('/api/assist')[1].init.headers['X-EC-Token'],T2);assert.equal(p.count('/api/session'),2);
@@ -163,19 +163,19 @@ test('talk: 403 SESSION_TOKEN renews the session once and does not send the mess
 
 test('talk: failed renewal keeps its own feedback, never the success message, and sends nothing',async()=>{
  const cases=[
-  ['login gate',()=>json({error:'forbidden'},403),false,/Zaloguj ponownie/],
-  ['refused redirect',refused,false,/Zaloguj ponownie/],
-  ['invalid token shape',()=>json(sessionBody('tok-2')),true,/nie udostępnił/],
-  ['AI not configured',()=>json({online:false,token:null,reason:'AI_NOT_CONFIGURED'}),true,/AI nie jest jeszcze podłączone/],
-  ['server error',()=>json({error:'x'},503),true,/niedostępna/],
-  ['interrupted request',()=>Promise.reject(abortError()),true,/Przerwano/]
+  ['login gate',()=>json({error:'forbidden'},403),false,/Sign in again/],
+  ['refused redirect',refused,false,/Sign in again/],
+  ['invalid token shape',()=>json(sessionBody('tok-2')),true,/did not provide online chat/],
+  ['AI not configured',()=>json({online:false,token:null,reason:'AI_NOT_CONFIGURED'}),true,/AI is not connected/],
+  ['server error',()=>json({error:'x'},503),true,/Online chat is unavailable/],
+  ['interrupted request',()=>Promise.reject(abortError()),true,/Connecting to the online chat was interrupted/]
  ];
  for(const [note,second,linkHidden,expected] of cases){
   const p=await load(routes([()=>json(sessionBody(T1)),second],SESSION_TOKEN));
   await p.type(TEXT);await p.submit();
   assert.equal(p.count('/api/assist'),1,note);assert.equal(p.count('/api/session'),2,note);
   assertOff(p,note);assert.equal(p.els.relogin.hidden,linkHidden,note);assert.match(p.els.status.textContent,expected,note);
-  assert.ok(!/została odświeżona/.test(p.els.status.textContent),note);assertTextKept(p,note);
+  assert.ok(!/session was refreshed/.test(p.els.status.textContent),note);assertTextKept(p,note);
   await p.submit();assert.equal(p.count('/api/assist'),1,note+': nothing is posted without a token');assert.equal(p.count('/api/session'),2,note);
  }
 });
@@ -195,15 +195,15 @@ test('abort: a cancelled or interrupted request is not a login failure',async()=
  let p=await load(routes([()=>json(sessionBody())],(url,init)=>new Promise((res,rej)=>init.signal.addEventListener('abort',()=>rej(abortError())))));
  await p.type(TEXT);await p.submit();assert.equal(p.count('/api/assist'),1);
  await p.cancel();
- assertReady(p,T1,'cancelled');assert.equal(p.els.relogin.hidden,true);assert.match(p.els.status.textContent,/^Anulowano/);assertTextKept(p,'cancelled');
+ assertReady(p,T1,'cancelled');assert.equal(p.els.relogin.hidden,true);assert.match(p.els.status.textContent,/^Cancelled\. The working draft is unchanged/);assertTextKept(p,'cancelled');
  assert.equal(p.count('/api/assist'),1);assert.equal(p.count('/api/session'),1);
  // The request ends with AbortError on its own.
  p=await load(routes([()=>json(sessionBody())],()=>Promise.reject(abortError())));
  await p.type(TEXT);await p.submit();
- assertReady(p,T1,'interrupted');assert.equal(p.els.relogin.hidden,true);assert.match(p.els.status.textContent,/^Anulowano odpowiedź/);assert.equal(p.count('/api/session'),1);assertTextKept(p,'interrupted');
+ assertReady(p,T1,'interrupted');assert.equal(p.els.relogin.hidden,true);assert.match(p.els.status.textContent,/^Reply cancelled/);assert.equal(p.count('/api/session'),1);assertTextKept(p,'interrupted');
  // The first session request is interrupted: no login link, nothing enabled.
  p=await load(()=>Promise.reject(abortError()));
- assertOff(p,'session interrupted');assert.equal(p.els.relogin.hidden,true);assert.ok(!/Zaloguj|logowanie wygasło/.test(p.els.status.textContent));
+ assertOff(p,'session interrupted');assert.equal(p.els.relogin.hidden,true);assert.ok(!/Sign in|sign-in expired/.test(p.els.status.textContent));
 });
 
 test('late response after a context switch changes nothing and starts no request',async()=>{
@@ -231,7 +231,7 @@ test('late renewal after Cancel restores the session only: no success message, n
  assert.ok(renew,'the renewal request is in flight');assert.equal(p.token(),null);assert.equal(p.els.send.disabled,true);
  await p.cancel();
  renew(json(sessionBody(T2)));await settle();
- assertReady(p,T2,'late renewal');assert.ok(!/Wyślij ponownie/.test(p.els.status.textContent));assertTextKept(p,'late renewal');
+ assertReady(p,T2,'late renewal');assert.ok(!/Press Send again/.test(p.els.status.textContent));assertTextKept(p,'late renewal');
  assert.equal(p.count('/api/assist'),1);assert.equal(p.count('/api/session'),2);
 });
 
@@ -240,15 +240,15 @@ test('audio: 403 SESSION_TOKEN renews once; the recording is neither transcribed
  await p.speak();
  assert.equal(p.count('/api/transcribe'),1);assert.equal(p.count('/api/assist'),0);assert.equal(p.count('/api/session'),2);
  assert.equal(p.sent('/api/transcribe')[0].init.headers['X-EC-Token'],T1);assert.equal(p.sent('/api/transcribe')[0].init.redirect,'error');
- assertReady(p,T2,'audio renewed');assert.equal(p.els.mic.textContent,'Mów','recording is possible again');assert.equal(p.els.input.value,'');assert.equal(p.els.relogin.hidden,true);
- for(const s of [/została odświeżona/,/nie jest zapisane/,/Nagraj wypowiedź jeszcze raz/])assert.match(p.els.status.textContent,s);
+ assertReady(p,T2,'audio renewed');assert.equal(p.els.mic.textContent,'Speak','recording is possible again');assert.equal(p.els.input.value,'');assert.equal(p.els.relogin.hidden,true);
+ for(const s of [/session was refreshed/,/is not saved/,/Record the message once more/])assert.match(p.els.status.textContent,s);
 });
 
 test('audio: failed renewal, provider error and lost login each keep their own outcome',async()=>{
  // Renewal fails at the login gate.
  let p=await load(routes([()=>json(sessionBody(T1)),()=>json({},403)],url=>url==='/api/transcribe'?SESSION_TOKEN():noPost(url)));
  await p.speak();
- assertOff(p,'audio renewal failed');assert.equal(p.els.relogin.hidden,false);assert.ok(!/została odświeżona/.test(p.els.status.textContent));
+ assertOff(p,'audio renewal failed');assert.equal(p.els.relogin.hidden,false);assert.ok(!/session was refreshed/.test(p.els.status.textContent));
  assert.equal(p.count('/api/transcribe'),1);assert.equal(p.count('/api/session'),2);assert.equal(p.count('/api/assist'),0);
  // Provider errors are not login problems.
  for(const [status,code,message] of PROVIDER.slice(0,2)){

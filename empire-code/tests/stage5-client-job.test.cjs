@@ -126,7 +126,7 @@ test('note: proposed, corrected, reviewed and confirmed by the button — append
  await p.click('action-confirm');
  const all=await revisions(e,job.head.jobId),last=all[all.length-1];
  assert.equal(all.length,2);assert.equal(last.notes,'First visit.\n\n'+NOTE,'existing notes are an exact prefix');assert.equal(last.title,'Panel upgrade');assert.equal(last.address,'12 Main Street');
- assert.match(said(p),/Zapisano notatkę/);assert.equal(p.hooks.commits,1);
+ assert.match(said(p),/Saved a note/);assert.equal(p.hooks.commits,1);
  const stored=assistant(p);
  assert.equal(stored.proposal,null);assert.equal(stored.action,null);assert.equal(stored.receipts.length,1);
  assert.equal(stored.receipts[0].state,'confirmed');assert.equal(stored.receipts[0].record.store,'job-card');assert.equal(stored.receipts[0].record.revisionId,last.revisionId);
@@ -139,7 +139,7 @@ test('note: proposed, corrected, reviewed and confirmed by the button — append
  assert.equal(CBank.inspect(JSON.stringify(file),gone.bank,{now:H.T}).restorable,true);
  const fewer=own(file);fewer.entry.envelope.assistant.receipts=[];
  const verdict=CBank.inspect(JSON.stringify(fewer),gone.bank,{now:H.T});
- assert.equal(verdict.outcome,'retired');assert.equal(verdict.restorable,false);assert.match(verdict.reason,/notatek i pomiarów/);
+ assert.equal(verdict.outcome,'retired');assert.equal(verdict.restorable,false);assert.match(verdict.reason,/notes and measurements/);
  assert.throws(()=>CBank.commit(bank,{contextId:entry.contextId,baseVersion:entry.version,input:'',now:H.T,envelope:fewer.entry.envelope}),x=>x.code==='INVALID','a receipt never disappears from a stored conversation');
 });
 
@@ -148,10 +148,10 @@ test('no room for the pending plan: the job is not touched; after room is made t
  p.local.refuse=(k,v)=>k===H.KEY&&v.includes('"phase":"pending"');
  await p.click('action-confirm');
  assert.equal(p.hooks.commits||0,0,'the adapter is not called without the durable plan');assert.equal((await revisions(e,job.head.jobId)).length,1);
- assert.match(said(p),/Nie zapisano zmiany w przeglądarce/);assert.equal(pendingNow(p),false);assert.equal(assistant(p).action,null);
+ assert.match(said(p),/The change was not saved in the browser/);assert.equal(pendingNow(p),false);assert.equal(assistant(p).action,null);
  p.local.refuse=null;
  await p.click('action-confirm');
- assert.equal((await revisions(e,job.head.jobId)).length,2);assert.match(said(p),/Zapisano notatkę/);assert.equal(assistant(p).receipts.length,1);
+ assert.equal((await revisions(e,job.head.jobId)).length,2);assert.match(said(p),/Saved a note/);assert.equal(assistant(p).receipts.length,1);
 });
 
 test('lost acknowledgement: the plan stays pending and blocks the conversation; a reload reconciles it without a second record',async()=>{
@@ -159,12 +159,12 @@ test('lost acknowledgement: the plan stays pending and blocks the conversation; 
  p.hooks.after=r=>({ok:false,status:'pending',code:'INTERRUPTED',problems:['Acknowledgement lost.'],stored:null,receipt:{...r.receipt,state:'pending'}});
  await p.click('action-confirm');
  assert.equal((await revisions(e,job.head.jobId)).length,2,'the record was written; only the answer was lost');
- assert.match(said(p),/nie został potwierdzony/);assert.ok(!/Zapisano notatkę/.test(said(p)),'never "saved" without the durable acknowledgement');
+ assert.match(said(p),/save was not confirmed/);assert.ok(!/Saved a note/.test(said(p)),'never "saved" without the durable acknowledgement');
  assert.equal(pendingNow(p),true);assert.equal(assistant(p).action.phase,'pending');assert.equal(assistant(p).receipts.length,0);
  // Pending blocks sending, archive, delete, import and every other change of the stored conversation.
  assert.equal(p.els.send.disabled,true);assert.equal(p.els['job-target'].disabled,true);assert.equal(p.els['conversation-select'].disabled,true);
  const manage=op=>p.run("(()=>{try{bankManage(activeContextId,b=>CBank."+op+"(b,{contextId:activeContextId,baseVersion:activeVersion,now:new Date().toISOString()}));return 'done';}catch(e){return e.message;}})()");
- assert.match(manage('archive'),/dokończ/i);assert.match(manage('retire'),/dokończ/i);
+ assert.match(manage('archive'),/Finish the current operation or the started save to the job first/);assert.match(manage('retire'),/Finish the current operation or the started save to the job first/);
  const bank=p.bank(),entry=bank.contexts.find(x=>x.contextId===p.active());
  assert.throws(()=>CBank.archive(bank,{contextId:entry.contextId,baseVersion:entry.version,now:H.T}),x=>x.code==='PENDING');
  assert.equal(CBank.inspect(JSON.stringify(CBank.portable(bank,entry.contextId,{exportedAt:H.T})),CBank.empty(),{now:H.T}).outcome,'blocked');
@@ -173,7 +173,7 @@ test('lost acknowledgement: the plan stays pending and blocks the conversation; 
  // A new document on the same storage asks the history of the job before anything else and finds the record.
  const q=await open(e,job,[],{local:p.local,session:p.session});
  await until(()=>!pendingNow(q));await idle(q);
- assert.equal(assistant(q).receipts.length,1);assert.equal(assistant(q).action,null);assert.match(said(q),/ten zapis jest w robocie/);
+ assert.equal(assistant(q).receipts.length,1);assert.equal(assistant(q).action,null);assert.match(said(q),/this entry is in the job/);
  assert.equal(q.hooks.commits||0,0,'reconciling writes nothing');assert.equal((await revisions(e,job.head.jobId)).length,2,'no duplicate');
 });
 
@@ -182,10 +182,10 @@ test('receipt not stored after the real write: the truth is told, the plan is ke
  p.local.refuse=(k,v)=>k===H.KEY&&!v.includes('"phase":"pending"')&&v.includes('"state":"confirmed"');
  await p.click('action-confirm');
  assert.equal((await revisions(e,job.head.jobId)).length,2);
- assert.match(said(p),/Zapis jest w robocie, ale jego potwierdzenie nie zostało utrwalone/);assert.equal(pendingNow(p),true);assert.equal(assistant(p).action.phase,'pending');
+ assert.match(said(p),/The entry is in the job, but its confirmation was not stored/);assert.equal(pendingNow(p),true);assert.equal(assistant(p).action.phase,'pending');
  p.local.refuse=null;
  await p.click('action-resume');
- assert.match(said(p),/Zapisano notatkę/);assert.match(said(p),/niczego nie dopisano drugi raz/);
+ assert.match(said(p),/Saved a note/);assert.match(said(p),/nothing was added a second time/);
  assert.equal((await revisions(e,job.head.jobId)).length,2,'no duplicate');assert.equal(assistant(p).receipts.length,1);assert.equal(pendingNow(p),false);assert.equal(p.hooks.commits,2);
 });
 
@@ -194,7 +194,7 @@ test('job edited after the review: nothing is written until it is reviewed again
  await H.settle(2);
  const edited=await editJob(e,job.head.jobId,'First visit.\nEdited by hand.');
  await p.click('action-confirm');
- assert.match(said(p),/zmieniła się po przeglądzie/);assert.equal(p.hooks.commits||0,0);assert.equal((await revisions(e,job.head.jobId)).length,2,'only the manual edit');
+ assert.match(said(p),/changed (since|after) the review/);assert.equal(p.hooks.commits||0,0);assert.equal((await revisions(e,job.head.jobId)).length,2,'only the manual edit');
  assert.equal(pendingNow(p),false);assert.equal(p.find('action-confirm'),null,'the old review cannot be confirmed');
  await H.settle(2);await p.click('action-review');
  const again=assistant(p).proposal;
@@ -212,25 +212,25 @@ test('measurement: value corrected in review, one reading created; cancel is ine
  assert.ok(!(await readings(e,job.head.jobId)).includes('121.4'),'a proposal writes nothing');
  // A wrong value is refused by the job model at review, in the user's words; nothing is written.
  fill(p,'action-valueText','sto dwadzieścia');await p.click('action-review');
- assert.match(said(p),/liczbę z kropką/);assert.equal(p.find('action-confirm'),null);
+ assert.match(said(p),/number with a decimal point/);assert.equal(p.find('action-confirm'),null);
  fill(p,'action-valueText','120.9');fill(p,'action-location','panel A, zaciski główne');await p.click('action-review');
  assert.match(p.text('action-body'),/120\.9 V/);
  await p.click('action-confirm');
  const stored=await readings(e,job.head.jobId);
  assert.ok(stored.includes('120.9')&&stored.includes('panel A, zaciski główne')&&!stored.includes('121.4'),'the reviewed values are stored, not the proposed ones');
- assert.match(said(p),/Zapisano pomiar/);assert.equal(assistant(p).receipts[0].record.store,'measurement');assert.equal((await revisions(e,job.head.jobId)).length,1,'a reading does not change the job card');
+ assert.match(said(p),/Saved a measurement/);assert.equal(assistant(p).receipts[0].record.store,'measurement');assert.equal((await revisions(e,job.head.jobId)).length,1,'a reading does not change the job card');
  // A second proposal, exported for another device, then cancelled here.
  await send(p,'notatka: sprawdzić uziom przy liczniku');
  await p.click('export');const archive=p.downloads[p.downloads.length-1];
  await p.click('action-cancel');
- assert.equal(assistant(p).proposal,null);assert.match(said(p),/Odrzucono propozycję/);assert.equal(p.hooks.commits,1);assert.equal((await revisions(e,job.head.jobId)).length,1);
+ assert.equal(assistant(p).proposal,null);assert.match(said(p),/Proposal discarded/);assert.equal(p.hooks.commits,1);assert.equal((await revisions(e,job.head.jobId)).length,1);
  // Another browser without that job: the conversation is readable, the proposal is shown, nothing can be written.
  const other=env(),far=await open(other,job,[],{noJob:true});
  await far.click('manage-open');await far.choose(archive);
- assert.match(far.text('import-preview'),/propozycja notatki lub pomiaru do przeglądu/);assert.match(far.text('import-preview'),/potwierdzenia notatek i pomiarów zapisanych do roboty: 1/);
+ assert.match(far.text('import-preview'),/a note or measurement proposal for review/);assert.match(far.text('import-preview'),/confirmations of notes and measurements saved to the job: 1/);
  await far.click('import-apply');
  await far.run("hostExclusive(()=>{switchContext('"+JSON.parse(archive).entry.contextId+"');render();})");await H.settle();
- assert.match(far.text('action-body'),/sprawdzić uziom przy liczniku/);assert.match(far.text('action-body'),/nie istnieje na tym urządzeniu/);
+ assert.match(far.text('action-body'),/sprawdzić uziom przy liczniku/);assert.match(far.text('action-body'),/does not exist on this device/);
  assert.equal(far.find('action-review').disabled,true);assert.equal(far.find('action-cancel').disabled,false);
  await far.run('hostActionPrepare()');await far.run('hostActionCommit()');await H.settle();
  assert.equal(far.hooks.commits||0,0);assert.equal(JSON.parse(far.run('JSON.stringify(assistantMeta.receipts)')).length,1,'the imported receipt stays with the conversation');
@@ -309,7 +309,7 @@ test('measurement answer with a time that is not the sent device clock: refused 
  const p=await open(e,job,[shifted,measurementAnswer({},'121.4 V','V')]);
  const before=p.run('JSON.stringify(state)');
  await send(p,TEXT);
- assert.equal(p.seen.length,1);assert.match(p.els.status.textContent,/Nieaktualna propozycja/);assert.equal(p.els.status.className,'error');
+ assert.equal(p.seen.length,1);assert.match(p.els.status.textContent,/Outdated proposal/);assert.equal(p.els.status.className,'error');
  assert.equal(p.run('assistantMeta'),null,'no proposal is kept');assert.equal(p.run('JSON.stringify(state)'),before,'the draft is unchanged');
  const entry=p.bank().contexts.find(x=>x.contextId===p.active());assert.ok(!entry||!Object.hasOwn(entry.envelope,'assistant'),'nothing of the refused answer is stored');
  assert.equal(p.els.input.value,TEXT,'the unsent text stays');assert.equal(p.els['action-panel'].hidden,true);assert.equal(p.find('action-measuredLocal'),null);
@@ -326,7 +326,7 @@ test('one unwritten proposal per conversation (pure): a new proposal is refused 
  const first={kind:'note',proposalId:'a'.repeat(64),savedAt:H.T,sourceRevision:0,sourceText:'zapisz notatkę: a',job,note:'a',fields:null,edited:false};
  const second={...first,proposalId:'c'.repeat(64),sourceText:'zapisz notatkę: b',note:'b'};
  const held=AS.withProposal(null,first),before=JSON.stringify(held);
- const refused=x=>x.code==='PROPOSAL_HELD'&&/czeka już propozycja zapisu do roboty/.test(x.message)&&/Odrzuć propozycję/.test(x.message)&&/nie zastąpiła/.test(x.message);
+ const refused=x=>x.code==='PROPOSAL_HELD'&&/A proposal to save to the job is already waiting/.test(x.message)&&/Discard proposal/.test(x.message)&&/did not replace it/.test(x.message);
  assert.throws(()=>AS.withProposal(held,second),refused);
  assert.throws(()=>AS.withProposal(held,first),refused,'the same proposal id is no exception');
  assert.equal(JSON.stringify(held),before,'a refusal does not touch the held data');
@@ -351,7 +351,7 @@ test('a second proposal never replaces an unwritten one: refused with the reason
  assert.equal(held.proposal.note,'Neutral bar torque checked.');assert.equal(held.proposal.edited,false);
  await send(p,SECOND);
  assert.equal(p.seen.length,2,'the second request was answered with another proposal');
- assert.match(p.els.status.textContent,/czeka już propozycja zapisu do roboty/);assert.match(p.els.status.textContent,/nie zastąpiła/);assert.match(p.els.status.textContent,/Odrzuć propozycję/);assert.equal(p.els.status.className,'error');
+ assert.match(p.els.status.textContent,/A proposal to save to the job is already waiting/);assert.match(p.els.status.textContent,/did not replace it/);assert.match(p.els.status.textContent,/Discard proposal/);assert.equal(p.els.status.className,'error');
  assert.deepEqual(assistant(p),held,'the stored proposal is exactly the first one');
  assert.deepEqual(JSON.parse(p.run('JSON.stringify(assistantMeta)')),held);assert.equal(p.run('assistantMeta.tool'),null);
  assert.equal(p.run('JSON.stringify(state)'),state,'draft and history are unchanged');assert.equal(p.run('JSON.stringify(undo)'),undo);
@@ -368,13 +368,13 @@ test('a second proposal never replaces an unwritten one: refused with the reason
  assert.deepEqual(assistant(p).proposal,held.proposal);assert.equal(p.find('action-note').value,NOTE);
  // The explicit way out: cancel. The next proposal is then accepted — and is itself protected from the one after it.
  await p.click('action-cancel');
- assert.equal(p.run('assistantMeta'),null);assert.match(said(p),/Odrzucono propozycję/);
+ assert.equal(p.run('assistantMeta'),null);assert.match(said(p),/Proposal discarded/);
  await send(p,'pomiar L1-N 121.4 V AC w panel A');
  assert.equal(p.seen.length,4);assert.equal(p.run('assistantMeta.proposal.kind'),'measurement');assert.equal(p.find('action-valueText').value,'121.4');
  fill(p,'action-valueText','120.9');
  const reading2=own(assistant(p));
  await send(p,SECOND);
- assert.equal(p.seen.length,5);assert.match(p.els.status.textContent,/czeka już propozycja zapisu do roboty/);
+ assert.equal(p.seen.length,5);assert.match(p.els.status.textContent,/A proposal to save to the job is already waiting/);
  assert.deepEqual(assistant(p),reading2);assert.equal(p.run('assistantMeta.proposal.kind'),'measurement');assert.equal(p.find('action-valueText').value,'120.9');assert.equal(p.els.input.value,SECOND);
  assert.equal(p.hooks.commits||0,0);assert.equal((await revisions(e,job.head.jobId)).length,1);assert.equal((await readings(e,job.head.jobId)).includes('121.4'),false);
  // (A confirmed write frees the slot too: the measurement test above sends a note proposal after its reading was written.)
@@ -383,10 +383,10 @@ test('a second proposal never replaces an unwritten one: refused with the reason
 test('device clock behind the last save of the job: the review names the clock instead of asking for one more review; nothing is saved again or written',async()=>{
  const e=env(),job=await seedJob(e,'2099-01-01T00:00:00.000Z'),p=await proposeNote(e,job),held=own(assistant(p));
  await p.click('action-review');
- assert.match(said(p),/Zegar tego urządzenia/);assert.match(said(p),/datę i godzinę/);assert.ok(!/jeszcze raz/.test(said(p)),'no generic "review again"');
+ assert.match(said(p),/The clock of this device/);assert.match(said(p),/correct date and time/);assert.ok(!/use “Review save” (again|once more)/.test(said(p)),'no generic "review again"');
  assert.equal(p.find('action-confirm'),null);assert.deepEqual(assistant(p),held,'the proposal was not saved again');
  fill(p,'action-note',NOTE);await p.click('action-review');
- assert.match(said(p),/Zegar tego urządzenia/);assert.equal(p.find('action-confirm'),null);
+ assert.match(said(p),/The clock of this device/);assert.equal(p.find('action-confirm'),null);
  assert.deepEqual(assistant(p),held);assert.equal(p.find('action-note').value,NOTE,'the correction stays in the form');
  assert.equal(p.hooks.commits||0,0);assert.equal((await revisions(e,job.head.jobId)).length,1);
 });

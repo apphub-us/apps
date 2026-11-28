@@ -44,7 +44,7 @@
   if(Array.isArray(v))return v.every(x=>jsonSafe(x,depth+1));
   return plain(v)&&Object.keys(v).every(k=>!UNSAFE.includes(k)&&jsonSafe(v[k],depth+1));
  }
- const bad=what=>{throw Object.assign(Error('Nieprawidłowe dane asystenta rozmowy ('+what+'). Niczego nie nadpisano.'),{code:'ASSISTANT'});};
+ const bad=what=>{throw Object.assign(Error('Invalid assistant data of the chat ('+what+'). Nothing was overwritten.'),{code:'ASSISTANT'});};
 
  // The four members the server accepts and returns as `toolDraft`. Field values are validated by the registry, not here.
  function toolValid(t){
@@ -90,26 +90,26 @@
  // Strict check of a whole metadata object; returns an independent copy. `context` ties it to its conversation:
  // {sourceId,sourceRevision,jobId} of the envelope's workspace binding (null members when the conversation has none).
  function validate(a,context){
-  if(!exact(a,META_KEYS)||a.version!==VERSION)bad('nieznany układ');
-  if(a.tool!==null&&!toolValid(a.tool))bad('kalkulator');
-  if(a.proposal!==null&&!proposalValid(a.proposal))bad('propozycja zapisu do roboty');
-  if(a.action!==null&&!actionValid(a.action))bad('rozpoczęty zapis do roboty');
-  if(!Array.isArray(a.receipts)||a.receipts.length>LIMITS.receipts||!a.receipts.every(r=>receiptValid(r)&&r.state==='confirmed'))bad('potwierdzenia zapisów');
-  if(new Set(a.receipts.map(r=>r.record.store+'/'+r.record.id+'/'+r.record.revisionId)).size!==a.receipts.length||new Set(a.receipts.map(r=>r.planId)).size!==a.receipts.length)bad('powtórzone potwierdzenie');
+  if(!exact(a,META_KEYS)||a.version!==VERSION)bad('unknown layout');
+  if(a.tool!==null&&!toolValid(a.tool))bad('calculator');
+  if(a.proposal!==null&&!proposalValid(a.proposal))bad('proposal to save to the job');
+  if(a.action!==null&&!actionValid(a.action))bad('started save to the job');
+  if(!Array.isArray(a.receipts)||a.receipts.length>LIMITS.receipts||!a.receipts.every(r=>receiptValid(r)&&r.state==='confirmed'))bad('save confirmations');
+  if(new Set(a.receipts.map(r=>r.record.store+'/'+r.record.id+'/'+r.record.revisionId)).size!==a.receipts.length||new Set(a.receipts.map(r=>r.planId)).size!==a.receipts.length)bad('repeated confirmation');
   const p=a.proposal,x=a.action;
   if(x){
-   if(!p||a.receipts.some(r=>r.planId===x.plan.id))bad('zapis bez propozycji albo już potwierdzony');
+   if(!p||a.receipts.some(r=>r.planId===x.plan.id))bad('save without a proposal or already confirmed');
    const i=x.input;
-   if(i.sourceText!==p.sourceText||i.sourceSavedAt!==p.savedAt||i.sourceRevision!==p.sourceRevision||i.action.kind!==p.kind||x.receipt.jobId!==p.job.jobId||(p.kind==='note'?i.action.text!==p.note:!same(MEASUREMENT_FIELDS.map(k=>i.action.fields[k]),MEASUREMENT_FIELDS.map(k=>p.fields[k]))))bad('zapis niezgodny z propozycją');
+   if(i.sourceText!==p.sourceText||i.sourceSavedAt!==p.savedAt||i.sourceRevision!==p.sourceRevision||i.action.kind!==p.kind||x.receipt.jobId!==p.job.jobId||(p.kind==='note'?i.action.text!==p.note:!same(MEASUREMENT_FIELDS.map(k=>i.action.fields[k]),MEASUREMENT_FIELDS.map(k=>p.fields[k]))))bad('save does not match the proposal');
   }
   if(context){
    const bound=typeof context.sourceId==='string';
-   if((p||x||a.receipts.length)&&(!bound||typeof context.jobId!=='string'))bad('zapis do roboty bez powiązania rozmowy');
-   if(p&&(p.job.jobId!==context.jobId||(Number.isSafeInteger(context.sourceRevision)&&p.sourceRevision>context.sourceRevision)))bad('propozycja innej roboty lub wersji');
-   if(x&&x.input.sourceId!==context.sourceId)bad('zapis innej rozmowy');
-   if(a.receipts.some(r=>r.sourceId!==context.sourceId||r.jobId!==context.jobId))bad('potwierdzenie innej rozmowy lub roboty');
+   if((p||x||a.receipts.length)&&(!bound||typeof context.jobId!=='string'))bad('save to a job without a chat link');
+   if(p&&(p.job.jobId!==context.jobId||(Number.isSafeInteger(context.sourceRevision)&&p.sourceRevision>context.sourceRevision)))bad('proposal for another job or version');
+   if(x&&x.input.sourceId!==context.sourceId)bad('save of another chat');
+   if(a.receipts.some(r=>r.sourceId!==context.sourceId||r.jobId!==context.jobId))bad('confirmation of another chat or job');
   }
-  if(size(a)>LIMITS.metaChars)bad('limit rozmiaru');
+  if(size(a)>LIMITS.metaChars)bad('size limit');
   return clone(a);
  }
  const contextOf=workspace=>({sourceId:workspace?workspace.sourceId:null,sourceRevision:workspace?workspace.sourceRevision:null,jobId:workspace?workspace.targetJobId:null});
@@ -121,13 +121,13 @@
  const frozen=a=>!!(a&&a.action);
  const open=a=>a?validate(a):empty();
  const tidy=m=>{const v=validate(m);return blank(v)?null:v;};
- const busy=m=>{if(m.action)throw Object.assign(Error('W tej rozmowie jest rozpoczęty albo sporny zapis do roboty. Najpierw go dokończ.'),{code:'PENDING'});};
+ const busy=m=>{if(m.action)throw Object.assign(Error('This chat has a started or disputed save to the job. Finish it first.'),{code:'PENDING'});};
  function withTool(a,tool){const m=open(a);m.tool=tool===null?null:clone(tool);return tidy(m);}
  // One unwritten proposal per conversation, and it is never replaced silently: while one is held, ANY new proposal of the server
  // is refused — also one with the same proposalId — so the held proposal, its saved corrections and the fields the user is
  // editing stay exactly as they are. The slot is freed only by the user: the proposal is written (done), cancelled (dropProposal)
  // or its conflict is closed (dismiss). editProposal and every turn without a proposal are not affected.
- const PROPOSAL_HELD='W tej rozmowie czeka już propozycja zapisu do roboty, która nie została jeszcze zapisana. Nowa propozycja jej nie zastąpiła i niczego nie zapisano. Najpierw przejrzyj i zapisz tamtą propozycję albo ją odrzuć („Odrzuć propozycję”), a potem wyślij tę wypowiedź ponownie — Twój tekst pozostaje w polu.';
+ const PROPOSAL_HELD='A proposal to save to the job is already waiting in this chat and has not been saved yet. The new proposal did not replace it and nothing was saved. First review and save that proposal or discard it (“Discard proposal”), then send this message again — your text stays in the field.';
  function withProposal(a,proposal){
   const m=open(a);busy(m);
   if(m.proposal)throw Object.assign(Error(PROPOSAL_HELD),{code:'PROPOSAL_HELD'});
@@ -135,7 +135,7 @@
  }
  // A correction by the user, or a review against a newer job revision: the proposal becomes a new reviewed version with a new time.
  function editProposal(a,change,now){
-  const m=open(a);busy(m);if(!m.proposal)bad('brak propozycji');
+  const m=open(a);busy(m);if(!m.proposal)bad('no proposal');
   const p=m.proposal;
   if(change.note!==undefined)p.note=change.note;
   if(change.fields!==undefined)p.fields=clone(change.fields);
@@ -146,22 +146,22 @@
  function dropProposal(a){const m=open(a);busy(m);m.proposal=null;return tidy(m);}
  function enter(a,plan,input,receipt){
   const m=open(a);busy(m);
-  if(!m.proposal)bad('brak propozycji');
-  if(m.receipts.length>=LIMITS.receipts)throw Object.assign(Error('Ta rozmowa osiągnęła limit '+LIMITS.receipts+' zapisów do roboty. Niczego nie zapisano; zacznij nową rozmowę.'),{code:'LIMIT'});
+  if(!m.proposal)bad('no proposal');
+  if(m.receipts.length>=LIMITS.receipts)throw Object.assign(Error('This chat reached the limit of '+LIMITS.receipts+' saves to the job. Nothing was saved; start a new chat.'),{code:'LIMIT'});
   m.action={phase:'pending',plan:clone(plan),input:clone(input),receipt:clone(receipt)};return tidy(m);
  }
  function done(a,receipt){
   const m=open(a);
-  if(!m.action||!receiptValid(receipt)||receipt.state!=='confirmed'||receipt.planId!==m.action.plan.id||!same(receipt.record,m.action.receipt.record))bad('potwierdzenie innego zapisu');
+  if(!m.action||!receiptValid(receipt)||receipt.state!=='confirmed'||receipt.planId!==m.action.plan.id||!same(receipt.record,m.action.receipt.record))bad('confirmation of another save');
   m.receipts.push(clone(receipt));m.action=null;m.proposal=null;return tidy(m);
  }
  function conflict(a,receipt){
   const m=open(a);
-  if(!m.action||!receiptValid(receipt)||receipt.state!=='conflict'||receipt.planId!==m.action.plan.id)bad('konflikt innego zapisu');
+  if(!m.action||!receiptValid(receipt)||receipt.state!=='conflict'||receipt.planId!==m.action.plan.id)bad('conflict of another save');
   m.action.phase='conflict';m.action.receipt=clone(receipt);return tidy(m);
  }
  // The history was checked and holds nothing of this plan: the marker goes, the proposal stays for a new review.
- function release(a){const m=open(a);if(!m.action)bad('brak rozpoczętego zapisu');m.action=null;return tidy(m);}
+ function release(a){const m=open(a);if(!m.action)bad('no started save');m.action=null;return tidy(m);}
  // Closes a conflict the user has seen. A pending write is never dismissed.
  function dismiss(a){const m=open(a);if(pending(m))busy(m);m.action=null;m.proposal=null;return tidy(m);}
 
@@ -192,7 +192,7 @@
   const draft=o.toolDraft||null,form=o.form||null,job=o.job||null;
   return {protocol:PROTOCOL,version:1,requestId:o.requestId,text:o.text,state:o.state,assistant:{lang:o.lang,contextToken:o.contextToken,baseFingerprint:baseFingerprint(o.state.revision,draft,form,job),toolDraft:draft,form,job,clock:o.clock||null}};
  }
- const STALE='Nieaktualna propozycja. Szkic nie został zmieniony.';
+ const STALE='Outdated proposal. The draft was not changed.';
  const refuse=why=>{throw Object.assign(Error(STALE),{code:'ASSIST_RESPONSE',detail:why});};
  function noteProposal(v,sent){
   if(!exact(v,['kind','version','proposalId','committed','requiresUserReview','target','append','evidence','modelAuthored'])||v.kind!=='ec.assist.jobNoteAppend')refuse('proposal');

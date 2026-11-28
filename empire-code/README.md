@@ -3,17 +3,20 @@
 Source of the Empire Code PRIVATE-PILOT-5 release: a browser app served by a
 Cloudflare Worker, with the local build and tests that produce and check it.
 
-**Working build in this tree: PRIVATE-PILOT-7** (local runtime
-LOCAL-WORKSPACE-7). It is PRIVATE-PILOT-5 with two visual changes. The earlier
+**Working build in this tree: PRIVATE-PILOT-8** (local runtime
+LOCAL-WORKSPACE-8). It is PRIVATE-PILOT-7 with an English interface (Chat /
+Jobs / Tools / Code; Polish, English and mixed input are still understood and
+saved data is not rewritten) and a New chat action that always answers a press
+visibly. PRIVATE-PILOT-7 is PRIVATE-PILOT-5 with two visual changes. The earlier
 one (EC-UI-UNIFY-1, the PRIVATE-PILOT-6 build): the shell, Rozmowa, Roboty and
 Przepisy use the colours, radii, control sizes and label style of the Narzędzia
 tab. The new one (EC-TYPOGRAPHY-1): every screen uses two font roles, a system
 sans for interface and reading text and a system monospace for values, units
 and code references; `docs/typography.md` describes them. Calculators, stored
 data, the provider path and access rules are not changed by either. This README
-claims no tag, release or deployment of PRIVATE-PILOT-7; `RELEASE.json` records
+claims no tag, release or deployment of PRIVATE-PILOT-8; `RELEASE.json` records
 what was accepted. Everything below describes the PRIVATE-PILOT-5 release that
-PRIVATE-PILOT-7 is built on.
+PRIVATE-PILOT-8 is built on.
 
 - Stable address: <https://empirecode.app/current/> (a plain redirect page)
 - Direct app address: <https://empire-code-private-pilot.szczepan-msg.workers.dev/>

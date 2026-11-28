@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Empire Code — LOCAL-WORKSPACE-7 launcher. User-invoked; foreground; one fixed address: http://127.0.0.1:12350/
+// Empire Code — LOCAL-WORKSPACE-8 launcher. User-invoked; foreground; one fixed address: http://127.0.0.1:12350/
 //   node local/run.mjs            verify, then serve until Control-C / SIGTERM
 //   node local/run.mjs --open     the same, then open the address with /usr/bin/open
 //   node local/run.mjs --check    verify the accepted browser manifest and the served bytes; no key, no AI, then exit
@@ -28,12 +28,12 @@ function probe(url){
 // application bundle's existence is tested; no browser profile is read and no browser is automated.
 function open(url){
  const target=fs.existsSync('/Applications/Brave Browser.app')?['-a','Brave Browser',url]:[url];
- spawn('/usr/bin/open',target,{stdio:'ignore'}).on('error',()=>console.log('Otwórz: '+url));
+ spawn('/usr/bin/open',target,{stdio:'ignore'}).on('error',()=>console.log('Open: '+url));
 }
 
 async function main(){
- for(const a of args)if(!KNOWN.includes(a))throw new Error('Nieznany argument: '+a+' (dozwolone: '+KNOWN.join(', ')+')');
- if(Number(process.versions.node.split('.')[0])<22)throw new Error('Wymagany Node.js 22 lub nowszy (jest '+process.versions.node+').');
+ for(const a of args)if(!KNOWN.includes(a))throw new Error('Unknown argument: '+a+' (allowed: '+KNOWN.join(', ')+')');
+ if(Number(process.versions.node.split('.')[0])<22)throw new Error('Node.js 22 or newer is required (found '+process.versions.node+').');
  const{createLocalServer,createLiveRequest,LOCAL_RUNTIME,DEFAULT_PORT}=await import('./server.mjs');
  const{check,APP}=await import('./check.mjs');
  const{fileBudgetStorage}=await import('./budget-store.mjs');
@@ -41,29 +41,29 @@ async function main(){
 
  if(args.includes('--status')){
   const p=await probe(url);
-  console.log(!p.answered?'Nic nie odpowiada na '+url:p.runtime===LOCAL_RUNTIME?LOCAL_RUNTIME+' ('+p.build+') działa: '+url:'Na '+url+' odpowiada inna wersja (nie '+LOCAL_RUNTIME+').');
+  console.log(!p.answered?'Nothing answers at '+url:p.runtime===LOCAL_RUNTIME?LOCAL_RUNTIME+' ('+p.build+') is running: '+url:'Another version answers at '+url+' (not '+LOCAL_RUNTIME+').');
   return;
  }
  const report=await check();
- console.log('PLIKI: OK — '+report.paths+' ścieżek · '+report.build+' · pin '+report.pin.slice(0,16)+'… · bez odczytu klucza i bez API.');
+ console.log('FILES: OK — '+report.paths+' paths · '+report.build+' · pin '+report.pin.slice(0,16)+'… · no key read and no API.');
  if(args.includes('--check')||args.includes('--dry-run'))return;
 
  const existing=await probe(url);
  if(existing.answered){
-  if(existing.runtime!==LOCAL_RUNTIME)throw new Error('Na porcie '+DEFAULT_PORT+' działa inna wersja (np. WORKSPACE-4). Nie zatrzymano jej i niczego nie uruchomiono.');
-  console.log('EMPIRE CODE '+LOCAL_RUNTIME+' już działa: '+url);
+  if(existing.runtime!==LOCAL_RUNTIME)throw new Error('Another version is running on port '+DEFAULT_PORT+' (for example WORKSPACE-4). It was not stopped and nothing was started.');
+  console.log('EMPIRE CODE '+LOCAL_RUNTIME+' is already running: '+url);
   if(args.includes('--open'))open(url);
   return;
  }
  // Counters and hashes of the canonical budget only; /runtime/ is already excluded by .gitignore.
  const local=createLocalServer({request:createLiveRequest(),budgetStorage:fileBudgetStorage(path.join(APP,'runtime','local-budget-v1.json'))});
  try{await local.start(DEFAULT_PORT);}
- catch(e){throw new Error(e&&e.code==='EADDRINUSE'?'Port '+DEFAULT_PORT+' jest zajęty. Niczego nie zatrzymano i nie użyto innego portu.':'Serwer nie może się uruchomić na 127.0.0.1:'+DEFAULT_PORT+'.');}
+ catch(e){throw new Error(e&&e.code==='EADDRINUSE'?'Port '+DEFAULT_PORT+' is in use. Nothing was stopped and no other port was used.':'The server cannot start on 127.0.0.1:'+DEFAULT_PORT+'.');}
  console.log('EMPIRE CODE '+LOCAL_RUNTIME+' · '+report.build+': '+url);
- console.log('Rozmowa ('+report.model+') i głos ('+report.speechModel+') online przez klucz zapisany na tym Macu; roboty i narzędzia lokalnie.');
- console.log('Start nie odczytał klucza i nie wykonał płatnego zapytania. Limit: 60 prób AI/transkrypcji na dobę UTC, bez automatycznego ponawiania.');
- console.log('To lokalne uruchomienie bez logowania Cloudflare — nie jest sesją chmurową. Dane przeglądarki nie są kopiowane ani zmieniane przez serwer.');
- console.log('Pozostaw to okno otwarte. Zatrzymanie: Control-C (PID '+process.pid+').');
+ console.log('Chat ('+report.model+') and voice ('+report.speechModel+') online through the key saved on this Mac; jobs and tools locally.');
+ console.log('Startup read no key and made no paid request. Limit: 60 AI/transcription attempts per UTC day, with no automatic retry.');
+ console.log('This is a local run without the Cloudflare sign-in — it is not a cloud session. Browser data is not copied or changed by the server.');
+ console.log('Keep this window open. To stop: Control-C (PID '+process.pid+').');
  let stopping=false;
  const stop=()=>{if(stopping)return;stopping=true;local.stop().finally(()=>process.exit(0));};
  for(const signal of ['SIGINT','SIGTERM','SIGHUP'])process.on(signal,stop);

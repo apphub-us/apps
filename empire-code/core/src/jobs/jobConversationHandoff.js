@@ -56,7 +56,7 @@ async function prepare(input,options={}) {
     for(const item of selected){
       if(item.quantity===null||item.unit===null)return fail('INCOMPLETE','Selected item '+item.id+' has no quantity/unit; keep it in the conversation draft.');
       // EC-08: the shared whole-count rule, stated before anything is prepared. Nothing is rounded and no length is inferred.
-      if(Quantity.inspectDraft(item.quantity,item.unit).correctionRequired)return fail('QUANTITY_CORRECTION','Selected item '+item.id+' ('+item.quantity+' '+item.unit+') needs a correction before it can be saved to a job: '+Quantity.WHOLE_COUNT_MESSAGE+' Correct the quantity in the conversation (a whole number, or a length in ft/in/m/cm/mm) or unselect this item. Nothing was rounded and nothing was saved. / Pozycja '+item.id+': popraw ilość w rozmowie na liczbę całkowitą albo podaj długość, lub odznacz tę pozycję. Niczego nie zaokrąglono ani nie zapisano.');
+      if(Quantity.inspectDraft(item.quantity,item.unit).correctionRequired)return fail('QUANTITY_CORRECTION','Selected item '+item.id+' ('+item.quantity+' '+item.unit+') needs a correction before it can be saved to a job: '+Quantity.WHOLE_COUNT_MESSAGE+' Correct the quantity in the conversation (a whole number, or a length in ft/in/m/cm/mm) or unselect this item. Nothing was rounded and nothing was saved.');
       if(item.review.length&&!x.acknowledgedReviewIds.includes(item.id))return fail('REVIEW_REQUIRED','Review warnings for '+item.id+' require explicit acknowledgement.');
       const provenance='[Conversation '+x.sourceId+' / revision '+x.sourceRevision+' / item '+item.id+']';
       const warnings=item.review.length?'\nReview warnings acknowledged, not electrical approval:\n'+item.review.join('\n'):'';

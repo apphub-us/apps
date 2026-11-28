@@ -38,11 +38,11 @@ function assertAiOff(p){
 }
 
 test('page: build label, truthful pilot wording, re-login link, original asset references',()=>{
- assert.match(INDEX,/<title>Empire Code — PRIVATE-PILOT-7<\/title>/);assert.match(INDEX,/<span class="build">PRIVATE-PILOT-7<\/span>/);
- assert.ok(INDEX.includes('Prywatny pilot PRIVATE-PILOT-7.'),'the help text names the current release');assert.ok(!INDEX.includes('PRIVATE-PILOT-4'),'no stale release label');assert.ok(!INDEX.includes('PRIVATE-PILOT-5'),'no label of the previous release');assert.ok(!INDEX.includes('PRIVATE-PILOT-'+'6'),'no label of the build before this one');
- assert.match(INDEX,/<a id="relogin" href="\/_auth" target="_self" hidden>Zaloguj ponownie<\/a>/);
- assert.ok(!/działa na Macu|127\.0\.0\.1|localhost|WORKSPACE-4/.test(INDEX));
- for(const s of ['tylko do logowania i do rozmowy AI','nie są automatycznie importowane','AI jest pokazywane jako niedostępne','nie stanowi odbioru na fizycznym iPhonie','Ten etap nie jest zweryfikowanym AI Chat o przepisach'])assert.ok(INDEX.includes(s),s);
+ assert.match(INDEX,/<title>Empire Code — PRIVATE-PILOT-8<\/title>/);assert.match(INDEX,/<span class="build">PRIVATE-PILOT-8<\/span>/);
+ assert.ok(INDEX.includes('Private pilot PRIVATE-PILOT-8.'),'the help text names the current release');assert.ok(!INDEX.includes('PRIVATE-PILOT-4'),'no stale release label');assert.ok(!INDEX.includes('PRIVATE-PILOT-5'),'no label of the previous release');assert.ok(!INDEX.includes('PRIVATE-PILOT-'+'6'),'no label of the build before this one');
+ assert.match(INDEX,/<a id="relogin" href="\/_auth" target="_self" hidden>Sign in again<\/a>/);
+ assert.ok(!/działa na Macu|runs on (the|this|a) Mac|127\.0\.0\.1|localhost|WORKSPACE-4/.test(INDEX));
+ for(const s of ['work without internet and without signing in again','is not imported, copied or overwritten automatically','AI is shown as unavailable','is not an acceptance test on a physical iPhone','This stage is not a verified AI Chat about code requirements'])assert.ok(INDEX.includes(s),s);
  for(const id of ['nav-talk','nav-jobs','nav-tools','nav-code','conversation-panel','new','job-target','conversation-select','job-refresh','job-new','job-new-form','job-new-title','context-active','job-status','messages','example','composer','input','mic','cancel','send','status','count','undo','draft-note','items','handoff-panel','copy','export','core-panel','core-frame'])assert.ok(INDEX.includes('id="'+id+'"'),id);
  for(const ref of ['/style.css','/handoff-session.js','/assistant-session.js','/conversation-bank.js','/draft-recovery.js','/ui.js','/material-edit-host.js','/workspace-host.js','/workspace/mobile.html'])assert.ok(INDEX.includes('"'+ref+'"'),ref);
  // Script order of the page: assistant-session.js is loaded before ui.js, which uses ASession while it loads.
@@ -62,7 +62,7 @@ test('AI_NOT_CONFIGURED: nothing is enabled, nothing stored changes, no re-login
  const stored=p.dump();assert.notEqual(p.local.length,0,'the page stored its first conversation before the session answered');
  answer(json({online:false,token:null,reason:'AI_NOT_CONFIGURED'}));await settle();
  assertAiOff(p);
- assert.match(p.els.status.textContent,/AI nie jest jeszcze podłączone/);assert.match(p.els.status.textContent,/Roboty/);
+ assert.match(p.els.status.textContent,/AI is not connected/);assert.match(p.els.status.textContent,/Local Jobs/);
  assert.equal(p.els.relogin.hidden,true,'a login link would be misleading here');
  assert.equal(p.dump(),stored,'the session answer does not touch stored data');
  assert.equal(p.calls[0].url,'/api/session');assert.equal(p.calls[0].init.redirect,'error');assert.equal(p.calls[0].init.cache,'no-store');
@@ -92,7 +92,7 @@ test('a real session token enables the existing workflow',async()=>{
 test('session unreachable: local use stays open; the re-login link shows only for auth/network failures while online',async()=>{
  const redirect=()=>Promise.reject(new TypeError('Failed to fetch'));
  let p=await load(redirect);
- assertAiOff(p);assert.equal(p.els.relogin.hidden,false);assert.match(p.els.status.textContent,/Zaloguj ponownie/);assert.match(p.els.status.textContent,/bez logowania/);
+ assertAiOff(p);assert.equal(p.els.relogin.hidden,false);assert.match(p.els.status.textContent,/Sign in again/);assert.match(p.els.status.textContent,/work without signing in/);
  for(const answer of [()=>json({error:'forbidden'},403),()=>json({},401),()=>notJson(200)]){p=await load(answer);assertAiOff(p);assert.equal(p.els.relogin.hidden,false);}
  p=await load(()=>json({error:'x'},503));assertAiOff(p);assert.equal(p.els.relogin.hidden,true,'server error is not a login problem');
  p=await load(redirect,false);assertAiOff(p);assert.equal(p.els.relogin.hidden,true,'offline: no login link');

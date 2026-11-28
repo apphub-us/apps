@@ -1624,56 +1624,56 @@
 
         <!-- ══ WH / RUNTIME (CONVERTER-WH-1) — every number and message comes from EC.batteryRuntime ══ -->
         <div id="cvt-battery" style="display:none">
-          <div style="font-size:16px;font-weight:700;color:var(--text)">Na ile wystarczy bateria?</div>
-          <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);margin:2px 0 10px">Powerbank lub stacja zasilania — szacunek czasu pracy z pojemności w Wh.</div>
-          <div id="bt-number-hint" style="font-family:var(--ec-family-ui);font-size:12px;line-height:1.6;color:var(--text);margin:0 0 10px">Liczby bez separatorów tysięcy: 1000. Ułamek: 1,2 lub 1.2.</div>
+          <div style="font-size:16px;font-weight:700;color:var(--text)">How long will the battery last?</div>
+          <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim);margin:2px 0 10px">Power bank or power station — a runtime estimate from the capacity in Wh.</div>
+          <div id="bt-number-hint" style="font-family:var(--ec-family-ui);font-size:12px;line-height:1.6;color:var(--text);margin:0 0 10px">Numbers without thousands separators: 1000. Decimals: 1.2 or 1,2.</div>
 
           <div class="ctrl">
-            <label class="ctrl-lbl" for="bt-capacity" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Pojemność baterii (Wh)</label>
+            <label class="ctrl-lbl" for="bt-capacity" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Battery capacity (Wh)</label>
             <input type="text" inputmode="decimal" autocomplete="off" id="bt-capacity" placeholder="Wh" aria-describedby="bt-capacity-hint" oninput="btCalc()" style="width:100%;height:44px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--ec-family-mono);font-size:16px">
-            <span id="bt-capacity-hint" style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim)">Wh to energia w baterii — nie moc wyjściowa (W).</span>
+            <span id="bt-capacity-hint" style="font-family:var(--ec-family-ui);font-size:11px;color:var(--text-dim)">Wh is the energy in the battery — not the output power (W).</span>
           </div>
 
           <div class="ctrl" style="margin-top:10px">
-            <label class="ctrl-lbl" for="bt-mode" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Zużycie podaję jako</label>
+            <label class="ctrl-lbl" for="bt-mode" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Consumption is given as</label>
             <select id="bt-mode" onchange="btModeChanged()" style="width:100%">
-              <option value="w" selected>W — średnia moc</option>
-              <option value="kwh_day">kWh/dobę — pomiar</option>
-              <option value="kwh_year">kWh/rok — etykieta</option>
+              <option value="w" selected>W — average power</option>
+              <option value="kwh_day">kWh/day — measured</option>
+              <option value="kwh_year">kWh/year — energy label</option>
             </select>
           </div>
 
           <div class="ctrl" style="margin-top:10px">
-            <label class="ctrl-lbl" id="bt-consumption-label" for="bt-consumption" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Zużycie (W)</label>
+            <label class="ctrl-lbl" id="bt-consumption-label" for="bt-consumption" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Consumption (W)</label>
             <input type="text" inputmode="decimal" autocomplete="off" id="bt-consumption" placeholder="W" aria-describedby="bt-fridge-hint" oninput="btCalc()" style="width:100%;height:44px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--ec-family-mono);font-size:16px">
-            <span id="bt-fridge-hint" style="font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim)">Lodówka pracuje cyklicznie: podaj zmierzone kWh/dobę albo kWh/rok z etykiety energetycznej. Waty przy pracującej sprężarce to nie średnia dobowa.</span>
+            <span id="bt-fridge-hint" style="font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim)">A refrigerator runs in cycles: enter the measured kWh/day or the kWh/year from the energy label. The watts drawn while the compressor runs are not the daily average.</span>
           </div>
 
           <div style="margin-top:12px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px">
-            <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--accent);margin-bottom:8px">Założenia — możesz zmienić</div>
+            <div style="font-family:var(--ec-family-ui);font-size:11px;color:var(--accent);margin-bottom:8px">Assumptions — you can change them</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
               <div class="ctrl" style="flex:1;min-width:110px">
-                <label class="ctrl-lbl" for="bt-charge" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Naładowanie (%)</label>
+                <label class="ctrl-lbl" for="bt-charge" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Charge (%)</label>
                 <input type="text" inputmode="decimal" autocomplete="off" id="bt-charge" value="100" oninput="btCalc()" style="width:100%;height:44px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--ec-family-mono);font-size:16px">
               </div>
               <div class="ctrl" style="flex:1;min-width:110px">
-                <label class="ctrl-lbl" for="bt-usable" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Energia użyteczna (%)</label>
+                <label class="ctrl-lbl" for="bt-usable" style="text-transform:none;letter-spacing:0.5px;font-size:12px">Usable energy (%)</label>
                 <input type="text" inputmode="decimal" autocomplete="off" id="bt-usable" value="85" aria-describedby="bt-usable-hint" oninput="btCalc()" style="width:100%;height:44px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--ec-family-mono);font-size:16px">
               </div>
             </div>
-            <div id="bt-usable-hint" style="font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:8px">85% to edytowalny szacunek uwzględniający straty — nie certyfikowana sprawność ani stała uniwersalna.</div>
+            <div id="bt-usable-hint" style="font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:8px">85% is an editable estimate that allows for losses — not a certified efficiency and not a universal constant.</div>
           </div>
 
           <div class="fav-bar" style="margin-top:10px;flex-wrap:wrap">
-            <button type="button" class="reset-btn" onclick="btExample()" style="color:var(--accent);border-color:rgba(255,199,0,0.3)">Przykład: lodówka</button>
+            <button type="button" class="reset-btn" onclick="btExample()" style="color:var(--accent);border-color:rgba(255,199,0,0.3)">Example: refrigerator</button>
             <button type="button" class="reset-btn" onclick="btReset()">Reset</button>
           </div>
 
-          <div id="bt-status" role="status" aria-live="polite" style="font-family:var(--ec-family-ui);font-size:12px;line-height:1.6;color:var(--text-dim);margin-top:10px">Wpisz pojemność baterii w Wh. Wpisz zużycie w W.</div>
+          <div id="bt-status" role="status" aria-live="polite" style="font-family:var(--ec-family-ui);font-size:12px;line-height:1.6;color:var(--text-dim);margin-top:10px">Enter the battery capacity in Wh. Enter the consumption in W.</div>
 
           <div id="bt-result" aria-live="polite" style="display:none;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--success);border-radius:4px;overflow:hidden;margin-top:10px"></div>
 
-          <div id="bt-compat" style="font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px"><span style="color:var(--text)">Zgodność:</span> czas pracy zakłada właściwe wyjście zasilania. Zwykła lodówka AC wymaga odpowiedniego wyjścia AC oraz wystarczającej mocy ciągłej i rozruchowej (szczytowej). Same Wh nie potwierdzą, że lodówka wystartuje.</div>
+          <div id="bt-compat" style="font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px"><span style="color:var(--text)">Compatibility:</span> the runtime assumes a suitable power output. An ordinary AC refrigerator needs a suitable AC output and enough continuous and start-up (surge) power. Wh alone do not confirm that the refrigerator will start.</div>
         </div>
 
         <!-- ══ TORQUE ══ -->
@@ -11874,7 +11874,20 @@ window.EC = (function () {
     'use strict';
     /** Material-list interpreter. Captures counts/specifications, never selects a
      * conductor or fitting for an installation. Uncertain spans remain questions.
-     * Pure: no microphone, network, clock, browser state or persistence access. */
+     * Pure: no microphone, network, clock, browser state or persistence access.
+     *
+     * Language. Polish, English and mixed INPUT is recognised: the regular expressions below are input
+     * vocabulary, not UI. Everything this module GENERATES is English first-party text — questions,
+     * problems, preview titles, the saved item label and the generated parts of specification / notes
+     * ("material: plastic", "manufacturer: …", "model: not given", "50 ft each"). The user's own words
+     * (maker, model, colours, quoted fragments, the transcript) are copied literally.
+     *
+     * Generated specification / notes text is DISPLAY ONLY. No reader in the application interprets a
+     * "material:" / "manufacturer:" prefix or the generated note: the batch plan, the material store,
+     * the archive / restore path and the correction panel carry these fields as opaque text. Records
+     * and pending plans written earlier with the former Polish wording ("materiał: plastik",
+     * "producent: …", "model: niepodany", "po 50 ft", label "Przewód" / "Konektor") therefore stay
+     * valid and are never rewritten, migrated or re-parsed. */
     const Material = require('./jobMaterial.js');
     const fold = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/Ł/g, 'L').toLowerCase();
     const trim = s => s.trim().replace(/\s+/g, ' ');
@@ -11886,7 +11899,13 @@ window.EC = (function () {
     const countUnit = s => /^(pcs|piece|szt)/.test(fold(s));
     function unitOf(s) { const x=fold(s); if(countUnit(x))return 'pcs'; if(/^(ft|feet|foot|stop|stopy)$/.test(x))return 'ft'; if(/^(metr|meter)/.test(x)||x==='m')return 'm'; if(/^(inch|in)/.test(x))return 'in'; return ['cm','mm'].includes(x)?x:null; }
     function family(word) { const x=fold(word); return /^(konektor|connector|zlacz)/.test(x)?'connector':/^bus(?:h)?ing/.test(x)?'bushing':/^(breaker|wylacznik)/.test(x)?'breaker':'wire'; }
-    function title(f) { return f==='wire'?'Przewody':f==='connector'?'Konektory':f==='breaker'?'Breakery':'Bushingi'; }
+    // Preview heading of a family (plural) and the label saved with one item (singular). English output text.
+    function title(f) { return f==='wire'?'Wires':f==='connector'?'Connectors':f==='breaker'?'Breakers':'Bushings'; }
+    function itemLabel(f) { return f==='wire'?'Wire':f==='connector'?'Connector':f==='breaker'?'Breaker':'Bushing'; }
+    // 'plastik' / 'metal' are the internal type tokens kept in preview.knownType (a structured value, compared in
+    // repair() and never displayed). KIND_TEXT is their English display text for headings and specifications.
+    const KIND_TEXT = Object.freeze({plastik:'plastic',metal:'metal'});
+    const SIZE_NOT_GIVEN = 'Size not given — explicitly confirmed.';
     function cleanBoundary(s) { return s.replace(/^[\s,;:.]+|[\s,;:.]+$/g,'').trim(); }
     function filler(s) {
      let x=fold(s).replace(/[,.!;:…]+/g,' ').trim();
@@ -11939,24 +11958,24 @@ window.EC = (function () {
     function fittingDetails(raw) {
      let rest=cleanBoundary(raw),types=[];
      rest=rest.replace(/\b(?:plastikow(?:e|y|ych|a|ego)|plastic|metalow(?:e|y|ych|a|ego)|metal)\b/giu,word=>{types.push(/^plast/i.test(word)?'plastik':'metal');return '';});
-     types=[...new Set(types)];rest=cleanBoundary(rest);const kind=types.join(' / '),dimension=inchSize(rest),unknown=unknownSpec(rest);
-     return {kind,rest,dimension,unknown,conflict:types.length>1,shown:[dimension,kind?'materiał: '+kind:''].filter(Boolean).join(' · ')};
+     types=[...new Set(types)];rest=cleanBoundary(rest);const kind=types.join(' / '),kindText=types.map(t=>KIND_TEXT[t]).join(' / '),dimension=inchSize(rest),unknown=unknownSpec(rest);
+     return {kind,kindText,rest,dimension,unknown,conflict:types.length>1,shown:[dimension,kindText?'material: '+kindText:''].filter(Boolean).join(' · ')};
     }
     function breakerDetails(raw) {
      const value=cleanBoundary(raw);
      // Store a shopping-list rating, not suitability for a panel or installation.
      const rating=/^(\d+(?:[.,]\d+)?)\s*(A|amps?|amper(?:y|a|ów|ow)?)(?=$|\s|[,;])/iu.exec(value);
-     if(!rating||!Number.isFinite(Number(rating[1].replace(',','.')))||Number(rating[1].replace(',','.'))<=0)return {ok:false,message:'Podaj prąd znamionowy i model/typ breakera. To zapis materiału, nie dobór zabezpieczenia.'};
+     if(!rating||!Number.isFinite(Number(rating[1].replace(',','.')))||Number(rating[1].replace(',','.'))<=0)return {ok:false,message:'Give the rated current and the model/type of the breaker. This records a material; it does not select protection.'};
      const amperes=rating[1].replace(',','.')+' A';let tail=cleanBoundary(value.slice(rating[0].length));
      const model=/\b(?:model|typ|type)\s+([\p{L}\p{N}][\p{L}\p{N}_. /-]{0,59})$/iu.exec(tail);
      const rawBrand=model?cleanBoundary(tail.slice(0,model.index)):tail;
      const brand=/^(?:firmy|producent(?:a)?|marki|brand|by)\s+([\p{L}\p{N}][\p{L}\p{N} .&-]{0,59})$/iu.exec(rawBrand);
      const maker=brand?brand[1].trim():'';
-     if(rawBrand&&!maker)return {ok:false,rating:amperes,message:'Potwierdź producenta oraz model/typ breakera. Nie odgaduję ich z tekstu.'};
-     if(!model)return {ok:false,rating:amperes,maker,message:'Potwierdź producenta i podaj model/typ albo powiedz „model niepodany”. Nazwa z nagrania nie jest automatycznie poprawiana.'};
-     const name=model[1].trim();if(/\b(?:delete|usun|order|zamow|approve|dobierz|albo|lub|or|instead|zamiast)\b/i.test(fold(name)))return {ok:false,rating:amperes,maker,message:'Model zawiera dodatkowe polecenie lub alternatywę. Potwierdź jedną pozycję.'};
+     if(rawBrand&&!maker)return {ok:false,rating:amperes,message:'Confirm the manufacturer and the model/type of the breaker. I do not guess them from the text.'};
+     if(!model)return {ok:false,rating:amperes,maker,message:'Confirm the manufacturer and give the model/type, or say “model unknown”. A name from the recording is not corrected automatically.'};
+     const name=model[1].trim();if(/\b(?:delete|usun|order|zamow|approve|dobierz|albo|lub|or|instead|zamiast)\b/i.test(fold(name)))return {ok:false,rating:amperes,maker,message:'The model contains an extra command or an alternative. Confirm one item.'};
      const unknown=/^(?:niepodany|nieznany|unknown|not recorded)$/i.test(name);
-     return {ok:true,rating:amperes,maker,specification:[amperes,maker?'producent: '+maker:'',unknown?'model: niepodany':'model: '+name].filter(Boolean).join(' · '),notes:'Opis z wypowiedzi — model, producent i zgodność z rozdzielnicą nie są weryfikowane.'};
+     return {ok:true,rating:amperes,maker,specification:[amperes,maker?'manufacturer: '+maker:'',unknown?'model: not given':'model: '+name].filter(Boolean).join(' · '),notes:'As stated in the capture — model, manufacturer and panel compatibility are not verified.'};
     }
     function extendedWireSpec(raw) {
      const basic=wireSpec(raw);if(basic)return basic;
@@ -11965,7 +11984,7 @@ window.EC = (function () {
      // No unstated lengths, colours, quantity multiplication or installation suitability.
      const colours=/^((?:czerwon[ya]|czarn[ya]|bial[ya]|biał[ya]|zielon[ya]|niebiesk[ia]|red|black|white|green|blue)(?:\s+(?:i|and)\s+(?:czerwon[ya]|czarn[ya]|bial[ya]|biał[ya]|zielon[ya]|niebiesk[ia]|red|black|white|green|blue))*)(?=$|[,;\s])/iu.exec(text);
      if(colours){specs.push(colours[1]);text=cleanBoundary(text.slice(colours[0].length));}
-     if(text){const length=/^(?:po|each)\s+(\d+(?:[.,]\d+)?)\s*(ft|feet|foot|stóp|stopy|m|meters?|metry|metrów)$/iu.exec(text);if(!length||!Number.isFinite(Number(length[1].replace(',','.')))||Number(length[1].replace(',','.'))<=0)return null;specs.push('po '+length[1].replace(',','.')+' '+unitOf(length[2]));}
+     if(text){const length=/^(?:po|each)\s+(\d+(?:[.,]\d+)?)\s*(ft|feet|foot|stóp|stopy|m|meters?|metry|metrów)$/iu.exec(text);if(!length||!Number.isFinite(Number(length[1].replace(',','.')))||Number(length[1].replace(',','.'))<=0)return null;specs.push(length[1].replace(',','.')+' '+unitOf(length[2])+' each');}
      return specs.length>1?specs.join(' · '):null;
     }
 
@@ -11994,7 +12013,7 @@ window.EC = (function () {
      }
      if(!entries.length)return null;
      const leading=text.slice(0,entries[0].start);
-     if(!filler(leading))out.problems.push('Niejasny początek listy: „'+trim(leading)+'”. Nie pominięto tego fragmentu.');
+     if(!filler(leading))out.problems.push('Unclear start of the list: “'+trim(leading)+'”. This fragment was not skipped.');
      // Expand entry boundaries to a new purchase clause (and its false starts)
      // so interrupted counts stay with their own material, not the prior wire.
      for(let i=1;i<entries.length;i++){
@@ -12009,66 +12028,70 @@ window.EC = (function () {
       if(e.family==='wire'&&e.q&&e.q.unit==='pcs'&&!rawTail&&i+1<entries.length&&entries[i+1].family==='wire'){
        let j=i+1;while(j+1<entries.length&&entries[j+1].family==='wire')j++;
        end=j+1<entries.length?entries[j+1].start:text.length;
-       ask(e.start,end,'wire','Podano ogólną liczbę kabli oraz dalsze ilości lub rozmiary. Wymień każdy przewód z ilością i jednoznacznym rozmiarem; nie zsumowałem tych liczb.',{},true);i=j;continue;
+       ask(e.start,end,'wire','A total number of cables was given together with further quantities or sizes. List each wire with its quantity and an unambiguous size; I did not add these numbers up.',{},true);i=j;continue;
       }
       const raw=text.slice(e.start,end);let spec=stripTail(text.slice(e.end,end));
       if(e.echoes.length){const first=e.echoes[0];const before=cleanBoundary(text.slice(e.end,first.start));if(!before)spec=stripTail(text.slice(first.end,end));}
-      const q=e.q,fit=(e.family==='connector'||e.family==='bushing')?fittingDetails(spec):null,preview={label:title(e.family)+(fit&&fit.kind?' · '+fit.kind:''),...(q?{quantityText:q.value,unit:q.unit}:{}),rawSpecification:spec};
-      if(!q){ask(e.start,end,e.family,'Ile sztuk lub jaka długość tej pozycji? Powtórz ją z ilością.',preview);continue;}
-      if(q.unit==='pcs'&&(!Number.isSafeInteger(Number(q.value))||Number(q.value)<=0)){ask(e.start,end,e.family,'Podaj dodatnią całkowitą liczbę sztuk w obsługiwanym zakresie.',preview);continue;}
+      const q=e.q,fit=(e.family==='connector'||e.family==='bushing')?fittingDetails(spec):null,preview={label:title(e.family)+(fit&&fit.kindText?' · '+fit.kindText:''),...(q?{quantityText:q.value,unit:q.unit}:{}),rawSpecification:spec};
+      if(!q){ask(e.start,end,e.family,'How many pieces, or what length, for this item? Repeat it with the quantity.',preview);continue;}
+      if(q.unit==='pcs'&&(!Number.isSafeInteger(Number(q.value))||Number(q.value)<=0)){ask(e.start,end,e.family,'Give a positive whole number of pieces within the supported range.',preview);continue;}
       if(e.restart||/(?:\d|zł[ąa]?)\s*(?:\.\.\.|…)/iu.test(raw)){
-       ask(e.start,end,e.family,'W tej pozycji są urwane słowa lub powtórzone liczby. Potwierdź ilość i rozmiar jednym zdaniem; nie naliczyłem powtórzeń.',preview);continue;
+       ask(e.start,end,e.family,'This item has cut-off words or repeated numbers. Confirm the quantity and size in one sentence; I did not count the repeats.',preview);continue;
       }
       if(/\b(?:nie|not|albo|lub|or|maybe|chyba|moze|zamiast|instead|usun|delete|zamow|order|zatwierdz|approve|dobierz)\b/i.test(fold(raw))||/[<>]/.test(raw)){
-       ask(e.start,end,e.family,'Opis zawiera alternatywę, zaprzeczenie lub dodatkowe polecenie. Podaj jedną potwierdzoną pozycję.',preview);continue;
+       ask(e.start,end,e.family,'The description contains an alternative, a negation or an extra command. Give one confirmed item.',preview);continue;
       }
       let specification='',notes='';
       if(e.family==='breaker'){
-       if(q.unit!=='pcs'){ask(e.start,end,e.family,'Podaj liczbę sztuk breakerów, nie długość.',preview);continue;}
+       if(q.unit!=='pcs'){ask(e.start,end,e.family,'Give the number of breakers, not a length.',preview);continue;}
        const d=breakerDetails(spec);if(!d.ok){ask(e.start,end,e.family,d.message,{...preview,rating:d.rating||'',maker:d.maker||''});continue;}
        specification=d.specification;notes=d.notes;
       } else if(e.family==='wire'){
-       if(spec){specification=extendedWireSpec(spec);if(!specification&&!unknownSpec(spec)){ask(e.start,end,'wire','Potwierdź rozmiar przewodu oraz, jeśli podano długość, czy dotyczy każdej sztuki czy całości. Nie zamieniam „trzy zero” / „2 0” na AWG ani nie przypisuję domyślnie długości.',preview);continue;}}
-       if(q.unit==='pcs'&&!specification&&!unknownSpec(spec)){ask(e.start,end,'wire','Podaj rozmiar tych przewodów albo wyraźnie powiedz „rozmiar niepodany”. Liczba sztuk nie jest długością.',preview);continue;}
+       if(spec){specification=extendedWireSpec(spec);if(!specification&&!unknownSpec(spec)){ask(e.start,end,'wire','Confirm the wire size and, if a length was given, whether it applies to each piece or to the total. I do not convert “three zero” / “2 0” to AWG or assign a length by default.',preview);continue;}}
+       if(q.unit==='pcs'&&!specification&&!unknownSpec(spec)){ask(e.start,end,'wire','Give the size of these wires or explicitly say “size unknown”. A number of pieces is not a length.',preview);continue;}
       } else {
-       if(q.unit!=='pcs'){ask(e.start,end,e.family,'Dla osprzętu podaj liczbę sztuk. Wymiar osprzętu zapisz osobno po jego nazwie.',preview);continue;}
-       if(fit.conflict){ask(e.start,end,e.family,'Opis jednego elementu zawiera plastik i metal. Potwierdź typ materiału.',preview);continue;}
+       if(q.unit!=='pcs'){ask(e.start,end,e.family,'For fittings give the number of pieces. State the fitting size separately, after its name.',preview);continue;}
+       if(fit.conflict){ask(e.start,end,e.family,'The description of one item contains both plastic and metal. Confirm the material type.',preview);continue;}
        if(fit.dimension)specification=fit.shown;
-       else if(fit.unknown){specification=fit.kind?'materiał: '+fit.kind:'';notes='Rozmiar niepodany — jawnie potwierdzone.';}
+       else if(fit.unknown){specification=fit.kindText?'material: '+fit.kindText:'';notes=SIZE_NOT_GIVEN;}
        else {
-        const message=fit.rest?'Rozmiar osprzętu jest niejednoznaczny. Potwierdź wymiar — bez zgadywania z ciągu cyfr.':'Jaki rozmiar osprzętu? Możesz też jawnie powiedzieć „rozmiar niepodany”.';
+        const message=fit.rest?'The fitting size is ambiguous. Confirm the dimension — it is not guessed from a string of digits.':'What size is the fitting? You can also explicitly say “size unknown”.';
         ask(e.start,end,e.family,message,{...preview,knownType:fit.kind,answerMode:'fitting_size'});continue;
        }
       }
-      if(unknownSpec(spec))notes='Rozmiar niepodany — jawnie potwierdzone.';
-      const fields={label:e.family==='wire'?'Przewód':e.family==='connector'?'Konektor':e.family==='breaker'?'Breaker':'Bushing',specification:specification||'',quantityText:q.value,unit:q.unit,status:'needed',location:'',supplier:'',notes};
+      if(unknownSpec(spec))notes=SIZE_NOT_GIVEN;
+      const fields={label:itemLabel(e.family),specification:specification||'',quantityText:q.value,unit:q.unit,status:'needed',location:'',supplier:'',notes};
       const validation=Material.validateFields(fields);
       if(!validation.ok){ask(e.start,end,e.family,validation.problems.join(' '),preview);continue;}
       const action={kind:'material',fields,source:cleanBoundary(raw)};out.actions.push(action);out.draftItems.push({state:'ready',...action});
      }
-     if(out.actions.length+out.issues.length>8)out.problems.push('Maksymalnie osiem pozycji w jednej wypowiedzi. Podziel listę; niczego nie zapisano.');
+     if(out.actions.length+out.issues.length>8)out.problems.push('At most eight items in one instruction. Split the list; nothing was saved.');
      out.ok=out.problems.length===0&&out.actions.length>0;return out;
     }
     function repair(parsed,id,reply,decimal) {
      const bad=m=>({ok:false,repairError:true,problems:[m]});
-     if(!parsed||parsed.interpretation!=='trade-materials-v1'||typeof reply!=='string'||!reply.trim()||reply.length>1000)return bad('Podaj poprawioną pozycję z ilością i rozmiarem.');
+     if(!parsed||parsed.interpretation!=='trade-materials-v1'||typeof reply!=='string'||!reply.trim()||reply.length>1000)return bad('Give the corrected item with its quantity and size.');
      const checked=parse(parsed.transcript,decimal,{force:true}),issue=checked&&checked.issues.find(i=>i.id===id),old=parsed.issues&&parsed.issues.find(i=>i.id===id);
-     if(!issue||!old||JSON.stringify(issue)!==JSON.stringify(old))return bad('Lista zmieniła się. Wybierz bieżące pytanie ponownie.');
+     if(!issue||!old||JSON.stringify(issue)!==JSON.stringify(old))return bad('The list has changed. Choose the current question again.');
      let applied=reply.trim(),answer=parse(applied,decimal,{force:true});
      // A short size answer applies only to a verified fitting-size question; no count or material is inferred.
      if((!answer||!answer.ok)&&issue.preview.answerMode==='fitting_size'){
       const size=inchSize(applied),unspecified=unknownSpec(applied);
-      if(size||unspecified){const word=issue.family==='connector'?'konektory':'bushingi',kind=issue.preview.knownType==='plastik'?'plastikowe':issue.preview.knownType==='metal'?'metalowe':'';
+      // The composed line becomes part of the reviewed transcript, so it is written with English words. They are
+      // recognised vocabulary exactly like the former 'konektory' / 'bushingi' / 'plastikowe' / 'metalowe': the same
+      // family, count, type and size are read back. The user's own size words stay as they were said.
+      if(size||unspecified){const word=issue.family==='connector'?'connectors':'bushings',kind=issue.preview.knownType==='plastik'?'plastic':issue.preview.knownType==='metal'?'metal':'';
        applied=issue.preview.quantityText+' '+word+' '+kind+' '+applied;answer=parse(applied,decimal,{force:true});}
      }
-     if(!answer||!answer.ok||answer.issues.length||answer.actions.some(a=>a.kind!=='material')||(issue.scope!=='material_group'&&answer.actions.length!==1))return bad(answer&&answer.problems.length?answer.problems.join(' '):'Powtórz tę pozycję z ilością i jednoznacznym rozmiarem.');
-     if(answer.draftItems.some(a=>{const label=a.fields&&a.fields.label;return issue.family==='wire'?label!=='Przewód':issue.family==='connector'?label!=='Konektor':issue.family==='breaker'?label!=='Breaker':label!=='Bushing';}))return bad('Odpowiedź dotyczy innego rodzaju materiału. Nie zastąpiono wpisu.');
+     if(!answer||!answer.ok||answer.issues.length||answer.actions.some(a=>a.kind!=='material')||(issue.scope!=='material_group'&&answer.actions.length!==1))return bad(answer&&answer.problems.length?answer.problems.join(' '):'Repeat this item with its quantity and an unambiguous size.');
+     // The answer was parsed just above by this same module, so its labels are always the current itemLabel() text.
+     if(answer.draftItems.some(a=>{const label=a.fields&&a.fields.label;return label!==itemLabel(issue.family);}))return bad('The answer is about a different kind of material. The entry was not replaced.');
      const text=parsed.transcript.slice(0,issue.start)+applied+parsed.transcript.slice(issue.end),next=parse(text,decimal,{force:true});
-     if(!next)return bad('Nie udało się ponownie odczytać całej listy.');
-     const history=Array.isArray(parsed.repairs)?parsed.repairs:[];if(history.length>=8)return bad('Limit doprecyzowań. Sprawdź cały tekst; niczego nie zapisano.');
+     if(!next)return bad('The whole list could not be read again.');
+     const history=Array.isArray(parsed.repairs)?parsed.repairs:[];if(history.length>=8)return bad('Clarification limit reached. Check the whole text; nothing was saved.');
      next.originalTranscript=parsed.originalTranscript||parsed.transcript;next.repairs=history.concat([{kind:'material',before:issue.fragment,reply:reply.trim(),after:applied}]);
      next.auditTranscript=next.originalTranscript+'\nUSER CLARIFICATIONS:\n'+next.repairs.map((r,i)=>(i+1)+'. ['+r.before+'] -> ['+r.after+'] | USER REPLY: '+r.reply).join('\n')+'\nREVIEWED TRANSCRIPT:\n'+text;
-     if(next.auditTranscript.length>5000)return bad('Historia jest zbyt długa. Niczego nie skrócono ani nie zapisano.');return next;
+     if(next.auditTranscript.length>5000)return bad('The history is too long. Nothing was shortened or saved.');return next;
     }
     module.exports={supported,parse,repair,inchSize,wireSpec};
   };
@@ -12076,7 +12099,10 @@ window.EC = (function () {
   // ---- src/jobs/jobVoiceIntent.js ----
   __reg["jobVoiceIntent"] = function (module, exports, require) {
     'use strict';
-    /** Bounded local PL/EN intent parsing. No writes, electrical inference or implicit confirmation. */
+    /** Bounded local PL/EN intent parsing. No writes, electrical inference or implicit confirmation.
+     * Language: Polish, English and mixed INPUT is recognised (the regex vocabulary below is input, not UI).
+     * Every problem / question / help string this module RETURNS is English first-party text; a quoted
+     * fragment of the user's own words is repeated literally, in whatever language it was said. */
     const Measurement=require('./jobMeasurement.js'),Material=require('./jobMaterial.js');
     const TradeMaterials=require('./jobVoiceMaterials.js');
     const MAX_TEXT=4000,MAX_ACTIONS=8;
@@ -12091,7 +12117,7 @@ window.EC = (function () {
     function materialUnit(word){const w=fold(word);if(/^(st[oó]p(?:y)?|feet|foot|ft)$/.test(w))return 'ft';if(/^(metr|meter)/.test(w)||w==='m')return 'm';if(/^(inch|inches|in)$/.test(w))return 'in';if(['cm','mm'].includes(w))return w;if(/^(pcs|piece|szt)/.test(w))return 'pcs';return null;}
     function numberSuffix(text){const tokens=clean(text).split(' ');for(let i=0;i<tokens.length;i++){const value=decimal(tokens.slice(i).join(' '));if(value!==null){if(i>0&&(Object.hasOwn(WORDS,fold(tokens[i-1]))||/^(?:minus|negative|ujemny|ujemna|ujemne|plus|positive|dodatni|dodatnia|dodatnie|not|nie|[+\-−–—])$/.test(fold(tokens[i-1]))||/^[+-]?\d+(?:[.,]\d+)?$/.test(tokens[i-1])))return null;return {value,prefix:tokens.slice(0,i).join(' '),raw:tokens.slice(i).join(' ')};}}return null;}
     function parse(text,context={}){
-     if(typeof text!=='string'||!text.trim()||text.length>MAX_TEXT)return {ok:false,actions:[],problems:['Powiedz, co chcesz zapisać (maks. 4000 znaków).'],transcript:typeof text==='string'?text:''};
+     if(typeof text!=='string'||!text.trim()||text.length>MAX_TEXT)return {ok:false,actions:[],problems:['Say what you want to record (max. 4000 characters).'],transcript:typeof text==='string'?text:''};
      const trade=TradeMaterials.parse(text,decimal);if(trade)return trade;
      const transcript=text,actions=[],problems=[],issues=[];let target=null;
      // A clarification refers to an exact, unique span of the captured transcript.
@@ -12100,21 +12126,24 @@ window.EC = (function () {
      function issue(kind,fragment,message){problems.push(message);const start=transcript.indexOf(fragment);if(start<0||!fragment||transcript.indexOf(fragment,start+1)!==-1)return;const end=start+fragment.length;issues.push({id:'span-'+start+'-'+end,kind,start,end,fragment,message});}
 
      const chunks=text.replace(/[。]/g,'.').replace(/(?:^|\s+)(?:(?:i|and|oraz)\s+)?((?:dopisz\s+)?do\s+kupienia|buy|add\s+materials?|(?:i\s+)?need|potrzebuj[ęe])\s+/gi,'; $1 ').split(/(?:[;\n]+|(?<!\d)\.(?!\d)|(?<=\d)\.(?=\s+[A-ZĄĆĘŁŃÓŚŹŻ]))/u).map(clean).filter(Boolean);
-     if(chunks.length>16)return {ok:false,actions:[],problems:['Za dużo poleceń w jednym wpisie. Podziel wypowiedź.'],transcript};
+     if(chunks.length>16)return {ok:false,actions:[],problems:['Too many commands in one entry. Split it into shorter parts.'],transcript};
      for(const chunk of chunks){const normalized=fold(chunk);const job=/^(?:otworz\s+(?:robote|zlecenie)|open\s+(?:job|project))\s+(?:przy\s+|at\s+)?(.+)$/i.exec(normalized);
-      if(job){if(target!==null)problems.push('Wybierz jedną robotę dla całej wypowiedzi.');else target=chunk.slice(chunk.length-job[1].length).replace(/[.]+$/,'');continue;}
-      if(/^(?:tak|yes|zapisz|save|confirm|zatwierdz)$/i.test(normalized)){problems.push('Zatwierdź widoczne podsumowanie przyciskiem. Słowo „tak” w dyktowaniu niczego nie zapisuje.');continue;}
-      if(/\b(?:usun|delete|replace|nadpisz|dobierz|calculate|oblicz|code compliant|zgodn[aeiy] z|zabezpieczenie|breaker|ampacity)\b/.test(normalized)){problems.push('To polecenie wykracza poza zapis obserwacji i materiałów: „'+chunk+'”. Użyj właściwego narzędzia.');continue;}
+      if(job){if(target!==null)problems.push('Choose one job for the whole instruction.');else target=chunk.slice(chunk.length-job[1].length).replace(/[.]+$/,'');continue;}
+      if(/^(?:tak|yes|zapisz|save|confirm|zatwierdz)$/i.test(normalized)){problems.push('Confirm the visible summary with the button. Saying “yes” or “save” while dictating saves nothing.');continue;}
+      if(/\b(?:usun|delete|replace|nadpisz|dobierz|calculate|oblicz|code compliant|zgodn[aeiy] z|zabezpieczenie|breaker|ampacity)\b/.test(normalized)){problems.push('This command goes beyond recording observations and materials: “'+chunk+'”. Use the appropriate tool.');continue;}
       const buy=/^(?:dopisz\s+)?(?:do\s+kupienia|kup|potrzebuje|dodaj\s+(?:materialy?|do\s+kupienia)|add\s+(?:materials?|to\s+buy)|to\s+buy|buy|(?:i\s+)?need)\s*:?\s*(.+)$/i.exec(normalized);
-      if(buy){const list=chunk.slice(chunk.length-buy[1].length).split(/\s+(?:i|oraz|and)\s+|,\s+(?=\d+(?:\s|[a-zA-Z]))/i);for(const item of list){const match=new RegExp('^(.+?)\\s+('+UNIT_WORD+'|'+COUNT_WORD+')(?![a-zA-Ząćęłńóśźż])\\s*(.*)$','iu').exec(clean(item));if(!match){issue('material',item,'Podaj ilość, jednostkę i nazwę materiału: „'+item+'”.');continue;}const value=decimal(match[1]),word=fold(match[2]);let unit=materialUnit(word),label=clean(match[3]);if(/^(zlaczk|zlacze|connector|coupling)/.test(word)){unit='pcs';label=clean(match[2]+' '+label);}if(!value||!unit||!label){issue('material',item,'Nie rozpoznano jednoznacznie ilości / jednostki / nazwy: „'+item+'”.');continue;}label=label.replace(/\btrzy\s+czwarte\b/ig,'¾').replace(/\bthree\s+quarters?\b/ig,'¾');const fields={label,specification:'',quantityText:value,unit,status:'needed',location:'',supplier:'',notes:''};const checked=Material.validateFields(fields);if(!checked.ok){issue('material',item,checked.problems.join(' '));continue;}actions.push({kind:'material',fields,source:item});}continue;}
+      if(buy){const list=chunk.slice(chunk.length-buy[1].length).split(/\s+(?:i|oraz|and)\s+|,\s+(?=\d+(?:\s|[a-zA-Z]))/i);for(const item of list){const match=new RegExp('^(.+?)\\s+('+UNIT_WORD+'|'+COUNT_WORD+')(?![a-zA-Ząćęłńóśźż])\\s*(.*)$','iu').exec(clean(item));if(!match){issue('material',item,'Give the quantity, unit and name of the material: “'+item+'”.');continue;}const value=decimal(match[1]),word=fold(match[2]);let unit=materialUnit(word),label=clean(match[3]);if(/^(zlaczk|zlacze|connector|coupling)/.test(word)){unit='pcs';label=clean(match[2]+' '+label);}if(!value||!unit||!label){issue('material',item,'The quantity, unit or name was not recognised unambiguously: “'+item+'”.');continue;}label=label.replace(/\btrzy\s+czwarte\b/ig,'¾').replace(/\bthree\s+quarters?\b/ig,'¾');const fields={label,specification:'',quantityText:value,unit,status:'needed',location:'',supplier:'',notes:''};const checked=Material.validateFields(fields);if(!checked.ok){issue('material',item,checked.problems.join(' '));continue;}actions.push({kind:'material',fields,source:item});}continue;}
       const measured=/\b(?:zmierzylem|zmierzylam|pomiar|measured|measurement|reading)\b/i.exec(normalized);
-      if(measured){if(/\b(?:albo|lub|or|okolo|about|chyba|perhaps|moze|maybe|between|miedzy|nie|not|instead|zamiast)\b/.test(normalized)||/\d\s*[-–]\s*\d/.test(normalized)){issue('measurement',chunk,'Pomiar jest niejednoznaczny. Podaj jedną potwierdzoną wartość i jednostkę.');continue;}const re=new RegExp('('+UNIT_WORD+')(?![a-zA-Ząćęłńóśźż])','giu');let found=[],m;while((m=re.exec(chunk))){const unit=measurementUnit(m[1]);if(!unit)continue;const num=numberSuffix(chunk.slice(0,m.index).replace(/[:=]\s*/g,' '));if(num)found.push({unit,num,index:m.index,end:re.lastIndex});}if(found.length!==1){issue('measurement',chunk,'Podaj jeden pomiar z wyraźną wartością i jednostką: „'+chunk+'”.');continue;}const x=found[0],tail=clean(chunk.slice(x.end)).replace(/[.,]+$/,'');if(tail&&!/^(?:ac|dc|prad przemienny|prąd przemienny|prad staly|prąd stały|teraz|now)(?:\s+(?:ac|dc|teraz|now))?$/i.test(tail)){issue('measurement',chunk,'Nie rozpoznano końcówki pomiaru: „'+tail+'”.');continue;}if(!/\b(?:teraz|wlasnie|now|just)\b/.test(normalized)){issue('measurement',chunk,'Kiedy wykonano pomiar? Dodaj „teraz” albo użyj formularza pomiaru dla wcześniejszej daty.');continue;}const point=clean(x.num.prefix.replace(/\b(?:właśnie|wlasnie|teraz|now|just|zmierzyłem|zmierzylem|zmierzyłam|zmierzylam|pomiar|measured|measurement|reading)\b/giu,'').replace(/[,:]+/g,' '));if(!point||/^(?:(?:w|in|at|the)\s+)?(?:panel|panelu|rozdzielnic[ay]|rozdzielnicy)$/i.test(point)){issue('measurement',chunk,'Podaj punkt pomiaru, np. „panel A, L1 do neutralnego”.');continue;}const mode=/\bac\b/.test(normalized)?'AC':/\bdc\b/.test(normalized)?'DC':'not_recorded';if(/\bac\b/.test(normalized)&&/\bdc\b/.test(normalized)){issue('measurement',chunk,'Pomiar zawiera jednocześnie AC i DC. Doprecyzuj.');continue;}if(!context.measuredLocal||!context.utcOffset){problems.push('Brak jawnego czasu bieżącej wypowiedzi. Spróbuj ponownie.');continue;}const fields={label:point.slice(0,160),quantity:x.unit[0],valueText:x.num.value,unit:x.unit[1],location:point,measuredLocal:context.measuredLocal,utcOffset:context.utcOffset,mode,instrument:'',notes:''};const checked=Measurement.validateFields(fields);if(!checked.ok){issue('measurement',chunk,checked.problems.join(' '));continue;}actions.push({kind:'measurement',fields,source:chunk});continue;}
-      problems.push('Nie rozpoznano polecenia: „'+chunk+'”. Nic nie zostanie zapisane.');
+      if(measured){if(/\b(?:albo|lub|or|okolo|about|chyba|perhaps|moze|maybe|between|miedzy|nie|not|instead|zamiast)\b/.test(normalized)||/\d\s*[-–]\s*\d/.test(normalized)){issue('measurement',chunk,'The measurement is ambiguous. Give one confirmed value and unit.');continue;}const re=new RegExp('('+UNIT_WORD+')(?![a-zA-Ząćęłńóśźż])','giu');let found=[],m;while((m=re.exec(chunk))){const unit=measurementUnit(m[1]);if(!unit)continue;const num=numberSuffix(chunk.slice(0,m.index).replace(/[:=]\s*/g,' '));if(num)found.push({unit,num,index:m.index,end:re.lastIndex});}if(found.length!==1){issue('measurement',chunk,'Give one measurement with a clear value and unit: “'+chunk+'”.');continue;}const x=found[0],tail=clean(chunk.slice(x.end)).replace(/[.,]+$/,'');if(tail&&!/^(?:ac|dc|prad przemienny|prąd przemienny|prad staly|prąd stały|teraz|now)(?:\s+(?:ac|dc|teraz|now))?$/i.test(tail)){issue('measurement',chunk,'The end of the measurement was not recognised: “'+tail+'”.');continue;}if(!/\b(?:teraz|wlasnie|now|just)\b/.test(normalized)){issue('measurement',chunk,'When was the measurement taken? Add “now” or use the measurement form for an earlier time.');continue;}const point=clean(x.num.prefix.replace(/\b(?:właśnie|wlasnie|teraz|now|just|zmierzyłem|zmierzylem|zmierzyłam|zmierzylam|pomiar|measured|measurement|reading)\b/giu,'').replace(/[,:]+/g,' '));if(!point||/^(?:(?:w|in|at|the)\s+)?(?:panel|panelu|rozdzielnic[ay]|rozdzielnicy)$/i.test(point)){issue('measurement',chunk,'Give the measurement point, e.g. “panel A, L1 to neutral”.');continue;}const mode=/\bac\b/.test(normalized)?'AC':/\bdc\b/.test(normalized)?'DC':'not_recorded';if(/\bac\b/.test(normalized)&&/\bdc\b/.test(normalized)){issue('measurement',chunk,'The measurement contains both AC and DC. Say which one applies.');continue;}if(!context.measuredLocal||!context.utcOffset){problems.push('The capture time of this instruction is missing. Try again.');continue;}const fields={label:point.slice(0,160),quantity:x.unit[0],valueText:x.num.value,unit:x.unit[1],location:point,measuredLocal:context.measuredLocal,utcOffset:context.utcOffset,mode,instrument:'',notes:''};const checked=Measurement.validateFields(fields);if(!checked.ok){issue('measurement',chunk,checked.problems.join(' '));continue;}actions.push({kind:'measurement',fields,source:chunk});continue;}
+      problems.push('Command not recognised: “'+chunk+'”. Nothing will be saved.');
      }
-     if(actions.length>MAX_ACTIONS)problems.push('Maksymalnie '+MAX_ACTIONS+' wpisów w jednej wypowiedzi.');if(!actions.length&&!target&&!problems.length)problems.push('Brak rozpoznanych wpisów.');return {ok:!problems.length,transcript,target,actions,problems,issues,interpretation:'bounded-local-v1'};
+     if(actions.length>MAX_ACTIONS)problems.push('At most '+MAX_ACTIONS+' entries in one instruction.');if(!actions.length&&!target&&!problems.length)problems.push('No entries were recognised.');return {ok:!problems.length,transcript,target,actions,problems,issues,interpretation:'bounded-local-v1'};
     }
     function resolveJob(query,jobs){const q=fold(clean(query||''));if(!q)return {ok:false,code:'MISSING_JOB'};const matches=jobs.filter(j=>fold(clean(j.revision.title))===q||j.revision.address&&fold(clean(j.revision.address))===q);return matches.length===1?{ok:true,job:matches[0]}:{ok:false,code:matches.length?'AMBIGUOUS_JOB':'JOB_NOT_FOUND',matches};}
-    function correct(parsed,utterance){if(!parsed||!parsed.ok||typeof utterance!=='string')return {ok:false,problems:['Najpierw przygotuj podsumowanie.']};const match=/^(?:nie\s+(.+?)\s*,?\s*(?:tylko|lecz)\s+(.+)|(?:change|replace)\s+(.+?)\s+(?:to|with)\s+(.+))$/i.exec(clean(utterance));if(!match)return {ok:false,problems:['Korekta: „nie 80, tylko 60”. Przy kilku jednakowych wartościach popraw cały tekst.']};const from=decimal((match[1]||match[3]).replace(/,$/,'')),to=decimal(match[2]||match[4]);const hits=parsed.actions.map((a,i)=>({a,i})).filter(({a})=>(a.kind==='material'?a.fields.quantityText:a.fields.valueText)===from);if(from===null||to===null||hits.length!==1)return {ok:false,problems:['Korekta nie wskazuje dokładnie jednej wartości. Popraw tekst wypowiedzi.']};const result=JSON.parse(JSON.stringify(parsed)),a=result.actions[hits[0].i];a.fields[a.kind==='material'?'quantityText':'valueText']=to;const v=(a.kind==='material'?Material:Measurement).validateFields(a.fields);if(!v.ok)return v;result.correction={from,to,source:utterance};result.transcript=parsed.transcript+'\nKorekta: '+utterance;if(result.auditTranscript)result.auditTranscript+='\nUSER VALUE CORRECTION: '+utterance;return result;}
+    // The appended "Correction: " line is provenance text inside the transcript (shown in the capture field and stored
+    // with the plan). Nothing reads it back: re-parsing such a line is an unrecognised command in either language, and
+    // a transcript stored earlier with the former Polish "Korekta: " line is kept exactly as it was written.
+    function correct(parsed,utterance){if(!parsed||!parsed.ok||typeof utterance!=='string')return {ok:false,problems:['Prepare the summary first.']};const match=/^(?:nie\s+(.+?)\s*,?\s*(?:tylko|lecz)\s+(.+)|(?:change|replace)\s+(.+?)\s+(?:to|with)\s+(.+))$/i.exec(clean(utterance));if(!match)return {ok:false,problems:['Correction not recognised. Say “change 80 to 60” or „nie 80, tylko 60”. If several values are identical, correct the whole text.']};const from=decimal((match[1]||match[3]).replace(/,$/,'')),to=decimal(match[2]||match[4]);const hits=parsed.actions.map((a,i)=>({a,i})).filter(({a})=>(a.kind==='material'?a.fields.quantityText:a.fields.valueText)===from);if(from===null||to===null||hits.length!==1)return {ok:false,problems:['The correction does not point to exactly one value. Correct the text of the instruction.']};const result=JSON.parse(JSON.stringify(parsed)),a=result.actions[hits[0].i];a.fields[a.kind==='material'?'quantityText':'valueText']=to;const v=(a.kind==='material'?Material:Measurement).validateFields(a.fields);if(!v.ok)return v;result.correction={from,to,source:utterance};result.transcript=parsed.transcript+'\nCorrection: '+utterance;if(result.auditTranscript)result.auditTranscript+='\nUSER VALUE CORRECTION: '+utterance;return result;}
 
     /** Replace ONLY one user-selected failed fragment. No write, unit inference or
      * automatic replacement occurs. Every replacement must itself parse as exactly
@@ -12123,28 +12152,30 @@ window.EC = (function () {
     function repair(parsed,issueId,reply,context={}) {
      if(parsed&&parsed.interpretation==='trade-materials-v1')return TradeMaterials.repair(parsed,issueId,reply,decimal);
      const fail=message=>({ok:false,repairError:true,problems:[message]});
-     if(!parsed||typeof parsed.transcript!=='string'||parsed.ok!==false||typeof issueId!=='string'||typeof reply!=='string'||!reply.trim()||reply.length>1000)return fail('Wybierz nierozpoznany fragment i podaj jego pełną poprawną treść.');
+     if(!parsed||typeof parsed.transcript!=='string'||parsed.ok!==false||typeof issueId!=='string'||typeof reply!=='string'||!reply.trim()||reply.length>1000)return fail('Choose the unrecognised fragment and give its full corrected text.');
      const original=parsed.transcript,checked=parse(original,context);
-     if(checked.ok)return fail('Treść zmieniła się. Przygotuj podsumowanie ponownie.');
+     if(checked.ok)return fail('The text has changed. Prepare the summary again.');
      const item=checked.issues&&checked.issues.find(x=>x.id===issueId);
      const prior=parsed.issues&&parsed.issues.find(x=>x.id===issueId);
-     if(!item||!prior||JSON.stringify(item)!==JSON.stringify(prior)||original.slice(item.start,item.end)!==item.fragment)return fail('Wybrany fragment nie jest już aktualny. Niczego nie zastąpiono.');
+     if(!item||!prior||JSON.stringify(item)!==JSON.stringify(prior)||original.slice(item.start,item.end)!==item.fragment)return fail('The selected fragment is no longer current. Nothing was replaced.');
      let answer=reply.trim(),one=parse(answer,context);
+     // 'Do kupienia ' is parser INPUT (a recognised purchase verb), used only to validate a bare material reply. It is
+     // never shown or stored: the applied text is the action source, which excludes the verb.
      if(item.kind==='material'&&!(one.ok&&one.actions.length===1&&one.actions[0].kind==='material'&&!one.target))one=parse('Do kupienia '+answer,context);
-     if(!one.ok||one.target||one.actions.length!==1||one.actions[0].kind!==item.kind)return fail(item.kind==='material'?'Podaj tylko ten materiał: ilość, jednostkę i nazwę. Pozostałe wpisy są zachowane.':'Powtórz tylko ten pomiar: punkt, wartość, jednostkę i „teraz”. Pozostałe wpisy są zachowane.');
+     if(!one.ok||one.target||one.actions.length!==1||one.actions[0].kind!==item.kind)return fail(item.kind==='material'?'Give only this material: quantity, unit and name. The other entries are kept.':'Repeat only this measurement: point, value, unit and “now”. The other entries are kept.');
      // The outer material clause already supplies its action verb.
      if(item.kind==='material'){
       const hasVerb=/^(?:(?:dopisz\s+)?do\s+kupienia|kup|potrzebuj[ęe]|dodaj\s+(?:materialy?|do\s+kupienia)|add\s+(?:materials?|to\s+buy)|to\s+buy|buy|(?:i\s+)?need)\s*:?\s*/i;
       answer=one.actions[0].source.replace(hasVerb,'').trim();
-      if(/[;\n]/.test(answer))return fail('Jedno doprecyzowanie może zawierać tylko jedną pozycję.');
+      if(/[;\n]/.test(answer))return fail('One clarification can contain only one item.');
      }
      const corrected=original.slice(0,item.start)+answer+original.slice(item.end);
      const next=parse(corrected,context),previous=Array.isArray(parsed.repairs)?parsed.repairs:[];
-     if(previous.length>=8)return fail('Osiągnięto limit doprecyzowań. Sprawdź cały tekst przed kolejną próbą.');
+     if(previous.length>=8)return fail('The clarification limit was reached. Check the whole text before trying again.');
      next.originalTranscript=parsed.originalTranscript||original;
      next.repairs=previous.concat([{kind:item.kind,before:item.fragment,reply:reply.trim(),after:answer}]);
      next.auditTranscript=next.originalTranscript+'\nUSER CLARIFICATIONS:\n'+next.repairs.map((r,i)=>(i+1)+'. ['+r.before+'] -> ['+r.after+'] | USER REPLY: '+r.reply).join('\n')+'\nREVIEWED TRANSCRIPT:\n'+corrected;
-     if(next.auditTranscript.length>5000)return fail('Historia doprecyzowań jest za długa. Podziel polecenie; niczego nie skrócono ani nie zapisano.');
+     if(next.auditTranscript.length>5000)return fail('The clarification history is too long. Split the instruction; nothing was shortened or saved.');
      return next;
     }
 
@@ -13082,6 +13113,12 @@ window.EC = (function () {
      *
      * The UI only reads the result of calculateBatteryRuntime(): numbers, the
      * validation errors and every user-facing string are produced here.
+     *
+     * TEXT LANGUAGE: the optional second argument of calculateBatteryRuntime() and
+     * describeDuration() selects the language of the strings only. Omitted (or
+     * anything but 'en') gives the original Polish text, byte for byte, so every
+     * existing caller is unchanged; 'en' gives the English text shown by the form.
+     * Numbers, codes, fields and every non-text member are identical in both.
      */
 
     const HOURS_PER_DAY = 24;
@@ -13089,6 +13126,8 @@ window.EC = (function () {
 
     const MODES = Object.freeze(['w', 'kwh_day', 'kwh_year']);
     const MODE_UNITS = Object.freeze({ w: 'W', kwh_day: 'kWh/dobę', kwh_year: 'kWh/rok' });
+    /** The same units in English, used only by the 'en' text. */
+    const MODE_UNITS_EN = Object.freeze({ w: 'W', kwh_day: 'kWh/day', kwh_year: 'kWh/year' });
 
     /** Field values of an untouched calculator. Capacity and consumption are deliberately blank. */
     const DEFAULTS = Object.freeze({
@@ -13146,22 +13185,25 @@ window.EC = (function () {
      *   below one minute  -> "Mniej niż 1 min"    (kind 'under_minute'; never shown as 0 h)
      *   below 48 h        -> "Około 20 h 24 min"  (kind 'hours_minutes', nearest minute)
      *   48 h and longer   -> "Około 3 dni 5 h"    (kind 'days_hours', nearest hour)
+     * With lang 'en' only the text differs: "Less than 1 min", "About 20 h 24 min", "About 3 d 5 h".
      */
-    function describeDuration(hours) {
+    function describeDuration(hours, lang) {
       if (typeof hours !== 'number' || !Number.isFinite(hours) || hours < 0) return null;
+      const en = lang === 'en';
+      const about = en ? 'About ' : 'Około ';
       if (hours === 0) return { kind: 'zero', days: 0, hours: 0, minutes: 0, text: '0 h' };
       const exactMinutes = hours * 60;
-      if (exactMinutes < 1) return { kind: 'under_minute', days: 0, hours: 0, minutes: 0, text: 'Mniej niż 1 min' };
+      if (exactMinutes < 1) return { kind: 'under_minute', days: 0, hours: 0, minutes: 0, text: en ? 'Less than 1 min' : 'Mniej niż 1 min' };
       const totalMinutes = Math.round(exactMinutes);
       if (totalMinutes < 48 * 60) {
         const h = Math.floor(totalMinutes / 60);
         const m = totalMinutes % 60;
-        return { kind: 'hours_minutes', days: 0, hours: h, minutes: m, text: h === 0 ? 'Około ' + m + ' min' : 'Około ' + h + ' h ' + m + ' min' };
+        return { kind: 'hours_minutes', days: 0, hours: h, minutes: m, text: h === 0 ? about + m + ' min' : about + h + ' h ' + m + ' min' };
       }
       const totalHours = Math.round(hours);
       const d = Math.floor(totalHours / HOURS_PER_DAY);
       const rest = totalHours % HOURS_PER_DAY;
-      return { kind: 'days_hours', days: d, hours: rest, minutes: 0, text: 'Około ' + d + ' dni ' + rest + ' h' };
+      return { kind: 'days_hours', days: d, hours: rest, minutes: 0, text: about + d + (en ? ' d ' : ' dni ') + rest + ' h' };
     }
 
     function toAverageW(mode, consumption) {
@@ -13174,10 +13216,27 @@ window.EC = (function () {
     const FIELD_LABEL = Object.freeze({
       capacityWh: 'Pojemność', consumption: 'Zużycie', chargePercent: 'Naładowanie', usablePercent: 'Energia użyteczna',
     });
+    const FIELD_LABEL_EN = Object.freeze({
+      capacityWh: 'Capacity', consumption: 'Consumption', chargePercent: 'Charge', usablePercent: 'Usable energy',
+    });
 
     function err(field, code, message) { return { field, code, message }; }
 
-    function parseError(field, code, unit) {
+    /** English text of the same parse errors; same fields and codes as the Polish branch below. */
+    function parseErrorEn(field, code, unit) {
+      if (code === 'REQUIRED') {
+        if (field === 'capacityWh') return err(field, code, 'Enter the battery capacity in Wh.');
+        if (field === 'consumption') return err(field, code, unit ? 'Enter the consumption in ' + unit + '.' : 'Enter the consumption.');
+        if (field === 'chargePercent') return err(field, code, 'Enter the charge in % (0–100).');
+        return err(field, code, 'Enter the usable energy in % (e.g. 85).');
+      }
+      if (code === 'OUT_OF_RANGE') return err(field, code, FIELD_LABEL_EN[field] + ': the number is outside the supported range.');
+      const example = (field === 'chargePercent' || field === 'usablePercent') ? '85' : '1000 or 1.2';
+      return err(field, 'INVALID_NUMBER', FIELD_LABEL_EN[field] + ': enter just a number, e.g. ' + example + '.');
+    }
+
+    function parseError(field, code, unit, en) {
+      if (en) return parseErrorEn(field, code, unit);
       if (code === 'REQUIRED') {
         if (field === 'capacityWh') return err(field, code, 'Wpisz pojemność baterii w Wh.');
         if (field === 'consumption') return err(field, code, unit ? 'Wpisz zużycie w ' + unit + '.' : 'Wpisz zużycie.');
@@ -13193,54 +13252,89 @@ window.EC = (function () {
      * @param {{capacityWh: *, consumptionMode: string, consumption: *, chargePercent?: *, usablePercent?: *}} input
      *   Raw field values (strings as typed, or numbers). chargePercent / usablePercent fall back to DEFAULTS only
      *   when the key is undefined; an empty string is a missing required value.
+     * @param {string} [lang] 'en' for English text; omitted or anything else keeps the original Polish text.
+     *   Only strings (error messages, data.text, data.duration.text, data.consumptionUnit) depend on it.
      * @returns {{ok: true, errors: [], data: object} | {ok: false, errors: {field, code, message}[], data: null}}
      */
-    function calculateBatteryRuntime(input) {
+    function calculateBatteryRuntime(input, lang) {
       const src = input && typeof input === 'object' ? input : {};
+      const en = lang === 'en';
       const errors = [];
 
       const capacity = parseDecimal(src.capacityWh);
-      if (!capacity.ok) errors.push(parseError('capacityWh', capacity.code));
-      else if (!(capacity.value > 0)) errors.push(err('capacityWh', 'NOT_POSITIVE', 'Pojemność musi być większa od 0 Wh.'));
-      else if (capacity.value > LIMITS.maxCapacityWh) errors.push(err('capacityWh', 'OUT_OF_RANGE', 'Pojemność poza zakresem (maks. 10 000 000 Wh).'));
+      if (!capacity.ok) errors.push(parseError('capacityWh', capacity.code, undefined, en));
+      else if (!(capacity.value > 0)) errors.push(err('capacityWh', 'NOT_POSITIVE', en ? 'Capacity must be greater than 0 Wh.' : 'Pojemność musi być większa od 0 Wh.'));
+      else if (capacity.value > LIMITS.maxCapacityWh) errors.push(err('capacityWh', 'OUT_OF_RANGE', en ? 'Capacity is out of range (max. 10,000,000 Wh).' : 'Pojemność poza zakresem (maks. 10 000 000 Wh).'));
 
       const mode = src.consumptionMode;
       const modeOk = typeof mode === 'string' && MODES.indexOf(mode) !== -1;
-      const unit = modeOk ? MODE_UNITS[mode] : null;
-      if (!modeOk) errors.push(err('consumptionMode', 'INVALID_MODE', 'Wybierz sposób podania zużycia: W, kWh/dobę albo kWh/rok.'));
+      const unit = modeOk ? (en ? MODE_UNITS_EN : MODE_UNITS)[mode] : null;
+      if (!modeOk) errors.push(err('consumptionMode', 'INVALID_MODE', en ? 'Choose how the consumption is given: W, kWh/day or kWh/year.' : 'Wybierz sposób podania zużycia: W, kWh/dobę albo kWh/rok.'));
 
       const consumption = parseDecimal(src.consumption);
       let averageW = null;
-      if (!consumption.ok) errors.push(parseError('consumption', consumption.code, unit));
-      else if (!(consumption.value > 0)) errors.push(err('consumption', 'NOT_POSITIVE', 'Zużycie musi być większe od 0' + (unit ? ' ' + unit : '') + '.'));
+      if (!consumption.ok) errors.push(parseError('consumption', consumption.code, unit, en));
+      else if (!(consumption.value > 0)) errors.push(err('consumption', 'NOT_POSITIVE', (en ? 'Consumption must be greater than 0' : 'Zużycie musi być większe od 0') + (unit ? ' ' + unit : '') + '.'));
       else if (modeOk) {
         averageW = toAverageW(mode, consumption.value);
         if (!Number.isFinite(averageW) || !(averageW > 0) || averageW > LIMITS.maxAverageW) {
           averageW = null;
-          errors.push(err('consumption', 'OUT_OF_RANGE', 'Zużycie poza obsługiwanym zakresem (średnio maks. 1 000 000 W).'));
+          errors.push(err('consumption', 'OUT_OF_RANGE', en ? 'Consumption is outside the supported range (max. 1,000,000 W on average).' : 'Zużycie poza obsługiwanym zakresem (średnio maks. 1 000 000 W).'));
         }
       }
 
       const charge = parseDecimal(src.chargePercent === undefined ? DEFAULTS.chargePercent : src.chargePercent);
-      if (!charge.ok) errors.push(parseError('chargePercent', charge.code));
-      else if (charge.value < 0 || charge.value > 100) errors.push(err('chargePercent', 'OUT_OF_RANGE', 'Naładowanie musi być w zakresie 0–100%.'));
+      if (!charge.ok) errors.push(parseError('chargePercent', charge.code, undefined, en));
+      else if (charge.value < 0 || charge.value > 100) errors.push(err('chargePercent', 'OUT_OF_RANGE', en ? 'Charge must be between 0 and 100%.' : 'Naładowanie musi być w zakresie 0–100%.'));
 
       const usable = parseDecimal(src.usablePercent === undefined ? DEFAULTS.usablePercent : src.usablePercent);
-      if (!usable.ok) errors.push(parseError('usablePercent', usable.code));
-      else if (!(usable.value > 0) || usable.value > 100) errors.push(err('usablePercent', 'OUT_OF_RANGE', 'Energia użyteczna musi być większa od 0% i nie większa niż 100%.'));
+      if (!usable.ok) errors.push(parseError('usablePercent', usable.code, undefined, en));
+      else if (!(usable.value > 0) || usable.value > 100) errors.push(err('usablePercent', 'OUT_OF_RANGE', en ? 'Usable energy must be greater than 0% and not more than 100%.' : 'Energia użyteczna musi być większa od 0% i nie większa niż 100%.'));
 
       if (errors.length) return { ok: false, errors, data: null };
 
       const availableWh = capacity.value * (charge.value / 100) * (usable.value / 100);
       const hours = availableWh / averageW;
       if (!Number.isFinite(availableWh) || availableWh < 0 || !Number.isFinite(hours) || hours < 0) {
-        return { ok: false, errors: [err('consumption', 'RESULT_NOT_FINITE', 'Nie można policzyć wyniku z tych wartości.')], data: null };
+        return { ok: false, errors: [err('consumption', 'RESULT_NOT_FINITE', en ? 'The result cannot be calculated from these values.' : 'Nie można policzyć wyniku z tych wartości.')], data: null };
       }
       if (hours > LIMITS.maxHours) {
-        return { ok: false, errors: [err('consumption', 'RUNTIME_OUT_OF_RANGE', 'Wynik ponad 100 lat — sprawdź zużycie i jego jednostkę.')], data: null };
+        return { ok: false, errors: [err('consumption', 'RUNTIME_OUT_OF_RANGE', en ? 'The result is over 100 years — check the consumption and its unit.' : 'Wynik ponad 100 lat — sprawdź zużycie i jego jednostkę.')], data: null };
       }
 
-      const duration = describeDuration(hours);
+      const duration = describeDuration(hours, lang);
+      if (en) {
+        // English text of the same result. The decimal comma of formatNumber() becomes a decimal point; nothing is recalculated.
+        const num = (value) => formatNumber(value).replace(',', '.');
+        const ce = num(consumption.value);
+        return {
+          ok: true,
+          errors: [],
+          data: {
+            capacityWh: capacity.value,
+            chargePercent: charge.value,
+            usablePercent: usable.value,
+            consumptionMode: mode,
+            consumption: consumption.value,
+            consumptionUnit: unit,
+            availableWh,
+            averageW,
+            hours,
+            duration,
+            text: {
+              duration: duration.kind === 'zero' ? '0 h — battery empty' : duration.text,
+              availableWh: num(availableWh) + ' Wh',
+              availableBasis: num(capacity.value) + ' Wh × ' + num(charge.value) + '% × ' + num(usable.value) + '%',
+              averageW: num(averageW) + ' W',
+              averageBasis: mode === 'w' ? 'stated average power'
+                : mode === 'kwh_day' ? ce + ' kWh/day × 1000 ÷ 24 h'
+                  : ce + ' kWh/year × 1000 ÷ 8760 h',
+              assumptions: 'Assumptions: charge ' + num(charge.value) + '%, usable energy ' + num(usable.value)
+                + '% (editable loss estimate), constant average draw ' + num(averageW) + ' W.',
+            },
+          },
+        };
+      }
       const c = formatNumber(consumption.value);
       const averageBasis = mode === 'w' ? 'podana średnia moc'
         : mode === 'kwh_day' ? c + ' kWh/dobę × 1000 ÷ 24 h'
@@ -13274,7 +13368,7 @@ window.EC = (function () {
     }
 
     module.exports = {
-      HOURS_PER_DAY, HOURS_PER_YEAR, MODES, MODE_UNITS, DEFAULTS, EXAMPLE_FRIDGE, LIMITS,
+      HOURS_PER_DAY, HOURS_PER_YEAR, MODES, MODE_UNITS, MODE_UNITS_EN, DEFAULTS, EXAMPLE_FRIDGE, LIMITS,
       parseDecimal, formatNumber, describeDuration, calculateBatteryRuntime,
     };
   };
@@ -21027,7 +21121,7 @@ function ecJobsRoot(){return document.getElementById('jobWorkspaceRecords');}
 function ecWorkStatus(text,kind){var n=document.getElementById('ecCaptureStatus');if(n){n.textContent=text;n.setAttribute('data-kind',kind||'');}}
 function ecWorkHasDraft(){return !!(EC_WORK.demoBusy||EC_WORK.plan||EC_WORK.busy||EC_WORK.recording||EC_WORK.audioBusy||EC_WORK.transcript.trim());}
 function ecWorkOtherDraft(){return !!(LC_JOB.editor||lcMeasHasDraft()||lcMatHasDraft()||lcPhotoHasDraft()||(typeof LC_RESTORE!=='undefined'&&LC_RESTORE.busy));}
-function ecWorkGuard(){if(ecWorkHasDraft()){ecWorkStatus('Najpierw zapisz lub odrzuć bieżącą wypowiedź.','warn');return false;}return true;}
+function ecWorkGuard(){if(ecWorkHasDraft()){ecWorkStatus('Save or discard the current capture first.','warn');return false;}return true;}
 function ecWorkJournalGuard(){return ecWorkGuard();}
 function ecWorkJobGuard(){if(!EC_WORK.repairTarget&&!EC_WORK.demoBusy&&!EC_WORK.plan&&!EC_WORK.busy&&!EC_WORK.recording&&!EC_WORK.audioBusy)return true;return ecWorkGuard();}
 function ecWorkClock(){var d=new Date(),pad=function(n){return String(n).padStart(2,'0');},offset=-d.getTimezoneOffset();return {now:d.toISOString(),measuredLocal:d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes()),utcOffset:(offset<0?'-':'+')+pad(Math.floor(Math.abs(offset)/60))+':'+pad(Math.abs(offset)%60)};}
@@ -21045,10 +21139,10 @@ function ecJobsMount(){
  var row=lcH('div',{className:'ec-voice-row'}),mic=ecWorkButton('Speak','ecMicBtn',ecVoiceToggle,'ec-mic');mic.setAttribute('aria-label','Start or stop local voice capture');row.appendChild(mic);
  var language=lcH('select',{id:'ecVoiceLanguage','aria-label':'Speech language',className:'ec-language'});language.appendChild(lcOption('pl','Polski + terms'));language.appendChild(lcOption('en','English'));language.value='pl';language.addEventListener('change',function(){if(EC_WORK.recording||EC_WORK.audioBusy){language.value=EC_WORK.language;return;}EC_WORK.language=language.value;});row.appendChild(language);capture.appendChild(row);
  capture.appendChild(lcH('div',{id:'ecVoiceStatus',className:'ec-muted',text:'Local speech pack has not been prepared. No microphone is active.'}));capture.appendChild(ecWorkButton('Prepare offline voice · about 274 MB','ecVoiceSetupBtn',ecVoicePrepare,'ec-link-button'));
- var input=lcH('textarea',{id:'ecCaptureText',rows:'3',maxlength:'4000','aria-label':'Spoken or typed instruction',placeholder:'W panelu A zmierzyłem teraz L1 do N: 121,4 V AC. Do kupienia 80 stóp EMT ¾ i 12 złączek.'});
+ var input=lcH('textarea',{id:'ecCaptureText',rows:'3',maxlength:'4000','aria-label':'Spoken or typed instruction',placeholder:'Measured panel A L1 neutral now 120 V AC. Buy 80 ft EMT and 12 pcs connectors.'});
  input.addEventListener('input',function(){if(EC_WORK.busy||EC_WORK.confirmed)return;EC_WORK.transcript=input.value;EC_WORK.plan=null;EC_WORK.parsed=null;EC_WORK.repairTarget=null;++EC_WORK.reviewSeq;lcClear(document.getElementById('ecCaptureReview'));});capture.appendChild(input);
  capture.appendChild(lcH('div',{className:'ec-capture-actions'},[ecWorkButton('Review entries','ecCaptureReviewBtn',ecWorkReview,'ec-primary'),ecWorkButton('Discard','ecCaptureDiscardBtn',ecWorkDiscard,'ec-secondary')]));
- var help=lcH('details',{className:'ec-help'});help.appendChild(lcH('summary',{text:'What can I say?'}));help.appendChild(lcH('p',{text:'Pierwsza wersja: pomiar napięcia/prądu z punktem, jednostką i „teraz”; materiały do kupienia z ilością i jednostką; otwarcie roboty po dokładnej nazwie/adresie. Nierozpoznany fragment zatrzymuje zapis. To ograniczony lokalny parser, nie ogólny agent.'}));help.appendChild(lcH('p',{text:'English: “Measured panel A L1 neutral now 120 V AC. Buy 80 ft EMT and 12 pcs connectors.” Korekta podsumowania: „nie 80, tylko 60”.'}));help.appendChild(lcH('p',{text:'Audio stays in this browser and is discarded after transcription. No cloud speech fallback. Check every number and unit. Preparing a local pack does not verify recognition quality on your iPhone.'}));capture.appendChild(help);
+ var help=lcH('details',{className:'ec-help'});help.appendChild(lcH('summary',{text:'What can I say?'}));help.appendChild(lcH('p',{text:'First version: a voltage/current measurement with its point, unit and “now”; materials to buy with a quantity and unit; opening a job by its exact name/address. An unrecognised fragment stops the save. This is a limited local parser, not a general agent.'}));help.appendChild(lcH('p',{text:'Example: “Measured panel A L1 neutral now 120 V AC. Buy 80 ft EMT and 12 pcs connectors.” Polish works too: „W panelu A zmierzyłem teraz L1 do N: 121,4 V AC. Do kupienia 80 stóp EMT ¾ i 12 złączek.” Correcting the summary: „nie 80, tylko 60” (“change 80 to 60”).'}));help.appendChild(lcH('p',{text:'Audio stays in this browser and is discarded after transcription. No cloud speech fallback. Check every number and unit. Preparing a local pack does not verify recognition quality on your iPhone.'}));capture.appendChild(help);
  capture.appendChild(lcH('div',{id:'ecCaptureReview',className:'ec-review'}));capture.appendChild(lcH('div',{id:'ecCaptureStatus',className:'ec-status',role:'status','aria-live':'polite'}));capture.appendChild(lcH('div',{id:'ecCapturePending',className:'ec-pending'}));root.appendChild(capture);
  root.appendChild(lcJobBuild());lcJobReveal();lcJobRefresh();var backups=lcH('details',{id:'ecBackups',className:'ec-utility'});backups.appendChild(lcH('summary',{text:'Backups & restore'}));backups.appendChild(lcArcBuild());root.appendChild(backups);
  var results=lcH('details',{id:'ecSavedResults',className:'ec-utility'});results.appendChild(lcH('summary',{text:'Saved calculation results'}));results.appendChild(lcRecordBuild());root.appendChild(results);lcRecordRefresh();
@@ -21062,9 +21156,9 @@ function ecWorkAfterRender(job){if(!ecJobsRoot())return;['lcMeasHub','lcMatHub',
 function ecWorkBatch(){if(!EC_WORK.batch)EC_WORK.batch=EC.jobVoiceBatch.createBatchStore(window.indexedDB,{crypto:window.crypto,locks:window.navigator&&window.navigator.locks,readJob:function(id){return lcJobCall('read',[id]);}});return EC_WORK.batch;}
 async function ecWorkPending(){if(!LC_JOB.current||!document.getElementById('ecCapturePending'))return;var jobId=LC_JOB.current.head.jobId,seq=EC_WORK.reviewSeq,result=await ecWorkBatch().inspect(jobId);if(!LC_JOB.current||LC_JOB.current.head.jobId!==jobId||seq!==EC_WORK.reviewSeq)return;var host=document.getElementById('ecCapturePending');lcClear(host);if(!result.ok){ecWorkStatus(result.problems.join(' '),'warn');return;}result.pending.forEach(function(plan){host.appendChild(ecWorkButton('Review unfinished capture','ecResume-'+plan.id,function(){if(ecWorkHasDraft()||ecWorkOtherDraft()){ecWorkStatus('Save or discard the open draft first.','warn');return;}EC_WORK.plan=plan;EC_WORK.transcript=plan.transcript;EC_WORK.confirmed=true;document.getElementById('ecCaptureText').value=plan.transcript;document.getElementById('ecCaptureText').disabled=true;ecWorkRenderPlan();ecWorkStatus('Some entries may already be saved. Resume checks their exact identities and adds only missing entries.','warn');},'ec-secondary'));});}
 async function ecWorkReview(capturedClock,reviewedParsed){
- if(EC_WORK.busy||EC_WORK.confirmed||EC_WORK.recording||EC_WORK.audioBusy)return false;if(ecWorkOtherDraft()){ecWorkStatus('Najpierw zapisz lub odrzuć otwarty formularz.','warn');return false;}
+ if(EC_WORK.busy||EC_WORK.confirmed||EC_WORK.recording||EC_WORK.audioBusy)return false;if(ecWorkOtherDraft()){ecWorkStatus('Save or discard the open form first.','warn');return false;}
  var input=document.getElementById('ecCaptureText'),text=input.value,seq=++EC_WORK.reviewSeq;EC_WORK.transcript=text;EC_WORK.context=capturedClock&&capturedClock.measuredLocal?capturedClock:ecWorkClock();var parsed=reviewedParsed&&reviewedParsed.transcript===text?reviewedParsed:EC.jobVoiceIntent.parse(text,EC_WORK.context);EC_WORK.parsed=parsed;EC_WORK.plan=null;EC_WORK.repairTarget=null;var host=document.getElementById('ecCaptureReview');lcClear(host);
- if(!parsed.ok){ecWorkRenderIssues(parsed);ecWorkStatus(parsed.interpretation==='trade-materials-v1'?'Lista materiałów jest szkicem. Odpowiedz na bieżące pytanie; niczego jeszcze nie zapisano.':'Nothing saved. Clarify only the uncertain part; the other proposed entries are kept.','warn');return false;}var job=LC_JOB.current;
+ if(!parsed.ok){ecWorkRenderIssues(parsed);ecWorkStatus(parsed.interpretation==='trade-materials-v1'?'The material list is a draft. Answer the current question; nothing has been saved yet.':'Nothing saved. Clarify only the uncertain part; the other proposed entries are kept.','warn');return false;}var job=LC_JOB.current;
  if(parsed.target){var list=await lcJobCall('list',[]);if(seq!==EC_WORK.reviewSeq)return false;if(!list.ok){ecWorkStatus('Could not read saved jobs.','error');return false;}var match=EC.jobVoiceIntent.resolveJob(parsed.target,list.jobs);if(!match.ok){ecWorkStatus(match.code==='AMBIGUOUS_JOB'?'More than one job matches. Choose the correct card.':'No exact saved job matches “'+parsed.target+'”. Choose a job below.','warn');return false;}job=match.job;if(!parsed.actions.length){EC_WORK.transcript='';EC_WORK.parsed=null;input.value='';return lcJobOpen(job.head.jobId);}}
  if(!job){ecWorkStatus('Choose a saved job below, then review the instruction.','warn');return false;}var fresh=await lcJobCall('read',[job.head.jobId]);if(seq!==EC_WORK.reviewSeq)return false;if(!fresh.ok){ecWorkStatus('Selected job is unavailable. Nothing saved.','error');return false;}var plan=EC.jobVoiceBatch.createPlan(ecWorkAudited(parsed),fresh.job,{crypto:window.crypto,now:EC_WORK.context.now});if(!plan.ok){ecWorkStatus(plan.problems.join(' '),'warn');return false;}EC_WORK.plan=plan.plan;ecWorkRenderPlan();ecWorkStatus('Review the job, numbers, units and time. No data has been saved.');return true;
 }
@@ -21137,7 +21231,7 @@ function ecWorkRepairStart(id){
  EC_WORK.repairTarget={id:id,transcript:EC_WORK.parsed.transcript,reviewSeq:EC_WORK.reviewSeq,jobId:LC_JOB.current&&LC_JOB.current.head.jobId};
  var host=document.getElementById('ecRepairEditor');lcClear(host);
  host.appendChild(lcH('p',{className:'ec-muted',text:'Only this fragment will change. Speak its replacement or edit it below.'}));
- var reply=lcH('textarea',{id:'ecRepairReply',rows:'2',maxlength:'1000','aria-label':'Clarification of the selected fragment'});reply.value=issue.scope?'':issue.fragment;if(issue.scope)reply.placeholder=issue.preview&&issue.preview.answerMode==='fitting_size'?'Sam rozmiar, np. 3/4 cala, albo rozmiar niepodany':issue.family==='wire'?'Rozmiar, kolory i długość — tylko potwierdzone dane':issue.family==='breaker'?'Ilość, ampery, producent i model albo model niepodany':'Np. 2 konektory 1 1/2 cala';host.appendChild(reply);
+ var reply=lcH('textarea',{id:'ecRepairReply',rows:'2',maxlength:'1000','aria-label':'Clarification of the selected fragment'});reply.value=issue.scope?'':issue.fragment;if(issue.scope)reply.placeholder=issue.preview&&issue.preview.answerMode==='fitting_size'?'Size only, e.g. 3/4 inch, or size unknown':issue.family==='wire'?'Size, colours and length — confirmed data only':issue.family==='breaker'?'Quantity, amps, manufacturer and model, or model unknown':'E.g. 2 connectors 1 1/2 inch';host.appendChild(reply);
  host.appendChild(lcH('div',{className:'ec-capture-actions'},[
   ecWorkButton('Repeat this part','ecRepairSpeakBtn',ecVoiceToggle,'ec-primary'),
   ecWorkButton('Use this clarification','ecRepairApplyBtn',function(){ecWorkApplyRepair(reply.value,EC_WORK.repairTarget);},'ec-secondary'),
@@ -21170,24 +21264,24 @@ async function ecWorkDemoUnclear(){
 function ecWorkRenderTradeQuestions(parsed){
  var host=document.getElementById('ecCaptureReview');lcClear(host);
  var issues=parsed.issues||[],items=parsed.draftItems||[];
- host.appendChild(lcH('h3',{text:'Lista materiałów'}));
- host.appendChild(lcH('p',{className:'ec-muted',text:issues.length+' do doprecyzowania · '+parsed.actions.length+' gotowych propozycji · nic nie zapisano'}));
+ host.appendChild(lcH('h3',{text:'Material list'}));
+ host.appendChild(lcH('p',{className:'ec-muted',text:issues.length+' to clarify · '+parsed.actions.length+' ready proposals · nothing saved'}));
  var list=lcH('div',{className:'ec-trade-draft'});
  items.forEach(function(item,index){var row=lcH('div',{className:'ec-trade-row'});var f=item.fields||item.preview||{};
-  row.appendChild(lcH('strong',{text:f.label||'Materiał'}));
-  row.appendChild(lcH('span',{text:(f.quantityText?f.quantityText+' '+f.unit+' · ':'')+(item.state==='ready'?(f.specification||'Rozmiar niepodany'):'Do potwierdzenia')}));
-  if(item.state!=='ready'&&f.rawSpecification)row.appendChild(lcH('small',{className:'ec-trade-facts',text:'Z nagrania — do sprawdzenia: '+f.rawSpecification}));
+  row.appendChild(lcH('strong',{text:f.label||'Material'}));
+  row.appendChild(lcH('span',{text:(f.quantityText?f.quantityText+' '+f.unit+' · ':'')+(item.state==='ready'?(f.specification||'Size not given'):'To be confirmed')}));
+  if(item.state!=='ready'&&f.rawSpecification)row.appendChild(lcH('small',{className:'ec-trade-facts',text:'From the recording — to check: '+f.rawSpecification}));
   list.appendChild(row);
  });host.appendChild(list);
  var current=issues[0];
  if(current){
   var question=lcH('section',{className:'ec-repair-card ec-current-question'});
-  question.appendChild(lcH('span',{className:'ec-entry-kind',text:'NASTĘPNE PYTANIE · '+(current.preview&&current.preview.label||'MATERIAŁ')}));
+  question.appendChild(lcH('span',{className:'ec-entry-kind',text:'NEXT QUESTION · '+(current.preview&&current.preview.label||'MATERIAL')}));
   question.appendChild(lcH('p',{text:current.message}));
-  var detail=lcH('details',{className:'ec-help'});detail.appendChild(lcH('summary',{text:'Pokaż rozpoznany fragment'}));detail.appendChild(lcH('p',{text:current.fragment}));question.appendChild(detail);host.appendChild(question);
+  var detail=lcH('details',{className:'ec-help'});detail.appendChild(lcH('summary',{text:'Show the recognised fragment'}));detail.appendChild(lcH('p',{text:current.fragment}));question.appendChild(detail);host.appendChild(question);
  }
  var other=parsed.problems.filter(function(x){return !issues.some(function(i){return i.message===x;});});
- if(other.length){var unassigned=lcH('details',{className:'ec-help ec-unassigned',open:''});unassigned.appendChild(lcH('summary',{text:'Dodatkowy fragment wymaga sprawdzenia'}));other.forEach(function(x){unassigned.appendChild(lcH('p',{text:x}));});host.appendChild(unassigned);}
+ if(other.length){var unassigned=lcH('details',{className:'ec-help ec-unassigned',open:''});unassigned.appendChild(lcH('summary',{text:'An additional fragment needs checking'}));other.forEach(function(x){unassigned.appendChild(lcH('p',{text:x}));});host.appendChild(unassigned);}
  host.appendChild(lcH('div',{id:'ecRepairEditor'}));
  if(current)ecWorkRepairStart(current.id);
 }
@@ -21195,7 +21289,7 @@ async function ecWorkDemoMaterials(){
  if(!await ecWorkDemo())return false;
  var text="OK, dodaj do listy zakupów. Dwa Breakery, 20 amp firmy Zimens. Dodaj dwa kable, trzy zero, czerwony i czarny. Jakieś 50 fit i jeden. Dodaj również 15 busingów plastikowych, dwa busingi metalowe.";
  document.getElementById('ecCaptureText').value=text;EC_WORK.transcript=text;
- await ecWorkReview();ecWorkStatus('Przykład z transkrypcji testowej. Mikrofon nie był używany; żaden materiał nie został zapisany.','warn');return true;
+ await ecWorkReview();ecWorkStatus('Example from a test transcription. No microphone was used; no material was saved.','warn');return true;
 }
 
 // ── end EC-VOICE-WORKSPACE-1 ──
@@ -22273,10 +22367,10 @@ function btFill(values) {
 
 function btSyncUnit() {
   var m = document.getElementById('bt-mode');
-  var unit = (m && EC.batteryRuntime.MODE_UNITS[m.value]) || '?';
+  var unit = (m && EC.batteryRuntime.MODE_UNITS_EN[m.value]) || '?';
   var l = document.getElementById('bt-consumption-label');
   var c = document.getElementById('bt-consumption');
-  if (l) l.textContent = 'Zużycie (' + unit + ')';
+  if (l) l.textContent = 'Consumption (' + unit + ')';
   if (c) c.placeholder = unit;
 }
 
@@ -22288,7 +22382,8 @@ function btCalc(isExample) {
   // ('keep') leaves it as it is, and every other call (a field edit, a unit change, Reset) clears it.
   if (isExample !== 'keep') out.setAttribute('data-bt-example', isExample === true ? 'true' : 'false');
   var showExample = out.getAttribute('data-bt-example') === 'true';
-  var r = EC.batteryRuntime.calculateBatteryRuntime(btRead());
+  // 'en' selects the English text of the module; numbers, codes and fields are the same as without it.
+  var r = EC.batteryRuntime.calculateBatteryRuntime(btRead(), 'en');
   Object.keys(BT_FIELDS).forEach(function (k) {
     var e = document.getElementById(BT_FIELDS[k]);
     if (e) e.setAttribute('aria-invalid', 'false');
@@ -22314,12 +22409,12 @@ function btCalc(isExample) {
   status.style.display = 'none';
   out.innerHTML =
     '<div style="padding:12px 14px;border-bottom:1px solid rgba(46,46,46,0.5)">' +
-      '<div style="font-family:var(--ec-family-mono);font-size:10px;letter-spacing:1px;color:var(--text-dim)">SZACOWANY CZAS PRACY</div>' +
+      '<div style="font-family:var(--ec-family-mono);font-size:10px;letter-spacing:1px;color:var(--text-dim)">ESTIMATED RUNTIME</div>' +
       '<div style="font-size:22px;font-weight:700;line-height:1.3;color:var(--accent)">' + btEsc(t.duration) + '</div>' +
-      (showExample ? '<div style="font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:4px">Przykład poglądowy — to nie są dane konkretnej lodówki. Wpisz własne wartości.</div>' : '') +
+      (showExample ? '<div style="font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim);margin-top:4px">Illustrative example — these are not the data of any particular refrigerator. Enter your own values.</div>' : '') +
     '</div>' +
-    cvRow('Dostępna energia', btEsc(t.availableWh), btEsc(t.availableBasis)) +
-    cvRow('Średni pobór', btEsc(t.averageW), btEsc(t.averageBasis)) +
+    cvRow('Available energy', btEsc(t.availableWh), btEsc(t.availableBasis)) +
+    cvRow('Average draw', btEsc(t.averageW), btEsc(t.averageBasis)) +
     '<div style="padding:9px 14px;font-family:var(--ec-family-ui);font-size:11px;line-height:1.6;color:var(--text-dim)">' + btEsc(t.assumptions) + '</div>';
   out.style.display = '';
 }

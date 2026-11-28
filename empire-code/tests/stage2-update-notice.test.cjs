@@ -69,7 +69,7 @@ test('save failure prevents the reload and offers a recovery copy instead',async
  assert.equal(p.els['update-export'].hidden,true);
  await p.click('update-reload');
  assert.equal(p.reloads.length,0,'no reload while the text is durable nowhere');
- assert.equal(p.els['update-status'].className,'error');assert.match(p.els['update-status'].textContent,/nie została uruchomiona/);assert.match(p.els['update-status'].textContent,/niczego nie utracono/);
+ assert.equal(p.els['update-status'].className,'error');assert.match(p.els['update-status'].textContent,/The new version was not started/);assert.match(p.els['update-status'].textContent,/nothing was lost/);
  assert.equal(p.els.input.value,'tekst, którego nie da się teraz zapisać');assert.equal(p.local.getItem(KEY),stored);
  assert.equal(banner(p).hidden,false);assert.equal(p.els['update-export'].hidden,false);assert.equal(p.find('update-reload').disabled,false,'it can be tried again');
  await p.click('update-export');
@@ -86,7 +86,7 @@ test('an open unsaved job form or a tab that lost its conversation also blocks t
  const sw=container(worker(PIN_A)),p=await page(sw,{formOpen:()=>form});
  await sw.takeOver(worker(PIN_B));
  await p.click('update-reload');
- assert.equal(p.reloads.length,0);assert.match(p.els['update-status'].textContent,/formularz/);
+ assert.equal(p.reloads.length,0);assert.match(p.els['update-status'].textContent,/unsaved form is open in the Jobs tab/);
  form=false;
  p.local.setItem(KEY,JSON.stringify({...p.bank(),version:3}));await p.storageEvent(KEY);   // rewritten by a newer application
  await p.click('update-reload');
@@ -128,12 +128,12 @@ test('page source: the only reload is the click handler of the notice; no pollin
  for(const src of [host,ui])assert.ok(!/setInterval|registration\.update\(|\.update\(\)|skipWaiting|location\.(href|assign|replace)/.test(src));
  assert.equal(host.split('fetch(').length-1,0,'the notice asks no server');
  assert.match(index,/<section id="update-banner"[^>]*role="status"[^>]*aria-live="polite"[^>]*hidden>/);
- assert.match(index,/<strong id="update-title">Nowa wersja jest gotowa\.<\/strong>/);
+ assert.match(index,/<strong id="update-title">A new version is ready\.<\/strong>/);
  assert.match(index,/<button id="update-reload"[^>]*type="button">/);
  // The page carries the label of the release it belongs to (the builder's own constant) in the title and in the header, and no
  // label of an earlier release: the notice is what moves an open tab from one labelled build to the next.
  const build=require('../candidate/build.cjs').BUILD;
- assert.equal(build,'PRIVATE-PILOT-7');
+ assert.equal(build,'PRIVATE-PILOT-8');
  assert.ok(index.includes('<title>Empire Code — '+build+'</title>'),'title label');assert.ok(index.includes('<span class="build">'+build+'</span>'),'header label');
  assert.deepEqual([...new Set(index.match(/PRIVATE-PILOT-\d+/g))],[build],'no stale build label on the page');
 });

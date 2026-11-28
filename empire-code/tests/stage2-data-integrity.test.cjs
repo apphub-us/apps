@@ -27,7 +27,7 @@ function variant(change,keepBinding){
 }
 // An own field with a reserved name, the way JSON.parse creates it (a plain assignment would set the prototype instead).
 const own=(o,k,v)=>Object.defineProperty(o,k,{value:v,enumerable:true,writable:true,configurable:true});
-const DRAFT=/ieprawidłowy szkic/,UNDO=/historię cofania/,DIFF=/opis zmian/,BINDING=/Nieprawidłowe powiązanie szkicu/,UNSAFE=/niedozwolone nazwy pól/,VERSION=/Nieprawidłowa wersja rozmowy/;
+const DRAFT=/nvalid (chat )?draft/,UNDO=/undo history/,DIFF=/change description/,BINDING=/Invalid draft link/,UNSAFE=/forbidden field names/,VERSION=/Invalid chat version/;
 const CASES=[
  // history
  ['history: extra field in a message',(f,s)=>{s.history[0].tool='x';},DRAFT],
@@ -57,8 +57,8 @@ const CASES=[
  ['entry: version 0',f=>{f.entry.version=0;},VERSION],
  ['entry: fractional version',f=>{f.entry.version=1.5;},VERSION],
  ['entry: created after touched',f=>{f.entry.created=f.entry.touched+1;},VERSION],
- ['entry: version beyond any real count',f=>{f.entry.version=2e12;},/liczniki/],
- ['copy of unsent text: negative base version',f=>{f.recovery[0].baseVersion=-1;},/kopie niewysłanego tekstu/],
+ ['entry: version beyond any real count',f=>{f.entry.version=2e12;},/Invalid version counters in the chat archive/],
+ ['copy of unsent text: negative base version',f=>{f.recovery[0].baseVersion=-1;},/copies of unsent text in the chat archive/],
  // undo
  ['undo: nine states',f=>{f.entry.envelope.undo=Array.from({length:9},()=>filledState(1,1));},UNDO],
  ['undo: malformed state',f=>{f.entry.envelope.undo=[{version:1}];},UNDO],
@@ -75,15 +75,15 @@ const CASES=[
  ['binding: extra field',(f,s,w)=>{w.owner='x';},BINDING],
  ['source: malformed id',(f,s,w)=>{w.sourceId='conv1_XYZ';},BINDING],
  ['source: revision over the limit',(f,s,w)=>{w.sourceRevision=101;},BINDING],
- ['source: negative revision',(f,s,w)=>{w.sourceRevision=-1;},/Nieprawidłowa tożsamość rozmowy/],
+ ['source: negative revision',(f,s,w)=>{w.sourceRevision=-1;},/Invalid chat identity/],
  ['source: saved time is not a time',(f,s,w)=>{w.sourceSavedAt='wczoraj';},BINDING],
- ['binding: does not match the draft',(f,s)=>{s.revision=3;},/nie zgadza się z jej treścią/,true],
- ['binding: another job than the conversation',(f,s,w)=>{w.targetJobId=ids.job(2);},/inną robotę/],
- ['receipt: extra field',(f,s,w)=>{w.receipts[0].note='x';},/potwierdzenie wcześniejszego zapisu/],
- ['receipt: malformed material id',(f,s,w)=>{w.receipts[0].materialId='mat1_1';},/potwierdzenie wcześniejszego zapisu/],
- ['receipt: repeated',(f,s,w)=>{w.receipts.push(copy(w.receipts[0]));},/Powtórzone powiązanie/],
- ['receipts: not a list',(f,s,w)=>{w.receipts={};},/Nieprawidłowa tożsamość rozmowy/],
- ['prepared write: malformed',(f,s,w)=>{w.prepared={phase:'review'};},/przygotowanego zapisu/],
+ ['binding: does not match the draft',(f,s)=>{s.revision=3;},/does not match the chat content/,true],
+ ['binding: another job than the conversation',(f,s,w)=>{w.targetJobId=ids.job(2);},/a different job than its link/],
+ ['receipt: extra field',(f,s,w)=>{w.receipts[0].note='x';},/confirmation of an earlier save/],
+ ['receipt: malformed material id',(f,s,w)=>{w.receipts[0].materialId='mat1_1';},/confirmation of an earlier save/],
+ ['receipt: repeated',(f,s,w)=>{w.receipts.push(copy(w.receipts[0]));},/Repeated material link/],
+ ['receipts: not a list',(f,s,w)=>{w.receipts={};},/Invalid chat identity/],
+ ['prepared write: malformed',(f,s,w)=>{w.prepared={phase:'review'};},/state of the prepared save/],
  // reserved field names
  ['"__proto__" in a draft item',(f,s)=>{own(s.items[0],'__proto__',{admin:true});},UNSAFE],
  ['"__proto__" in a message',(f,s)=>{own(s.history[0],'__proto__',{});},UNSAFE],
@@ -92,12 +92,12 @@ const CASES=[
  ['"constructor" in the draft',(f,s)=>{own(s,'constructor',{});},UNSAFE],
  ['"prototype" at the top of the file',f=>{f.prototype={};},UNSAFE],
  // unsent text and size bounds
- ['unsent text over 3000 characters',f=>{f.unsentText='x'.repeat(3001);},/niewysłany tekst w archiwum/],
- ['unsent text is not text',f=>{f.unsentText=null;},/niewysłany tekst w archiwum/],
- ['stored text over 3000 characters',f=>{f.entry.input='x'.repeat(3001);},/Nieprawidłowy niewysłany tekst/],
- ['envelope: extra field',f=>{f.entry.envelope.script='x';},/nieznane pola/],
- ['copies of unsent text: 257',f=>{f.recovery=Array.from({length:257},(_,i)=>({text:'t'+i,savedAt:T,baseVersion:1}));},/kopie niewysłanego tekstu/],
- ['copy of unsent text: not text',f=>{f.recovery[0].text=7;},/kopie niewysłanego tekstu/]
+ ['unsent text over 3000 characters',f=>{f.unsentText='x'.repeat(3001);},/Invalid unsent text in the chat archive/],
+ ['unsent text is not text',f=>{f.unsentText=null;},/Invalid unsent text in the chat archive/],
+ ['stored text over 3000 characters',f=>{f.entry.input='x'.repeat(3001);},/Invalid unsent text\./],
+ ['envelope: extra field',f=>{f.entry.envelope.script='x';},/The chat in the file has unknown fields/],
+ ['copies of unsent text: 257',f=>{f.recovery=Array.from({length:257},(_,i)=>({text:'t'+i,savedAt:T,baseVersion:1}));},/copies of unsent text in the chat archive/],
+ ['copy of unsent text: not text',f=>{f.recovery[0].text=7;},/copies of unsent text in the chat archive/]
 ];
 
 test('import: every malformed field of a file is refused with its reason; the bank, the unsent field and the preview stay as they were',async()=>{
@@ -107,7 +107,7 @@ test('import: every malformed field of a file is refused with its reason; the ba
  // control: the unchanged file is a valid archive and could be applied
  await p.choose(JSON.stringify(goodFile()),'dobre.json');
  const shown=p.text('import-preview');
- assert.match(shown,/pozycje szkicu: 2/);assert.match(shown,/wiadomości: 4/);assert.match(shown,/potwierdzenia zapisanych materiałów: 1/);assert.match(shown,/dodatkowe kopie niewysłanego tekstu: 1/);
+ assert.match(shown,/draft items: 2/);assert.match(shown,/messages: 4/);assert.match(shown,/confirmations of saved materials: 1/);assert.match(shown,/extra copies of unsent text: 1/);
  const ready=p.find('import-apply');assert.ok(ready&&!ready.disabled,'the control file is applicable');
  assert.equal(p.local.dump(),before);
  for(const [label,change,expected,keepBinding] of CASES){
@@ -137,12 +137,12 @@ test('import: a valid file is stored exactly as it is; its copies of unsent text
  assert.equal(got.input,'tekst z pliku');assert.equal(got.version,file.entry.version);assert.equal(got.createdAt,file.entry.createdAt);assert.equal(got.jobId,ids.job(1));
  const copies=()=>DraftRecovery.list(p.local,ids.ctx(5)).records.map(r=>r.record.text);
  assert.deepEqual(copies(),['kopia z innej karty'],'the copy of unsent text from the file is kept');
- assert.match(p.els['manage-status'].textContent,/czekają przy tej rozmowie na jawny wybór/);
+ assert.match(p.els['manage-status'].textContent,/are waiting with this chat for an explicit choice/);
  assert.equal(p.els.input.value,'moja rozmowa');
  // the same file again: nothing changes, and it is said that the copies were not added a second time
  const after=p.local.dump();
  await p.choose(text);await p.click('import-apply');
- assert.equal(p.local.dump(),after);assert.match(p.els['manage-status'].textContent,/Bez zmian/);assert.match(p.els['manage-status'].textContent,/nie zostały dodane ponownie/);
+ assert.equal(p.local.dump(),after);assert.match(p.els['manage-status'].textContent,/No change: this chat is already in this browser/);assert.match(p.els['manage-status'].textContent,/were not added again/);
  // opened: the stored unsent text is in the field; the copy is offered, not applied (although it names the same version)
  await p.run('hostExclusive(()=>{switchContext('+JSON.stringify(ids.ctx(5))+');render();})');await H.settle();
  assert.equal(p.els.input.value,'tekst z pliku');assert.equal(p.run('undo.length'),1);assert.equal(p.run('diffs.length'),3);
@@ -160,7 +160,7 @@ test('import cannot replay acknowledgements of written materials: forged identit
  const forged=copy(file);forged.entry.contextId=ids.ctx(950);forged.entry.envelope.workspace.sourceId=ids.conv(950);
  const stored=CBank.serialize(source);
  let preview=inspect(source,forged);
- assert.equal(preview.outcome,'conflict');assert.equal(preview.relation,'receipts');assert.match(preview.reason,/należą już do innej rozmowy/);
+ assert.equal(preview.outcome,'conflict');assert.equal(preview.relation,'receipts');assert.match(preview.reason,/already belong to another chat/);
  for(const destination of ['active','archived'])assert.throws(()=>adopt(source,forged,{destination}),code('CONFLICT'));
  assert.equal(CBank.serialize(source),stored);
  // the holder is in the archive, or was deleted: its materials are still not handed to another conversation
@@ -195,7 +195,7 @@ test('an imported conversation whose job is missing stays read-only for material
  const p=await H.load({jobs});
  await p.click('manage-open');await p.choose(JSON.stringify(archiveOf(entry(5,{job:9,state:filledState(2,1),input:'z innego urządzenia'}))));await p.click('import-apply');
  await p.run('hostExclusive(()=>{switchContext('+JSON.stringify(ids.ctx(5))+');render();})');await H.settle();
- const locked=()=>{const b=p.find('handoff-prepare');return !!b&&b.disabled&&/zapis materiałów jest wyłączony/.test(p.text('handoff-panel'));};
+ const locked=()=>{const b=p.find('handoff-prepare');return !!b&&b.disabled&&/saving materials is disabled/.test(p.text('handoff-panel'));};
  assert.equal(locked(),true);
  // another job, even one that looks alike, changes nothing
  jobs.push(jobFixture(10,'Robota z pliku'));await p.click('job-refresh');
@@ -203,7 +203,7 @@ test('an imported conversation whose job is missing stays read-only for material
  assert.equal(p.bank().contexts.find(e=>e.contextId===ids.ctx(5)).jobId,ids.job(9),'never retargeted');
  // the very job of the conversation appears
  jobs.push(jobFixture(9,'Robota z pliku'));await p.click('job-refresh');
- assert.ok(!/zapis materiałów jest wyłączony/.test(p.text('handoff-panel')));
+ assert.ok(!/saving materials is disabled/.test(p.text('handoff-panel')));
  const prepare=p.find('handoff-prepare');assert.ok(prepare&&!prepare.disabled);
  assert.equal(p.bank().contexts.find(e=>e.contextId===ids.ctx(5)).jobId,ids.job(9));
 });
@@ -215,7 +215,7 @@ test('refused save: the text stays in the field, the retry is visible and works 
  p.local.refuse=k=>k===KEY;
  await p.type(TEXT);
  assert.equal(p.local.getItem(KEY),stored);assert.equal(p.els.input.value,TEXT);
- assert.equal(p.els.status.className,'error');assert.match(p.els.status.textContent,/Nie zapisano niewysłanego tekstu/);assert.match(p.els.status.textContent,/Zapisz tekst ponownie/);
+ assert.equal(p.els.status.className,'error');assert.match(p.els.status.textContent,/The unsent text was not saved/);assert.match(p.els.status.textContent,/Save text again/);
  assert.equal(p.els['save-retry'].hidden,false);
  // handlers that reset the screen state do not clear the field or hide the retry
  await p.fire('offline');await p.els.cancel.onclick();await H.settle();
@@ -232,7 +232,7 @@ test('refused save: the text stays in the field, the retry is visible and works 
  p.local.refuse=null;
  await p.click('save-retry');
  assert.equal(p.bank().contexts[0].input,TEXT);assert.equal(p.els.input.value,TEXT);
- assert.equal(p.els['save-retry'].hidden,true);assert.notEqual(p.els.status.className,'error');assert.match(p.els.status.textContent,/jest zapisany w przeglądarce/);
+ assert.equal(p.els['save-retry'].hidden,true);assert.notEqual(p.els.status.className,'error');assert.match(p.els.status.textContent,/The unsent text is saved in the browser/);
 });
 
 test('text preserved nowhere: import and archive are refused, deleting another conversation still makes room, the field is never touched',async()=>{
@@ -247,16 +247,16 @@ test('text preserved nowhere: import and archive are refused, deleting another c
  assert.ok(!p.local.dump().includes('NIEZAPISANY'),'the text exists on the screen only');
  const note=()=>p.els['manage-status'];
  await p.choose(JSON.stringify(archiveOf(entry(41,{input:'z pliku'}))));await p.click('import-apply');
- assert.equal(note().className,'error');assert.match(note().textContent,/ani w rozmowie, ani w kopii awaryjnej/);
+ assert.equal(note().className,'error');assert.match(note().textContent,/neither in the chat nor in a recovery copy/);
  assert.equal(p.local.getItem(KEY),stored);assert.equal(p.els.input.value,TEXT);assert.equal(p.els['import-preview'].hidden,false,'the chosen file stays for later');
  await p.click('manage-archive-'+first);
- assert.equal(note().className,'error');assert.match(note().textContent,/ani w rozmowie, ani w kopii awaryjnej/);assert.equal(p.local.getItem(KEY),stored);
+ assert.equal(note().className,'error');assert.match(note().textContent,/neither in the chat nor in a recovery copy/);assert.equal(p.local.getItem(KEY),stored);
  // deleting ANOTHER conversation is the way to make room; it goes through and says that the text is still unsaved
  await p.click('manage-delete-'+first);await p.check('manage-delete-ack');await p.click('manage-delete-confirm');
  let bank=p.bank();
  assert.equal(bank.retired.length,1);assert.equal(bank.retired[0].contextId,first);assert.equal(bank.contexts.length,1);assert.equal(bank.contexts[0].contextId,second);
  assert.equal(p.active(),second);assert.equal(p.els.input.value,TEXT);
- assert.match(note().textContent,/Usunięto rozmowę/);assert.match(note().textContent,/nadal nie jest w niej zapisany/);assert.equal(note().className,'error');
+ assert.match(note().textContent,/The chat was deleted/);assert.match(note().textContent,/is still not saved in it/);assert.equal(note().className,'error');
  assert.equal(p.els['save-retry'].hidden,false);assert.equal(p.els.export.disabled,false);
  // room is there now
  p.local.refuse=null;
@@ -282,7 +282,7 @@ test('a write the read-back cannot confirm is not repeated and not rolled back; 
  await p.type('zapisany tekst i dopisek');
  assert.equal(bankWrites(),before+1,'one attempt; nothing was written after it');
  assert.equal(p.local.getItem(KEY),stored);assert.equal(p.els.input.value,'zapisany tekst i dopisek');
- assert.equal(p.els.status.className,'error');assert.match(p.els.status.textContent,/nie został potwierdzony/);
+ assert.equal(p.els.status.className,'error');assert.match(p.els.status.textContent,/was not confirmed/);
  assert.equal(p.run('hostExternalStale'),true);assert.equal(p.run('inputSaved'),'zapisany tekst','memory still names the last confirmed text');
  const resync=p.find('handoff-resync');assert.ok(resync&&!resync.disabled,'the stored value is re-read only on an explicit click');
  assert.ok(p.local.dump().includes('zapisany tekst i dopisek'),'the text is held by the recovery journal meanwhile');

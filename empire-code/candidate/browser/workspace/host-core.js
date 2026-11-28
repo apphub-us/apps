@@ -7,7 +7,7 @@
  const hasDraft=()=>!!(LC_JOB.editor||lcMeasHasDraft()||lcMatHasDraft()||lcPhotoHasDraft()||LC_ARC.busy||LC_RESTORE.busy);
  // Stage 5: a note or one measurement reviewed in the conversation (docs/conversation-job-actions.md). The adapter writes through
  // the original job-card and measurement stores only; this hook adds no store and no write path of its own.
- const actions=()=>{const a=EC.jobConversationActions;if(!a)throw Error('Ta wersja lokalnych narzędzi nie zawiera zapisu notatek i pomiarów z rozmowy.');return a;};
+ const actions=()=>{const a=EC.jobConversationActions;if(!a)throw Error('This version of the local tools does not include saving notes and measurements from the chat.');return a;};
  window.ecHostBridge={
   ready:true,list:()=>lcJobCall('list',[]),read,
   create:fields=>lcJobCall('create',[own(fields),[]]),

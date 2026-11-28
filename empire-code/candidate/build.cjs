@@ -8,7 +8,7 @@
 //         candidate/build-manifest.generated.json (hash record; not a served asset)
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 
-const BUILD='PRIVATE-PILOT-7';
+const BUILD='PRIVATE-PILOT-8';
 // The 18 browser paths of the historical baseline, in the order input/BROWSER-BASELINE.json lists them. Fixed: the
 // baseline file and the matching input/RELEASE.json pins must name exactly these, and neither file is ever edited.
 const BASELINE_PATHS=Object.freeze(['conversation-bank.js','draft-recovery.js','handoff-session.js','index.html','material-edit-host.js','style.css','sw.js','ui.js','workspace-host.js','workspace/handoff.js','workspace/host-core.css','workspace/host-core.js','workspace/icon-192.png','workspace/icon-512.png','workspace/icon.svg','workspace/manifest.json','workspace/material-edit.js','workspace/mobile.html']);

@@ -13,7 +13,7 @@ const fail=message=>{throw Error(message);};
 // A refusal the user can act on. `safe` marks the only error texts the Worker may show to the client; the code matches
 // the client's PROPOSAL_* allow-list and the message stays under its 300-character limit.
 const QUANTITY_CODE='PROPOSAL_QUANTITY';
-const QUANTITY_MESSAGE='Sztuki, pudełka, paczki, rolki i komplety (pcs, box, pack, roll, set) wymagają liczby całkowitej; ułamek jest dozwolony tylko dla długości (ft, in, m, cm, mm). Podaj całkowitą ilość albo długość. Niczego nie zaokrąglono; szkic bez zmian.';
+const QUANTITY_MESSAGE='Pieces, boxes, packs, rolls and sets (pcs, box, pack, roll, set) need a whole number; a fraction is allowed only for lengths (ft, in, m, cm, mm). Give a whole quantity or a length. Nothing was rounded; the draft is unchanged.';
 const quantityFail=()=>{throw Object.assign(Error(QUANTITY_MESSAGE),{code:QUANTITY_CODE,status:422,safe:true});};
 function string(value,max,empty=true){if(typeof value!=='string'||value.length>max||(!empty&&!value.trim())||/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value))fail('Invalid bounded string');return value;}
 // READ shape of item fields (complete or partial). A fractional count (0.5 roll) is READABLE: drafts saved before EC-08
@@ -72,7 +72,7 @@ function apply(input,result,userText){
   }
  }
  if(next.items.length>16)fail('Maximum 16 draft items');
- next.revision++;next.history.push({role:'user',content:userText},{role:'assistant',content:[result.reply,result.question].filter(Boolean).join('\n')||'Szkic bez zmian.'});state(next);
+ next.revision++;next.history.push({role:'user',content:userText},{role:'assistant',content:[result.reply,result.question].filter(Boolean).join('\n')||'The draft is unchanged.'});state(next);
  const hash=crypto.createHash('sha256').update(JSON.stringify({revision:current.revision,userText,result})).digest('hex');
  return{state:next,reply:result.reply,question:result.question,diffs,proposalId:hash,scope:result.scope,corrections:corrections(next)};
 }

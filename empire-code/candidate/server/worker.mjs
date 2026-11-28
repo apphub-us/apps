@@ -12,16 +12,16 @@ const FRAME_CSP="default-src 'self'; script-src 'self' 'unsafe-inline'; style-sr
 const COMMON={'Content-Security-Policy':CSP,'X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Permissions-Policy':'microphone=(self), camera=()','Cache-Control':'no-store'};
 const BUDGET_NAME='owner-pilot-v1',TALK_LIMIT=80000,ASSIST_LIMIT=200000,AUDIO_LIMIT=8*1024*1024;
 const AUDIO_MIME=/^(?:audio\/(?:webm|mp4|wav|x-wav)|video\/(?:webm|mp4))(?:;|$)/;
-const GENERIC='Operacja nie powiodła się. Szkic bez zmian; brak automatycznej ponownej próby.';
+const GENERIC='The operation failed. The draft is unchanged; there is no automatic retry.';
 const DENIED={
- TOKEN:[403,'Nieprawidłowy token sesji.','SESSION_TOKEN'],
- DUPLICATE:[409,'Ta operacja była już wysłana. Nie naliczam automatycznej powtórki; sprawdź szkic.','DUPLICATE_REQUEST'],
- BUSY:[409,'Poprzednia operacja jeszcze trwa. Nie zmieniono szkicu.','BUSY'],
- CAP:[429,'Osiągnięto dzienny limit 60 zapytań pilotażu. Szkic bez zmian; limit odnawia się o północy UTC.','DAILY_LIMIT']
+ TOKEN:[403,'Invalid session token.','SESSION_TOKEN'],
+ DUPLICATE:[409,'This operation was already sent. No automatic repeat is counted; check the draft.','DUPLICATE_REQUEST'],
+ BUSY:[409,'The previous operation is still in progress. The draft was not changed.','BUSY'],
+ CAP:[429,'The daily pilot limit of 60 requests was reached. The draft is unchanged; the limit renews at midnight UTC.','DAILY_LIMIT']
 };
 const fail=(status,message,code)=>Object.assign(new Error(message),{status,code,safe:true});
 const json=(status,value,extra={})=>new Response(JSON.stringify(value),{status,headers:{...COMMON,'Content-Type':'application/json; charset=utf-8',...extra}});
-const notAllowed=allow=>json(405,{error:'Niedozwolona metoda.'},{Allow:allow});
+const notAllowed=allow=>json(405,{error:'Method not allowed.'},{Allow:allow});
 
 // Returns the lower-cased owner e-mail only when the platform identity matches the configured owner; otherwise null.
 async function ownerEmail(env,ctx){
@@ -36,13 +36,13 @@ async function ownerEmail(env,ctx){
 }
 async function readLimited(request,limit){
  const declared=request.headers.get('content-length');
- if(declared!==null&&(!/^\d{1,12}$/.test(declared)||Number(declared)>limit))throw fail(413,'Przekroczono rozmiar zapytania.');
+ if(declared!==null&&(!/^\d{1,12}$/.test(declared)||Number(declared)>limit))throw fail(413,'The request is too large.');
  if(!request.body)return new Uint8Array(0);
  const reader=request.body.getReader(),chunks=[];let size=0;
  for(;;){
   const{done,value}=await reader.read();if(done)break;
   size+=value.byteLength;
-  if(size>limit){try{await reader.cancel();}catch{}throw fail(413,'Przekroczono rozmiar zapytania.');}
+  if(size>limit){try{await reader.cancel();}catch{}throw fail(413,'The request is too large.');}
   chunks.push(value);
  }
  const out=new Uint8Array(size);let offset=0;for(const chunk of chunks){out.set(chunk,offset);offset+=chunk.byteLength;}
@@ -55,7 +55,7 @@ async function budget(env,path,payload){
   const response=await stub.fetch('https://budget.internal'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   data=await response.json();
  }catch{data=null;}
- if(!data||typeof data!=='object')throw fail(503,'Licznik pilotażu jest niedostępny. Niczego nie wysłano.','BUDGET_UNAVAILABLE');
+ if(!data||typeof data!=='object')throw fail(503,'The pilot counter is unavailable. Nothing was sent.','BUDGET_UNAVAILABLE');
  return data;
 }
 function ownAsset(assets,path){
@@ -90,37 +90,37 @@ export function createWorker(deps){
   const talk=mode==='talk',assist=mode==='assist';
   let bytes;
   try{
-   if(!hasKey(env))throw fail(503,'Rozmowa AI nie jest jeszcze skonfigurowana na serwerze. Szkic bez zmian.','AI_NOT_CONFIGURED');
+   if(!hasKey(env))throw fail(503,'AI chat is not configured on the server yet. The draft is unchanged.','AI_NOT_CONFIGURED');
    const token=request.headers.get('x-ec-token');
    if(!token||!/^[0-9a-f]{64}$/.test(token))throw fail(...DENIED.TOKEN);
    const id=request.headers.get('x-ec-request-id');
-   if(!id||!/^[a-zA-Z0-9-]{8,80}$/.test(id))throw fail(400,'Brak identyfikatora operacji.');
+   if(!id||!/^[a-zA-Z0-9-]{8,80}$/.test(id))throw fail(400,'The operation identifier is missing.');
    const mime=request.headers.get('content-type')||'';
    const provider=await(assist?assistantProviderFactory:providerFactory)(env);
    // All local validation happens here, before any budget is reserved.
    let input,checked;
    if(assist){
-    if(!mime.startsWith('application/json'))throw fail(415,'Wymagany JSON.');
+    if(!mime.startsWith('application/json'))throw fail(415,'JSON is required.');
     const raw=await readLimited(request,ASSIST_LIMIT);
     // Negative zero is read as zero so that every fingerprint is stable across the JSON round trip of the answer.
-    try{input=JSON.parse(new TextDecoder('utf-8',{ignoreBOM:true}).decode(raw),(k,v)=>Object.is(v,-0)?0:v);}catch{throw fail(400,'Nieprawidłowe dane rozmowy.');}
-    if(!input||typeof input!=='object'||Array.isArray(input)||input.requestId!==id)throw fail(400,'Nieprawidłowe zapytanie asystenta. Niczego nie wysłano.','ASSIST_REQUEST');
+    try{input=JSON.parse(new TextDecoder('utf-8',{ignoreBOM:true}).decode(raw),(k,v)=>Object.is(v,-0)?0:v);}catch{throw fail(400,'Invalid chat data.');}
+    if(!input||typeof input!=='object'||Array.isArray(input)||input.requestId!==id)throw fail(400,'Invalid assistant request. Nothing was sent.','ASSIST_REQUEST');
     checked=provider.checkAssist(input);
    }else if(talk){
-    if(!mime.startsWith('application/json'))throw fail(415,'Wymagany JSON.');
+    if(!mime.startsWith('application/json'))throw fail(415,'JSON is required.');
     const raw=await readLimited(request,TALK_LIMIT);
-    try{input=JSON.parse(new TextDecoder('utf-8',{ignoreBOM:true}).decode(raw));}catch{throw fail(400,'Nieprawidłowe dane rozmowy.');}
-    if(!input||Object.keys(input).some(k=>!['state','text','requestId'].includes(k))||input.requestId!==id||typeof input.text!=='string'||!input.text.trim()||input.text.length>3000)throw fail(400,'Nieprawidłowa wypowiedź.');
-    try{C.state(input.state);}catch{throw fail(400,'Nieprawidłowy szkic rozmowy. Niczego nie wysłano.');}
+    try{input=JSON.parse(new TextDecoder('utf-8',{ignoreBOM:true}).decode(raw));}catch{throw fail(400,'Invalid chat data.');}
+    if(!input||Object.keys(input).some(k=>!['state','text','requestId'].includes(k))||input.requestId!==id||typeof input.text!=='string'||!input.text.trim()||input.text.length>3000)throw fail(400,'Invalid message.');
+    try{C.state(input.state);}catch{throw fail(400,'Invalid chat draft. Nothing was sent.');}
     provider.checkRun(input.state,input.text);
    }else{
-    if(!AUDIO_MIME.test(mime))throw fail(415,'Nieobsługiwane nagranie.');
+    if(!AUDIO_MIME.test(mime))throw fail(415,'Unsupported recording.');
     bytes=await readLimited(request,AUDIO_LIMIT);
     provider.checkAudio(bytes,mime);
    }
    const principalHash=await sha256Hex(email);
    const begun=await budget(env,'/begin',{principalHash,token,requestId:id});
-   if(begun.ok!==true||typeof begun.lease!=='string')throw Object.hasOwn(DENIED,begun.code)?fail(...DENIED[begun.code]):fail(503,'Licznik pilotażu jest niedostępny. Niczego nie wysłano.','BUDGET_UNAVAILABLE');
+   if(begun.ok!==true||typeof begun.lease!=='string')throw Object.hasOwn(DENIED,begun.code)?fail(...DENIED[begun.code]):fail(503,'The pilot counter is unavailable. Nothing was sent.','BUDGET_UNAVAILABLE');
    // Reserved: exactly one provider call, no retry. The attempt stays counted whatever happens; only the lease is released.
    let result;
    try{result=assist?await provider.assist(checked,{signal:request.signal}):talk?await provider.run(input.state,input.text,{signal:request.signal}):await provider.transcribe(bytes,mime,{signal:request.signal});}
@@ -141,7 +141,7 @@ export function createWorker(deps){
   // API calls and every state-changing method must come from this origin itself. Plain page navigations are not
   // checked against Sec-Fetch-Site because the first load after the Access login arrives through a cross-site redirect.
   if(allowed&&(!read||path.startsWith('/api/')))allowed=(site===null||site==='same-origin')&&(read||sent===known);
-  if(!allowed)return json(403,{error:'Niedozwolone pochodzenie żądania.'});
+  if(!allowed)return json(403,{error:'Request origin not allowed.'});
   if(path==='/_auth')return method==='GET'?new Response(null,{status:303,headers:{...COMMON,Location:'/'}}):notAllowed('GET');
   if(path==='/api/talk'||path==='/api/transcribe'||path==='/api/assist')return method==='POST'?operate(request,env,email,path.slice(5)):notAllowed('POST');
   const{ASSETS,BUILD}=await loadAssets();
@@ -153,7 +153,7 @@ export function createWorker(deps){
   if(method==='HEAD')return new Response(null,{status:200,headers});
   let body=decoded.get(path);
   if(!body){
-   try{body=Buffer.from(entry.base64,'base64');}catch{return json(404,{error:'Brak pliku interfejsu.'});}
+   try{body=Buffer.from(entry.base64,'base64');}catch{return json(404,{error:'The interface file is missing.'});}
    decoded.set(path,body);
   }
   return new Response(body,{status:200,headers});

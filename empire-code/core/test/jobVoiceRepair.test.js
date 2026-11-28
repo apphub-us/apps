@@ -39,6 +39,18 @@ test('measurement clarification requires a full observation and preserves negati
  assert.equal(P.repair(p,first(p),'120 V',time).repairError,true);assert.equal(P.repair(p,first(p),'Buy 12 ft wire',time).repairError,true);
  const r=P.repair(p,first(p),'Measured panel Alpha now minus 7 V',time);assert.equal(r.ok,true,JSON.stringify(r));assert.equal(r.actions[0].fields.valueText,'-7');assert.equal(r.actions[0].fields.measuredLocal,time.measuredLocal);
 });
+test('clarification questions and refusals are exact English text; the draft and the quoted Polish fragment are unchanged',()=>{
+ const p=state(),before=JSON.stringify(p);
+ assert.deepEqual(p.problems,['Give the quantity, unit and name of the material: “80% przewodu”.']);assert.equal(p.issues[0].message,p.problems[0]);assert.equal(p.issues[0].fragment,'80% przewodu');
+ assert.deepEqual(p.actions.map(a=>a.kind==='measurement'?a.fields.valueText:a.fields.quantityText),['120','12']);
+ assert.deepEqual(P.repair(p,first(p),'80',time),{ok:false,repairError:true,problems:['Give only this material: quantity, unit and name. The other entries are kept.']});
+ assert.deepEqual(P.repair(p,first(p),'',time),{ok:false,repairError:true,problems:['Choose the unrecognised fragment and give its full corrected text.']});
+ assert.equal(JSON.stringify(p),before);
+ const stale=state(),id=first(stale);stale.transcript=stale.transcript.replace('80%','90%');
+ assert.deepEqual(P.repair(stale,id,'80 ft wire',time),{ok:false,repairError:true,problems:['The selected fragment is no longer current. Nothing was replaced.']});
+ const m=state('Measured panel now not 120 V');assert.deepEqual(m.problems,['The measurement is ambiguous. Give one confirmed value and unit.']);
+ assert.deepEqual(P.repair(m,first(m),'120 V',time),{ok:false,repairError:true,problems:['Repeat only this measurement: point, value, unit and “now”. The other entries are kept.']});
+});
 test('oversized responses and mutation of issue metadata are refused',()=>{
  const p=state();assert.equal(P.repair(p,first(p),'x'.repeat(1001),time).repairError,true);const id=first(p);p.issues[0].kind='measurement';assert.equal(P.repair(p,id,'80 ft wire',time).repairError,true);
 });

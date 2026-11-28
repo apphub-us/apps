@@ -105,14 +105,17 @@ function get(url) {
 }
 
 // --- Reading rendered results -----------------------------------------------------------------------------------------
-// The first rendered line of the result box that contains a digit is the runtime headline ("Około 20 h 24 min").
+// The first rendered line of the result box that contains a digit is the runtime headline ("About 20 h 24 min").
 function headline(text) {
   return String(text || '').split(/\n+/).map(l => l.replace(/\s+/g, ' ').trim()).find(l => /\d/.test(l)) || '';
 }
+// From 48 h the module renders days and hours: "About 3 d 13 h" in the English frame (describeDuration(hours, 'en')).
+// The day token is exactly the English "d" or the module's Polish "dni", each followed by whitespace and the hours;
+// without it "3 d 13 h" would be read as 13 h. No other word is accepted as a day unit.
 function minutesOf(line) {
   if (!line) return null;
-  if (/mniej niż 1 min/i.test(line)) return 0.5;
-  const m = /(?:(\d+)\s*dni\s+)?(\d+)\s*h(?:\s+(\d+)\s*min)?/.exec(line);
+  if (/less than 1 min/i.test(line)) return 0.5;
+  const m = /(?:(\d+)\s*(?:dni|d)\s+)?(\d+)\s*h(?:\s+(\d+)\s*min)?/.exec(line);
   if (m) return Number(m[1] || 0) * 1440 + Number(m[2]) * 60 + Number(m[3] || 0);
   const only = /(\d+)\s*min/.exec(line);
   return only ? Number(only[1]) : null;
@@ -304,7 +307,7 @@ async function main() {
     check(label + ': frame document has no horizontal overflow', inner.docScrollWidth <= inner.innerWidth + 1, inner);
     check(label + ': converter and Wh / Runtime panel have no horizontal overflow', inner.subScrollWidth <= inner.subClientWidth + 1 && inner.panelScrollWidth <= inner.panelClientWidth + 1 && inner.outsideCount === 0, inner);
   }
-  const exampleButton = () => frame.locator('#cvt-battery button', { hasText: 'Przykład' });
+  const exampleButton = () => frame.locator('#cvt-battery button', { hasText: 'Example' });
   const resetButton = () => frame.locator('#cvt-battery button', { hasText: 'Reset' });
   const REFERENCE = { capacity: '1000', mode: 'w', consumption: '100', charge: '100', usable: '85' };
 
@@ -387,13 +390,37 @@ async function main() {
       await expectRuntime('1000 Wh · 1 kWh/day', 1224);
       await setForm({ capacity: '1000', mode: 'kwh_year', consumption: '365' });
       const year = await expectRuntime('1000 Wh · 365 kWh/year (same as 1 kWh/day)', 1224);
-      check('average draw is shown as 41,67 W', year.resultText.includes('41,67 W'), year.resultText.replace(/\s+/g, ' ').slice(0, 300));
+      check('average draw is shown as 41.67 W', year.resultText.includes('41.67 W'), year.resultText.replace(/\s+/g, ' ').slice(0, 300));
       await frame.locator('#bt-charge').fill('50');
       await expectRuntime('50% charge', 612);
       await frame.locator('#bt-charge').fill('0');
       await expectRuntime('0% charge', 0);
       await frame.locator('#bt-charge').fill('100');
       await expectRuntime('back to 100% charge', 1224);
+    });
+
+    // From 48 h the English frame shows days and hours ("About 3 d 13 h"). The expected values are worked out by hand
+    // from the typed fields, not read from the module:
+    //   1000 Wh × 100% × 85% = 850 Wh; 850 Wh ÷ 10 W = 85 h = 3 × 24 h + 13 h = 5100 min
+    //   960 Wh × 100% × 100% = 960 Wh; 960 Wh ÷ 20 W = 48 h = 2 × 24 h + 0 h  = 2880 min (first value shown in days)
+    //   950 Wh × 100% × 100% = 950 Wh; 950 Wh ÷ 20 W = 47.5 h = 47 h 30 min    = 2850 min (last range shown in h + min)
+    //   0.24 kWh/day × 1000 ÷ 24 h = 10 W, so 1000 Wh at 85% is the same 85 h
+    await stage('runtime-48-hours-and-longer-in-days', async () => {
+      await showBattery();
+      await setForm({ capacity: '1000', mode: 'w', consumption: '10' });
+      const long = await expectRuntime('1000 Wh · 10 W · 100% · 85% usable (85 h)', 5100);
+      check('85 h is shown in days and hours as "About 3 d 13 h"', headline(long.resultText) === 'About 3 d 13 h', headline(long.resultText));
+      check('the day part is read, not dropped: 3 d 13 h is 5100 min, not 13 h', minutesOf(headline(long.resultText)) === 3 * 1440 + 13 * 60 && minutesOf(headline(long.resultText)) !== 13 * 60, minutesOf(headline(long.resultText)));
+      check('available energy is shown as 850 Wh', long.resultText.includes('850 Wh'), long.resultText.replace(/\s+/g, ' ').slice(0, 300));
+      await setForm({ capacity: '960', mode: 'w', consumption: '20', usable: '100' });
+      const two = await expectRuntime('960 Wh · 20 W · 100% · 100% usable (exactly 48 h)', 2880);
+      check('exactly 48 h is shown as "About 2 d 0 h"', headline(two.resultText) === 'About 2 d 0 h', headline(two.resultText));
+      await setForm({ capacity: '950', mode: 'w', consumption: '20', usable: '100' });
+      const below = await expectRuntime('950 Wh · 20 W · 100% · 100% usable (47 h 30 min)', 2850);
+      check('just below 48 h stays in hours and minutes as "About 47 h 30 min"', headline(below.resultText) === 'About 47 h 30 min', headline(below.resultText));
+      await setForm({ capacity: '1000', mode: 'kwh_day', consumption: '0,24' });
+      const day = await expectRuntime('1000 Wh · 0,24 kWh/day (10 W average, 85 h)', 5100);
+      check('the same 85 h from kWh/day is shown as "About 3 d 13 h"', headline(day.resultText) === 'About 3 d 13 h', headline(day.resultText));
     });
 
     await stage('decimal-comma-and-dot', async () => {
@@ -409,10 +436,10 @@ async function main() {
     await stage('mode-switch-never-reinterprets', async () => {
       await showBattery(); await setForm(REFERENCE);
       await expectRuntime('reference in W', 510);
-      await switchMode('W → kWh/day', 'kwh_day', 'kWh/dobę', 510, 2.4);
+      await switchMode('W → kWh/day', 'kwh_day', 'kWh/day', 510, 2.4);
       await frame.locator('#bt-consumption').fill('1');
       await expectRuntime('1 kWh/day entered after the switch', 1224);
-      await switchMode('kWh/day → kWh/year', 'kwh_year', 'kWh/rok', 1224, 365);
+      await switchMode('kWh/day → kWh/year', 'kwh_year', 'kWh/year', 1224, 365);
       await frame.locator('#bt-consumption').fill('365');
       await expectRuntime('365 kWh/year entered after the switch', 1224);
       await switchMode('kWh/year → W', 'w', 'W', 1224, 1000 / 24);
@@ -446,12 +473,12 @@ async function main() {
       await exampleButton().click();
       const ex = await expectRuntime('fridge example', 1224);
       check('example fills 1000 Wh · 365 kWh/year · 100% · 85%', JSON.stringify(ex.fields) === JSON.stringify({ capacity: '1000', mode: 'kwh_year', consumption: '365', charge: '100', usable: '85' }), ex.fields);
-      check('example shows 850 Wh available and 41,67 W average', ex.resultText.includes('850 Wh') && ex.resultText.includes('41,67 W'), ex.resultText.replace(/\s+/g, ' ').slice(0, 300));
-      check('example result is marked as an illustrative example', /przykład/i.test(ex.resultText), ex.resultText.replace(/\s+/g, ' ').slice(0, 300));
-      check('example switches the unit label to kWh/year', String(ex.label).includes('kWh/rok'), ex.label);
+      check('example shows 850 Wh available and 41.67 W average', ex.resultText.includes('850 Wh') && ex.resultText.includes('41.67 W'), ex.resultText.replace(/\s+/g, ' ').slice(0, 300));
+      check('example result is marked as an illustrative example', /example/i.test(ex.resultText), ex.resultText.replace(/\s+/g, ' ').slice(0, 300));
+      check('example switches the unit label to kWh/year', String(ex.label).includes('kWh/year'), ex.label);
       await frame.locator('#bt-charge').fill('50');
       const edited = await expectRuntime('example edited to 50% charge', 612);
-      note('exampleMarkAfterOwnEdit', /przykład/i.test(edited.resultText));
+      note('exampleMarkAfterOwnEdit', /example/i.test(edited.resultText));
       await frame.locator('#bt-usable').fill('90');
       await resetButton().click();
       const cleared = await expectNoResult('after Reset');

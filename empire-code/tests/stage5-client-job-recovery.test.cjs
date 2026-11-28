@@ -24,7 +24,7 @@ const AS=require('../candidate/browser/assistant-session.js');
 const TOKEN='ef'.repeat(32),T0='2020-01-15T09:00:00.000Z';
 const NOTE='Neutral bar torque checked at panel A.';
 // The sentence the reviewed build said after dropping a plan whose record was in the job.
-const RELEASED=/Zwolniono plan zapisu/,ABSENT=/historia roboty go nie zawiera/;
+const RELEASED=/The save plan was released/,ABSENT=/the job history checked just now does not contain it/;
 const json=(body,status=200)=>({ok:status>=200&&status<300,status,json:async()=>body});
 const own=x=>JSON.parse(JSON.stringify(x));
 const until=async(check,ms=4000)=>{const end=Date.now()+ms;for(;;){if(check())return;if(Date.now()>end)throw Error('condition not reached');await H.settle(2);}};
@@ -111,7 +111,7 @@ const receiptRefused=(k,v)=>k===H.KEY&&!v.includes('"phase":"pending"')&&v.inclu
 const rememberOldProof=p=>p.run('hostActionChecked=assistantMeta.action.plan.id');
 
 // Common start: a reviewed proposal is confirmed, the pending plan is stored, but the first commitAction never reaches the adapter
-// and answers "pending, nothing stored". "Sprawdź w robocie" then reads the real history: not stored — release is offered.
+// and answers "pending, nothing stored". "Check in job" then reads the real history: not stored — release is offered.
 async function unwritten(e,job,kind='note'){
  const p=await open(e,job,[kind==='note'?noteAnswer('Neutral bar torque checked.','neutral bar torque checked'):measurementAnswer('121.4 V','V')]);
  await send(p,kind==='note'?'zapisz notatkę: neutral bar torque checked przy tablicy A':'pomiar L1-N 121.4 V AC w panel A');
@@ -120,11 +120,11 @@ async function unwritten(e,job,kind='note'){
  p.hooks.skip=plan=>{const mark=A.pendingReceipt(plan);assert.equal(mark.ok,true);return {ok:false,status:'pending',code:'UNAVAILABLE',problems:['Job storage did not start. Nothing was saved.'],stored:false,receipt:mark.receipt};};
  await p.click('action-confirm');
  assert.equal(p.hooks.commits,1);assert.equal(p.hooks.adapter||0,0,'the first commit never reached the adapter');
- assert.equal(pendingNow(p),true);assert.equal(assistant(p).action.phase,'pending');assert.match(said(p),/w robocie niczego nie zapisano/);
+ assert.equal(pendingNow(p),true);assert.equal(assistant(p).action.phase,'pending');assert.match(said(p),/nothing was saved to the job/);
  assert.equal((await revisions(e,job.head.jobId)).length,1);assert.equal((await readings(e,job.head.jobId)).length,0);
  assert.equal(p.find('action-release'),null,'no release before the history was asked');
  await p.click('action-check');
- assert.equal(p.hooks.reconciles,1);assert.match(said(p),/tego zapisu w niej nie ma/);assert.equal(pendingNow(p),true);
+ assert.equal(p.hooks.reconciles,1);assert.match(said(p),/this entry is not in it/);assert.equal(pendingNow(p),true);
  const release=p.find('action-release');assert.ok(release&&!release.disabled,'a current "not stored" answer offers the release');
  assert.equal(p.run('hostActionChecked'),assistant(p).action.plan.id);
  return p;
@@ -142,7 +142,7 @@ test('positive control: nothing was written and the history says so NOW — rele
  await p.click('action-review');assert.ok(p.find('action-confirm'),said(p));
  await p.click('action-confirm');
  const all=await revisions(e,job.head.jobId);
- assert.equal(all.length,2);assert.equal(all[1].notes,'First visit.\n\n'+NOTE);assert.match(said(p),/Zapisano notatkę/);
+ assert.equal(all.length,2);assert.equal(all[1].notes,'First visit.\n\n'+NOTE);assert.match(said(p),/Saved a note/);
  assert.equal(assistant(p).receipts.length,1);assert.equal(assistant(p).action,null);assert.equal(assistant(p).proposal,null);assert.deepEqual(p.hooks.heard,['confirmed']);
 });
 
@@ -152,7 +152,7 @@ test('P1 note: "not stored" was checked, then resume really writes and loses its
  await p.click('action-resume');
  assert.deepEqual(p.hooks.heard,['confirmed'],'the adapter wrote the record on resume');
  assert.equal((await revisions(e,job.head.jobId)).length,2,'the record is in the job; only the answer was lost');
- assert.equal(pendingNow(p),true);assert.equal(assistant(p).action.plan.id,planId,'the same plan stays pending');assert.match(said(p),/nie wiadomo, czy robota go przyjęła/);
+ assert.equal(pendingNow(p),true);assert.equal(assistant(p).action.plan.id,planId,'the same plan stays pending');assert.match(said(p),/it is unknown whether the job accepted it/);
  // The earlier "not stored" answer is no longer offered as a reason to drop the plan…
  assert.equal(p.find('action-release'),null,'release is not offered after a write attempt');assert.equal(p.run('hostActionChecked'),'');
  // …and the button of the earlier render does nothing: no history read, no change, no message of a release.
@@ -161,7 +161,7 @@ test('P1 note: "not stored" was checked, then resume really writes and loses its
  assert.equal(p.hooks.reconciles,reads,'inert: not even a read');assert.equal(pendingNow(p),true);assert.equal(assistant(p).action.plan.id,planId);
  assert.ok(!RELEASED.test(said(p))&&!ABSENT.test(said(p)),said(p));
  await p.click('action-check');
- assert.match(said(p),/ten zapis jest w robocie/);assert.equal(pendingNow(p),false);
+ assert.match(said(p),/this entry is in the job/);assert.equal(pendingNow(p),false);
  const stored=assistant(p),all=await revisions(e,job.head.jobId);
  assert.equal(stored.action,null);assert.equal(stored.proposal,null);assert.equal(stored.receipts.length,1);assert.equal(stored.receipts[0].planId,planId);assert.equal(stored.receipts[0].state,'confirmed');
  assert.equal(stored.receipts[0].record.revisionId,all[1].revisionId);
@@ -177,7 +177,7 @@ test('P1 note: even with the old remembered answer in place, release reads the h
  rememberOldProof(p);const reads=p.hooks.reconciles;
  await oldButton.onclick();await H.settle();
  assert.equal(p.hooks.reconciles,reads+1,'the release asked the history itself');
- assert.match(said(p),/Nie zwolniono planu/);assert.match(said(p),/zawiera ten zapis/);assert.ok(!RELEASED.test(said(p))&&!ABSENT.test(said(p)),said(p));
+ assert.match(said(p),/The plan was not released/);assert.match(said(p),/contains this entry/);assert.ok(!RELEASED.test(said(p))&&!ABSENT.test(said(p)),said(p));
  const stored=assistant(p);
  assert.equal(pendingNow(p),false);assert.equal(stored.action,null);assert.equal(stored.proposal,null,'the written proposal is not offered for a second review');
  assert.equal(stored.receipts.length,1);assert.equal(stored.receipts[0].planId,planId);
@@ -195,7 +195,7 @@ test('P1 measurement: the same order for a reading — one reading in the job, n
  assert.equal(pendingNow(p),true);assert.ok(!RELEASED.test(said(p))&&!ABSENT.test(said(p)),said(p));
  rememberOldProof(p);
  await oldButton.onclick();await H.settle();
- assert.match(said(p),/Nie zwolniono planu/);assert.ok(!RELEASED.test(said(p))&&!ABSENT.test(said(p)),said(p));
+ assert.match(said(p),/The plan was not released/);assert.ok(!RELEASED.test(said(p))&&!ABSENT.test(said(p)),said(p));
  const stored=assistant(p),held=await readings(e,job.head.jobId);
  assert.equal(pendingNow(p),false);assert.equal(stored.action,null);assert.equal(stored.proposal,null);
  assert.equal(stored.receipts.length,1);assert.equal(stored.receipts[0].planId,planId);assert.equal(stored.receipts[0].record.store,'measurement');
@@ -208,20 +208,20 @@ test('P1 receipt refused: resume writes and is confirmed, the browser refuses th
  p.local.refuse=receiptRefused;
  await p.click('action-resume');
  assert.deepEqual(p.hooks.heard,['confirmed']);assert.equal((await revisions(e,job.head.jobId)).length,2);
- assert.match(said(p),/Zapis jest w robocie, ale jego potwierdzenie nie zostało utrwalone/);
+ assert.match(said(p),/The entry is in the job, but its confirmation was not stored/);
  assert.equal(pendingNow(p),true);assert.equal(assistant(p).action.phase,'pending');assert.equal(assistant(p).action.plan.id,planId);assert.equal(assistant(p).receipts.length,0);
  assert.equal(p.find('action-release'),null,'release is not offered after a write attempt');
  // The fresh read finds the record; the receipt is refused again. Marker, proposal and job stay exactly as they are.
  rememberOldProof(p);
  await oldButton.onclick();await H.settle();
- assert.match(said(p),/Zapis jest w robocie, ale jego potwierdzenie nie zostało utrwalone/);assert.match(said(p),/nie został zwolniony/);
+ assert.match(said(p),/The entry is in the job, but its confirmation was not stored/);assert.match(said(p),/was not released/);
  assert.ok(!RELEASED.test(said(p))&&!ABSENT.test(said(p)),said(p));
  assert.equal(pendingNow(p),true);assert.equal(assistant(p).action.phase,'pending');assert.equal(assistant(p).action.plan.id,planId);assert.equal(assistant(p).proposal.note,NOTE);
  assert.equal(p.run('hostActionChecked'),'');assert.equal(p.find('action-release'),null);
  assert.equal((await revisions(e,job.head.jobId)).length,2,'the job is not touched by a failed receipt');
- // The same for "Sprawdź w robocie" while the browser still refuses.
+ // The same for "Check in job" while the browser still refuses.
  await p.click('action-check');
- assert.match(said(p),/Zapis jest w robocie, ale jego potwierdzenie nie zostało utrwalone/);assert.equal(pendingNow(p),true);assert.equal(p.find('action-release'),null);
+ assert.match(said(p),/The entry is in the job, but its confirmation was not stored/);assert.equal(pendingNow(p),true);assert.equal(p.find('action-release'),null);
  p.local.refuse=null;
  await p.click('action-check');
  const stored=assistant(p),all=await revisions(e,job.head.jobId);
@@ -235,7 +235,7 @@ test('P1 unknown read: after "not stored", a history that cannot be read withdra
  e.fault=true;
  await p.click('action-release');
  e.fault=false;
- assert.match(said(p),/Nie zwolniono planu/);assert.match(said(p),/nie udało się teraz odczytać historii roboty/);assert.ok(!RELEASED.test(said(p))&&!ABSENT.test(said(p)),said(p));
+ assert.match(said(p),/The plan was not released/);assert.match(said(p),/the job history could not be read right now/);assert.ok(!RELEASED.test(said(p))&&!ABSENT.test(said(p)),said(p));
  assert.equal(pendingNow(p),true);assert.equal(assistant(p).action.plan.id,planId);assert.equal(assistant(p).action.phase,'pending');
  assert.equal(p.find('action-release'),null,'the old answer is withdrawn');assert.equal(p.run('hostActionChecked'),'');
  // A readable history offers it again; a later check that cannot read withdraws it again.
@@ -244,7 +244,7 @@ test('P1 unknown read: after "not stored", a history that cannot be read withdra
  const oldButton=p.find('action-release');
  e.fault=true;
  await p.click('action-check');
- assert.match(said(p),/Nie udało się teraz sprawdzić historii roboty/);
+ assert.match(said(p),/The job history could not be checked right now/);
  assert.equal(p.find('action-release'),null,'unknown never keeps an earlier "not stored"');assert.equal(p.run('hostActionChecked'),'');
  const reads=p.hooks.reconciles;
  await oldButton.onclick();await H.settle();
@@ -254,7 +254,7 @@ test('P1 unknown read: after "not stored", a history that cannot be read withdra
  assert.equal((await revisions(e,job.head.jobId)).length,1);assert.equal(p.hooks.adapter||0,0);
  // The plan is still usable: resume writes it once.
  await p.click('action-resume');
- assert.match(said(p),/Zapisano notatkę/);assert.equal((await revisions(e,job.head.jobId)).length,2);assert.equal(assistant(p).receipts.length,1);
+ assert.match(said(p),/Saved a note/);assert.equal((await revisions(e,job.head.jobId)).length,2);assert.equal(assistant(p).receipts.length,1);
 });
 
 test('P1 changed while the release was reading: another tab finishes the same plan in that gap — this tab releases nothing and overwrites nothing',async()=>{
@@ -275,7 +275,7 @@ test('P1 changed while the release was reading: another tab finishes the same pl
  };
  await p.click('action-release');
  assert.equal(gap,1);
- assert.ok(!RELEASED.test(said(p))&&!ABSENT.test(said(p)),said(p));assert.match(said(p),/zmienił się w innej karcie/);
+ assert.ok(!RELEASED.test(said(p))&&!ABSENT.test(said(p)),said(p));assert.match(said(p),/changed in another tab/);
  // The stored conversation is exactly what the other tab wrote: its receipt, no pending plan, nothing released or overwritten.
  const stored=assistant(p),all=await revisions(e,job.head.jobId);
  assert.equal(stored.action,null);assert.equal(stored.proposal,null);assert.equal(stored.receipts.length,1);assert.equal(stored.receipts[0].planId,planId);

@@ -61,7 +61,7 @@ test('EC-08 linked edit: a fractional length is kept digit for digit; a fraction
   for(const quantity of ['0.5','2.5','1.25']){
    const r=await prepare(item(quantity,unit));
    assert.deepEqual([r.ok,r.code],[false,'QUANTITY_CORRECTION'],quantity+' '+unit);
-   assert.ok(r.problems[0].includes('i0001')&&r.problems[0].includes(quantity+' '+unit)&&r.problems[0].includes('Niczego nie zaokrąglono'),r.problems[0]);
+   assert.ok(r.problems[0].includes('i0001')&&r.problems[0].includes(quantity+' '+unit)&&r.problems[0].includes('Nothing was rounded'),r.problems[0]);
    assert.equal(r.plan,undefined);
   }
  }

@@ -19,6 +19,12 @@
  *
  * The UI only reads the result of calculateBatteryRuntime(): numbers, the
  * validation errors and every user-facing string are produced here.
+ *
+ * TEXT LANGUAGE: the optional second argument of calculateBatteryRuntime() and
+ * describeDuration() selects the language of the strings only. Omitted (or
+ * anything but 'en') gives the original Polish text, byte for byte, so every
+ * existing caller is unchanged; 'en' gives the English text shown by the form.
+ * Numbers, codes, fields and every non-text member are identical in both.
  */
 
 const HOURS_PER_DAY = 24;
@@ -26,6 +32,8 @@ const HOURS_PER_YEAR = 365 * 24;
 
 const MODES = Object.freeze(['w', 'kwh_day', 'kwh_year']);
 const MODE_UNITS = Object.freeze({ w: 'W', kwh_day: 'kWh/dobę', kwh_year: 'kWh/rok' });
+/** The same units in English, used only by the 'en' text. */
+const MODE_UNITS_EN = Object.freeze({ w: 'W', kwh_day: 'kWh/day', kwh_year: 'kWh/year' });
 
 /** Field values of an untouched calculator. Capacity and consumption are deliberately blank. */
 const DEFAULTS = Object.freeze({
@@ -83,22 +91,25 @@ function formatNumber(value) {
  *   below one minute  -> "Mniej niż 1 min"    (kind 'under_minute'; never shown as 0 h)
  *   below 48 h        -> "Około 20 h 24 min"  (kind 'hours_minutes', nearest minute)
  *   48 h and longer   -> "Około 3 dni 5 h"    (kind 'days_hours', nearest hour)
+ * With lang 'en' only the text differs: "Less than 1 min", "About 20 h 24 min", "About 3 d 5 h".
  */
-function describeDuration(hours) {
+function describeDuration(hours, lang) {
   if (typeof hours !== 'number' || !Number.isFinite(hours) || hours < 0) return null;
+  const en = lang === 'en';
+  const about = en ? 'About ' : 'Około ';
   if (hours === 0) return { kind: 'zero', days: 0, hours: 0, minutes: 0, text: '0 h' };
   const exactMinutes = hours * 60;
-  if (exactMinutes < 1) return { kind: 'under_minute', days: 0, hours: 0, minutes: 0, text: 'Mniej niż 1 min' };
+  if (exactMinutes < 1) return { kind: 'under_minute', days: 0, hours: 0, minutes: 0, text: en ? 'Less than 1 min' : 'Mniej niż 1 min' };
   const totalMinutes = Math.round(exactMinutes);
   if (totalMinutes < 48 * 60) {
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
-    return { kind: 'hours_minutes', days: 0, hours: h, minutes: m, text: h === 0 ? 'Około ' + m + ' min' : 'Około ' + h + ' h ' + m + ' min' };
+    return { kind: 'hours_minutes', days: 0, hours: h, minutes: m, text: h === 0 ? about + m + ' min' : about + h + ' h ' + m + ' min' };
   }
   const totalHours = Math.round(hours);
   const d = Math.floor(totalHours / HOURS_PER_DAY);
   const rest = totalHours % HOURS_PER_DAY;
-  return { kind: 'days_hours', days: d, hours: rest, minutes: 0, text: 'Około ' + d + ' dni ' + rest + ' h' };
+  return { kind: 'days_hours', days: d, hours: rest, minutes: 0, text: about + d + (en ? ' d ' : ' dni ') + rest + ' h' };
 }
 
 function toAverageW(mode, consumption) {
@@ -111,10 +122,27 @@ function toAverageW(mode, consumption) {
 const FIELD_LABEL = Object.freeze({
   capacityWh: 'Pojemność', consumption: 'Zużycie', chargePercent: 'Naładowanie', usablePercent: 'Energia użyteczna',
 });
+const FIELD_LABEL_EN = Object.freeze({
+  capacityWh: 'Capacity', consumption: 'Consumption', chargePercent: 'Charge', usablePercent: 'Usable energy',
+});
 
 function err(field, code, message) { return { field, code, message }; }
 
-function parseError(field, code, unit) {
+/** English text of the same parse errors; same fields and codes as the Polish branch below. */
+function parseErrorEn(field, code, unit) {
+  if (code === 'REQUIRED') {
+    if (field === 'capacityWh') return err(field, code, 'Enter the battery capacity in Wh.');
+    if (field === 'consumption') return err(field, code, unit ? 'Enter the consumption in ' + unit + '.' : 'Enter the consumption.');
+    if (field === 'chargePercent') return err(field, code, 'Enter the charge in % (0–100).');
+    return err(field, code, 'Enter the usable energy in % (e.g. 85).');
+  }
+  if (code === 'OUT_OF_RANGE') return err(field, code, FIELD_LABEL_EN[field] + ': the number is outside the supported range.');
+  const example = (field === 'chargePercent' || field === 'usablePercent') ? '85' : '1000 or 1.2';
+  return err(field, 'INVALID_NUMBER', FIELD_LABEL_EN[field] + ': enter just a number, e.g. ' + example + '.');
+}
+
+function parseError(field, code, unit, en) {
+  if (en) return parseErrorEn(field, code, unit);
   if (code === 'REQUIRED') {
     if (field === 'capacityWh') return err(field, code, 'Wpisz pojemność baterii w Wh.');
     if (field === 'consumption') return err(field, code, unit ? 'Wpisz zużycie w ' + unit + '.' : 'Wpisz zużycie.');
@@ -130,54 +158,89 @@ function parseError(field, code, unit) {
  * @param {{capacityWh: *, consumptionMode: string, consumption: *, chargePercent?: *, usablePercent?: *}} input
  *   Raw field values (strings as typed, or numbers). chargePercent / usablePercent fall back to DEFAULTS only
  *   when the key is undefined; an empty string is a missing required value.
+ * @param {string} [lang] 'en' for English text; omitted or anything else keeps the original Polish text.
+ *   Only strings (error messages, data.text, data.duration.text, data.consumptionUnit) depend on it.
  * @returns {{ok: true, errors: [], data: object} | {ok: false, errors: {field, code, message}[], data: null}}
  */
-function calculateBatteryRuntime(input) {
+function calculateBatteryRuntime(input, lang) {
   const src = input && typeof input === 'object' ? input : {};
+  const en = lang === 'en';
   const errors = [];
 
   const capacity = parseDecimal(src.capacityWh);
-  if (!capacity.ok) errors.push(parseError('capacityWh', capacity.code));
-  else if (!(capacity.value > 0)) errors.push(err('capacityWh', 'NOT_POSITIVE', 'Pojemność musi być większa od 0 Wh.'));
-  else if (capacity.value > LIMITS.maxCapacityWh) errors.push(err('capacityWh', 'OUT_OF_RANGE', 'Pojemność poza zakresem (maks. 10 000 000 Wh).'));
+  if (!capacity.ok) errors.push(parseError('capacityWh', capacity.code, undefined, en));
+  else if (!(capacity.value > 0)) errors.push(err('capacityWh', 'NOT_POSITIVE', en ? 'Capacity must be greater than 0 Wh.' : 'Pojemność musi być większa od 0 Wh.'));
+  else if (capacity.value > LIMITS.maxCapacityWh) errors.push(err('capacityWh', 'OUT_OF_RANGE', en ? 'Capacity is out of range (max. 10,000,000 Wh).' : 'Pojemność poza zakresem (maks. 10 000 000 Wh).'));
 
   const mode = src.consumptionMode;
   const modeOk = typeof mode === 'string' && MODES.indexOf(mode) !== -1;
-  const unit = modeOk ? MODE_UNITS[mode] : null;
-  if (!modeOk) errors.push(err('consumptionMode', 'INVALID_MODE', 'Wybierz sposób podania zużycia: W, kWh/dobę albo kWh/rok.'));
+  const unit = modeOk ? (en ? MODE_UNITS_EN : MODE_UNITS)[mode] : null;
+  if (!modeOk) errors.push(err('consumptionMode', 'INVALID_MODE', en ? 'Choose how the consumption is given: W, kWh/day or kWh/year.' : 'Wybierz sposób podania zużycia: W, kWh/dobę albo kWh/rok.'));
 
   const consumption = parseDecimal(src.consumption);
   let averageW = null;
-  if (!consumption.ok) errors.push(parseError('consumption', consumption.code, unit));
-  else if (!(consumption.value > 0)) errors.push(err('consumption', 'NOT_POSITIVE', 'Zużycie musi być większe od 0' + (unit ? ' ' + unit : '') + '.'));
+  if (!consumption.ok) errors.push(parseError('consumption', consumption.code, unit, en));
+  else if (!(consumption.value > 0)) errors.push(err('consumption', 'NOT_POSITIVE', (en ? 'Consumption must be greater than 0' : 'Zużycie musi być większe od 0') + (unit ? ' ' + unit : '') + '.'));
   else if (modeOk) {
     averageW = toAverageW(mode, consumption.value);
     if (!Number.isFinite(averageW) || !(averageW > 0) || averageW > LIMITS.maxAverageW) {
       averageW = null;
-      errors.push(err('consumption', 'OUT_OF_RANGE', 'Zużycie poza obsługiwanym zakresem (średnio maks. 1 000 000 W).'));
+      errors.push(err('consumption', 'OUT_OF_RANGE', en ? 'Consumption is outside the supported range (max. 1,000,000 W on average).' : 'Zużycie poza obsługiwanym zakresem (średnio maks. 1 000 000 W).'));
     }
   }
 
   const charge = parseDecimal(src.chargePercent === undefined ? DEFAULTS.chargePercent : src.chargePercent);
-  if (!charge.ok) errors.push(parseError('chargePercent', charge.code));
-  else if (charge.value < 0 || charge.value > 100) errors.push(err('chargePercent', 'OUT_OF_RANGE', 'Naładowanie musi być w zakresie 0–100%.'));
+  if (!charge.ok) errors.push(parseError('chargePercent', charge.code, undefined, en));
+  else if (charge.value < 0 || charge.value > 100) errors.push(err('chargePercent', 'OUT_OF_RANGE', en ? 'Charge must be between 0 and 100%.' : 'Naładowanie musi być w zakresie 0–100%.'));
 
   const usable = parseDecimal(src.usablePercent === undefined ? DEFAULTS.usablePercent : src.usablePercent);
-  if (!usable.ok) errors.push(parseError('usablePercent', usable.code));
-  else if (!(usable.value > 0) || usable.value > 100) errors.push(err('usablePercent', 'OUT_OF_RANGE', 'Energia użyteczna musi być większa od 0% i nie większa niż 100%.'));
+  if (!usable.ok) errors.push(parseError('usablePercent', usable.code, undefined, en));
+  else if (!(usable.value > 0) || usable.value > 100) errors.push(err('usablePercent', 'OUT_OF_RANGE', en ? 'Usable energy must be greater than 0% and not more than 100%.' : 'Energia użyteczna musi być większa od 0% i nie większa niż 100%.'));
 
   if (errors.length) return { ok: false, errors, data: null };
 
   const availableWh = capacity.value * (charge.value / 100) * (usable.value / 100);
   const hours = availableWh / averageW;
   if (!Number.isFinite(availableWh) || availableWh < 0 || !Number.isFinite(hours) || hours < 0) {
-    return { ok: false, errors: [err('consumption', 'RESULT_NOT_FINITE', 'Nie można policzyć wyniku z tych wartości.')], data: null };
+    return { ok: false, errors: [err('consumption', 'RESULT_NOT_FINITE', en ? 'The result cannot be calculated from these values.' : 'Nie można policzyć wyniku z tych wartości.')], data: null };
   }
   if (hours > LIMITS.maxHours) {
-    return { ok: false, errors: [err('consumption', 'RUNTIME_OUT_OF_RANGE', 'Wynik ponad 100 lat — sprawdź zużycie i jego jednostkę.')], data: null };
+    return { ok: false, errors: [err('consumption', 'RUNTIME_OUT_OF_RANGE', en ? 'The result is over 100 years — check the consumption and its unit.' : 'Wynik ponad 100 lat — sprawdź zużycie i jego jednostkę.')], data: null };
   }
 
-  const duration = describeDuration(hours);
+  const duration = describeDuration(hours, lang);
+  if (en) {
+    // English text of the same result. The decimal comma of formatNumber() becomes a decimal point; nothing is recalculated.
+    const num = (value) => formatNumber(value).replace(',', '.');
+    const ce = num(consumption.value);
+    return {
+      ok: true,
+      errors: [],
+      data: {
+        capacityWh: capacity.value,
+        chargePercent: charge.value,
+        usablePercent: usable.value,
+        consumptionMode: mode,
+        consumption: consumption.value,
+        consumptionUnit: unit,
+        availableWh,
+        averageW,
+        hours,
+        duration,
+        text: {
+          duration: duration.kind === 'zero' ? '0 h — battery empty' : duration.text,
+          availableWh: num(availableWh) + ' Wh',
+          availableBasis: num(capacity.value) + ' Wh × ' + num(charge.value) + '% × ' + num(usable.value) + '%',
+          averageW: num(averageW) + ' W',
+          averageBasis: mode === 'w' ? 'stated average power'
+            : mode === 'kwh_day' ? ce + ' kWh/day × 1000 ÷ 24 h'
+              : ce + ' kWh/year × 1000 ÷ 8760 h',
+          assumptions: 'Assumptions: charge ' + num(charge.value) + '%, usable energy ' + num(usable.value)
+            + '% (editable loss estimate), constant average draw ' + num(averageW) + ' W.',
+        },
+      },
+    };
+  }
   const c = formatNumber(consumption.value);
   const averageBasis = mode === 'w' ? 'podana średnia moc'
     : mode === 'kwh_day' ? c + ' kWh/dobę × 1000 ÷ 24 h'
@@ -211,6 +274,6 @@ function calculateBatteryRuntime(input) {
 }
 
 module.exports = {
-  HOURS_PER_DAY, HOURS_PER_YEAR, MODES, MODE_UNITS, DEFAULTS, EXAMPLE_FRIDGE, LIMITS,
+  HOURS_PER_DAY, HOURS_PER_YEAR, MODES, MODE_UNITS, MODE_UNITS_EN, DEFAULTS, EXAMPLE_FRIDGE, LIMITS,
   parseDecimal, formatNumber, describeDuration, calculateBatteryRuntime,
 };

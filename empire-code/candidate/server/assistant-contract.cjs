@@ -35,18 +35,18 @@ const REGISTRY_NAMES=new Set(R.getToolDefinitions().map(d=>d.name));
 
 // `safe` marks the only error texts the Worker may show to the client (all under 300 characters).
 const MSG=Object.freeze({
- request:'Nieprawidłowe zapytanie asystenta. Niczego nie wysłano.',
- state:'Nieprawidłowy szkic rozmowy. Niczego nie wysłano.',
- context:'Nieprawidłowy kontekst asystenta (szkic narzędzia, formularz lub zlecenie). Niczego nie wysłano.',
- mismatch:'Kontekst asystenta zmienił się albo jest niespójny. Niczego nie wysłano; sprawdź bieżące dane i spróbuj ponownie.',
- history:'Wyeksportuj ten szkic i rozpocznij nową rozmowę. Dotychczasowe dane pozostają zapisane.',
- contextLimit:'Szkic i rozmowa przekraczają limit prototypu. Nie skrócono danych.',
- incomplete:'Niekompletna odpowiedź modelu. Niczego nie zmieniono.',
- refusal:'Model odmówił tej operacji. Niczego nie zmieniono.',
- call:'Model nie wskazał jednej prawidłowej operacji. Niczego nie zmieniono.',
- args:'Model podał nieprawidłowe dane operacji. Niczego nie policzono ani nie zmieniono.',
- evidence:'Propozycja nie ma dokładnego odniesienia do Twojej wypowiedzi (treść, wartość, jednostka lub miejsce). Niczego nie zapisano; podaj to w jednym zdaniu.',
- fields:'Pomiar nie spełnia wymagań karty pomiaru (wielkość, jednostka lub wartość). Niczego nie zapisano.'
+ request:'Invalid assistant request. Nothing was sent.',
+ state:'Invalid chat draft. Nothing was sent.',
+ context:'Invalid assistant context (tool draft, form or job). Nothing was sent.',
+ mismatch:'The assistant context changed or is inconsistent. Nothing was sent; check the current data and try again.',
+ history:'Export this draft and start a new chat. The existing data stays saved.',
+ contextLimit:'The draft and chat exceed the prototype limit. No data was shortened.',
+ incomplete:'Incomplete model reply. Nothing was changed.',
+ refusal:'The model refused this operation. Nothing was changed.',
+ call:'The model did not name one valid operation. Nothing was changed.',
+ args:'The model gave invalid operation data. Nothing was calculated or changed.',
+ evidence:'The proposal has no exact reference to your message (content, value, unit or location). Nothing was saved; state it in one sentence.',
+ fields:'The measurement does not meet the measurement card requirements (quantity, unit or value). Nothing was saved.'
 });
 const err=(code,message,status=422)=>Object.assign(new Error(message),{code,status,safe:true});
 const contextError=()=>err('ASSIST_CONTEXT',MSG.context,400);
@@ -185,7 +185,7 @@ let toolCache=null;
  * strict:true, parameters }. `materialSchema` is cloud-provider.mjs SCHEMA, passed in so its unit rules are never copied.
  */
 function tools(materialSchema){
- if(!plain(materialSchema)||materialSchema.type!=='object'||materialSchema.additionalProperties!==false)throw err('AI_NOT_CONFIGURED','Rozmowa AI nie jest jeszcze skonfigurowana na serwerze. Szkic bez zmian.',503);
+ if(!plain(materialSchema)||materialSchema.type!=='object'||materialSchema.additionalProperties!==false)throw err('AI_NOT_CONFIGURED','AI chat is not configured on the server yet. The draft is unchanged.',503);
  if(toolCache&&toolCache.schema===materialSchema)return toolCache.list;
  const fn=(name,description,parameters)=>Object.freeze({type:'function',name,description,strict:true,parameters});
  const list=Object.freeze([

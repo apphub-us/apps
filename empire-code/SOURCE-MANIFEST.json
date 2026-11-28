@@ -1,9 +1,9 @@
 {
   "algorithm": "sha256",
-  "contentPin": "8b6c7c985c20c7950ca1c87e280799531c7589543cc6b42963e244f1f49e3230",
+  "contentPin": "166d71535e8ca8923e9907009d0a0f1754bc34a6d96b35c8075f9181a0fc24d3",
   "excludes": [
-    "SOURCE-MANIFEST.json",
-    "RELEASE.json"
+    "RELEASE.json",
+    "SOURCE-MANIFEST.json"
   ],
   "pairs": [
     [
@@ -12,15 +12,15 @@
     ],
     [
       "README.md",
-      "c2707de222b2a37112086b19579041b038ed06a515dffc8850b9c0000f92ce11"
+      "f33b4149f4bb29631d0472ca42514919a20d0a31f9a043f44fbaedc550a62ce7"
     ],
     [
       "candidate/browser/assistant-session.js",
-      "5e0f798a947960525260fcb93f60f1e6c5cb5c367e2e9f877b6c99f09dded296"
+      "11754a7ea6e8c8507c32e78bd41250b7c2f93e6803f5eb94bf0358e0f55c51c9"
     ],
     [
       "candidate/browser/conversation-bank.js",
-      "3708147993c199dccce25bf0702542f957cffe2cbb363e5b9382c01072350ad3"
+      "40c31b58dfdc5d2e7f3e9dffb8316138cd24178e7dbd205b028cb93e925556a7"
     ],
     [
       "candidate/browser/draft-recovery.js",
@@ -28,19 +28,19 @@
     ],
     [
       "candidate/browser/handoff-session.js",
-      "220555d17917158e0c65c61536ca75f28b04837a706f92aed9b1269801729076"
+      "33b1f31c2106a472072f2d0cf907a07e5e635d4271e71808e96c1f6d5696fc06"
     ],
     [
       "candidate/browser/index.html",
-      "98f56c3ab26c5a23fe41bc8d0a40e585d4cce3760dc6c0d7f13e1745ec100f86"
+      "46c6f0601f69890c89a3311322318183488f3e02cc533480a0f5c5f4fc004e31"
     ],
     [
       "candidate/browser/material-edit-host.js",
-      "dd25a9476e5b0fa89722a7f98e40b559863ebf66ba0fbf70b182a708897d6e49"
+      "d220429567ab7d8312040f2475a35f4b0fa3efe8b61effd669abdfccdc2c85b5"
     ],
     [
       "candidate/browser/style.css",
-      "31801259963ae95bc53ab1e8c8466fba938660f90622184586c90a2eb005a39b"
+      "bb18eba7eba06af0d418cde8bf9a49d07accf771c6bfe53d6cc93c46749baf15"
     ],
     [
       "candidate/browser/sw.js",
@@ -48,11 +48,11 @@
     ],
     [
       "candidate/browser/ui.js",
-      "67f85f5997562d85319140a6d2111a18309448f71915c81dc39aae33fe868409"
+      "d6fd96e7640e4c2d20f95897a1f97ac48cb84b66d6be942e77f0cccc2e12335d"
     ],
     [
       "candidate/browser/workspace-host.js",
-      "726048835db467875369827077297b9206fbce977261b0203440a83d609f832e"
+      "c9df4f2a0d532c2e5d1c453c9085543e2f618479f6b2496dae4ed7b5433efe1a"
     ],
     [
       "candidate/browser/workspace/assistant-bridge.js",
@@ -60,7 +60,7 @@
     ],
     [
       "candidate/browser/workspace/handoff.js",
-      "4da3f52835e38e03d4357c3ded508a61fb625370e196c3a089c9d072a05d8e81"
+      "13b374e0ce6636e4ac4d5da1380b93db4c3d3f735bc7e336b283e2c6e19711e8"
     ],
     [
       "candidate/browser/workspace/host-core.css",
@@ -68,7 +68,7 @@
     ],
     [
       "candidate/browser/workspace/host-core.js",
-      "ac65c32abb487b0c2525b7009684633af59ff3c6298781124bca29f3c92822c3"
+      "37b2fc7710bcd066bc6f235d6d2482498107cb3c9e06e5d4749a0b53ec613c2d"
     ],
     [
       "candidate/browser/workspace/icon-192.png",
@@ -88,27 +88,27 @@
     ],
     [
       "candidate/browser/workspace/material-edit.js",
-      "bf5c86666874b09a0c00e83373f2c95505a010c76d665c1053233a1a4600a304"
+      "24b9d159dd5277f6d439765417bdc38c678f80eee243b9d7dc5f079ab5209f4c"
     ],
     [
       "candidate/browser/workspace/mobile.html",
-      "078dbd44db2e1607c74fe7ff6dcc5da1c49b2dd5726f2d71513829d653fd9f58"
+      "2bf33e9dd46cba87954563842e0696209fa92d1c464de0bfc046d08e461edcd8"
     ],
     [
       "candidate/build-manifest.generated.json",
-      "29652102e1aca9c809f6deca2c4a55ae49af4666546b7494c97bc481b864e299"
+      "bcf0f13ccb6f4b3431f604bf37523d5529afdde6130b1bbcf97f44390c6c967c"
     ],
     [
       "candidate/build.cjs",
-      "0a8a37de6ed5df64c41273265f8221c3d0a2124525aaa9857c0a5aab4a63c083"
+      "88fa6271580e6da0332b5db860660b61e94180bfbc2f3a19d9f708e07155b075"
     ],
     [
       "candidate/server/assets.generated.mjs",
-      "d008d5740b981bab9d5dd9d312f3b0cbda2c006756dbaf605c2663d49a492d5b"
+      "12c8d227b2e86582b025f8292f3170f7a66c5c7244c64edcd13743d20789eef4"
     ],
     [
       "candidate/server/assistant-contract.cjs",
-      "7c5bb405e792ec4e7f39abc001f89b38c5dc67e2d4e9d57a80270941d5e10946"
+      "5b2f12d0e382b975807aa2d320115a63f8bf3e571af5880f33a333b08056e74c"
     ],
     [
       "candidate/server/assistant-prompt.mjs",
@@ -116,7 +116,7 @@
     ],
     [
       "candidate/server/assistant-provider.mjs",
-      "730eb188906839c187e45fdc40f8736670ddf1ebdbb76cb73a7db3ccfbc71c20"
+      "bbb276de0134f780e9d6a5bd0d4edbb4d7a1927a99dd263afb9876d127516ebd"
     ],
     [
       "candidate/server/budget.mjs",
@@ -124,19 +124,19 @@
     ],
     [
       "candidate/server/cloud-provider.mjs",
-      "bc9983872ee0042c20157acfecbadd33d7655d09208477ea92c709171d84c3dd"
+      "e2b47ad240197c94e6a60951c6608938664099cab1772bdb13742e4093374f6e"
     ],
     [
       "candidate/server/contract.cjs",
-      "1eb6bcf01327910cfb1baf7769521ce9657aabafdc84b2fc3fccaa64fd1d4443"
+      "a466ff7e971877037d89120d852eb3f37d8697cefe0334c65e1445f0393bc390"
     ],
     [
       "candidate/server/prompt.generated.mjs",
-      "2d959350f42feadeed66c892e5f1793679efe88a7b880247f8b1b7aec9a7d5b5"
+      "fce1c56f84ae30191c6d5dec667dfc618004ddd3c6156b398a5adbb519a0204e"
     ],
     [
       "candidate/server/worker.mjs",
-      "5f176c9620a1e0df8327aef1207166ba3f6d58bbf43b30e951fbe3d06cab9f1a"
+      "2815ec3531d53b41ffd8b3deaec744f0646dc34caa0d159d71fa440f88a4be5c"
     ],
     [
       "candidate/server/wrangler.example.json",
@@ -288,7 +288,7 @@
     ],
     [
       "core/mobile.html",
-      "783bb1b77d26e87df339013dfbfd17f687c24e566b9d089724887e9fe3ce0bd4"
+      "abf690bd831492c8d1173d6f565aa102dc7c5124ff06fc43f8431ab04d54a487"
     ],
     [
       "core/nema-wiki-test.html",
@@ -340,7 +340,7 @@
     ],
     [
       "core/src/calc/batteryRuntime.js",
-      "2d6216343d2230a11c08aa7178edca4d578f58dcacbf7519eb93888cfc4f1b86"
+      "d65a849a7d1fe7f4e22de0d195a92f710ef302e56b96c9b198cbba52725d71d7"
     ],
     [
       "core/src/calc/boxFill.js",
@@ -444,7 +444,7 @@
     ],
     [
       "core/src/jobs/jobConversationHandoff.js",
-      "a12c776241ea4ae8d1995894f1ddc504ac851cbdfb71a7c38d0f67dbafe0ca8d"
+      "60ec16641199959941e7e1e6ac03fc998c0c31d5bd33f060df6c5dbac6bc4bea"
     ],
     [
       "core/src/jobs/jobMaterial.js",
@@ -488,11 +488,11 @@
     ],
     [
       "core/src/jobs/jobVoiceIntent.js",
-      "e1f57c77e474fcf91932484d6f8208225e0d8f0c2aea90a95f6a2fee59dcc3c6"
+      "c05bb505947336eca7a0909641e09dd6014d321e77990b2e896e3877e104909a"
     ],
     [
       "core/src/jobs/jobVoiceMaterials.js",
-      "417312923be9a564a483d888d67a8586e173bef07fc6724fdc94d920a64a7e99"
+      "cf0f0cb471c9548d39d39fc0e4d442fdfeeb540225b57707498f9054dae5f929"
     ],
     [
       "core/src/jobs/materialQuantity.js",
@@ -528,7 +528,7 @@
     ],
     [
       "core/test/batteryRuntime.test.js",
-      "b3994506e2e94ad7cc91db4be0eba825b1942bd8afb5381a59543716435e600a"
+      "c3b40d6fda06db6b499dc665309f21f4b4202bddbc7132d4f1c829853d821b83"
     ],
     [
       "core/test/boxFill.test.js",
@@ -636,7 +636,7 @@
     ],
     [
       "core/test/helpers/batteryRuntimeDom.js",
-      "a6b783f37d6db27c7829cb3298fe7c840731ac0752bbf08f43875d88d2438748"
+      "e1912ea6a5a0ae1a4bb24cf68860659133bf785bab758d9cc4fd15b80d6f7882"
     ],
     [
       "core/test/helpers/jobIndexedDb.js",
@@ -740,23 +740,23 @@
     ],
     [
       "core/test/jobVoiceBatch.test.js",
-      "5d7e6a7b669b4de5b6435faf1073af88c973a39f7c35391b0e02476e79c38212"
+      "4b690fb4e5d11fc810f93e3251acabc44b109f8eb98fa07d6f3053296ca94f0d"
     ],
     [
       "core/test/jobVoiceIntent.test.js",
-      "286e5b32b730c69b8d6729d30e9251781ea102f81c8c0b543b7b300292360ff8"
+      "b0875b3d2779d77731ad682099fe6dcf3e3f056aba662b1fa25bdaad15b18b80"
     ],
     [
       "core/test/jobVoiceMaterials.test.js",
-      "dc8e62e1d3cd5524bf7a852a51679d2e679ed3fcc31dafa98ef9da24136f1e49"
+      "2e92d4f77ed2ca86e482ec82dddc6f331d6d7bf723d7844fd0ddad64b010907b"
     ],
     [
       "core/test/jobVoiceRepair.test.js",
-      "38a688a8bf90f4e0f339755c0cf6259d3106c58798d897ebc1c8f391816ce9fd"
+      "42073885f7d7f21938363c945d990d2c1ebdd51f556fd4e6bc3c00b43dc44d39"
     ],
     [
       "core/test/jobVoiceShopping.test.js",
-      "2a8d741450e1a5241830bf25fe6400e06f261eb4d06074f3ced340e33b58fa83"
+      "30b507208082e1deaa61326af5df8f116a1de26984b208adacc100e460cb6375"
     ],
     [
       "core/test/loadCalc.test.js",
@@ -1164,7 +1164,7 @@
     ],
     [
       "docs/local-development.md",
-      "859cf1031d209d7c070514563980c918092f6b798537395b6812f6209ec79b10"
+      "206cc7018766091d9fdc52146f214095402f87ce0830f801e02e564abfb6657a"
     ],
     [
       "docs/stage4-qualification-contract.md",
@@ -1200,23 +1200,23 @@
     ],
     [
       "local/check.mjs",
-      "9b5cfe3535758baa7052bed1becaa6868f950faf58e2bf21a425806b3d9f7bd1"
+      "ded352a76d64c820a2e96ee9e37c7723ec19921e86ec8a4409701d1ded922480"
     ],
     [
       "local/credential.mjs",
-      "6aead1653ba4b276771f8e92ddafee88c8042510ed84dcb3c9ee9f32a47d332b"
+      "97498268281b1eb730762da1ea29119e75f1a39880601df532a485e185041fe2"
     ],
     [
       "local/run.mjs",
-      "4223fec0d0b8e97f4a7bc0b4ed768fd489cf9174ea5e5fa97d9fd953462751d5"
+      "ac1339c88e6c49cad3dea453fa14326fcd595130eb4cb5c7daee57d5560dd0bd"
     ],
     [
       "local/server.mjs",
-      "96ca2c8a768fda3bacccf5413c7fa78cc45cb54f009ac9de530c692afa01f5cf"
+      "e4874f0232530f15abcb3ee4896d49af0e79be5f130087a876c3a097900e2eeb"
     ],
     [
       "package.json",
-      "ead61af8ee5365005c385dc807208c941262eb5b3259398d5c038952d70beee3"
+      "7dcfd79093c044ac66c99c230ea14962c6634c919ec7dffda9a33f1e11469318"
     ],
     [
       "tests/backend-budget.test.mjs",
@@ -1232,7 +1232,7 @@
     ],
     [
       "tests/browser-build.test.cjs",
-      "653aced83f47aeee352b11d5a5c8d3b6fe28cbad234061b933f4892700a69109"
+      "809eceffe23411afa0cb1fbd19c41763043dbc7395271dd61cbf73626b05e16c"
     ],
     [
       "tests/browser-sw.test.cjs",
@@ -1240,11 +1240,11 @@
     ],
     [
       "tests/browser-ui.test.cjs",
-      "dffdfc5f69badaee7115c75bffe0379429922f223eb2827396315cf095f028c0"
+      "f08e28a338aa46433d947d0a74bcb35fc99ba5b4e1ef63756a7f4eb469f229d4"
     ],
     [
       "tests/converter-runtime-browser.cjs",
-      "bf1b2cb048ebfb4d72cf88ba56bb6a951fa30e04fe9b89c358697337645c2f4d"
+      "90dcd93a14c18bdff455991e9864a95245c8b134332bd1e445c1f3eea2eda3b0"
     ],
     [
       "tests/converter-wh-runtime.test.cjs",
@@ -1252,7 +1252,7 @@
     ],
     [
       "tests/independent-audio-errors.test.cjs",
-      "94a098ef69a92501c025416490c6eea42f3f4def556fa3e1a06777e2bfa86da4"
+      "404ecdfffbdbdbad510293540cd77179ea7fea58b655ee37116a015576104797"
     ],
     [
       "tests/independent-boundary.test.mjs",
@@ -1268,23 +1268,23 @@
     ],
     [
       "tests/independent-session-errors.test.cjs",
-      "46fced1ef3ef8ff369ca028408fb778602b54b673d68a44dbc8aa38208670576"
+      "5756fe658ad3b6b6b26799043e483682f00ca2884ed56471fbe0503b7da6ac91"
     ],
     [
       "tests/independent-voice-boundaries.test.cjs",
-      "12c54b96a4a85a3f381b195427e6f2434d5208b9b9c8d728964a159a3285c9c3"
+      "f230de87ad71cc9271ca39c6a0ef850e5abcb721da946845f7ac1117e269569e"
     ],
     [
       "tests/independent-voice-lifecycle.test.cjs",
-      "84bb00dab8645a67e81bd1c8e08160a2be25c3177273bd720d22615935eb3d64"
+      "9d2be06be4777b9d293cf37e3fd1741f4e4d622c41834bf98649e4cb9ed22105"
     ],
     [
       "tests/independent-voice-watchdogs.test.cjs",
-      "d51d184f3e311a97c2a21ca96db2c3a46c0e7b15f85ba135878bdcd8ef32b010"
+      "ada76256d09eac6341e8c85ec119af48eb6ec8cb46a51450a25c75e939fa42fc"
     ],
     [
       "tests/local-credential.test.mjs",
-      "801fabf4c84caa1f322204d682d0053a4f5eee2309be8c7a1b76b34dd42f13ee"
+      "7bc981a566a6affd68215594f0c3f1e06bfc1ad5ddab07ca05ceb875136bca8c"
     ],
     [
       "tests/local-fixtures.mjs",
@@ -1296,23 +1296,23 @@
     ],
     [
       "tests/local-runtime.test.mjs",
-      "fe935886fdb8bf7fae2d6c7c2a73657d6c23019b1c33b33629046f84ebf2268c"
+      "2723a7b0593808e35aa47fcb281f0a65cc26be7201ec14dedc62d37e436b40fb"
     ],
     [
       "tests/session-errors.test.cjs",
-      "518fa732c58eed6a9afd4d5d6436510714f5117ed0db953cbca7352421b45d79"
+      "9dcff7e149b158ace7e450e34edb78b3da42652d2e3634b7df797edbfc19bb8a"
     ],
     [
       "tests/stage2-conversation-bank.test.cjs",
-      "c59fcef5a8bdec09bf87423a4b49ece0396cca4e2ac6a37025832509a6385f76"
+      "774a091578edc82cc4d108f1470b46bc85392921a12d09a6bdb7ba014c7ee54b"
     ],
     [
       "tests/stage2-conversation-ui.test.cjs",
-      "b6e47a795663c2238c4a3b71da4ee48fec215fd8ed4d3d586068a49652847814"
+      "95998e19caa4d533b7c9ae40727889bad6390762efe868d93e47ec536963754c"
     ],
     [
       "tests/stage2-data-integrity.test.cjs",
-      "9e20adb996a18541352a5086bd4de247532c9f3d0e26d314b3c4dd1accfeed51"
+      "625f850045452cc7329ab5951c1ef1c717eb69a9645ea76db4957e829865a2fd"
     ],
     [
       "tests/stage2-harness.cjs",
@@ -1320,11 +1320,19 @@
     ],
     [
       "tests/stage2-limits.test.cjs",
-      "e39eb3b978deb625bba967c3d5d5a7ece9e19d520f2f38831ec6d29e9d806100"
+      "e3889c3b08f4fac4ad606131b51b1d0282246a3af3f77b189c69b6672db4d402"
+    ],
+    [
+      "tests/stage2-new-chat.test.cjs",
+      "016ee6816c50806c5682af1c38979a9eeb7c20c4250feff0fc4873713aafa0a2"
+    ],
+    [
+      "tests/stage2-saved-chat-language-transition.test.cjs",
+      "8767f8411603d4995d351b6910e2ed2e9d418dc272deefbf16d4f7139b3593b6"
     ],
     [
       "tests/stage2-update-notice.test.cjs",
-      "7a94c2747db5b440798560bce0426531514100b0e4a9b72a30d13bb01f443e84"
+      "402d7beb5dde04091797659ec3e4b2aecb38576f69e87dfcbb16d3bdea5c14a6"
     ],
     [
       "tests/stage3-material-contract.test.cjs",
@@ -1332,7 +1340,7 @@
     ],
     [
       "tests/stage3-material-edit-units.test.cjs",
-      "f960f0a3f1d20436431dc0bf527b772a979761bc82bb08037a5cf273b9ebab6d"
+      "1658bc4356453ae780ac31c8d51c1bda9751f66318111c0e9c05dcb365e2fd6a"
     ],
     [
       "tests/stage5-assistant-contract.test.mjs",
@@ -1352,23 +1360,23 @@
     ],
     [
       "tests/stage5-client-assistant.test.cjs",
-      "01e57105f854a0c2b539cbfa8a0b7d21ce7ca0e9edd0b1d4f3786e06150b0b22"
+      "e1337cdee95bcbcda566f2d02f9caa089502969a1cba3a4b3026c68f78ad6a8d"
     ],
     [
       "tests/stage5-client-boundaries.test.cjs",
-      "51e34740d762be2c2f631328e7a54569e1fed9389b4c810010e67030eba475c6"
+      "a07c4914529875b116bfa0703a3a3e2dad5311babcfe2673aed45cc072b6485b"
     ],
     [
       "tests/stage5-client-job-recovery.test.cjs",
-      "5ade621b60e0eb526d9f6c3553ad5669de950e9049bcc8fa2a2f8898bfafc906"
+      "331fb4e1fc63a39d15d549d2850214588af9b71a6b7c790cc0ed90cc18554e8d"
     ],
     [
       "tests/stage5-client-job.test.cjs",
-      "e7a760e2c8aebd478a2e676b7999d7e397650083d8ec34f4e48459fe62aff40e"
+      "8c7b755800d9bc0bcfb1e565b4a63ea659e110bc87256a49c784535cdfb83248"
     ],
     [
       "tests/stage5-form-bridge.test.cjs",
-      "71140630f612e505da36cfec7e0df74280776d1058058449358e3e84cf48b13f"
+      "05f0ec87b5cd71e18f548feeeb964fa33dbba2b832f0bd4a3f34f4d2c3ca11ee"
     ],
     [
       "tests/stage5-form-parity.test.cjs",
@@ -1376,7 +1384,7 @@
     ],
     [
       "tests/stage5-frame-ready.test.cjs",
-      "26fa6e974b4d667743a78b47937b1af30b31a69ec4db2fd7e0ea3ae6c74d42f3"
+      "ae2731665e04c1e6aa7a96547ea6edebd63924236ea3abb00ab2f370eb9eb9b5"
     ],
     [
       "tests/voice-harness-base.txt",

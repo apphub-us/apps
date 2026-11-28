@@ -1,7 +1,20 @@
 'use strict';
 /** Material-list interpreter. Captures counts/specifications, never selects a
  * conductor or fitting for an installation. Uncertain spans remain questions.
- * Pure: no microphone, network, clock, browser state or persistence access. */
+ * Pure: no microphone, network, clock, browser state or persistence access.
+ *
+ * Language. Polish, English and mixed INPUT is recognised: the regular expressions below are input
+ * vocabulary, not UI. Everything this module GENERATES is English first-party text — questions,
+ * problems, preview titles, the saved item label and the generated parts of specification / notes
+ * ("material: plastic", "manufacturer: …", "model: not given", "50 ft each"). The user's own words
+ * (maker, model, colours, quoted fragments, the transcript) are copied literally.
+ *
+ * Generated specification / notes text is DISPLAY ONLY. No reader in the application interprets a
+ * "material:" / "manufacturer:" prefix or the generated note: the batch plan, the material store,
+ * the archive / restore path and the correction panel carry these fields as opaque text. Records
+ * and pending plans written earlier with the former Polish wording ("materiał: plastik",
+ * "producent: …", "model: niepodany", "po 50 ft", label "Przewód" / "Konektor") therefore stay
+ * valid and are never rewritten, migrated or re-parsed. */
 const Material = require('./jobMaterial.js');
 const fold = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/Ł/g, 'L').toLowerCase();
 const trim = s => s.trim().replace(/\s+/g, ' ');
@@ -13,7 +26,13 @@ const NUMBER = /\S+/gu;
 const countUnit = s => /^(pcs|piece|szt)/.test(fold(s));
 function unitOf(s) { const x=fold(s); if(countUnit(x))return 'pcs'; if(/^(ft|feet|foot|stop|stopy)$/.test(x))return 'ft'; if(/^(metr|meter)/.test(x)||x==='m')return 'm'; if(/^(inch|in)/.test(x))return 'in'; return ['cm','mm'].includes(x)?x:null; }
 function family(word) { const x=fold(word); return /^(konektor|connector|zlacz)/.test(x)?'connector':/^bus(?:h)?ing/.test(x)?'bushing':/^(breaker|wylacznik)/.test(x)?'breaker':'wire'; }
-function title(f) { return f==='wire'?'Przewody':f==='connector'?'Konektory':f==='breaker'?'Breakery':'Bushingi'; }
+// Preview heading of a family (plural) and the label saved with one item (singular). English output text.
+function title(f) { return f==='wire'?'Wires':f==='connector'?'Connectors':f==='breaker'?'Breakers':'Bushings'; }
+function itemLabel(f) { return f==='wire'?'Wire':f==='connector'?'Connector':f==='breaker'?'Breaker':'Bushing'; }
+// 'plastik' / 'metal' are the internal type tokens kept in preview.knownType (a structured value, compared in
+// repair() and never displayed). KIND_TEXT is their English display text for headings and specifications.
+const KIND_TEXT = Object.freeze({plastik:'plastic',metal:'metal'});
+const SIZE_NOT_GIVEN = 'Size not given — explicitly confirmed.';
 function cleanBoundary(s) { return s.replace(/^[\s,;:.]+|[\s,;:.]+$/g,'').trim(); }
 function filler(s) {
  let x=fold(s).replace(/[,.!;:…]+/g,' ').trim();
@@ -66,24 +85,24 @@ function unknownSpec(s){return /^(?:rozmiar (?:niepodany|nieznany)|bez rozmiaru|
 function fittingDetails(raw) {
  let rest=cleanBoundary(raw),types=[];
  rest=rest.replace(/\b(?:plastikow(?:e|y|ych|a|ego)|plastic|metalow(?:e|y|ych|a|ego)|metal)\b/giu,word=>{types.push(/^plast/i.test(word)?'plastik':'metal');return '';});
- types=[...new Set(types)];rest=cleanBoundary(rest);const kind=types.join(' / '),dimension=inchSize(rest),unknown=unknownSpec(rest);
- return {kind,rest,dimension,unknown,conflict:types.length>1,shown:[dimension,kind?'materiał: '+kind:''].filter(Boolean).join(' · ')};
+ types=[...new Set(types)];rest=cleanBoundary(rest);const kind=types.join(' / '),kindText=types.map(t=>KIND_TEXT[t]).join(' / '),dimension=inchSize(rest),unknown=unknownSpec(rest);
+ return {kind,kindText,rest,dimension,unknown,conflict:types.length>1,shown:[dimension,kindText?'material: '+kindText:''].filter(Boolean).join(' · ')};
 }
 function breakerDetails(raw) {
  const value=cleanBoundary(raw);
  // Store a shopping-list rating, not suitability for a panel or installation.
  const rating=/^(\d+(?:[.,]\d+)?)\s*(A|amps?|amper(?:y|a|ów|ow)?)(?=$|\s|[,;])/iu.exec(value);
- if(!rating||!Number.isFinite(Number(rating[1].replace(',','.')))||Number(rating[1].replace(',','.'))<=0)return {ok:false,message:'Podaj prąd znamionowy i model/typ breakera. To zapis materiału, nie dobór zabezpieczenia.'};
+ if(!rating||!Number.isFinite(Number(rating[1].replace(',','.')))||Number(rating[1].replace(',','.'))<=0)return {ok:false,message:'Give the rated current and the model/type of the breaker. This records a material; it does not select protection.'};
  const amperes=rating[1].replace(',','.')+' A';let tail=cleanBoundary(value.slice(rating[0].length));
  const model=/\b(?:model|typ|type)\s+([\p{L}\p{N}][\p{L}\p{N}_. /-]{0,59})$/iu.exec(tail);
  const rawBrand=model?cleanBoundary(tail.slice(0,model.index)):tail;
  const brand=/^(?:firmy|producent(?:a)?|marki|brand|by)\s+([\p{L}\p{N}][\p{L}\p{N} .&-]{0,59})$/iu.exec(rawBrand);
  const maker=brand?brand[1].trim():'';
- if(rawBrand&&!maker)return {ok:false,rating:amperes,message:'Potwierdź producenta oraz model/typ breakera. Nie odgaduję ich z tekstu.'};
- if(!model)return {ok:false,rating:amperes,maker,message:'Potwierdź producenta i podaj model/typ albo powiedz „model niepodany”. Nazwa z nagrania nie jest automatycznie poprawiana.'};
- const name=model[1].trim();if(/\b(?:delete|usun|order|zamow|approve|dobierz|albo|lub|or|instead|zamiast)\b/i.test(fold(name)))return {ok:false,rating:amperes,maker,message:'Model zawiera dodatkowe polecenie lub alternatywę. Potwierdź jedną pozycję.'};
+ if(rawBrand&&!maker)return {ok:false,rating:amperes,message:'Confirm the manufacturer and the model/type of the breaker. I do not guess them from the text.'};
+ if(!model)return {ok:false,rating:amperes,maker,message:'Confirm the manufacturer and give the model/type, or say “model unknown”. A name from the recording is not corrected automatically.'};
+ const name=model[1].trim();if(/\b(?:delete|usun|order|zamow|approve|dobierz|albo|lub|or|instead|zamiast)\b/i.test(fold(name)))return {ok:false,rating:amperes,maker,message:'The model contains an extra command or an alternative. Confirm one item.'};
  const unknown=/^(?:niepodany|nieznany|unknown|not recorded)$/i.test(name);
- return {ok:true,rating:amperes,maker,specification:[amperes,maker?'producent: '+maker:'',unknown?'model: niepodany':'model: '+name].filter(Boolean).join(' · '),notes:'Opis z wypowiedzi — model, producent i zgodność z rozdzielnicą nie są weryfikowane.'};
+ return {ok:true,rating:amperes,maker,specification:[amperes,maker?'manufacturer: '+maker:'',unknown?'model: not given':'model: '+name].filter(Boolean).join(' · '),notes:'As stated in the capture — model, manufacturer and panel compatibility are not verified.'};
 }
 function extendedWireSpec(raw) {
  const basic=wireSpec(raw);if(basic)return basic;
@@ -92,7 +111,7 @@ function extendedWireSpec(raw) {
  // No unstated lengths, colours, quantity multiplication or installation suitability.
  const colours=/^((?:czerwon[ya]|czarn[ya]|bial[ya]|biał[ya]|zielon[ya]|niebiesk[ia]|red|black|white|green|blue)(?:\s+(?:i|and)\s+(?:czerwon[ya]|czarn[ya]|bial[ya]|biał[ya]|zielon[ya]|niebiesk[ia]|red|black|white|green|blue))*)(?=$|[,;\s])/iu.exec(text);
  if(colours){specs.push(colours[1]);text=cleanBoundary(text.slice(colours[0].length));}
- if(text){const length=/^(?:po|each)\s+(\d+(?:[.,]\d+)?)\s*(ft|feet|foot|stóp|stopy|m|meters?|metry|metrów)$/iu.exec(text);if(!length||!Number.isFinite(Number(length[1].replace(',','.')))||Number(length[1].replace(',','.'))<=0)return null;specs.push('po '+length[1].replace(',','.')+' '+unitOf(length[2]));}
+ if(text){const length=/^(?:po|each)\s+(\d+(?:[.,]\d+)?)\s*(ft|feet|foot|stóp|stopy|m|meters?|metry|metrów)$/iu.exec(text);if(!length||!Number.isFinite(Number(length[1].replace(',','.')))||Number(length[1].replace(',','.'))<=0)return null;specs.push(length[1].replace(',','.')+' '+unitOf(length[2])+' each');}
  return specs.length>1?specs.join(' · '):null;
 }
 
@@ -121,7 +140,7 @@ function parse(text,decimal,{force=false}={}) {
  }
  if(!entries.length)return null;
  const leading=text.slice(0,entries[0].start);
- if(!filler(leading))out.problems.push('Niejasny początek listy: „'+trim(leading)+'”. Nie pominięto tego fragmentu.');
+ if(!filler(leading))out.problems.push('Unclear start of the list: “'+trim(leading)+'”. This fragment was not skipped.');
  // Expand entry boundaries to a new purchase clause (and its false starts)
  // so interrupted counts stay with their own material, not the prior wire.
  for(let i=1;i<entries.length;i++){
@@ -136,65 +155,69 @@ function parse(text,decimal,{force=false}={}) {
   if(e.family==='wire'&&e.q&&e.q.unit==='pcs'&&!rawTail&&i+1<entries.length&&entries[i+1].family==='wire'){
    let j=i+1;while(j+1<entries.length&&entries[j+1].family==='wire')j++;
    end=j+1<entries.length?entries[j+1].start:text.length;
-   ask(e.start,end,'wire','Podano ogólną liczbę kabli oraz dalsze ilości lub rozmiary. Wymień każdy przewód z ilością i jednoznacznym rozmiarem; nie zsumowałem tych liczb.',{},true);i=j;continue;
+   ask(e.start,end,'wire','A total number of cables was given together with further quantities or sizes. List each wire with its quantity and an unambiguous size; I did not add these numbers up.',{},true);i=j;continue;
   }
   const raw=text.slice(e.start,end);let spec=stripTail(text.slice(e.end,end));
   if(e.echoes.length){const first=e.echoes[0];const before=cleanBoundary(text.slice(e.end,first.start));if(!before)spec=stripTail(text.slice(first.end,end));}
-  const q=e.q,fit=(e.family==='connector'||e.family==='bushing')?fittingDetails(spec):null,preview={label:title(e.family)+(fit&&fit.kind?' · '+fit.kind:''),...(q?{quantityText:q.value,unit:q.unit}:{}),rawSpecification:spec};
-  if(!q){ask(e.start,end,e.family,'Ile sztuk lub jaka długość tej pozycji? Powtórz ją z ilością.',preview);continue;}
-  if(q.unit==='pcs'&&(!Number.isSafeInteger(Number(q.value))||Number(q.value)<=0)){ask(e.start,end,e.family,'Podaj dodatnią całkowitą liczbę sztuk w obsługiwanym zakresie.',preview);continue;}
+  const q=e.q,fit=(e.family==='connector'||e.family==='bushing')?fittingDetails(spec):null,preview={label:title(e.family)+(fit&&fit.kindText?' · '+fit.kindText:''),...(q?{quantityText:q.value,unit:q.unit}:{}),rawSpecification:spec};
+  if(!q){ask(e.start,end,e.family,'How many pieces, or what length, for this item? Repeat it with the quantity.',preview);continue;}
+  if(q.unit==='pcs'&&(!Number.isSafeInteger(Number(q.value))||Number(q.value)<=0)){ask(e.start,end,e.family,'Give a positive whole number of pieces within the supported range.',preview);continue;}
   if(e.restart||/(?:\d|zł[ąa]?)\s*(?:\.\.\.|…)/iu.test(raw)){
-   ask(e.start,end,e.family,'W tej pozycji są urwane słowa lub powtórzone liczby. Potwierdź ilość i rozmiar jednym zdaniem; nie naliczyłem powtórzeń.',preview);continue;
+   ask(e.start,end,e.family,'This item has cut-off words or repeated numbers. Confirm the quantity and size in one sentence; I did not count the repeats.',preview);continue;
   }
   if(/\b(?:nie|not|albo|lub|or|maybe|chyba|moze|zamiast|instead|usun|delete|zamow|order|zatwierdz|approve|dobierz)\b/i.test(fold(raw))||/[<>]/.test(raw)){
-   ask(e.start,end,e.family,'Opis zawiera alternatywę, zaprzeczenie lub dodatkowe polecenie. Podaj jedną potwierdzoną pozycję.',preview);continue;
+   ask(e.start,end,e.family,'The description contains an alternative, a negation or an extra command. Give one confirmed item.',preview);continue;
   }
   let specification='',notes='';
   if(e.family==='breaker'){
-   if(q.unit!=='pcs'){ask(e.start,end,e.family,'Podaj liczbę sztuk breakerów, nie długość.',preview);continue;}
+   if(q.unit!=='pcs'){ask(e.start,end,e.family,'Give the number of breakers, not a length.',preview);continue;}
    const d=breakerDetails(spec);if(!d.ok){ask(e.start,end,e.family,d.message,{...preview,rating:d.rating||'',maker:d.maker||''});continue;}
    specification=d.specification;notes=d.notes;
   } else if(e.family==='wire'){
-   if(spec){specification=extendedWireSpec(spec);if(!specification&&!unknownSpec(spec)){ask(e.start,end,'wire','Potwierdź rozmiar przewodu oraz, jeśli podano długość, czy dotyczy każdej sztuki czy całości. Nie zamieniam „trzy zero” / „2 0” na AWG ani nie przypisuję domyślnie długości.',preview);continue;}}
-   if(q.unit==='pcs'&&!specification&&!unknownSpec(spec)){ask(e.start,end,'wire','Podaj rozmiar tych przewodów albo wyraźnie powiedz „rozmiar niepodany”. Liczba sztuk nie jest długością.',preview);continue;}
+   if(spec){specification=extendedWireSpec(spec);if(!specification&&!unknownSpec(spec)){ask(e.start,end,'wire','Confirm the wire size and, if a length was given, whether it applies to each piece or to the total. I do not convert “three zero” / “2 0” to AWG or assign a length by default.',preview);continue;}}
+   if(q.unit==='pcs'&&!specification&&!unknownSpec(spec)){ask(e.start,end,'wire','Give the size of these wires or explicitly say “size unknown”. A number of pieces is not a length.',preview);continue;}
   } else {
-   if(q.unit!=='pcs'){ask(e.start,end,e.family,'Dla osprzętu podaj liczbę sztuk. Wymiar osprzętu zapisz osobno po jego nazwie.',preview);continue;}
-   if(fit.conflict){ask(e.start,end,e.family,'Opis jednego elementu zawiera plastik i metal. Potwierdź typ materiału.',preview);continue;}
+   if(q.unit!=='pcs'){ask(e.start,end,e.family,'For fittings give the number of pieces. State the fitting size separately, after its name.',preview);continue;}
+   if(fit.conflict){ask(e.start,end,e.family,'The description of one item contains both plastic and metal. Confirm the material type.',preview);continue;}
    if(fit.dimension)specification=fit.shown;
-   else if(fit.unknown){specification=fit.kind?'materiał: '+fit.kind:'';notes='Rozmiar niepodany — jawnie potwierdzone.';}
+   else if(fit.unknown){specification=fit.kindText?'material: '+fit.kindText:'';notes=SIZE_NOT_GIVEN;}
    else {
-    const message=fit.rest?'Rozmiar osprzętu jest niejednoznaczny. Potwierdź wymiar — bez zgadywania z ciągu cyfr.':'Jaki rozmiar osprzętu? Możesz też jawnie powiedzieć „rozmiar niepodany”.';
+    const message=fit.rest?'The fitting size is ambiguous. Confirm the dimension — it is not guessed from a string of digits.':'What size is the fitting? You can also explicitly say “size unknown”.';
     ask(e.start,end,e.family,message,{...preview,knownType:fit.kind,answerMode:'fitting_size'});continue;
    }
   }
-  if(unknownSpec(spec))notes='Rozmiar niepodany — jawnie potwierdzone.';
-  const fields={label:e.family==='wire'?'Przewód':e.family==='connector'?'Konektor':e.family==='breaker'?'Breaker':'Bushing',specification:specification||'',quantityText:q.value,unit:q.unit,status:'needed',location:'',supplier:'',notes};
+  if(unknownSpec(spec))notes=SIZE_NOT_GIVEN;
+  const fields={label:itemLabel(e.family),specification:specification||'',quantityText:q.value,unit:q.unit,status:'needed',location:'',supplier:'',notes};
   const validation=Material.validateFields(fields);
   if(!validation.ok){ask(e.start,end,e.family,validation.problems.join(' '),preview);continue;}
   const action={kind:'material',fields,source:cleanBoundary(raw)};out.actions.push(action);out.draftItems.push({state:'ready',...action});
  }
- if(out.actions.length+out.issues.length>8)out.problems.push('Maksymalnie osiem pozycji w jednej wypowiedzi. Podziel listę; niczego nie zapisano.');
+ if(out.actions.length+out.issues.length>8)out.problems.push('At most eight items in one instruction. Split the list; nothing was saved.');
  out.ok=out.problems.length===0&&out.actions.length>0;return out;
 }
 function repair(parsed,id,reply,decimal) {
  const bad=m=>({ok:false,repairError:true,problems:[m]});
- if(!parsed||parsed.interpretation!=='trade-materials-v1'||typeof reply!=='string'||!reply.trim()||reply.length>1000)return bad('Podaj poprawioną pozycję z ilością i rozmiarem.');
+ if(!parsed||parsed.interpretation!=='trade-materials-v1'||typeof reply!=='string'||!reply.trim()||reply.length>1000)return bad('Give the corrected item with its quantity and size.');
  const checked=parse(parsed.transcript,decimal,{force:true}),issue=checked&&checked.issues.find(i=>i.id===id),old=parsed.issues&&parsed.issues.find(i=>i.id===id);
- if(!issue||!old||JSON.stringify(issue)!==JSON.stringify(old))return bad('Lista zmieniła się. Wybierz bieżące pytanie ponownie.');
+ if(!issue||!old||JSON.stringify(issue)!==JSON.stringify(old))return bad('The list has changed. Choose the current question again.');
  let applied=reply.trim(),answer=parse(applied,decimal,{force:true});
  // A short size answer applies only to a verified fitting-size question; no count or material is inferred.
  if((!answer||!answer.ok)&&issue.preview.answerMode==='fitting_size'){
   const size=inchSize(applied),unspecified=unknownSpec(applied);
-  if(size||unspecified){const word=issue.family==='connector'?'konektory':'bushingi',kind=issue.preview.knownType==='plastik'?'plastikowe':issue.preview.knownType==='metal'?'metalowe':'';
+  // The composed line becomes part of the reviewed transcript, so it is written with English words. They are
+  // recognised vocabulary exactly like the former 'konektory' / 'bushingi' / 'plastikowe' / 'metalowe': the same
+  // family, count, type and size are read back. The user's own size words stay as they were said.
+  if(size||unspecified){const word=issue.family==='connector'?'connectors':'bushings',kind=issue.preview.knownType==='plastik'?'plastic':issue.preview.knownType==='metal'?'metal':'';
    applied=issue.preview.quantityText+' '+word+' '+kind+' '+applied;answer=parse(applied,decimal,{force:true});}
  }
- if(!answer||!answer.ok||answer.issues.length||answer.actions.some(a=>a.kind!=='material')||(issue.scope!=='material_group'&&answer.actions.length!==1))return bad(answer&&answer.problems.length?answer.problems.join(' '):'Powtórz tę pozycję z ilością i jednoznacznym rozmiarem.');
- if(answer.draftItems.some(a=>{const label=a.fields&&a.fields.label;return issue.family==='wire'?label!=='Przewód':issue.family==='connector'?label!=='Konektor':issue.family==='breaker'?label!=='Breaker':label!=='Bushing';}))return bad('Odpowiedź dotyczy innego rodzaju materiału. Nie zastąpiono wpisu.');
+ if(!answer||!answer.ok||answer.issues.length||answer.actions.some(a=>a.kind!=='material')||(issue.scope!=='material_group'&&answer.actions.length!==1))return bad(answer&&answer.problems.length?answer.problems.join(' '):'Repeat this item with its quantity and an unambiguous size.');
+ // The answer was parsed just above by this same module, so its labels are always the current itemLabel() text.
+ if(answer.draftItems.some(a=>{const label=a.fields&&a.fields.label;return label!==itemLabel(issue.family);}))return bad('The answer is about a different kind of material. The entry was not replaced.');
  const text=parsed.transcript.slice(0,issue.start)+applied+parsed.transcript.slice(issue.end),next=parse(text,decimal,{force:true});
- if(!next)return bad('Nie udało się ponownie odczytać całej listy.');
- const history=Array.isArray(parsed.repairs)?parsed.repairs:[];if(history.length>=8)return bad('Limit doprecyzowań. Sprawdź cały tekst; niczego nie zapisano.');
+ if(!next)return bad('The whole list could not be read again.');
+ const history=Array.isArray(parsed.repairs)?parsed.repairs:[];if(history.length>=8)return bad('Clarification limit reached. Check the whole text; nothing was saved.');
  next.originalTranscript=parsed.originalTranscript||parsed.transcript;next.repairs=history.concat([{kind:'material',before:issue.fragment,reply:reply.trim(),after:applied}]);
  next.auditTranscript=next.originalTranscript+'\nUSER CLARIFICATIONS:\n'+next.repairs.map((r,i)=>(i+1)+'. ['+r.before+'] -> ['+r.after+'] | USER REPLY: '+r.reply).join('\n')+'\nREVIEWED TRANSCRIPT:\n'+text;
- if(next.auditTranscript.length>5000)return bad('Historia jest zbyt długa. Niczego nie skrócono ani nie zapisano.');return next;
+ if(next.auditTranscript.length>5000)return bad('The history is too long. Nothing was shortened or saved.');return next;
 }
 module.exports={supported,parse,repair,inchSize,wireSpec};

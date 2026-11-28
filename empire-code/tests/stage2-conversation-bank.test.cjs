@@ -62,7 +62,7 @@ test('migration: corrupt, extended, non-canonical or newer values are refused, n
 test('job limit: the 17th conversation is refused with the way out; archiving one makes room; restoring at the limit refuses without loss',()=>{
  let bank=current();const before=CBank.serialize(bank),job=ids.job(1);
  const fresh=n=>({contextId:ids.ctx(n),baseVersion:0,input:'',envelope:{state:blankState(),undo:[],diffs:[],workspace:H.workspace(blankState(),{source:n,job:1})},now:LATER});
- assert.throws(()=>CBank.commit(bank,fresh(40)),e=>code('LIMIT')(e)&&/Zarządzaj rozmowami/.test(e.message)&&/Zarchiwizuj/.test(e.message));
+ assert.throws(()=>CBank.commit(bank,fresh(40)),e=>code('LIMIT')(e)&&/Manage chats/.test(e.message)&&/Archive one of the/.test(e.message));
  assert.equal(CBank.serialize(bank),before,'a refusal changes nothing');
  const target=CBank.get(bank,ids.ctx(3)),kept=copy(target);
  bank=CBank.archive(bank,{contextId:target.contextId,baseVersion:target.version,now:LATER}).bank;
@@ -75,7 +75,7 @@ test('job limit: the 17th conversation is refused with the way out; archiving on
  assert.equal(CBank.list(bank,job).length,16);
  // restore while the job is full again
  const full=CBank.serialize(bank);
- assert.throws(()=>CBank.restore(bank,{contextId:target.contextId,baseVersion:held.entry.version,now:LATER}),e=>code('LIMIT')(e)&&/pozostaje w archiwum/.test(e.message));
+ assert.throws(()=>CBank.restore(bank,{contextId:target.contextId,baseVersion:held.entry.version,now:LATER}),e=>code('LIMIT')(e)&&/The chat stays in the archive in full/.test(e.message));
  assert.equal(CBank.serialize(bank),full);assert.deepEqual(CBank.where(bank,target.contextId).entry,held.entry);
  // room again: the conversation comes back whole
  const other=CBank.get(bank,ids.ctx(5));
@@ -91,7 +91,7 @@ test('total limit of active conversations: reached across jobs, archived ones ar
  let bank=CBank.empty(),n=0,refusal=null;
  const add=()=>{n++;return CBank.commit(bank,{contextId:ids.ctx(n),baseVersion:0,input:'t'+n,envelope:{state:blankState(),undo:[],diffs:[],workspace:H.workspace(blankState(),{source:n,job:1+n%7})},now:LATER}).bank;};
  for(let i=0;i<500&&!refusal;i++){try{bank=add();}catch(e){refusal=e;n--;}}
- assert.ok(refusal&&code('LIMIT')(refusal)&&/Zarządzaj rozmowami/.test(refusal.message),'a bounded number of active conversations');
+ assert.ok(refusal&&code('LIMIT')(refusal)&&/Manage chats/.test(refusal.message),'a bounded number of active conversations');
  const total=bank.contexts.length;assert.ok(total>16,'the total limit is above one job');
  const first=CBank.get(bank,ids.ctx(1));
  bank=CBank.archive(bank,{contextId:first.contextId,baseVersion:first.version,now:LATER}).bank;
@@ -105,7 +105,7 @@ test('size limit: archiving does not free space, explicit deletion does; the ref
  const big=()=>{n++;const s=blankState();s.history.push({role:'user',content:'x'.repeat(600000)});return {contextId:ids.ctx(n),baseVersion:0,input:'',envelope:{state:s,undo:[],diffs:[],workspace:null},now:LATER};};
  for(let i=0;i<20&&!refusal;i++){const change=big();try{bank=CBank.commit(bank,change).bank;}catch(e){refusal=e;n--;}}
  assert.ok(refusal&&code('LIMIT')(refusal),'the stored size is bounded');
- assert.match(refusal.message,/Zarządzaj rozmowami/);assert.match(refusal.message,/archiwum też/);
+ assert.match(refusal.message,/Manage chats/);assert.match(refusal.message,/the archive uses it too/);
  const count=bank.contexts.length;assert.ok(count>=2&&count<16,'the size limit was hit before any count limit');
  const a=CBank.get(bank,ids.ctx(1));
  bank=CBank.archive(bank,{contextId:a.contextId,baseVersion:a.version,now:LATER}).bank;
@@ -167,7 +167,7 @@ test('a started write to a job blocks archive, delete and import; the conversati
  const bank=CBank.read(bankV1([pending,editing,entry(32,{input:'inna'})])).bank,before=CBank.serialize(bank);
  for(const e of [pending,editing]){
   assert.equal(CBank.isPending(e.envelope),true);
-  assert.throws(()=>CBank.archive(bank,{contextId:e.contextId,baseVersion:e.version,now:LATER}),ex=>code('PENDING')(ex)&&/Wznów zapis/.test(ex.message));
+  assert.throws(()=>CBank.archive(bank,{contextId:e.contextId,baseVersion:e.version,now:LATER}),ex=>code('PENDING')(ex)&&/Resume save/.test(ex.message));
   assert.throws(()=>CBank.retire(bank,{contextId:e.contextId,baseVersion:e.version,now:LATER}),code('PENDING'));
  }
  assert.equal(CBank.serialize(bank),before);
@@ -219,7 +219,7 @@ test('import: identities, receipts and times come from the file; an older file n
  // the stored conversation moves on; the old file is then a conflict, in both destinations, and nothing changes
  bank=CBank.commit(bank,{contextId:got.contextId,baseVersion:got.version,input:'nowszy tekst',envelope:got.envelope,now:LATER}).bank;
  const stored=CBank.serialize(bank),preview=CBank.inspect(file,bank,{now:LATER});
- assert.equal(preview.outcome,'conflict');assert.equal(preview.relation,'older');assert.match(preview.reason,/niczego nie nadpisuje/);
+ assert.equal(preview.outcome,'conflict');assert.equal(preview.relation,'older');assert.match(preview.reason,/Import overwrites and merges nothing/);
  for(const destination of ['active','archived'])assert.throws(()=>adopt(bank,file,{destination}),code('CONFLICT'));
  assert.equal(CBank.serialize(bank),stored);assert.equal(CBank.get(bank,got.contextId).input,'nowszy tekst');
  // a file that is ahead of the stored conversation is not merged or applied either
@@ -228,7 +228,7 @@ test('import: identities, receipts and times come from the file; an older file n
  assert.throws(()=>adopt(bank,JSON.stringify(ahead)),code('CONFLICT'));
  // the same draft identity under another conversation id would duplicate its materials
  const clone=JSON.parse(file);clone.entry.contextId=ids.ctx(900);
- assert.throws(()=>adopt(bank,JSON.stringify(clone)),e=>code('CONFLICT')(e)&&/powieliłby/.test(e.message));
+ assert.throws(()=>adopt(bank,JSON.stringify(clone)),e=>code('CONFLICT')(e)&&/would duplicate/.test(e.message));
  assert.equal(CBank.serialize(bank),stored);
 });
 
@@ -247,7 +247,7 @@ test('import from a deleted conversation: refused by default, restored only on e
  const bank=CBank.retire(source,{contextId:e.contextId,baseVersion:e.version,now:LATER}).bank,stored=CBank.serialize(bank);
  const preview=CBank.inspect(exact,bank,{now:LATER});
  assert.equal(preview.outcome,'retired');assert.equal(preview.restorable,true);assert.equal(preview.retiredAt,LATER);
- assert.throws(()=>adopt(bank,exact),ex=>code('RETIRED')(ex)&&/jawnego potwierdzenia/.test(ex.message));
+ assert.throws(()=>adopt(bank,exact),ex=>code('RETIRED')(ex)&&/requires explicit confirmation in the import preview/.test(ex.message));
  assert.throws(()=>adopt(bank,exact,{restoreRetired:'yes'}),code('RETIRED'),'only the exact flag is a request');
  assert.equal(CBank.serialize(bank),stored);
  const restored=adopt(bank,exact,{restoreRetired:true});
@@ -260,7 +260,7 @@ test('import from a deleted conversation: refused by default, restored only on e
  const fewer=JSON.parse(exact);fewer.entry.envelope.workspace.receipts.pop();
  const other=JSON.parse(exact);other.entry.contextId=ids.ctx(901);
  const newer=JSON.parse(exact);newer.entry.version=e.version+3;
- for(const [label,file,why] of [['missing receipt',fewer,/potwierdzenia materiałów/],['other conversation id',other,/identyfikatory/],['newer than the deletion',newer,/nowszy/]]){
+ for(const [label,file,why] of [['missing receipt',fewer,/confirmations of materials saved to the job differ/],['other conversation id',other,/identifiers do not together name/],['newer than the deletion',newer,/newer than the state at deletion/]]){
   const text=JSON.stringify(file),p=CBank.inspect(text,bank,{now:LATER});
   assert.equal(p.outcome,'retired',label);assert.equal(p.restorable,false,label);assert.match(p.reason,why,label);
   assert.throws(()=>adopt(bank,text,{restoreRetired:true}),code('RETIRED'),label);

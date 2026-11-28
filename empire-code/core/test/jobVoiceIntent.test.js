@@ -25,6 +25,41 @@ test('spoken signs stay attached to the number instead of becoming part of the l
   const r=P.parse(text,context);assert.equal(r.ok,true,JSON.stringify(r));assert.equal(r.actions[0].fields.valueText,value);assert.doesNotMatch(r.actions[0].fields.location,/minus|negative|plus/i);
  }
 });
+// ENGLISH OUTPUT. The parser still reads Polish, English and mixed input; what it RETURNS to the capture screen is
+// English first-party text. Each case states the exact returned strings and the unchanged structured result; the
+// user's own words are quoted back literally, diacritics included.
+test('Polish input returns exact English problems and keeps the quoted source text',()=>{
+ const empty=P.parse('',context);assert.deepEqual([empty.ok,empty.actions,empty.problems,empty.transcript],[false,[],['Say what you want to record (max. 4000 characters).'],'']);
+ for(const [text,problem] of [
+  ['tak','Confirm the visible summary with the button. Saying “yes” or “save” while dictating saves nothing.'],
+  ['Usuń zdjęcia','This command goes beyond recording observations and materials: “Usuń zdjęcia”. Use the appropriate tool.'],
+  ['Zapłać za zamówienie','Command not recognised: “Zapłać za zamówienie”. Nothing will be saved.']]){
+  const p=P.parse(text,context);assert.equal(p.ok,false,text);assert.deepEqual(p.problems,[problem]);assert.deepEqual(p.actions,[]);assert.deepEqual(p.issues,[]);assert.equal(p.transcript,text);assert.equal(p.target,null);assert.equal(p.interpretation,'bounded-local-v1');
+ }
+});
+test('a Polish measurement without a time asks in English, and the suggested word “now” is accepted',()=>{
+ const text='Zmierzyłem panel A 120 V',p=P.parse(text,context);assert.equal(p.ok,false);assert.deepEqual(p.actions,[]);
+ assert.deepEqual(p.problems,['When was the measurement taken? Add “now” or use the measurement form for an earlier time.']);
+ assert.equal(p.issues.length,1);assert.deepEqual([p.issues[0].kind,p.issues[0].fragment,p.issues[0].message],['measurement',text,p.problems[0]]);assert.equal(p.transcript.slice(p.issues[0].start,p.issues[0].end),text);
+ const fixed=P.parse(text+' now',context);assert.equal(fixed.ok,true,JSON.stringify(fixed));assert.deepEqual(fixed.problems,[]);
+ const f=fixed.actions[0].fields;assert.deepEqual([f.valueText,f.unit,f.quantity,f.location,f.mode,f.measuredLocal,f.utcOffset],['120','V','voltage','panel A','not_recorded',context.measuredLocal,context.utcOffset]);
+});
+test('mixed English and Polish input keeps the recognised measurement and asks in English about the rest',()=>{
+ const text='Measured panel A L1 neutral now 120.00 V AC; do kupienia 80 EMT',p=P.parse(text,context);
+ assert.equal(p.ok,false);assert.equal(p.transcript,text);assert.equal(p.actions.length,1);
+ const f=p.actions[0].fields;assert.deepEqual([p.actions[0].kind,f.valueText,f.unit,f.mode,f.location],['measurement','120.00','V','AC','panel A L1 neutral']);
+ assert.deepEqual(p.problems,['Give the quantity, unit and name of the material: “80 EMT”.']);
+ assert.equal(p.issues.length,1);assert.deepEqual([p.issues[0].kind,p.issues[0].fragment,p.issues[0].message],['material','80 EMT',p.problems[0]]);assert.equal(text.slice(p.issues[0].start,p.issues[0].end),'80 EMT');
+});
+test('correction help is English, names phrases that really work, and the appended provenance line is English',()=>{
+ const p=P.parse(command,context);
+ assert.deepEqual(P.correct(null,'nie 80, tylko 60'),{ok:false,problems:['Prepare the summary first.']});
+ assert.deepEqual(P.correct(p,'save'),{ok:false,problems:['Correction not recognised. Say “change 80 to 60” or „nie 80, tylko 60”. If several values are identical, correct the whole text.']});
+ // Both phrases quoted in the help are accepted, change the same single value and keep the user's words verbatim.
+ for(const said of ['change 80 to 60','nie 80, tylko 60']){const c=P.correct(p,said);assert.equal(c.ok,true,said);assert.deepEqual(c.actions.map(a=>a.kind==='measurement'?a.fields.valueText:a.fields.quantityText),['121.4','60','12']);assert.deepEqual(c.correction,{from:'80',to:'60',source:said});assert.equal(c.transcript,command+'\nCorrection: '+said);}
+ assert.equal(p.transcript,command);
+ const twice=P.parse('Buy 80 ft EMT and 80 pcs connectors',context);assert.deepEqual(P.correct(twice,'nie 80 tylko 60'),{ok:false,problems:['The correction does not point to exactly one value. Correct the text of the instruction.']});
+});
 test('negative corrections, double signs and denial never become positive technical facts',()=>{
  for(const text of ['Measured panel A now not 120 V','Zmierzyłem teraz panel A nie 120 V','Measured panel A now minus minus 12 V','Measured panel A now minus -12 V','Measured panel A now plus negative 12 V','Zmierzyłem teraz panel A nie 120 tylko 121 V'])assert.equal(P.parse(text,context).ok,false,text);
  assert.equal(P.parse('Buy minus 12 ft wire',context).ok,false);

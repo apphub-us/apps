@@ -7,7 +7,7 @@ import A from './assistant-contract.cjs';
 import {MODEL,SCHEMA,createTransport,hasKey,prepareProposal} from './cloud-provider.mjs';
 import {ASSISTANT_PROMPT} from './assistant-prompt.mjs';
 
-const NOT_CONFIGURED='Rozmowa AI nie jest jeszcze skonfigurowana na serwerze. Szkic bez zmian.';
+const NOT_CONFIGURED='AI chat is not configured on the server yet. The draft is unchanged.';
 const MAX_OUTPUT_TOKENS=2300;
 const err=(code,message,status=422)=>Object.assign(new Error(message),{code,status,safe:true});
 
@@ -18,7 +18,7 @@ export function createAssistantProvider({request,prompt}={}){
  if(typeof request!=='function'||typeof prompt!=='string'||!prompt.trim())throw err('AI_NOT_CONFIGURED',NOT_CONFIGURED,503);
  const checkAssist=input=>A.request(input);
  async function assist(checked,{signal}={}){
-  if(!A.isChecked(checked))throw err('ASSIST_REQUEST','Nieprawidłowe zapytanie asystenta. Niczego nie wysłano.',400);
+  if(!A.isChecked(checked))throw err('ASSIST_REQUEST','Invalid assistant request. Nothing was sent.',400);
   const started=Date.now();
   const response=await request('/responses',{signal,json:{model:MODEL,store:false,background:false,service_tier:'default',reasoning:{effort:'low'},max_output_tokens:MAX_OUTPUT_TOKENS,
    instructions:prompt+'\n'+checked.context,input:[...checked.history,{role:'user',content:checked.text}],tools:A.tools(SCHEMA),tool_choice:'required',parallel_tool_calls:false}});

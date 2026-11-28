@@ -11,4 +11,25 @@ test('changed job revision blocks write rather than changing context',async()=>{
 test('async mutation cannot change captured data',async()=>{const e=env(),p=plan();const saving=e.store.save(p,confirm(p));p.actions[0].fields.valueText='999';assert.equal((await saving).ok,true);assert.equal(e.dbs.empire_code_measurements.control.raw('revisions',p.actions[0].revisionId).reading.valueText,'120.00');});
 test('same operation ID with changed content refuses without mutation',async()=>{const e=env(),p=plan();assert.equal((await e.store.save(p,confirm(p))).ok,true);const snap=e.snap();p.actions[1].fields.quantityText='50';assert.equal((await e.store.save(p,confirm(p))).code,'COLLISION');assert.deepEqual(e.snap(),snap);});
 test('late target abort reports failure; explicit retry remains idempotent',async()=>{const e=env(),p=plan(),m=e.dbs.empire_code_measurements,hold=m.control.holdNextCommit('readwrite');const pending=e.store.save(p,confirm(p));await hold.reached;hold.abort('QuotaExceededError');assert.equal((await pending).ok,false);assert.equal(m.control.count('revisions'),0);assert.equal((await e.store.save(p,confirm(p))).ok,true);assert.equal(m.control.count('revisions'),1);});
+// LEGACY GENERATED TEXT. Before the English capture text, the parser wrote Polish generated wording into the
+// material label / specification / notes ("Konektor", "materiał: metal", "producent: …", "model: niepodany",
+// "po 50 ft") and a "Korekta: " line into the transcript. No reader interprets that wording: the plan journal, the
+// material store and the record reader carry it as opaque text. This test pins that real path: a pending plan that
+// already holds the former wording is validated, resumed and read back with every string exactly as stored.
+// It does not load bytes exported from a real device and it does not exercise the screen that displays them.
+test('a pending plan holding the former Polish generated text resumes and reads back unchanged',async()=>{
+ const Material=require('../src/jobs/jobMaterial');const legacy=plan();
+ legacy.transcript='Do kupienia 2 konektory metalowe, rozmiar niepodany i 2 breakery 20 A firmy TestCo model niepodany\nKorekta: nie 3, tylko 2';
+ Object.assign(legacy.actions[1].fields,{label:'Konektor',specification:'materiał: metal',quantityText:'2',unit:'pcs',notes:'Rozmiar niepodany — jawnie potwierdzone.'});
+ Object.assign(legacy.actions[2].fields,{label:'Breaker',specification:'20 A · producent: TestCo · model: niepodany',quantityText:'2',unit:'pcs',notes:'Opis z wypowiedzi — model, producent i zgodność z rozdzielnicą nie są weryfikowane.'});
+ const frozen=JSON.parse(JSON.stringify(legacy)),checked=B.validate(legacy);assert.equal(checked.ok,true,JSON.stringify(checked));assert.deepEqual(checked.plan,frozen);
+ const wire={label:'Przewód',specification:'3/0 AWG · czerwony i czarny · po 50 ft',quantityText:'2',unit:'pcs',status:'needed',location:'',supplier:'',notes:''};assert.deepEqual(Material.validateFields(wire),{ok:true,fields:wire});
+ let first=true;const e=env({step:async(a,n)=>{if(first&&n===1){first=false;throw Error('lost acknowledgement');}}});
+ assert.equal((await e.store.save(legacy,confirm(legacy))).ok,false);
+ const pending=await e.store.inspect(J);assert.equal(pending.pending.length,1);assert.deepEqual(pending.pending[0],frozen);
+ const second=B.createBatchStore(e.indexedDB,{...e.o,step:undefined}),r=await second.save(pending.pending[0],confirm(legacy));assert.equal(r.ok,true,JSON.stringify(r));assert.equal(r.completed[0].reconciled,true);
+ for(const a of frozen.actions.filter(x=>x.kind==='material')){const raw=e.dbs.empire_code_materials.control.raw('revisions',a.revisionId);assert.deepEqual(raw.item,a.fields);assert.deepEqual(raw,B.expected(frozen,a).revision);const read=Material.readRevision(raw);assert.equal(read.ok,true,JSON.stringify(read));assert.deepEqual(read.revision.item,a.fields);}
+ assert.equal(e.dbs.empire_code_materials.control.count('revisions'),2);assert.deepEqual((await e.store.inspect(J)).pending,[]);
+ const snap=e.snap();assert.equal((await second.save(frozen,confirm(frozen))).ok,true);assert.deepEqual(e.snap(),snap);
+});
 test('secure identities, lock and closed action set are mandatory',async()=>{assert.equal(B.createPlan(parsed(),job,{crypto:null,now:NOW}).ok,false);const p=plan(),e=env({locks:null});assert.equal((await e.store.save(p,confirm(p))).code,'UNAVAILABLE');assert.ok(Object.values(e.snap()).every(x=>x===null));p.actions[0].kind='delete';assert.equal(B.validate(p).ok,false);});

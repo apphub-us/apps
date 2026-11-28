@@ -24,7 +24,7 @@ test('technical ambiguity is asked about, never normalized by plausibility',()=>
  for(const s of ['Potrzebuję 1 kabel 2 0','Potrzebuję 3 kable 12','Potrzebuję 2 kable 11 albo G','Potrzebuję 2 konektory 1, 1, 2 incia','Potrzebuję 3 bushingi']){const p=parse(s);assert.equal(p.ok,false,s);assert.equal(p.issues.length,1,s);assert.equal(p.actions.length,0,s);}
 });
 test('explicitly unspecified fitting size stays unknown and documented',()=>{
- const p=parse('Potrzebuję 3 bushingi, rozmiar niepodany');assert.equal(p.ok,true,JSON.stringify(p));assert.equal(p.actions[0].fields.specification,'');assert.match(p.actions[0].fields.notes,/niepodany/);
+ const p=parse('Potrzebuję 3 bushingi, rozmiar niepodany');assert.equal(p.ok,true,JSON.stringify(p));assert.equal(p.actions[0].fields.specification,'');assert.equal(p.actions[0].fields.notes,'Size not given — explicitly confirmed.');
 });
 test('spelling variants and explicit fractions do not alter counts',()=>{
  for(const size of ['1½ cala','1 1/2 cala','1 1/2 inches','półtora cala','one and a half inch']){const p=parse('Do kupienia 2 konektory '+size);assert.equal(p.ok,true,JSON.stringify(p));assert.equal(p.actions[0].fields.quantityText,'2');assert.equal(p.actions[0].fields.specification,'1 1/2 in');}
@@ -73,3 +73,30 @@ test('upper bounds and malformed fractions fail without truncating any item',()=
 
 test('dimensioned English connectors and explicitly sized wire use the same material contract',()=>{for(const text of ['I need two connectors one and a half inch and three bushings half inch','Buy 2 connectors 1 1/2 inch','Potrzebuję 3 przewody 12 AWG','I need three wires 12 AWG']){const p=parse(text);assert.equal(p.ok,true,JSON.stringify(p));assert.equal(p.interpretation,'trade-materials-v1');assert.ok(p.actions.every(x=>M.validateFields(x.fields).ok));}});
 test('English no is not discarded as a harmless Polish filler',()=>{assert.equal(parse('No, buy 2 bushings 1 inch').ok,false);});
+
+// ENGLISH OUTPUT of the material-list interpreter. Input stays Polish / English / mixed; the returned question,
+// the preview heading, the saved label and the generated specification / note are exact English strings. Counts,
+// units, the internal type token (knownType) and the user's own fragment are unchanged.
+test('a Polish fitting without a size is asked about in English with the same structured preview',()=>{
+ const text='Potrzebuję 3 bushingi',p=parse(text);assert.equal(p.ok,false);assert.equal(p.interpretation,'trade-materials-v1');assert.deepEqual(p.actions,[]);assert.equal(p.transcript,text);
+ assert.deepEqual(p.problems,['What size is the fitting? You can also explicitly say “size unknown”.']);
+ const i=p.issues[0];assert.deepEqual([i.kind,i.scope,i.family,i.fragment,i.message],['material','trade_item','bushing','3 bushingi',p.problems[0]]);assert.equal(text.slice(i.start,i.end),'3 bushingi');
+ assert.deepEqual(i.preview,{label:'Bushings',quantityText:'3',unit:'pcs',rawSpecification:'',knownType:'',answerMode:'fitting_size'});
+});
+test('a mixed English and Polish fitting keeps its type token; the English answer named in the question is accepted',()=>{
+ const text='I need 3 bushingi plastikowe',p=parse(text);assert.equal(p.ok,false);assert.equal(p.transcript,text);
+ assert.deepEqual(p.problems,['What size is the fitting? You can also explicitly say “size unknown”.']);
+ assert.deepEqual(p.issues[0].preview,{label:'Bushings · plastic',quantityText:'3',unit:'pcs',rawSpecification:'plastikowe',knownType:'plastik',answerMode:'fitting_size'});assert.equal(p.issues[0].fragment,'3 bushingi plastikowe');
+ const r=P.repair(p,p.issues[0].id,'size unknown',{});assert.equal(r.ok,true,JSON.stringify(r));assert.deepEqual(r.problems,[]);
+ assert.deepEqual(r.actions.map(a=>a.fields),[{label:'Bushing',specification:'material: plastic',quantityText:'3',unit:'pcs',status:'needed',location:'',supplier:'',notes:'Size not given — explicitly confirmed.'}]);
+ assert.equal(r.originalTranscript,text);assert.match(r.auditTranscript,/USER REPLY: size unknown/);assert.equal(M.validateFields(r.actions[0].fields).ok,true);
+});
+test('Polish wire questions are English; a size is never invented and the saved label is English',()=>{
+ let p=parse('Potrzebuję 3 kable 12');assert.equal(p.ok,false);assert.deepEqual(p.actions,[]);
+ assert.deepEqual(p.problems,['Confirm the wire size and, if a length was given, whether it applies to each piece or to the total. I do not convert “three zero” / “2 0” to AWG or assign a length by default.']);
+ assert.deepEqual(p.issues[0].preview,{label:'Wires',quantityText:'3',unit:'pcs',rawSpecification:'12'});assert.equal(p.issues[0].fragment,'3 kable 12');
+ p=parse('Potrzebuję 3 kable');assert.equal(p.ok,false);assert.deepEqual(p.problems,['Give the size of these wires or explicitly say “size unknown”. A number of pieces is not a length.']);
+ p=parse('Potrzebuję 3 kable, size unknown');assert.equal(p.ok,true,JSON.stringify(p));
+ assert.deepEqual(p.actions[0].fields,{label:'Wire',specification:'',quantityText:'3',unit:'pcs',status:'needed',location:'',supplier:'',notes:'Size not given — explicitly confirmed.'});
+ p=parse('Potrzebuję 3 kable 12 AWG i 2 konektory 1 cala');assert.equal(p.ok,true,JSON.stringify(p));assert.deepEqual(p.actions.map(a=>[a.fields.label,a.fields.quantityText,a.fields.unit,a.fields.specification]),[['Wire','3','pcs','12 AWG'],['Connector','2','pcs','1 in']]);
+});

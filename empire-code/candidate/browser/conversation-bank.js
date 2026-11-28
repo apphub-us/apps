@@ -34,7 +34,7 @@
  const RECOVERY_KEYS=['text','savedAt','baseVersion'];
  const BINDING=['version','sourceId','sourceRevision','sourceSavedAt','boundState','targetJobId'];
  const RECEIPT=['jobId','itemId','materialId','revisionId'];
- const MANAGE=' Otwórz „Zarządzaj rozmowami”.';
+ const MANAGE=' Open “Manage chats”.';
 
  class BankError extends Error{constructor(code,message){super(message);this.name='BankError';this.code=code;}}
  const fail=(code,message)=>{throw new BankError(code,message);};
@@ -69,92 +69,92 @@
   return !!(w&&(plain(w.prepared)&&w.prepared.phase==='pending'||plain(w.materialEdit)&&w.materialEdit.phase==='pending'))||actionPending(envelope);
  }
  function checkEnvelope(envelope,code){
-  if(!plain(envelope)||!plain(envelope.state)||!Array.isArray(envelope.state.items)||!Array.isArray(envelope.state.history))fail(code,'Nieprawidłowy szkic rozmowy.');
-  if(envelope.workspace!=null&&!plain(envelope.workspace))fail(code,'Nieprawidłowe powiązanie rozmowy.');
+  if(!plain(envelope)||!plain(envelope.state)||!Array.isArray(envelope.state.items)||!Array.isArray(envelope.state.history))fail(code,'Invalid chat draft.');
+  if(envelope.workspace!=null&&!plain(envelope.workspace))fail(code,'Invalid chat link.');
   const w=workspaceOf(envelope);
-  if(w&&(typeof w.sourceId!=='string'||!count(w.sourceRevision)||!Array.isArray(w.receipts)))fail(code,'Nieprawidłowa tożsamość rozmowy.');
+  if(w&&(typeof w.sourceId!=='string'||!count(w.sourceRevision)||!Array.isArray(w.receipts)))fail(code,'Invalid chat identity.');
   // When the binding carries the bound state it must be exactly the stored state (the host binds JSON.stringify(state)).
-  if(w&&w.boundState!==undefined&&w.boundState!==JSON.stringify(envelope.state))fail(code,'Powiązanie rozmowy nie zgadza się z jej treścią.');
+  if(w&&w.boundState!==undefined&&w.boundState!==JSON.stringify(envelope.state))fail(code,'The chat link does not match the chat content.');
   const job=jobOf(envelope);
-  if(job!==null&&(typeof job!=='string'||!JOB_ID.test(job)))fail(code,'Nieprawidłowa robota rozmowy.');
+  if(job!==null&&(typeof job!=='string'||!JOB_ID.test(job)))fail(code,'Invalid job of the chat.');
   // The assistant member is optional. When present it is an object with a receipt list; a started or disputed job action carries
   // its plan identity. A job action or a receipt exists only in a conversation that has an identity and a job.
   if(Object.hasOwn(envelope,'assistant')){
    const a=envelope.assistant;
-   if(!plain(a)||!Array.isArray(a.receipts)||a.receipts.length>ACTION_RECEIPTS||!a.receipts.every(r=>plain(r)&&typeof r.planId==='string'&&r.state==='confirmed'))fail(code,'Nieprawidłowe dane asystenta rozmowy.');
-   if(a.action!=null&&!(plain(a.action)&&(a.action.phase==='pending'||a.action.phase==='conflict')&&plain(a.action.plan)&&typeof a.action.plan.id==='string'&&plain(a.action.receipt)))fail(code,'Nieprawidłowy rozpoczęty zapis asystenta do roboty.');
-   if((a.action!=null||a.receipts.length)&&(!w||job===null))fail(code,'Zapis asystenta do roboty bez powiązania rozmowy z robotą.');
-   if(a.receipts.some(r=>r.sourceId!==w.sourceId||r.jobId!==job)||new Set(a.receipts.map(r=>r.planId)).size!==a.receipts.length)fail(code,'Potwierdzenie zapisu asystenta nie należy do tej rozmowy.');
+   if(!plain(a)||!Array.isArray(a.receipts)||a.receipts.length>ACTION_RECEIPTS||!a.receipts.every(r=>plain(r)&&typeof r.planId==='string'&&r.state==='confirmed'))fail(code,'Invalid assistant data of the chat.');
+   if(a.action!=null&&!(plain(a.action)&&(a.action.phase==='pending'||a.action.phase==='conflict')&&plain(a.action.plan)&&typeof a.action.plan.id==='string'&&plain(a.action.receipt)))fail(code,'Invalid started assistant save to the job.');
+   if((a.action!=null||a.receipts.length)&&(!w||job===null))fail(code,'An assistant save to a job without a link between the chat and the job.');
+   if(a.receipts.some(r=>r.sourceId!==w.sourceId||r.jobId!==job)||new Set(a.receipts.map(r=>r.planId)).size!==a.receipts.length)fail(code,'An assistant save confirmation does not belong to this chat.');
   }
  }
  function checkEntry(e,code){
-  if(!exact(e,ENTRY_KEYS))fail(code,'Nieznany układ zapisanej rozmowy.');
-  if(typeof e.contextId!=='string'||!CONTEXT_ID.test(e.contextId))fail(code,'Nieprawidłowy identyfikator rozmowy.');
-  if(![e.version,e.created,e.touched].every(n=>count(n)&&n>=1)||e.created>e.touched)fail(code,'Nieprawidłowa wersja rozmowy.');
-  if(!utc(e.createdAt)||!utc(e.updatedAt))fail(code,'Nieprawidłowy czas rozmowy.');
-  if(typeof e.input!=='string'||e.input.length>LIMITS.inputChars)fail(code,'Nieprawidłowy niewysłany tekst.');
+  if(!exact(e,ENTRY_KEYS))fail(code,'Unknown layout of the saved chat.');
+  if(typeof e.contextId!=='string'||!CONTEXT_ID.test(e.contextId))fail(code,'Invalid chat identifier.');
+  if(![e.version,e.created,e.touched].every(n=>count(n)&&n>=1)||e.created>e.touched)fail(code,'Invalid chat version.');
+  if(!utc(e.createdAt)||!utc(e.updatedAt))fail(code,'Invalid chat time.');
+  if(typeof e.input!=='string'||e.input.length>LIMITS.inputChars)fail(code,'Invalid unsent text.');
   checkEnvelope(e.envelope,code);
-  if(e.jobId!==jobOf(e.envelope))fail(code,'Rozmowa wskazuje inną robotę niż jej powiązanie.');
-  if(JSON.stringify(e).length>LIMITS.entryChars)fail(code,'Rozmowa przekracza limit rozmiaru.');
+  if(e.jobId!==jobOf(e.envelope))fail(code,'The chat points to a different job than its link.');
+  if(JSON.stringify(e).length>LIMITS.entryChars)fail(code,'The chat exceeds the size limit.');
  }
  function checkLegacy(l,code){
-  if(l!==null&&(!exact(l,LEGACY_KEYS)||typeof l.contextId!=='string'||!CONTEXT_ID.test(l.contextId)||!utc(l.importedAt)||!count(l.chars)||typeof l.sha256!=='string'||!SHA256.test(l.sha256)))fail(code,'Nieprawidłowy zapis migracji.');
+  if(l!==null&&(!exact(l,LEGACY_KEYS)||typeof l.contextId!=='string'||!CONTEXT_ID.test(l.contextId)||!utc(l.importedAt)||!count(l.chars)||typeof l.sha256!=='string'||!SHA256.test(l.sha256)))fail(code,'Invalid migration record.');
  }
  // Released layout 1, unchanged. Used only to read a stored version 1 value before its migration.
  function checkBankV1(b,code){
-  if(!exact(b,BANK_KEYS_V1)||b.kind!==KIND||b.version!==1||!count(b.serial)||!Array.isArray(b.contexts))fail(code,'Nieznany układ banku rozmów.');
+  if(!exact(b,BANK_KEYS_V1)||b.kind!==KIND||b.version!==1||!count(b.serial)||!Array.isArray(b.contexts))fail(code,'Unknown layout of the saved chats.');
   const l=b.legacy;checkLegacy(l,code);
-  if(b.contexts.length>LIMITS.contexts)fail(code,'Bank rozmów przekracza limit liczby rozmów.');
+  if(b.contexts.length>LIMITS.contexts)fail(code,'The saved chats exceed the limit on the number of chats.');
   const ids=new Set(),sources=new Set(),perJob=new Map();
   for(const e of b.contexts){
    checkEntry(e,code);
-   if(ids.has(e.contextId)||e.touched>b.serial)fail(code,'Niespójne wersje lub powtórzona rozmowa.');
+   if(ids.has(e.contextId)||e.touched>b.serial)fail(code,'Inconsistent versions or a repeated chat.');
    ids.add(e.contextId);perJob.set(e.jobId,(perJob.get(e.jobId)||0)+1);
-   if(perJob.get(e.jobId)>LIMITS.perJob)fail(code,'Zbyt wiele rozmów jednej roboty.');
+   if(perJob.get(e.jobId)>LIMITS.perJob)fail(code,'Too many chats of one job.');
    const source=sourceOf(e.envelope);
-   if(source!==null){if(sources.has(source))fail(code,'Ta sama tożsamość rozmowy występuje w dwóch rozmowach.');sources.add(source);}
+   if(source!==null){if(sources.has(source))fail(code,'The same chat identity appears in two chats.');sources.add(source);}
   }
-  if(l!==null&&!ids.has(l.contextId))fail(code,'Zapis migracji nie wskazuje zaimportowanej rozmowy.');
+  if(l!==null&&!ids.has(l.contextId))fail(code,'The migration record does not point to the imported chat.');
  }
  // Compact and bounded: identity, last stored version and the acknowledgement receipts, verbatim. No draft, history or text.
  function checkRetired(t,code){
-  if(Object.hasOwn(t||{},'actions')&&!(exact(t,RETIRED_KEYS_ACTIONS)&&Array.isArray(t.actions)&&t.actions.length>=1&&t.actions.length<=ACTION_RECEIPTS&&t.sourceId!==null&&t.jobId!==null&&t.actions.every(r=>plain(r)&&typeof r.planId==='string'&&r.sourceId===t.sourceId&&r.jobId===t.jobId)))fail(code,'Nieprawidłowe potwierdzenia zapisów asystenta usuniętej rozmowy.');
-  if(!(exact(t,RETIRED_KEYS)||exact(t,RETIRED_KEYS_ACTIONS))||typeof t.contextId!=='string'||!CONTEXT_ID.test(t.contextId)||!utc(t.retiredAt)||!(count(t.version)&&t.version>=1)||!(count(t.serial)&&t.serial>=1))fail(code,'Nieprawidłowy zapis usuniętej rozmowy.');
-  if(t.jobId!==null&&(typeof t.jobId!=='string'||!JOB_ID.test(t.jobId)))fail(code,'Nieprawidłowa robota usuniętej rozmowy.');
-  if(!Array.isArray(t.receipts)||!t.receipts.every(plain))fail(code,'Nieprawidłowe potwierdzenia usuniętej rozmowy.');
-  if(t.sourceId===null?(t.sourceRevision!==null||t.receipts.length>0):(typeof t.sourceId!=='string'||!count(t.sourceRevision)))fail(code,'Nieprawidłowa tożsamość usuniętej rozmowy.');
-  if(JSON.stringify(t).length>LIMITS.retiredChars)fail(code,'Zapis usuniętej rozmowy przekracza limit rozmiaru.');
+  if(Object.hasOwn(t||{},'actions')&&!(exact(t,RETIRED_KEYS_ACTIONS)&&Array.isArray(t.actions)&&t.actions.length>=1&&t.actions.length<=ACTION_RECEIPTS&&t.sourceId!==null&&t.jobId!==null&&t.actions.every(r=>plain(r)&&typeof r.planId==='string'&&r.sourceId===t.sourceId&&r.jobId===t.jobId)))fail(code,'Invalid assistant save confirmations of the deleted chat.');
+  if(!(exact(t,RETIRED_KEYS)||exact(t,RETIRED_KEYS_ACTIONS))||typeof t.contextId!=='string'||!CONTEXT_ID.test(t.contextId)||!utc(t.retiredAt)||!(count(t.version)&&t.version>=1)||!(count(t.serial)&&t.serial>=1))fail(code,'Invalid record of the deleted chat.');
+  if(t.jobId!==null&&(typeof t.jobId!=='string'||!JOB_ID.test(t.jobId)))fail(code,'Invalid job of the deleted chat.');
+  if(!Array.isArray(t.receipts)||!t.receipts.every(plain))fail(code,'Invalid confirmations of the deleted chat.');
+  if(t.sourceId===null?(t.sourceRevision!==null||t.receipts.length>0):(typeof t.sourceId!=='string'||!count(t.sourceRevision)))fail(code,'Invalid identity of the deleted chat.');
+  if(JSON.stringify(t).length>LIMITS.retiredChars)fail(code,'The record of the deleted chat exceeds the size limit.');
  }
  function checkBank(b,code){
-  if(!exact(b,BANK_KEYS)||b.kind!==KIND||b.version!==VERSION||!count(b.serial)||!Array.isArray(b.contexts)||!Array.isArray(b.archived)||!Array.isArray(b.retired))fail(code,'Nieznany układ banku rozmów.');
+  if(!exact(b,BANK_KEYS)||b.kind!==KIND||b.version!==VERSION||!count(b.serial)||!Array.isArray(b.contexts)||!Array.isArray(b.archived)||!Array.isArray(b.retired))fail(code,'Unknown layout of the saved chats.');
   const l=b.legacy;checkLegacy(l,code);
-  if(b.contexts.length>LIMITS.contexts)fail(code,'Bank rozmów przekracza limit liczby aktywnych rozmów.');
-  if(b.archived.length>LIMITS.archived)fail(code,'Bank rozmów przekracza limit archiwum.');
-  if(b.retired.length>LIMITS.retired)fail(code,'Bank rozmów przekracza limit zapisów o usuniętych rozmowach.');
+  if(b.contexts.length>LIMITS.contexts)fail(code,'The saved chats exceed the limit on the number of active chats.');
+  if(b.archived.length>LIMITS.archived)fail(code,'The saved chats exceed the archive limit.');
+  if(b.retired.length>LIMITS.retired)fail(code,'The saved chats exceed the limit on deletion records.');
   // One conversation identity and one source identity live in exactly one place: active, archived or retired.
   const ids=new Set(),sources=new Set(),perJob=new Map();
   const claim=(id,source,serial)=>{
-   if(ids.has(id)||serial>b.serial)fail(code,'Niespójne wersje lub powtórzona rozmowa.');
+   if(ids.has(id)||serial>b.serial)fail(code,'Inconsistent versions or a repeated chat.');
    ids.add(id);
-   if(source!==null){if(sources.has(source))fail(code,'Ta sama tożsamość rozmowy występuje w dwóch rozmowach.');sources.add(source);}
+   if(source!==null){if(sources.has(source))fail(code,'The same chat identity appears in two chats.');sources.add(source);}
   };
   for(const e of b.contexts){
    checkEntry(e,code);claim(e.contextId,sourceOf(e.envelope),e.touched);
    perJob.set(e.jobId,(perJob.get(e.jobId)||0)+1);
-   if(perJob.get(e.jobId)>LIMITS.perJob)fail(code,'Zbyt wiele aktywnych rozmów jednej roboty.');
+   if(perJob.get(e.jobId)>LIMITS.perJob)fail(code,'Too many active chats of one job.');
   }
   for(const a of b.archived){
-   if(!exact(a,ARCHIVED_KEYS)||!utc(a.archivedAt))fail(code,'Nieznany układ zarchiwizowanej rozmowy.');
+   if(!exact(a,ARCHIVED_KEYS)||!utc(a.archivedAt))fail(code,'Unknown layout of the archived chat.');
    checkEntry(a.entry,code);claim(a.entry.contextId,sourceOf(a.entry.envelope),a.entry.touched);
   }
   for(const t of b.retired){checkRetired(t,code);claim(t.contextId,t.sourceId,t.serial);}
   // The import record of the legacy draft is permanent; its conversation may be active, archived or deleted, never unknown.
-  if(l!==null&&!ids.has(l.contextId))fail(code,'Zapis migracji nie wskazuje zaimportowanej rozmowy.');
+  if(l!==null&&!ids.has(l.contextId))fail(code,'The migration record does not point to the imported chat.');
  }
 
  function empty(){return {kind:KIND,version:VERSION,serial:0,legacy:null,contexts:[],archived:[],retired:[]};}
  function newId(crypto){
-  if(!crypto||typeof crypto.getRandomValues!=='function')fail('INVALID','Brak bezpiecznych identyfikatorów.');
+  if(!crypto||typeof crypto.getRandomValues!=='function')fail('INVALID','Secure identifiers are not available.');
   const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);
   return 'ctx1_'+Array.from(bytes,x=>x.toString(16).padStart(2,'0')).join('');
  }
@@ -162,32 +162,32 @@
  // Unknown versions, extra fields and non-canonical bytes all fail closed. For a version 1 value the conversations and the
  // legacy record are carried over as they are; nothing is normalised, dropped or renumbered. Nothing is written here.
  function read(raw){
-  if(typeof raw!=='string')fail('CORRUPT','Brak zapisu banku rozmów.');
-  if(raw.length>LIMITS.bankChars+LAYOUT_ROOM)fail('LIMIT','Zapis banku rozmów przekracza limit rozmiaru.');
-  let bank;try{bank=JSON.parse(raw);}catch{fail('CORRUPT','Zapis banku rozmów jest uszkodzony.');}
+  if(typeof raw!=='string')fail('CORRUPT','There is no saved chat storage.');
+  if(raw.length>LIMITS.bankChars+LAYOUT_ROOM)fail('LIMIT','The saved chat storage exceeds the size limit.');
+  let bank;try{bank=JSON.parse(raw);}catch{fail('CORRUPT','The saved chat storage is damaged.');}
   const tagged=plain(bank)&&bank.kind===KIND;
   if(tagged&&bank.version===1){
-   if(raw.length>LIMITS.bankChars)fail('LIMIT','Zapis banku rozmów przekracza limit rozmiaru.');
+   if(raw.length>LIMITS.bankChars)fail('LIMIT','The saved chat storage exceeds the size limit.');
    checkBankV1(bank,'CORRUPT');
-   if(JSON.stringify(bank)!==raw)fail('CORRUPT','Zapis banku rozmów ma nieoczekiwaną postać.');
+   if(JSON.stringify(bank)!==raw)fail('CORRUPT','The saved chat storage has an unexpected form.');
    const next={kind:KIND,version:VERSION,serial:bank.serial,legacy:bank.legacy,contexts:bank.contexts,archived:[],retired:[]};
    checkBank(next,'CORRUPT');
    return {stored:1,bank:next};
   }
-  if(tagged&&bank.version!==VERSION)fail('UNSUPPORTED','Bank rozmów zapisała nowsza lub nieznana wersja aplikacji.');
+  if(tagged&&bank.version!==VERSION)fail('UNSUPPORTED','The saved chats were written by a newer or unknown version of the app.');
   checkBank(bank,'CORRUPT');
-  if(JSON.stringify(bank)!==raw)fail('CORRUPT','Zapis banku rozmów ma nieoczekiwaną postać.');
+  if(JSON.stringify(bank)!==raw)fail('CORRUPT','The saved chat storage has an unexpected form.');
   return {stored:VERSION,bank};
  }
  // Strict read of a value that must already be in the current layout.
  function parse(raw){
   const r=read(raw);
-  if(r.stored!==VERSION)fail('OUTDATED','Zapis banku rozmów ma starszy układ i czeka na migrację przy otwarciu strony.');
+  if(r.stored!==VERSION)fail('OUTDATED','The saved chat storage has an older layout and waits for migration when the page is opened.');
   return r.bank;
  }
  function serialize(bank){
   checkBank(bank,'INVALID');const raw=JSON.stringify(bank);
-  if(raw.length>LIMITS.bankChars+LAYOUT_ROOM)fail('LIMIT','Zapisane rozmowy osiągnęły limit rozmiaru. Niczego nie usunięto ani nie zapisano. Miejsce zwalnia usunięcie rozmowy (archiwum też je zajmuje) — najpierw ją wyeksportuj.'+MANAGE);
+  if(raw.length>LIMITS.bankChars+LAYOUT_ROOM)fail('LIMIT','Saved chats reached the size limit. Nothing was removed or saved. Space is freed by deleting a chat (the archive uses it too) — export it first.'+MANAGE);
   return raw;
  }
  // Read-only views: callers must not mutate returned entries. Latest write first. get/list/latest see ACTIVE conversations only.
@@ -253,9 +253,9 @@
  // write is the pending one, the assistant data does not change at all.
  function guardAction(previous,next){
   const a=assistantOf(previous),b=assistantOf(next),was=actionOf(previous);
-  if(!was||was.phase!=='pending'){if(!same(a,b))fail('INVALID','Rozpoczęty zapis blokuje zmianę danych asystenta tej rozmowy.');return;}
+  if(!was||was.phase!=='pending'){if(!same(a,b))fail('INVALID','A started save blocks changing the assistant data of this chat.');return;}
   const part=(m,k)=>m&&m[k]!=null?m[k]:null,now=part(b,'action'),had=a.receipts,have=actionReceipts(next);
-  if(!same(part(a,'tool'),part(b,'tool')))fail('INVALID','Rozpoczęty zapis do roboty blokuje zmianę kalkulatora rozmowy.');
+  if(!same(part(a,'tool'),part(b,'tool')))fail('INVALID','A started save to the job blocks changing the chat calculator.');
   if(plain(now)){
    if(plain(now.plan)&&now.plan.id===was.plan.id&&same(had,have)&&same(part(a,'proposal'),part(b,'proposal'))&&(same(now,was)||(now.phase==='conflict'&&same(now.plan,was.plan)&&same(now.input,was.input))))return;
   }else{
@@ -263,10 +263,10 @@
    const last=have[have.length-1];
    if(have.length===had.length+1&&same(have.slice(0,-1),had)&&last.planId===was.plan.id&&same(last.record,was.receipt.record))return;
   }
-  fail('INVALID','Rozpoczęty zapis do roboty można tylko dokończyć tym samym planem, oznaczyć jako sporny albo zwolnić po sprawdzeniu historii roboty.');
+  fail('INVALID','A started save to the job can only be finished with the same plan, marked as disputed, or released after checking the job history.');
  }
  function guardPending(previous,next,before,after){
-  if(!same(previous.state,next.state)||BINDING.some(k=>!same(before[k],after[k])))fail('INVALID','Rozpoczęty zapis blokuje zmianę szkicu, jego tożsamości i roboty.');
+  if(!same(previous.state,next.state)||BINDING.some(k=>!same(before[k],after[k])))fail('INVALID','A started save blocks changing the draft, its identity and its job.');
   guardAction(previous,next);
   const part=(w,k)=>w[k]==null?null:w[k],pend=k=>plain(before[k])&&before[k].phase==='pending';
   const keeps=k=>same(part(before,k),part(after,k)),receipts=want=>want!==null&&sameReceipts(want,after.receipts);
@@ -276,30 +276,30 @@
    if(part(after,'materialEdit')===null&&receipts(editReceipts(before)))return;
    if(same(part(after,'materialEdit'),{...before.materialEdit,phase:'conflict'})&&receipts(before.receipts))return;
   }
-  fail('INVALID','Rozpoczęty zapis można tylko dokończyć tym samym planem i jego dokładnym potwierdzeniem.');
+  fail('INVALID','A started save can only be finished with the same plan and its exact confirmation.');
  }
  // A context keeps its source identity and its job, never moves backwards and never loses a receipt.
  function guardIdentity(previous,next){
   const before=workspaceOf(previous),after=workspaceOf(next);
   if(!before)return;
-  if(!after||after.sourceId!==before.sourceId)fail('INVALID','Tożsamość rozmowy nie może się zmienić.');
-  if(after.sourceRevision<before.sourceRevision)fail('INVALID','Wersja rozmowy nie może się cofnąć.');
+  if(!after||after.sourceId!==before.sourceId)fail('INVALID','The chat identity cannot change.');
+  if(after.sourceRevision<before.sourceRevision)fail('INVALID','The chat version cannot go back.');
   // Explicit assignment null -> job is the only job change; an assigned conversation is never moved or detached.
   const job=jobOf(previous);
-  if(job!==null&&jobOf(next)!==job)fail('INVALID','Rozmowa przypisana do roboty nie może zostać przeniesiona ani odpięta.');
+  if(job!==null&&jobOf(next)!==job)fail('INVALID','A chat assigned to a job cannot be moved or detached.');
   for(const r of before.receipts){
-   if(!after.receipts.some(x=>plain(x)&&plain(r)&&x.jobId===r.jobId&&x.itemId===r.itemId&&x.materialId===r.materialId))fail('INVALID','Potwierdzenie zapisanego materiału nie może zniknąć.');
+   if(!after.receipts.some(x=>plain(x)&&plain(r)&&x.jobId===r.jobId&&x.itemId===r.itemId&&x.materialId===r.materialId))fail('INVALID','A confirmation of a saved material cannot disappear.');
   }
   // Confirmed job-action receipts of the conversation are kept verbatim as well.
   const kept=actionReceipts(next);
-  for(const r of actionReceipts(previous))if(!kept.some(x=>same(x,r)))fail('INVALID','Potwierdzenie zapisu asystenta do roboty nie może zniknąć.');
+  for(const r of actionReceipts(previous))if(!kept.some(x=>same(x,r)))fail('INVALID','A confirmation of an assistant save to the job cannot disappear.');
   if(isPending(previous))guardPending(previous,next,before,after);
  }
- const GONE={archived:['ARCHIVED','Ta rozmowa jest w archiwum (zarchiwizowano ją w innej karcie). Niczego nie zapisano; przywróć ją w „Zarządzaj rozmowami”.'],retired:['RETIRED','Ta rozmowa została usunięta. Zwykły zapis jej nie przywraca i niczego nie zapisano; pobierz kopię awaryjną ekranu.']};
+ const GONE={archived:['ARCHIVED','This chat is in the archive (it was archived in another tab). Nothing was saved; restore it in “Manage chats”.'],retired:['RETIRED','This chat was deleted. An ordinary save does not bring it back and nothing was saved; download a recovery copy of the screen.']};
  // The active-count limits, checked before anything is changed. Nothing is ever evicted to make room.
  function room(next,jobId,verb){
-  if(next.contexts.length>=LIMITS.contexts)fail('LIMIT','Limit '+LIMITS.contexts+' aktywnych rozmów. '+verb+' Zarchiwizuj jedną z aktywnych rozmów, aby zwolnić miejsce — niczego nie usunięto.'+MANAGE);
-  if(next.contexts.filter(e=>e.jobId===jobId).length>=LIMITS.perJob)fail('LIMIT','Limit '+LIMITS.perJob+' aktywnych rozmów jednej roboty. '+verb+' Zarchiwizuj jedną z rozmów tej roboty, aby zwolnić miejsce — niczego nie usunięto.'+MANAGE);
+  if(next.contexts.length>=LIMITS.contexts)fail('LIMIT','Limit '+LIMITS.contexts+' active chats. '+verb+' Archive one of the active chats to free a slot — nothing was removed.'+MANAGE);
+  if(next.contexts.filter(e=>e.jobId===jobId).length>=LIMITS.perJob)fail('LIMIT','Limit '+LIMITS.perJob+' active chats of one job. '+verb+' Archive one of the chats of this job to free a slot — nothing was removed.'+MANAGE);
  }
  // Entry-granular compare-and-set. `bank` must be the freshly read stored bank, so every other
  // context is carried over untouched. baseVersion 0 creates; any other mismatch is a conflict.
@@ -307,29 +307,29 @@
  function commit(bank,change){
   checkBank(bank,'INVALID');
   const {contextId,baseVersion,input,now}=change||{};
-  if(typeof contextId!=='string'||!CONTEXT_ID.test(contextId)||!count(baseVersion)||!utc(now))fail('INVALID','Nieprawidłowa zmiana rozmowy.');
-  if(typeof input!=='string')fail('INVALID','Nieprawidłowy niewysłany tekst.');
-  if(input.length>LIMITS.inputChars)fail('LIMIT','Niewysłany tekst przekracza limit '+LIMITS.inputChars+' znaków. Nie został skrócony ani zapisany.');
+  if(typeof contextId!=='string'||!CONTEXT_ID.test(contextId)||!count(baseVersion)||!utc(now))fail('INVALID','Invalid chat change.');
+  if(typeof input!=='string')fail('INVALID','Invalid unsent text.');
+  if(input.length>LIMITS.inputChars)fail('LIMIT','The unsent text exceeds the limit of '+LIMITS.inputChars+' characters. It was not shortened or saved.');
   // Every rule below is applied to exactly the value that would be stored.
   let envelope;try{envelope=clone(change.envelope);}catch{envelope=undefined;}
   checkEnvelope(envelope,'INVALID');
   const next=clone(bank),index=next.contexts.findIndex(e=>e.contextId===contextId),previous=index<0?null:next.contexts[index];
   if(!previous){const held=where(next,contextId);if(held)fail(...GONE[held.state]);}
-  if(previous?previous.version!==baseVersion:baseVersion!==0)fail('CONFLICT','Ta rozmowa zmieniła się w innej karcie. Niczego nie nadpisano.');
-  if(next.serial>=Number.MAX_SAFE_INTEGER)fail('LIMIT','Limit wersji banku rozmów.');
+  if(previous?previous.version!==baseVersion:baseVersion!==0)fail('CONFLICT','This chat changed in another tab. Nothing was overwritten.');
+  if(next.serial>=Number.MAX_SAFE_INTEGER)fail('LIMIT','The version limit of the saved chats was reached.');
   const jobId=jobOf(envelope),source=sourceOf(envelope);
   if(source!==null){
    const holder=sourceHolder(next,source);
-   if(holder&&holder.contextId!==contextId)fail(holder.state==='retired'?'RETIRED':'DUPLICATE',holder.state==='retired'?'Ta tożsamość szkicu należy do usuniętej rozmowy. Zwykły zapis jej nie przywraca; niczego nie zapisano.':'Ta sama tożsamość rozmowy występuje już w innej rozmowie. Niczego nie zapisano.');
+   if(holder&&holder.contextId!==contextId)fail(holder.state==='retired'?'RETIRED':'DUPLICATE',holder.state==='retired'?'This draft identity belongs to a deleted chat. An ordinary save does not bring it back; nothing was saved.':'The same chat identity already appears in another chat. Nothing was saved.');
   }
   if(previous)guardIdentity(previous.envelope,envelope);
   if(!previous||previous.jobId!==jobId){
-   if(!previous)room(next,jobId,'Nowa rozmowa nie powstała.');
-   else if(next.contexts.filter(e=>e.jobId===jobId).length>=LIMITS.perJob)fail('LIMIT','Limit '+LIMITS.perJob+' aktywnych rozmów jednej roboty. Niczego nie przypisano ani nie usunięto; zarchiwizuj jedną z rozmów tej roboty.'+MANAGE);
+   if(!previous)room(next,jobId,'No new chat was created.');
+   else if(next.contexts.filter(e=>e.jobId===jobId).length>=LIMITS.perJob)fail('LIMIT','Limit '+LIMITS.perJob+' active chats of one job. Nothing was assigned or removed; archive one of the chats of this job.'+MANAGE);
   }
   next.serial++;
   const entry={contextId,jobId,version:baseVersion+1,created:previous?previous.created:next.serial,touched:next.serial,createdAt:previous?previous.createdAt:now,updatedAt:now,input,envelope};
-  if(JSON.stringify(entry).length>LIMITS.entryChars)fail('LIMIT','Rozmowa przekracza limit rozmiaru. Nie została zapisana; wyeksportuj ją i zacznij nową.');
+  if(JSON.stringify(entry).length>LIMITS.entryChars)fail('LIMIT','The chat exceeds the size limit. It was not saved; export it and start a new one.');
   if(previous)next.contexts[index]=entry;else next.contexts.push(entry);
   serialize(next);
   return {bank:next,entry};
@@ -341,21 +341,21 @@
  function manage(bank,change){
   checkBank(bank,'INVALID');
   const {contextId,baseVersion,now}=change||{};
-  if(typeof contextId!=='string'||!CONTEXT_ID.test(contextId)||!count(baseVersion)||baseVersion<1||!utc(now))fail('INVALID','Nieprawidłowa operacja na rozmowie.');
+  if(typeof contextId!=='string'||!CONTEXT_ID.test(contextId)||!count(baseVersion)||baseVersion<1||!utc(now))fail('INVALID','Invalid chat operation.');
   const next=clone(bank);
-  if(next.serial>=Number.MAX_SAFE_INTEGER)fail('LIMIT','Limit wersji banku rozmów.');
+  if(next.serial>=Number.MAX_SAFE_INTEGER)fail('LIMIT','The version limit of the saved chats was reached.');
   return next;
  }
- const unseen=()=>fail('CONFLICT','Ta rozmowa zmieniła się lub zniknęła w innej karcie. Niczego nie zmieniono.');
- const started=what=>fail('PENDING','W tej rozmowie rozpoczęto zapis do roboty. '+what+' jest zablokowane, dopóki ten zapis nie zostanie dokończony („Wznów zapis”). Niczego nie zmieniono.');
+ const unseen=()=>fail('CONFLICT','This chat changed or disappeared in another tab. Nothing was changed.');
+ const started=what=>fail('PENDING','A save to the job was started in this chat. '+what+' is blocked until that save is finished (“Resume save”). Nothing was changed.');
  // The moved entry keeps every field; only its compare-and-set version and its ordering stamp advance, so a tab that still
  // holds the previous version can no longer write it.
  const advance=(next,entry)=>({...entry,version:entry.version+1,touched:++next.serial});
  function archive(bank,change){
   const next=manage(bank,change),at=next.contexts.findIndex(e=>e.contextId===change.contextId);
   if(at<0||next.contexts[at].version!==change.baseVersion)unseen();
-  if(isPending(next.contexts[at].envelope))started('Archiwizowanie');
-  if(next.archived.length>=LIMITS.archived)fail('LIMIT','Limit '+LIMITS.archived+' rozmów w archiwum. Niczego nie zmieniono; wyeksportuj i usuń z archiwum rozmowy, których już nie potrzebujesz.');
+  if(isPending(next.contexts[at].envelope))started('Archiving');
+  if(next.archived.length>=LIMITS.archived)fail('LIMIT','Limit '+LIMITS.archived+' chats in the archive. Nothing was changed; export and delete archived chats you no longer need.');
   const entry=advance(next,next.contexts[at]);
   next.contexts.splice(at,1);next.archived.push({archivedAt:change.now,entry});
   serialize(next);
@@ -364,7 +364,7 @@
  function restore(bank,change){
   const next=manage(bank,change),at=next.archived.findIndex(a=>a.entry.contextId===change.contextId);
   if(at<0||next.archived[at].entry.version!==change.baseVersion)unseen();
-  room(next,next.archived[at].entry.jobId,'Rozmowa pozostaje w archiwum w całości.');
+  room(next,next.archived[at].entry.jobId,'The chat stays in the archive in full.');
   const entry=advance(next,next.archived[at].entry);
   next.archived.splice(at,1);next.contexts.push(entry);
   serialize(next);
@@ -375,12 +375,12 @@
   const next=manage(bank,change),held=where(next,change.contextId);
   if(!held||held.state==='retired'||held.entry.version!==change.baseVersion)unseen();
   const entry=held.entry,w=workspaceOf(entry.envelope);
-  if(isPending(entry.envelope))started('Usuwanie');
-  if(next.retired.length>=LIMITS.retired)fail('LIMIT','Limit '+LIMITS.retired+' zapisów o usuniętych rozmowach. Te krótkie zapisy nie są usuwane po cichu, więc tej rozmowy nie usunięto. Można ją zarchiwizować i wyeksportować.');
+  if(isPending(entry.envelope))started('Deleting');
+  if(next.retired.length>=LIMITS.retired)fail('LIMIT','Limit '+LIMITS.retired+' deletion records. These short records are not removed silently, so this chat was not deleted. It can be archived and exported.');
   const tombstone={contextId:entry.contextId,jobId:entry.jobId,sourceId:w?w.sourceId:null,sourceRevision:w?w.sourceRevision:null,version:entry.version,receipts:w?clone(w.receipts):[],retiredAt:change.now,serial:++next.serial};
   // Receipts of notes / measurements written from this conversation stay with the deletion record, verbatim.
   const acts=actionReceipts(entry.envelope);if(acts.length)tombstone.actions=clone(acts);
-  if(JSON.stringify(tombstone).length>LIMITS.retiredChars)fail('LIMIT','Zapis o usunięciu tej rozmowy przekroczyłby limit rozmiaru. Niczego nie usunięto; rozmowę można zarchiwizować.');
+  if(JSON.stringify(tombstone).length>LIMITS.retiredChars)fail('LIMIT','The deletion record of this chat would exceed the size limit. Nothing was deleted; the chat can be archived.');
   if(held.state==='active')next.contexts=next.contexts.filter(e=>e.contextId!==entry.contextId);
   else next.archived=next.archived.filter(a=>a.entry.contextId!==entry.contextId);
   next.retired.push(tombstone);
@@ -405,18 +405,18 @@
  // Counters of a file are taken over as they are, so they must leave room to count on: the next save adds one to the version.
  const COUNTER_MAX=1e12;
  function checkArchive(a,code){
-  if(!exact(a,ARCHIVE_KEYS)||a.kind!==ARCHIVE_KIND||a.version!==ARCHIVE_VERSION||!utc(a.exportedAt)||(a.origin!=='active'&&a.origin!=='archived'))fail(code,'Nieznany układ archiwum rozmowy. Niczego nie zmieniono.');
+  if(!exact(a,ARCHIVE_KEYS)||a.kind!==ARCHIVE_KIND||a.version!==ARCHIVE_VERSION||!utc(a.exportedAt)||(a.origin!=='active'&&a.origin!=='archived'))fail(code,'Unknown layout of the chat archive. Nothing was changed.');
   checkEntry(a.entry,code);
-  if([a.entry.version,a.entry.created,a.entry.touched].some(n=>n>COUNTER_MAX)||(Array.isArray(a.recovery)&&a.recovery.some(r=>plain(r)&&r.baseVersion>COUNTER_MAX)))fail(code,'Nieprawidłowe liczniki wersji w archiwum rozmowy. Niczego nie zmieniono.');
-  if(typeof a.unsentText!=='string'||a.unsentText.length>LIMITS.inputChars)fail(code,'Nieprawidłowy niewysłany tekst w archiwum rozmowy. Niczego nie zmieniono.');
-  if(!Array.isArray(a.recovery)||a.recovery.length>LIMITS.recoveryTexts||a.recovery.some(r=>!exact(r,RECOVERY_KEYS)||typeof r.text!=='string'||r.text.length>LIMITS.inputChars||!utc(r.savedAt)||!count(r.baseVersion)))fail(code,'Nieprawidłowe kopie niewysłanego tekstu w archiwum rozmowy. Niczego nie zmieniono.');
+  if([a.entry.version,a.entry.created,a.entry.touched].some(n=>n>COUNTER_MAX)||(Array.isArray(a.recovery)&&a.recovery.some(r=>plain(r)&&r.baseVersion>COUNTER_MAX)))fail(code,'Invalid version counters in the chat archive. Nothing was changed.');
+  if(typeof a.unsentText!=='string'||a.unsentText.length>LIMITS.inputChars)fail(code,'Invalid unsent text in the chat archive. Nothing was changed.');
+  if(!Array.isArray(a.recovery)||a.recovery.length>LIMITS.recoveryTexts||a.recovery.some(r=>!exact(r,RECOVERY_KEYS)||typeof r.text!=='string'||r.text.length>LIMITS.inputChars||!utc(r.savedAt)||!count(r.baseVersion)))fail(code,'Invalid copies of unsent text in the chat archive. Nothing was changed.');
  }
  // The stored entry, verbatim, plus the exact text of the message field (which may be ahead of the stored text) and the
  // unsent texts kept for this conversation by the recovery journal. options: {exportedAt,unsentText?,recovery?}.
  function portable(bank,contextId,options){
   checkBank(bank,'INVALID');
   const o=options||{},held=where(bank,contextId);
-  if(!held||held.state==='retired')fail('MISSING','Tej rozmowy nie ma w zapisie przeglądarki; nie można utworzyć jej archiwum.');
+  if(!held||held.state==='retired')fail('MISSING','This chat is not in browser storage; its archive cannot be created.');
   const out={kind:ARCHIVE_KIND,version:ARCHIVE_VERSION,exportedAt:o.exportedAt,origin:held.state,entry:clone(held.entry),unsentText:o.unsentText===undefined?held.entry.input:o.unsentText,recovery:clone(o.recovery||[])};
   checkArchive(out,'INVALID');
   return out;
@@ -424,30 +424,30 @@
  function difference(stored,file){
   const a=workspaceOf(stored.envelope),b=workspaceOf(file.envelope),ra=a?a.sourceRevision:-1,rb=b?b.sourceRevision:-1;
   const relation=rb<ra||(rb===ra&&file.version<stored.version)?'older':rb>ra||file.version>stored.version?'newer':'diverged';
-  const label={older:'starszy stan tej rozmowy',newer:'nowszy stan tej rozmowy',diverged:'inny stan tej rozmowy przy tej samej wersji'}[relation];
-  return {relation,reason:'Ta rozmowa jest już w tej przeglądarce, a plik zawiera '+label+' (plik: wersja '+file.version+', rewizja szkicu '+(b?rb:'—')+'; przeglądarka: wersja '+stored.version+', rewizja szkicu '+(a?ra:'—')+'). Import niczego nie nadpisuje ani nie scala.'};
+  const label={older:'an older state of this chat',newer:'a newer state of this chat',diverged:'a different state of this chat at the same version'}[relation];
+  return {relation,reason:'This chat is already in this browser, and the file contains '+label+' (file: version '+file.version+', draft revision '+(b?rb:'—')+'; browser: version '+stored.version+', draft revision '+(a?ra:'—')+'). Import overwrites and merges nothing.'};
  }
  // Empty string = the file is exactly compatible with the deletion record.
  function retiredMismatch(t,entry,w,source){
-  if(t.contextId!==entry.contextId||t.sourceId!==source)return 'identyfikatory rozmowy i szkicu nie wskazują razem tego samego usuniętego zapisu.';
-  if(t.jobId!==entry.jobId)return 'plik wskazuje inną robotę niż usunięta rozmowa.';
-  if(entry.version>t.version||(w&&w.sourceRevision>t.sourceRevision))return 'plik jest nowszy niż stan z chwili usunięcia, więc pochodzi z innego zapisu.';
-  if(w&&!sameReceipts(t.receipts,w.receipts))return 'potwierdzenia materiałów zapisanych do roboty różnią się (plik: '+w.receipts.length+', w chwili usunięcia: '+t.receipts.length+'), a przywrócenie mogłoby powielić lub zgubić powiązania materiałów.';
+  if(t.contextId!==entry.contextId||t.sourceId!==source)return 'the chat and draft identifiers do not together name the same deleted record.';
+  if(t.jobId!==entry.jobId)return 'the file names a different job than the deleted chat.';
+  if(entry.version>t.version||(w&&w.sourceRevision>t.sourceRevision))return 'the file is newer than the state at deletion, so it comes from another save.';
+  if(w&&!sameReceipts(t.receipts,w.receipts))return 'the confirmations of materials saved to the job differ (file: '+w.receipts.length+', at deletion: '+t.receipts.length+'), and restoring could duplicate or lose material bindings.';
   const byPlan=list=>list.slice().sort((x,y)=>String(x&&x.planId)<String(y&&y.planId)?-1:1);
-  if(!same(byPlan(t.actions||[]),byPlan(actionReceipts(entry.envelope))))return 'potwierdzenia notatek i pomiarów zapisanych do roboty z tej rozmowy różnią się od stanu z chwili usunięcia (plik: '+actionReceipts(entry.envelope).length+', w chwili usunięcia: '+(t.actions||[]).length+').';
+  if(!same(byPlan(t.actions||[]),byPlan(actionReceipts(entry.envelope))))return 'the confirmations of notes and measurements saved to the job from this chat differ from the state at deletion (file: '+actionReceipts(entry.envelope).length+', at deletion: '+(t.actions||[]).length+').';
   return '';
  }
  // Reads and classifies an archive file against the given bank. Pure; throws BankError for anything that is not a valid archive.
  function classify(text,bank,validate){
-  if(typeof text!=='string')fail('CORRUPT','Brak treści pliku. Niczego nie zmieniono.');
-  if(text.length>LIMITS.importChars)fail('LIMIT','Plik przekracza limit rozmiaru importu ('+LIMITS.importChars+' znaków). Niczego nie zmieniono.');
-  let a;try{a=JSON.parse(text);}catch{fail('CORRUPT','Plik nie jest poprawnym zapisem JSON. Niczego nie zmieniono.');}
-  if(plain(a)&&RAW_KINDS.includes(a.kind))fail('RAW','To surowa kopia awaryjna zapisu przeglądarki, a nie archiwum rozmowy. Służy do ręcznego odzyskiwania; nie jest importowana ani otwierana jako szkic. Niczego nie zmieniono.');
-  if(plain(a)&&a.kind===OLD_DRAFT_KIND)fail('UNSUPPORTED','To eksport szkicu ze starszej wersji aplikacji, bez pełnego stanu rozmowy. Pozostaje plikiem do odczytu; nie jest importowany. Niczego nie zmieniono.');
-  if(plain(a)&&a.kind===ARCHIVE_KIND&&a.version!==ARCHIVE_VERSION)fail('UNSUPPORTED','Archiwum rozmowy zapisała nowsza lub nieznana wersja aplikacji. Niczego nie zmieniono.');
-  if(unsafeKey(a))fail('CORRUPT','Plik zawiera niedozwolone nazwy pól (__proto__, constructor lub prototype). Nie jest archiwum rozmowy z tej aplikacji; niczego nie zmieniono.');
+  if(typeof text!=='string')fail('CORRUPT','The file has no content. Nothing was changed.');
+  if(text.length>LIMITS.importChars)fail('LIMIT','The file exceeds the import size limit ('+LIMITS.importChars+' characters). Nothing was changed.');
+  let a;try{a=JSON.parse(text);}catch{fail('CORRUPT','The file is not valid JSON. Nothing was changed.');}
+  if(plain(a)&&RAW_KINDS.includes(a.kind))fail('RAW','This is a raw recovery copy of browser storage, not a chat archive. It is for manual recovery; it is not imported or opened as a draft. Nothing was changed.');
+  if(plain(a)&&a.kind===OLD_DRAFT_KIND)fail('UNSUPPORTED','This is a draft export from an older version of the app, without the full chat state. It stays a read-only file; it is not imported. Nothing was changed.');
+  if(plain(a)&&a.kind===ARCHIVE_KIND&&a.version!==ARCHIVE_VERSION)fail('UNSUPPORTED','The chat archive was written by a newer or unknown version of the app. Nothing was changed.');
+  if(unsafeKey(a))fail('CORRUPT','The file contains forbidden field names (__proto__, constructor or prototype). It is not a chat archive from this app; nothing was changed.');
   checkArchive(a,'CORRUPT');
-  if(typeof validate==='function'){try{validate(a.entry.envelope);}catch(e){fail('CORRUPT',(e&&e.message||'Rozmowa z pliku nie przeszła walidacji.')+' Niczego nie zmieniono.');}}
+  if(typeof validate==='function'){try{validate(a.entry.envelope);}catch(e){fail('CORRUPT',(e&&e.message||'The chat from the file did not pass validation.')+' Nothing was changed.');}}
   const entry=a.entry,env=entry.envelope,w=workspaceOf(env),source=sourceOf(env);
   const held=where(bank,entry.contextId),holder=source===null?null:sourceHolder(bank,source);
   const p={archive:a,contextId:entry.contextId,jobId:entry.jobId,sourceId:source,version:entry.version,sourceRevision:w?w.sourceRevision:null,items:env.state.items.length,history:env.state.history.length,receipts:w?w.receipts.length:0,
@@ -455,22 +455,22 @@
   // Assistant data of the file, for the preview only: the calculator kept in the conversation, an unconfirmed proposal, receipts.
   const helper=assistantOf(env);
   p.assistant={tool:helper&&plain(helper.tool)&&typeof helper.tool.tool==='string'?helper.tool.tool:'',proposal:!!(helper&&plain(helper.proposal)),conflict:!!(helper&&plain(helper.action)),receipts:actionReceipts(env).length};
-  if(isPending(env)){p.outcome='blocked';p.reason='Plik zawiera rozpoczęty, niedokończony zapis do roboty. Dokończ go w przeglądarce, z której pochodzi plik, i wyeksportuj rozmowę ponownie. Niczego nie zmieniono.';}
+  if(isPending(env)){p.outcome='blocked';p.reason='The file contains a started, unfinished save to the job. Finish it in the browser the file comes from and export the chat again. Nothing was changed.';}
   else if(held&&held.state!=='retired'){
    if(same(held.entry.envelope,env)&&held.entry.input===a.unsentText)p.outcome='identical';
    else{const d=difference(held.entry,entry);p.outcome='conflict';p.relation=d.relation;p.reason=d.reason;}
   }
-  else if(holder&&holder.state!=='retired'){p.outcome='conflict';p.relation='source';p.reason='Tożsamość szkicu z pliku należy już do innej rozmowy w tej przeglądarce. Import powieliłby jej powiązania z materiałami, więc niczego nie zmieniono.';}
+  else if(holder&&holder.state!=='retired'){p.outcome='conflict';p.relation='source';p.reason='The draft identity from the file already belongs to another chat in this browser. Import would duplicate its material bindings, so nothing was changed.';}
   else if(held||holder){
    const t=(held||holder).tombstone,why=retiredMismatch(t,entry,w,source);
    p.outcome='retired';p.retiredAt=t.retiredAt;p.restorable=!why;
-   p.reason=why?'Ta rozmowa została usunięta w tej przeglądarce, a plik nie odpowiada zapisowi jej usunięcia: '+why+' Pliku nie zaimportowano.':'Ta rozmowa została usunięta w tej przeglądarce. Plik zgadza się z zapisem usunięcia (ta sama rozmowa, robota i potwierdzenia materiałów). Przywrócenie wymaga jawnego potwierdzenia.';
+   p.reason=why?'This chat was deleted in this browser, and the file does not match its deletion record: '+why+' The file was not imported.':'This chat was deleted in this browser. The file matches the deletion record (the same chat, job and material confirmations). Restoring requires explicit confirmation.';
   }
   // A file that would be added must not bring acknowledgements of materials that another conversation of this browser already
   // holds (also a deleted one): two conversations bound to the same written material could each rewrite it.
   if((p.outcome==='new'||(p.outcome==='retired'&&p.restorable))&&w&&receiptClaimed(bank,entry.contextId,w.receipts)){
    p.outcome='conflict';p.relation='receipts';p.restorable=false;
-   p.reason='Plik zawiera potwierdzenia materiałów, które w tej przeglądarce należą już do innej rozmowy (także usuniętej). Import powieliłby powiązania tych materiałów, więc niczego nie zmieniono.';
+   p.reason='The file contains material confirmations that in this browser already belong to another chat (possibly a deleted one). Import would duplicate the bindings of those materials, so nothing was changed.';
   }
   return p;
  }
@@ -492,25 +492,25 @@
  function adopt(bank,text,options){
   checkBank(bank,'INVALID');
   const {destination,restoreRetired,now,validate}=options||{};
-  if((destination!=='active'&&destination!=='archived')||!utc(now))fail('INVALID','Nieprawidłowy import rozmowy.');
+  if((destination!=='active'&&destination!=='archived')||!utc(now))fail('INVALID','Invalid chat import.');
   const p=classify(text,bank,validate),a=p.archive;
   if(p.outcome==='identical')return {bank,entry:where(bank,p.contextId).entry,changed:false,outcome:p.outcome,recovery:[]};
   if(p.outcome==='blocked')fail('PENDING',p.reason);
   if(p.outcome==='conflict')fail('CONFLICT',p.reason);
   if(p.outcome==='retired'){
    if(!p.restorable)fail('RETIRED',p.reason);
-   if(restoreRetired!==true)fail('RETIRED','Ta rozmowa została usunięta w tej przeglądarce. Jej przywrócenie z pliku wymaga jawnego potwierdzenia w podglądzie importu. Niczego nie zmieniono.');
+   if(restoreRetired!==true)fail('RETIRED','This chat was deleted in this browser. Restoring it from the file requires explicit confirmation in the import preview. Nothing was changed.');
   }
   const next=clone(bank);
-  if(next.serial>=Number.MAX_SAFE_INTEGER)fail('LIMIT','Limit wersji banku rozmów.');
+  if(next.serial>=Number.MAX_SAFE_INTEGER)fail('LIMIT','The version limit of the saved chats was reached.');
   let version=a.entry.version;
   if(p.outcome==='retired'){const at=next.retired.findIndex(t=>t.contextId===p.contextId);version=next.retired[at].version+1;next.retired.splice(at,1);}
   next.serial++;
   const entry={contextId:a.entry.contextId,jobId:a.entry.jobId,version,created:next.serial,touched:next.serial,createdAt:a.entry.createdAt,updatedAt:a.entry.updatedAt,input:a.unsentText,envelope:clone(a.entry.envelope)};
-  if(JSON.stringify(entry).length>LIMITS.entryChars)fail('LIMIT','Rozmowa z pliku przekracza limit rozmiaru. Niczego nie zmieniono.');
-  if(destination==='active'){room(next,entry.jobId,'Rozmowy z pliku nie dodano do aktywnych.');next.contexts.push(entry);}
+  if(JSON.stringify(entry).length>LIMITS.entryChars)fail('LIMIT','The chat from the file exceeds the size limit. Nothing was changed.');
+  if(destination==='active'){room(next,entry.jobId,'The chat from the file was not added to the active ones.');next.contexts.push(entry);}
   else{
-   if(next.archived.length>=LIMITS.archived)fail('LIMIT','Limit '+LIMITS.archived+' rozmów w archiwum. Rozmowy z pliku nie dodano; niczego nie usunięto.');
+   if(next.archived.length>=LIMITS.archived)fail('LIMIT','Limit '+LIMITS.archived+' chats in the archive. The chat from the file was not added; nothing was removed.');
    next.archived.push({archivedAt:now,entry});
   }
   serialize(next);
@@ -531,7 +531,7 @@
   return p;
  }
 
- const digest=sha256=>{if(typeof sha256!=='string'||!SHA256.test(sha256))fail('INVALID','Brak skrótu SHA-256 starszego szkicu. Migracji nie wykonano.');};
+ const digest=sha256=>{if(typeof sha256!=='string'||!SHA256.test(sha256))fail('INVALID','The SHA-256 digest of the legacy draft is missing. The migration was not performed.');};
  const recorded=(bank,legacyRaw,sha256)=>bank.legacy.sha256===sha256&&bank.legacy.chars===legacyRaw.length;
  // Pure migration decision. The host takes it under its lock, from freshly read bytes of both keys
  // (legacyRaw null = key absent) and the host-computed SHA-256 (lowercase hex) of the legacy bytes.
@@ -543,7 +543,7 @@
  function legacyStatus(bank,legacyRaw,sha256){
   const base=bank==null?empty():bank;checkBank(base,'INVALID');
   if(legacyRaw==null)return base.legacy?'missing':'none';
-  if(typeof legacyRaw!=='string')fail('INVALID','Nieprawidłowy odczyt starszego szkicu.');
+  if(typeof legacyRaw!=='string')fail('INVALID','Invalid read of the legacy draft.');
   digest(sha256);
   if(!base.legacy)return 'import';
   return recorded(base,legacyRaw,sha256)?'imported':'changed';
@@ -555,18 +555,18 @@
  // The import record is never cleared afterwards, so archiving or deleting the imported conversation never imports it again.
  function migrate(legacyRaw,options){
   const {contextId,now,validate,sha256,bank}=options||{};
-  if(typeof legacyRaw!=='string')fail('CORRUPT','Brak starszego szkicu.');
+  if(typeof legacyRaw!=='string')fail('CORRUPT','There is no legacy draft.');
   digest(sha256);
   const base=bank==null?empty():bank;checkBank(base,'INVALID');
   if(base.legacy!==null){
-   if(recorded(base,legacyRaw,sha256))fail('MIGRATED','Starszy szkic został już zaimportowany.');
-   fail('LEGACY_CHANGED','Starszy szkic zmienił się po imporcie (starsza wersja aplikacji). Nie zaimportowano go ponownie; wyeksportuj jego surowy zapis.');
+   if(recorded(base,legacyRaw,sha256))fail('MIGRATED','The legacy draft was already imported.');
+   fail('LEGACY_CHANGED','The legacy draft changed after the import (older version of the app). It was not imported again; export its raw record.');
   }
-  let envelope;try{envelope=JSON.parse(legacyRaw);}catch{fail('CORRUPT','Starszy szkic jest uszkodzony.');}
+  let envelope;try{envelope=JSON.parse(legacyRaw);}catch{fail('CORRUPT','The legacy draft is damaged.');}
   checkEnvelope(envelope,'CORRUPT');
-  if(typeof validate==='function'){try{validate(envelope);}catch(e){fail('CORRUPT',e&&e.message||'Starszy szkic nie przeszedł walidacji.');}}
+  if(typeof validate==='function'){try{validate(envelope);}catch(e){fail('CORRUPT',e&&e.message||'The legacy draft did not pass validation.');}}
   const source=sourceOf(envelope);
-  if(source!==null&&sourceHolder(base,source))fail('DUPLICATE','Rozmowa ze starszego szkicu jest już w banku (aktywna, w archiwum albo usunięta). Nie zaimportowano jej drugi raz.');
+  if(source!==null&&sourceHolder(base,source))fail('DUPLICATE','The chat from the legacy draft is already in the saved chats (active, archived or deleted). It was not imported a second time.');
   const result=commit(base,{contextId,baseVersion:0,input:'',envelope,now}).bank;
   result.legacy={contextId,importedAt:now,chars:legacyRaw.length,sha256};
   serialize(result);
@@ -575,20 +575,20 @@
  // Persistence boundary. Writes only when the stored bytes still equal `expectedRaw`
  // (null = key absent) and reports success only after reading the new bytes back.
  function store(storage,key,bank,expectedRaw){
-  if(key===LEGACY_KEY)fail('INVALID','Starszy szkic nie jest nigdy nadpisywany.');
+  if(key===LEGACY_KEY)fail('INVALID','The legacy draft is never overwritten.');
   const raw=serialize(bank),before=storage.getItem(key);
-  if(before!==expectedRaw)fail('CHANGED','Zapis zmienił się w innej karcie. Niczego nie nadpisano.');
+  if(before!==expectedRaw)fail('CHANGED','Storage changed in another tab. Nothing was overwritten.');
   try{storage.setItem(key,raw);}
   catch(e){
    let after;try{after=storage.getItem(key);}catch{after=undefined;}
-   const error=new BankError('QUOTA','Przeglądarka odmówiła zapisu (brak miejsca?). '+(after===before?'Poprzedni zapis pozostał nienaruszony.':'Sprawdź poprzedni zapis.'));
+   const error=new BankError('QUOTA','The browser refused to save (out of space?). '+(after===before?'The previous save is intact.':'Check the previous save.'));
    error.intact=after===before;throw error;
   }
   // The write did not throw, yet the bytes read back are not the bytes written. That write is UNCONFIRMED: what the browser
   // holds now is not known here, so nothing is written a second time (no rollback from memory, no repeat). The caller keeps
   // its memory as it was and must read the stored value again before it writes anything.
   if(storage.getItem(key)!==raw){
-   const error=new BankError('UNCONFIRMED','Zapis nie został potwierdzony: przeglądarka zwróciła inną treść niż zapisana. Niczego nie cofnięto ani nie zapisano ponownie; wczytaj aktualny zapis albo pobierz kopię awaryjną.');
+   const error=new BankError('UNCONFIRMED','The save was not confirmed: the browser returned different content than was saved. Nothing was rolled back or saved again; load the current storage or download a recovery copy.');
    error.unconfirmed=true;throw error;
   }
   return raw;

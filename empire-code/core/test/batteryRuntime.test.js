@@ -142,4 +142,41 @@ describe('batteryRuntime — the engine injected into mobile.html is this module
   });
 });
 
+describe('batteryRuntime — the optional English text (lang "en") changes strings only', () => {
+  test('same numbers, codes and fields as the default text; the default text itself is untouched', () => {
+    const input = { capacityWh: '1000', consumptionMode: 'kwh_year', consumption: '365', chargePercent: '100', usablePercent: '85' };
+    const pl = B.calculateBatteryRuntime(input); const en = B.calculateBatteryRuntime(input, 'en');
+    for (const k of ['capacityWh', 'chargePercent', 'usablePercent', 'consumptionMode', 'consumption', 'availableWh', 'averageW', 'hours']) assert.strictEqual(en.data[k], pl.data[k], k);
+    for (const k of ['kind', 'days', 'hours', 'minutes']) assert.strictEqual(en.data.duration[k], pl.data.duration[k], 'duration.' + k);
+    assert.deepStrictEqual(en.data.text, { duration: 'About 20 h 24 min', availableWh: '850 Wh', availableBasis: '1000 Wh × 100% × 85%', averageW: '41.67 W',
+      averageBasis: '365 kWh/year × 1000 ÷ 8760 h', assumptions: 'Assumptions: charge 100%, usable energy 85% (editable loss estimate), constant average draw 41.67 W.' });
+    assert.strictEqual(en.data.consumptionUnit, 'kWh/year'); assert.strictEqual(pl.data.consumptionUnit, 'kWh/rok');
+    assert.strictEqual(pl.data.text.duration, 'Około 20 h 24 min'); assert.strictEqual(pl.data.text.averageW, '41,67 W');
+    for (const other of [undefined, null, 'pl', 'EN', 'xx', 1]) assert.deepStrictEqual(B.calculateBatteryRuntime(input, other), pl, 'only the exact value "en" selects English: ' + String(other));
+    assert.deepStrictEqual(Object.keys(B.MODE_UNITS_EN), Object.keys(B.MODE_UNITS)); assert.deepStrictEqual({ ...B.MODE_UNITS_EN }, { w: 'W', kwh_day: 'kWh/day', kwh_year: 'kWh/year' });
+    assert.strictEqual(B.calculateBatteryRuntime({ ...input, consumptionMode: 'kwh_day', consumption: '1,2' }, 'en').data.text.averageBasis, '1.2 kWh/day × 1000 ÷ 24 h');
+    assert.strictEqual(B.calculateBatteryRuntime({ ...input, consumptionMode: 'w', consumption: '100' }, 'en').data.text.averageBasis, 'stated average power');
+    assert.strictEqual(B.calculateBatteryRuntime({ ...input, chargePercent: '0' }, 'en').data.text.duration, '0 h — battery empty');
+  });
+  test('refusals keep their field and code; only the message is English', () => {
+    const bad = { capacityWh: 'x', consumptionMode: 'kwh_day', consumption: '', chargePercent: '101', usablePercent: '0' };
+    const pl = B.calculateBatteryRuntime(bad); const en = B.calculateBatteryRuntime(bad, 'en');
+    assert.deepStrictEqual(en.errors.map((e) => [e.field, e.code]), pl.errors.map((e) => [e.field, e.code]));
+    assert.deepStrictEqual(en.errors.map((e) => e.message), ['Capacity: enter just a number, e.g. 1000 or 1.2.', 'Enter the consumption in kWh/day.', 'Charge must be between 0 and 100%.', 'Usable energy must be greater than 0% and not more than 100%.']);
+    assert.strictEqual(B.calculateBatteryRuntime(B.DEFAULTS, 'en').errors.map((e) => e.message).join(' '), 'Enter the battery capacity in Wh. Enter the consumption in W.');
+    for (const sample of [bad, B.DEFAULTS, { ...bad, consumptionMode: 'mah' }, { capacityWh: '0', consumptionMode: 'w', consumption: '0', chargePercent: '', usablePercent: '' }, { capacityWh: '10000001', consumptionMode: 'w', consumption: '1000001', chargePercent: '100', usablePercent: '85' }]) {
+      const a = B.calculateBatteryRuntime(sample); const b = B.calculateBatteryRuntime(sample, 'en');
+      assert.deepStrictEqual(b.errors.map((e) => [e.field, e.code]), a.errors.map((e) => [e.field, e.code]), JSON.stringify(sample));
+      for (const e of b.errors) assert.ok(e.message.length > 5 && !/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]|undefined|NaN/.test(e.message), e.message);
+    }
+  });
+  test('durations: the same kinds and parts, English wording', () => {
+    for (const [hours, text] of [[0, '0 h'], [1e-9, 'Less than 1 min'], [0.5, 'About 30 min'], [20.4, 'About 20 h 24 min'], [48, 'About 2 d 0 h'], [77.4, 'About 3 d 5 h']]) {
+      const a = B.describeDuration(hours); const b = B.describeDuration(hours, 'en');
+      assert.strictEqual(b.text, text); assert.deepStrictEqual({ ...b, text: a.text }, a, 'only the text differs at ' + hours);
+    }
+    assert.strictEqual(B.describeDuration(-1, 'en'), null);
+  });
+});
+
 dom.defineUiSuite('core/mobile.html', APP);

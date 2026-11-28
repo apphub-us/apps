@@ -145,7 +145,7 @@ test('frame not ready at start: the real frame-load handler makes the import ava
  const text='naładowanie 50 procent';
  await p.type(text);await p.submit();await idle(p);
  assert.equal(p.count('/api/assist'),0,'no request for a form the conversation no longer matches');
- assert.equal(p.els.input.value,text);assert.equal(p.els.status.className,'error');assert.match(p.els.status.textContent,/niczego nie wysłano/);
+ assert.equal(p.els.input.value,text);assert.equal(p.els.status.className,'error');assert.match(p.els.status.textContent,/nothing was sent/);
  assert.equal(p.run('assistLink'),null);assert.deepEqual(log.captures,[null],'the changed form is not captured by itself');
  assert.equal(JSON.stringify(storedAssistant(p)),stored);assert.deepEqual(form.values(),{...START,usable:'80'},'the form was never written');
 });
@@ -218,11 +218,11 @@ test('truthful when there is nothing to import: an unready frame, a build withou
  {
   const shows=[],p=await H.load({bridge:unreadyHost(shows),api:server()}),before=untouched(p);
   await frameLoad(p);
-  assert.match(p.els['job-status'].textContent,/Nie udało się wczytać lokalnych narzędzi/,'the load of a frame without its Jobs bridge is said');
+  assert.match(p.els['job-status'].textContent,/The local tools could not be loaded/,'the load of a frame without its Jobs bridge is said');
   assert.equal(use(p).disabled,true);
   await frameReady(p);assert.equal(use(p).disabled,true,'a ready message cannot make an absent bridge appear');
   await p.click('nav-tools');
-  assert.match(p.els['job-status'].textContent,/Narzędzia jeszcze się wczytują/);assert.deepEqual(shows,[],'no view was opened');assert.equal(p.run('hostView'),'talk');
+  assert.match(p.els['job-status'].textContent,/The tools are still loading/);assert.deepEqual(shows,[],'no view was opened');assert.equal(p.run('hostView'),'talk');
   await p.click('nav-talk');
   assert.equal(use(p).disabled,true);assert.equal(choice(p),null);assert.equal(p.els['assist-status'].textContent,'');assert.equal(untouched(p),before);
  }
@@ -245,7 +245,7 @@ test('truthful when there is nothing to import: an unready frame, a build withou
   await frameLoad(p);
   assert.equal(choice(p),null);
   await p.click('assist-use-form');
-  assert.match(p.els['assist-status'].textContent,/Niczego nie pobrano/);assert.deepEqual(log,newLog(),'nothing was read');assert.equal(untouched(p),before);
+  assert.match(p.els['assist-status'].textContent,/Nothing was taken/);assert.deepEqual(log,newLog(),'nothing was read');assert.equal(untouched(p),before);
  }
  // 4. A navigation-only tool is open in Tools (converter, Power): no analysis choice; a press imports nothing and says why.
  {
@@ -255,7 +255,7 @@ test('truthful when there is nothing to import: an unready frame, a build withou
   await p.click('nav-tools');await p.click('nav-talk');await frameLoad(p);
   assert.equal(choice(p),null,'nothing to choose for a tool the conversation does not calculate');assert.deepEqual(log,newLog());assert.equal(untouched(p),before);
   await p.click('assist-use-form');
-  assert.match(p.els['assist-status'].textContent,/nie jest otwarty kalkulator|niczego nie pobrano/i,'the refusal is said');
+  assert.match(p.els['assist-status'].textContent,/No calculator whose values can be taken is open|[Nn]othing was taken/i,'the refusal is said');
   assert.equal(log.captures.length,1,'the one explicit press asked the bridge once');assert.equal(log.applies.length,0);
   assert.equal(untouched(p),before,'and nothing was imported, stored or sent');assert.equal(storedAssistant(p),null);
  }

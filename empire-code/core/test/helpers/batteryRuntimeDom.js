@@ -123,12 +123,13 @@ function defineUiSuite(label, file) {
       assert.deepStrictEqual(h.api.btRead(), { ...h.EC.batteryRuntime.DEFAULTS }, 'static markup and module defaults agree');
       assert.ok(/id="bt-status" role="status" aria-live="polite"/.test(h.panel));
       assert.strictEqual((h.panel.match(/<button type="button"/g) || []).length, 2, 'Example and Reset are real buttons');
-      for (const phrase of ['Na ile wystarczy bateria?', 'Powerbank lub stacja zasilania', 'Pojemność baterii (Wh)', 'nie moc wyjściowa (W)',
-        'Liczby bez separatorów tysięcy: 1000. Ułamek: 1,2 lub 1.2.', 'kWh/dobę', 'kWh/rok',
-        'Przykład: lodówka', 'to nie średnia dobowa', 'nie certyfikowana sprawność ani stała uniwersalna',
-        'odpowiedniego wyjścia AC', 'mocy ciągłej i rozruchowej', 'Same Wh nie potwierdzą, że lodówka wystartuje']) {
+      for (const phrase of ['How long will the battery last?', 'Power bank or power station', 'Battery capacity (Wh)', 'not the output power (W)',
+        'Numbers without thousands separators: 1000. Decimals: 1.2 or 1,2.', 'kWh/day', 'kWh/year',
+        'Example: refrigerator', 'are not the daily average', 'not a certified efficiency and not a universal constant',
+        'a suitable AC output', 'continuous and start-up (surge) power', 'Wh alone do not confirm that the refrigerator will start']) {
         assert.ok(h.panel.includes(phrase), 'missing text: ' + phrase);
       }
+      assert.ok(!/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(h.panel), 'the panel markup is English');
       assert.ok(!/mAh/.test(h.panel), 'no mAh conversion in this release');
       const adapter = h.source.slice(h.source.indexOf('function btEsc('));
       assert.ok(!/fetch\(|XMLHttpRequest|localStorage|sessionStorage|indexedDB|navigator\./.test(adapter), 'the adapter is offline and stores nothing');
@@ -141,7 +142,7 @@ function defineUiSuite(label, file) {
       assert.deepStrictEqual(TOOLS.filter((t) => h.els['cvt-' + t].style.display !== 'none'), ['battery']);
       assert.strictEqual(h.tab('battery').attrs['aria-pressed'], 'true'); assert.ok(h.tab('battery').classList.contains('active'));
       assert.strictEqual(h.shown(), null);
-      assert.ok(/pojemność baterii w Wh/.test(h.status()) && /zużycie w W\./.test(h.status()), h.status());
+      assert.ok(/battery capacity in Wh/.test(h.status()) && /consumption in W\./.test(h.status()), h.status());
       h.open('power');
       assert.deepStrictEqual(TOOLS.filter((t) => h.els['cvt-' + t].style.display !== 'none'), ['power']);
       assert.strictEqual(h.tab('battery').attrs['aria-pressed'], 'false'); assert.ok(!h.tab('battery').classList.contains('active'));
@@ -161,11 +162,11 @@ function defineUiSuite(label, file) {
       const h = fresh();
       h.type('bt-capacity', '1000'); assert.strictEqual(h.shown(), null, 'one field alone is not a result');
       h.type('bt-consumption', '100');
-      assert.ok(h.shown().includes('Około 8 h 30 min') && h.shown().includes('850 Wh') && h.shown().includes('100 W'), h.shown());
-      assert.ok(h.shown().includes('1000 Wh × 100% × 85%') && h.shown().includes('energia użyteczna 85%'), 'assumptions are visible in the result');
+      assert.ok(h.shown().includes('About 8 h 30 min') && h.shown().includes('850 Wh') && h.shown().includes('100 W'), h.shown());
+      assert.ok(h.shown().includes('1000 Wh × 100% × 85%') && h.shown().includes('usable energy 85%'), 'assumptions are visible in the result');
       assert.strictEqual(h.status(), '');
-      h.type('bt-usable', '100'); assert.ok(h.shown().includes('Około 10 h 0 min') && h.shown().includes('1000 Wh'));
-      h.type('bt-charge', '50'); assert.ok(h.shown().includes('Około 5 h 0 min') && h.shown().includes('500 Wh'));
+      h.type('bt-usable', '100'); assert.ok(h.shown().includes('About 10 h 0 min') && h.shown().includes('1000 Wh'));
+      h.type('bt-charge', '50'); assert.ok(h.shown().includes('About 5 h 0 min') && h.shown().includes('500 Wh'));
     });
 
     test('changing the unit clears the typed consumption and the result instead of re-reading the number in the new unit', () => {
@@ -173,14 +174,14 @@ function defineUiSuite(label, file) {
       h.type('bt-capacity', '1000'); h.type('bt-consumption', '100'); assert.ok(h.shown());
       h.mode('kwh_day');
       assert.strictEqual(h.els['bt-consumption'].value, '', '100 W must not become 100 kWh/day');
-      hiddenAndExplained(h, 'after a unit change'); assert.ok(/zużycie w kWh\/dobę/.test(h.status()), h.status());
-      assert.strictEqual(h.els['bt-consumption-label'].textContent, 'Zużycie (kWh/dobę)'); assert.strictEqual(h.els['bt-consumption'].placeholder, 'kWh/dobę');
+      hiddenAndExplained(h, 'after a unit change'); assert.ok(/consumption in kWh\/day/.test(h.status()), h.status());
+      assert.strictEqual(h.els['bt-consumption-label'].textContent, 'Consumption (kWh/day)'); assert.strictEqual(h.els['bt-consumption'].placeholder, 'kWh/day');
       assert.strictEqual(h.els['bt-capacity'].value, '1000', 'the capacity is kept');
       h.type('bt-consumption', '1,2'); const comma = h.shown();
-      assert.ok(comma.includes('Około 17 h 0 min') && comma.includes('50 W') && comma.includes('1,2 kWh/dobę × 1000 ÷ 24 h'), comma);
+      assert.ok(comma.includes('About 17 h 0 min') && comma.includes('50 W') && comma.includes('1.2 kWh/day × 1000 ÷ 24 h'), comma);
       h.type('bt-consumption', '1.2'); assert.strictEqual(h.shown(), comma, 'decimal dot and decimal comma agree');
-      h.mode('kwh_year'); assert.strictEqual(h.els['bt-consumption-label'].textContent, 'Zużycie (kWh/rok)'); hiddenAndExplained(h, 'second unit change');
-      h.type('bt-consumption', '438'); assert.ok(h.shown().includes('Około 17 h 0 min') && h.shown().includes('50 W'), '438 kWh/year is the same 50 W');
+      h.mode('kwh_year'); assert.strictEqual(h.els['bt-consumption-label'].textContent, 'Consumption (kWh/year)'); hiddenAndExplained(h, 'second unit change');
+      h.type('bt-consumption', '438'); assert.ok(h.shown().includes('About 17 h 0 min') && h.shown().includes('50 W'), '438 kWh/year is the same 50 W');
     });
 
     test('a valid result never survives an invalid edit, whichever field breaks', () => {
@@ -194,7 +195,7 @@ function defineUiSuite(label, file) {
           h.type(id, v); hiddenAndExplained(h, id + '=' + JSON.stringify(v));
           if (v.trim() !== '') assert.strictEqual(h.els[id].attrs['aria-invalid'], 'true', id + '=' + JSON.stringify(v) + ' is flagged');
           h.type(id, id === 'bt-capacity' ? '1000' : id === 'bt-consumption' ? '100' : id === 'bt-charge' ? '100' : '85');
-          assert.ok(h.shown().includes('Około 8 h 30 min'), 'recovers after the value is corrected');
+          assert.ok(h.shown().includes('About 8 h 30 min'), 'recovers after the value is corrected');
           assert.strictEqual(h.els[id].attrs['aria-invalid'], 'false');
         }
       }
@@ -202,9 +203,9 @@ function defineUiSuite(label, file) {
 
     test('0% charge is a valid 0 h; a tiny positive runtime is shown as under one minute, never as 0 h', () => {
       const h = fresh(); h.type('bt-capacity', '1000'); h.type('bt-consumption', '100'); h.type('bt-charge', '0');
-      assert.ok(h.shown().includes('0 h — bateria rozładowana') && h.shown().includes('>0 Wh<'), h.shown());
+      assert.ok(h.shown().includes('0 h — battery empty') && h.shown().includes('>0 Wh<'), h.shown());
       h.type('bt-charge', '100'); h.type('bt-capacity', '1'); h.type('bt-consumption', '1000');
-      assert.ok(h.shown().includes('Mniej niż 1 min') && !/Około 0|>0 h/.test(h.shown()), h.shown());
+      assert.ok(h.shown().includes('Less than 1 min') && !/About 0|>0 h/.test(h.shown()), h.shown());
     });
 
     test('Example fills the illustrative fridge case (20 h 24 min) and says it is an example; Reset restores only this calculator', () => {
@@ -212,17 +213,17 @@ function defineUiSuite(label, file) {
       h.els['cv-watts'].value = '1500'; h.api.cvCalc('watts'); const power = JSON.stringify(['cv-amps', 'cv-watts', 'cv-kw', 'cv-hp', 'cv-result-rows'].map((id) => h.els[id].value + h.els[id].innerHTML));
       h.api.btExample();
       assert.deepStrictEqual(h.api.btRead(), { capacityWh: '1000', consumptionMode: 'kwh_year', consumption: '365', chargePercent: '100', usablePercent: '85' });
-      assert.strictEqual(h.els['bt-consumption-label'].textContent, 'Zużycie (kWh/rok)');
-      assert.ok(h.shown().includes('Około 20 h 24 min') && h.shown().includes('850 Wh') && h.shown().includes('41,67 W'), h.shown());
-      assert.ok(h.shown().includes('Przykład poglądowy'), 'labelled as an example');
+      assert.strictEqual(h.els['bt-consumption-label'].textContent, 'Consumption (kWh/year)');
+      assert.ok(h.shown().includes('About 20 h 24 min') && h.shown().includes('850 Wh') && h.shown().includes('41.67 W'), h.shown());
+      assert.ok(h.shown().includes('Illustrative example'), 'labelled as an example');
       h.open('power'); h.open('battery');
-      assert.ok(h.shown().includes('Przykład poglądowy') && h.shown().includes('Około 20 h 24 min'), 'untouched example data is still called an example after leaving the tab and coming back');
-      h.type('bt-capacity', '2000'); assert.ok(!h.shown().includes('Przykład poglądowy') && h.shown().includes('Około 40 h 48 min'), 'own numbers are no longer called an example');
+      assert.ok(h.shown().includes('Illustrative example') && h.shown().includes('About 20 h 24 min'), 'untouched example data is still called an example after leaving the tab and coming back');
+      h.type('bt-capacity', '2000'); assert.ok(!h.shown().includes('Illustrative example') && h.shown().includes('About 40 h 48 min'), 'own numbers are no longer called an example');
       h.open('power'); h.open('battery');
-      assert.ok(!h.shown().includes('Przykład poglądowy') && h.shown().includes('Około 40 h 48 min'), 'tab navigation never brings the example label back after an edit');
+      assert.ok(!h.shown().includes('Illustrative example') && h.shown().includes('About 40 h 48 min'), 'tab navigation never brings the example label back after an edit');
       h.api.btReset();
       assert.deepStrictEqual(h.api.btRead(), { capacityWh: '', consumptionMode: 'w', consumption: '', chargePercent: '100', usablePercent: '85' });
-      assert.strictEqual(h.els['bt-consumption-label'].textContent, 'Zużycie (W)'); hiddenAndExplained(h, 'after Reset');
+      assert.strictEqual(h.els['bt-consumption-label'].textContent, 'Consumption (W)'); hiddenAndExplained(h, 'after Reset');
       assert.strictEqual(JSON.stringify(['cv-amps', 'cv-watts', 'cv-kw', 'cv-hp', 'cv-result-rows'].map((id) => h.els[id].value + h.els[id].innerHTML)), power, 'Power fields untouched by Example / Reset');
     });
 
@@ -239,11 +240,12 @@ function defineUiSuite(label, file) {
     });
 
     test('BEHAVIOURAL GUARD: the tab renders what the shared engine returns, escaped, and decides nothing itself', () => {
-      const h = fresh(); const real = h.EC.batteryRuntime.calculateBatteryRuntime; let seen = null;
+      const h = fresh(); const real = h.EC.batteryRuntime.calculateBatteryRuntime; let seen = null; let seenLang = null;
       try {
-        h.EC.batteryRuntime.calculateBatteryRuntime = (input) => { seen = input; return { ok: true, errors: [], data: { text: { duration: 'SYNTH <A>', availableWh: 'SYNTH B', availableBasis: 'SYNTH C', averageW: 'SYNTH & D', averageBasis: 'SYNTH E', assumptions: 'SYNTH F' } } }; };
+        h.EC.batteryRuntime.calculateBatteryRuntime = (input, lang) => { seen = input; seenLang = lang; return { ok: true, errors: [], data: { text: { duration: 'SYNTH <A>', availableWh: 'SYNTH B', availableBasis: 'SYNTH C', averageW: 'SYNTH & D', averageBasis: 'SYNTH E', assumptions: 'SYNTH F' } } }; };
         h.type('bt-capacity', ' 7,5 ');
         assert.deepStrictEqual(seen, { capacityWh: ' 7,5 ', consumptionMode: 'w', consumption: '', chargePercent: '100', usablePercent: '85' }, 'raw field text goes to the engine unparsed');
+        assert.strictEqual(seenLang, 'en', 'the form asks the engine for its English text and translates nothing itself');
         for (const m of ['SYNTH &lt;A&gt;', 'SYNTH B', 'SYNTH C', 'SYNTH &amp; D', 'SYNTH E', 'SYNTH F']) assert.ok(h.shown().includes(m), m);
         h.EC.batteryRuntime.calculateBatteryRuntime = () => ({ ok: false, data: null, errors: [{ field: 'capacityWh', code: 'SYNTH', message: 'SYNTH MESSAGE' }] });
         h.type('bt-capacity', '1000'); assert.strictEqual(h.shown(), null); assert.strictEqual(h.status(), 'SYNTH MESSAGE');

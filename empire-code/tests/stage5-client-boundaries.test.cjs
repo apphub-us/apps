@@ -113,7 +113,7 @@ test('two realms: the page-built correction is re-created in the frame realm and
  assert.deepEqual(request,{toolId:'battery_runtime',expectedGeneration:captured,patch:{set:{chargePercent:50},clear:[]}},'the closed request: only the changed field, with the capture generation');
  assert.deepEqual(form.values(),{...START,charge:'50'},'the form holds the correction; every other control is exactly as before');
  assert.equal(form.calls.btCalc,1,'the form rendered through its own function, once');
- assert.match(p.els['assist-status'].textContent,/wpisano także do otwartego formularza/);
+ assert.match(p.els['assist-status'].textContent,/also entered in the open form/);
  assert.equal(p.run('assistLink.generation'),form.bridge.getState().generation,'the link follows the generation of the accepted write');
  assert.notEqual(form.bridge.getState().generation,captured);
  // The conversation keeps every unchanged field and its provenance; the result is computed by the registry of the frame.
@@ -138,12 +138,12 @@ test('two realms: an invalid or hostile patch from the client path is still refu
  assert.ok(refusal.errors.some(e=>e.code==='WRONG_TYPE'&&e.field==='chargePercent'&&e.source==='registry'),JSON.stringify(refusal.errors));
  assert.notEqual(REFUSED,START.charge,'precondition: a write of the refused value would be visible in the control');
  const cases={
-  'a value the registry refuses (a numeric string is never coerced)':{input:text({chargePercent:REFUSED}),changed:['chargePercent'],says:/nie można wpisać/},
-  'a context-only field':{input:text({useDocumentedEstimates:true}),changed:['useDocumentedEstimates'],says:/nie można wpisać/},
-  'a field the tool does not have':{input:text({chargePercent:40,installationApproved:true}),changed:['chargePercent','installationApproved'],says:/nie można wpisać/},
-  'an own __proto__ key beside a valid field':{input:text({chargePercent:40}).replace(/^\{/,'{"__proto__":{"polluted":true},'),changed:['__proto__','chargePercent'],says:/nie można wpisać/},
-  'a constructor key beside a valid field':{input:text({chargePercent:40,constructor:'x'}),changed:['constructor','chargePercent'],says:/nie można wpisać/},
-  'a generation that is not the captured one':{input:text({chargePercent:40}),changed:['chargePercent'],generation:'gforged.7',says:/zmienił się od pobrania/}};
+  'a value the registry refuses (a numeric string is never coerced)':{input:text({chargePercent:REFUSED}),changed:['chargePercent'],says:/cannot be entered in the form/},
+  'a context-only field':{input:text({useDocumentedEstimates:true}),changed:['useDocumentedEstimates'],says:/cannot be entered in the form/},
+  'a field the tool does not have':{input:text({chargePercent:40,installationApproved:true}),changed:['chargePercent','installationApproved'],says:/cannot be entered in the form/},
+  'an own __proto__ key beside a valid field':{input:text({chargePercent:40}).replace(/^\{/,'{"__proto__":{"polluted":true},'),changed:['__proto__','chargePercent'],says:/cannot be entered in the form/},
+  'a constructor key beside a valid field':{input:text({chargePercent:40,constructor:'x'}),changed:['constructor','chargePercent'],says:/cannot be entered in the form/},
+  'a generation that is not the captured one':{input:text({chargePercent:40}),changed:['chargePercent'],generation:'gforged.7',says:/changed since its values were taken/}};
  for(const [name,c] of Object.entries(cases)){
   const {p,form,log}=await batteryPage([]);
   await p.click('assist-use-form');
@@ -178,7 +178,7 @@ test('two realms: a number the registry accepts and only the engine rejects is a
  await p.click('assist-use-form');
  const captured=form.bridge.getState().generation;
  const said=p.run('(()=>{const input=JSON.parse('+JSON.stringify(JSON.stringify(INPUT))+');return assistFormApply({tool:{tool:"battery_runtime",input},changedFields:["chargePercent"]});})()');
- assert.match(said,/wpisano także do otwartego formularza/,'said as a write, because it was one');assert.ok(!/nie można wpisać/.test(said),'not reported as a refused change');
+ assert.match(said,/also entered in the open form/,'said as a write, because it was one');assert.ok(!/cannot be entered in the form/.test(said),'not reported as a refused change');
  assert.equal(log.applies.length,1);assert.deepEqual(log.applies[0],{toolId:'battery_runtime',expectedGeneration:captured,patch},'the closed request: only the changed field');
  assert.deepEqual(form.values(),{...START,charge:'5000'},'only the corrected control changed; every other control is exactly as before');
  assert.equal(form.calls.btCalc,1,'the form rendered through its own function, once — its own validation message is the form\'s business');
@@ -219,8 +219,8 @@ test('linked form: the answer is accepted for an unchanged form and discarded as
   assert.deepEqual(fresh.form.values(),START,name);assert.equal(fresh.log.applies.length,0,name);assert.equal(fresh.log.captures.length,0,name+': no form is captured by itself');
   assert.equal(log.captures.length,1,name+': only the explicit import captured');
   assert.equal(p.els.input.value,text,name+': the unsent text stays in the field');assert.ok(p.local.dump().includes(text),name+': and in storage');
-  assert.equal(p.els.status.className,'error',name);assert.match(p.els.status.textContent,/zanim nadeszła odpowiedź/,name);assert.match(p.els.status.textContent,/Użyj otwartego kalkulatora/,name+': the next step is named');
-  assert.match(p.els['assist-status'].textContent,/nie jest już połączony/,name);assert.equal(p.run('assistLink'),null,name);
+  assert.equal(p.els.status.className,'error',name);assert.match(p.els.status.textContent,/before the reply arrived/,name);assert.match(p.els.status.textContent,/Use open calculator/,name+': the next step is named');
+  assert.match(p.els['assist-status'].textContent,/no longer linked to this chat|detached from this chat/,name);assert.equal(p.run('assistLink'),null,name);
  }
 });
 
@@ -232,8 +232,8 @@ test('linked form already changed before Send: nothing is sent or re-captured; t
  await p.type(text);await p.submit();await idle(p);
  assert.equal(p.count('/api/assist'),0,'no request for a form the conversation no longer matches');
  assert.equal(p.els.input.value,text);assert.ok(p.local.dump().includes(text));
- assert.equal(p.els.status.className,'error');assert.match(p.els.status.textContent,/niczego nie wysłano/);assert.match(p.els.status.textContent,/Użyj otwartego kalkulatora/);
- assert.match(p.els['assist-status'].textContent,/nie jest już połączony/);assert.equal(p.run('assistLink'),null);
+ assert.equal(p.els.status.className,'error');assert.match(p.els.status.textContent,/nothing was sent/);assert.match(p.els.status.textContent,/Use open calculator/);
+ assert.match(p.els['assist-status'].textContent,/no longer linked to this chat|detached from this chat/);assert.equal(p.run('assistLink'),null);
  assert.equal(log.captures.length,1,'the changed form is not captured by itself');assert.equal(JSON.stringify(storedAssistant(p)),stored,'the conversation keeps what was imported');
  // Pressed again, the same text is an ordinary turn on the conversation's own data. The form is neither read nor written.
  await p.submit();await idle(p);
@@ -315,7 +315,7 @@ test('job revision saved while the answer waits for the lock: the answer is refu
  assert.equal(seen[0].body.assistant.job.revisionId,job.head.currentRevisionId,'the request was sent for the older revision');
  assert.equal(p.run('assistantMeta'),null,'no proposal for a job revision that is no longer current');assert.equal(p.run('state.history.length'),0);
  const entry=p.bank().contexts.find(x=>x.contextId===p.active());assert.ok(!entry||!Object.hasOwn(entry.envelope,'assistant'),'nothing of the refused answer is stored');
- assert.equal(p.els.input.value,TEXT);assert.equal(p.els.status.className,'error');assert.match(p.els.status.textContent,/Nieaktualna propozycja/);
+ assert.equal(p.els.input.value,TEXT);assert.equal(p.els.status.className,'error');assert.match(p.els.status.textContent,/Outdated proposal/);
  assert.equal(p.count('/api/assist'),1,'exactly one attempt, no retry');
  // Sent again by the user: the request names the current revision and its proposal is stored for it.
  await p.submit();await idle(p);
@@ -355,11 +355,11 @@ test('Load Calc form: a labelled choice of its four analyses; the chosen one is 
  assert.ok(select(),'the choice is offered for a form that serves several calculators');
  const options=select().children.filter(c=>c.tagName==='option');
  assert.deepEqual(options.map(o=>o.value),['load_calc','load_calc_preliminary','service_sizing','service_sizing_preliminary'],'exactly the tools the bridge reports for the open form');
- assert.deepEqual(options.map(o=>o.textContent),options.map(o=>T.getTool(o.value).title.pl),'the registry\'s own Polish titles');
+ assert.deepEqual(options.map(o=>o.textContent),options.map(o=>T.getTool(o.value).title.en),'the registry\'s own English titles');
  for(const o of options)assert.ok(o.textContent.length>3&&!/load_calc|service_sizing|[a-z0-9]_[a-z0-9]/.test(o.textContent),'no internal identifier in the visible text: '+o.textContent);
  assert.equal(new Set(options.map(o=>o.textContent)).size,4,'four distinguishable names');
  const label=walk(p.find('assist-body')).find(x=>x.tagName==='label');
- assert.ok(label&&label.getAttribute('for')==='assist-form-tool'&&/Analiza z otwartego formularza/.test(label.textContent),'the control has a programmatic label');
+ assert.ok(label&&label.getAttribute('for')==='assist-form-tool'&&/Analysis from the open form/.test(label.textContent),'the control has a programmatic label');
  assert.ok(!/load_calc|service_sizing_|_preliminary/.test(p.text('assist-body')),'no identifier anywhere in the panel text');
  assert.equal(select().value,'load_calc','the form\'s primary analysis stays the default');
  const css=H.read('style.css');assert.match(css,/\.assist input,\.assist select,\.assist textarea\{[^}]*width:100%[^}]*max-width:100%[^}]*min-width:0[^}]*font-size:16px/,'16 px control that cannot overflow a 320 px panel');
@@ -369,7 +369,7 @@ test('Load Calc form: a labelled choice of its four analyses; the chosen one is 
  await p.click('assist-use-form');
  assert.deepEqual(log.captures,['load_calc']);assert.equal(draft().tool,'load_calc');assert.deepEqual(draft().origins,{request:'current_form'});assert.deepEqual(draft().input.request,B0());
  assert.equal(shown(p).status,'complete');assert.deepEqual(shown(p).coreResult,own(F.evaluateV2(B0())),'the canonical facade result, computed by the registry of the frame');
- assert.match(p.text('assist-body'),/To nie jest odbiór/);
+ assert.match(p.text('assist-body'),/It is not an inspection, an installation approval or a confirmation of code compliance/);
  // Explicit choice: Service Sizing of the same current form — request and design both imported, both from the form.
  await pick('service_sizing');
  assert.equal(log.captures[log.captures.length-1],'service_sizing');assert.equal(draft().tool,'service_sizing');
@@ -379,7 +379,7 @@ test('Load Calc form: a labelled choice of its four analyses; the chosen one is 
  // A new-design analysis while the form is in the existing-conductor workflow: refused, said, nothing stored or assumed.
  let kept=JSON.stringify(storedAssistant(p));
  await pick('service_sizing_preliminary');
- assert.match(p.els['assist-status'].textContent,/nie jest w trybie nowego projektu/);assert.match(p.els['assist-status'].textContent,/niczego nie pobrano ani nie założono/);
+ assert.match(p.els['assist-status'].textContent,/is not in new-design mode/);assert.match(p.els['assist-status'].textContent,/nothing was taken or assumed/);
  assert.equal(JSON.stringify(storedAssistant(p)),kept);assert.ok(!/service_sizing|_preliminary/.test(p.els['assist-status'].textContent),'the refusal names the analysis by its title');
  // The user switches the form to the new-design workflow with an unknown conductor ampacity and edits the design.
  form.edit(s=>{s.pre.mode='new_design';s.request=B0unknown();s.design=design(200,DWELLING);});
@@ -391,7 +391,7 @@ test('Load Calc form: a labelled choice of its four analyses; the chosen one is 
  assert.equal(r.status,'preliminary');assert.deepEqual(r.coreResult,own(S.analyzePreliminaryPrototype(B0unknown(),design(200,DWELLING))));
  assert.equal(r.nextAction.adoption.performedHere,false);assert.equal(r.nextAction.adoption.modelCallable,false);
  assert.ok(!JSON.stringify(r).includes('adoptedRequest')&&!JSON.stringify(r).includes(S.ADOPTION_STATUS.ADOPTED)&&!JSON.stringify(r).includes('"installationApproved":true'));
- assert.match(p.text('assist-body'),/WSTĘPNE/);assert.match(p.text('assist-body'),/To nie jest odbiór/);
+ assert.match(p.text('assist-body'),/PRELIMINARY/);assert.match(p.text('assist-body'),/It is not an inspection, an installation approval or a confirmation of code compliance/);
  assert.equal(form.state.pre.adopted,null);assert.equal(form.state.pre.result,null);assert.equal(form.state.pre.runs,0,'the form\'s own preliminary check was not run');
  assert.equal(JSON.stringify(form.state.request),JSON.stringify(B0unknown()),'the form\'s draft is not touched');
  await pick('load_calc_preliminary');
@@ -400,7 +400,7 @@ test('Load Calc form: a labelled choice of its four analyses; the chosen one is 
  // Unresolved input is said honestly: the ordinary analyses of the same form do not get a number.
  await pick('load_calc');
  r=shown(p);assert.equal(r.status,'needs_input');assert.ok(r.needsInput.length>0);
- const asked=r.needsInput[0].question,question=typeof asked==='string'?asked:asked.pl;
+ const asked=r.needsInput[0].question,question=typeof asked==='string'?asked:asked.en;
  assert.ok(question&&p.text('assist-body').includes(question),'the registry question is shown');
  assert.deepEqual(r.coreResult,own(F.evaluateV2(B0unknown())));
  await pick('service_sizing');
@@ -409,10 +409,10 @@ test('Load Calc form: a labelled choice of its four analyses; the chosen one is 
  kept=JSON.stringify(storedAssistant(p));
  form.edit(s=>{s.fault={kind:'draft',message:'rejected'};});
  await pick('load_calc');
- assert.match(p.els['assist-status'].textContent,/zgłasza błąd danych/);assert.equal(JSON.stringify(storedAssistant(p)),kept);
+ assert.match(p.els['assist-status'].textContent,/reports a data error/);assert.equal(JSON.stringify(storedAssistant(p)),kept);
  form.edit(s=>{s.fault=null;s.pre=null;});
  await pick('load_calc_preliminary');
- assert.match(p.els['assist-status'].textContent,/nie są jeszcze gotowe/);assert.equal(JSON.stringify(storedAssistant(p)),kept);
+ assert.match(p.els['assist-status'].textContent,/are not ready to read the form yet/);assert.equal(JSON.stringify(storedAssistant(p)),kept);
  // Everything above was local: nothing was sent, nothing was written to the form, and the adoption helper is not referenced.
  assert.equal(p.count('/api/assist'),0);assert.equal(log.applies.length,0);assert.ok(!/adoptPlanned/.test(H.read('ui.js')));
  assert.ok(log.captures.every(id=>typeof id==='string'),'every capture of this form named the chosen analysis');
