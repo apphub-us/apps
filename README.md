@@ -1,10 +1,18 @@
-# Empire Code — current release: PRIVATE-PILOT-7
+# Empire Code — current release: PRIVATE-PILOT-8
 
 - Open the current app: <https://empirecode.app/current/>
 - Old phone bookmark, now also opens the current app: <https://empirecode.app/mobile.html>
 - Direct app address: <https://empire-code-private-pilot.szczepan-msg.workers.dev/>
-- Source (tag `private-pilot-7`): [`empire-code/`](https://github.com/apphub-us/apps/tree/private-pilot-7/empire-code)
+- Source (tag `private-pilot-8`): [`empire-code/`](https://github.com/apphub-us/apps/tree/private-pilot-8/empire-code)
 - Previous app, same file at a new address: <https://empirecode.app/mobile-previous.html>
+
+Changed in PRIVATE-PILOT-8: the app's interface is in English (Chat, Jobs,
+Tools, Code), whatever the browser language; typed and spoken Polish, English
+and mixed input are still understood, and saved chats, jobs and notes are not
+rewritten. New chat now always answers a press next to the button: it says
+when the open chat is already empty and moves to the message field, shows
+progress while a new chat is being started, and states the reason when it is
+unavailable. The entry page and the two forwarding pages are in English.
 
 Changed in PRIVATE-PILOT-7: the app's screens use two typefaces throughout, a
 system sans for interface and reading text and a system monospace for values,
